@@ -1,39 +1,12 @@
 <v-container fluid class="pa-2 live-window-shell">
-  <div class="live-window-toolbar">
-    <v-menu location="bottom end">
-      <template #activator="{ props }">
-        <v-btn
-          v-bind="props"
-          icon="mdi-dots-horizontal"
-          variant="text"
-          class="live-window-toolbar__menu"
-          :aria-label="t('shellLiveActionsLabel')"
-          :disabled="!hasLotSelected"
-        ></v-btn>
-      </template>
-      <v-list density="compact">
-        <v-list-item
-          prepend-icon="mdi-restore"
-          :title="currentLotType === 'singles' ? t('shellResetLiveSinglesPricesAction') : t('shellResetLivePricesAction')"
-          @click="resetLivePrices"
-        ></v-list-item>
-        <v-list-item
-          v-if="currentLotType !== 'singles'"
-          prepend-icon="mdi-content-save-outline"
-          :title="t('shellApplyLivePricesAction')"
-          @click="applyLivePricesToDefaults"
-        ></v-list-item>
-        <v-list-item
-          v-else
-          prepend-icon="mdi-broom"
-          base-color="error"
-          :title="t('shellClearLiveSinglesAction')"
-          :disabled="effectiveLiveSinglesIds.length === 0"
-          @click="confirmClearLiveSingles"
-        ></v-list-item>
-      </v-list>
-    </v-menu>
-  </div>
+  <context-action-dock
+    :active="currentTab === 'live'"
+    :primary-action="liveContextPrimaryAction"
+    :secondary-actions="liveContextSecondaryActions"
+    :secondary-label="t('shellLiveActionsLabel')"
+    :badge-label="liveProfitTargetBadgeVisible ? liveProfitTargetBadgeLabel : ''"
+    @activate="activateLiveContextAction"
+  ></context-action-dock>
 
   <div v-if="currentLotType === 'singles'" class="live-singles-shell">
     <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>

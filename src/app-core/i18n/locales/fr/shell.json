@@ -25,7 +25,7 @@
   "shellAddRtyhSaleAction": "Ajouter une vente random hit",
   "shellAddSinglesPurchaseAction": "Ajouter un achat d'item",
   "shellAppSectionLabel": "Application",
-  "shellApplyLivePricesAction": "Appliquer les prix live",
+  "shellApplyLivePricesAction": "Enregistrer les prix live",
   "shellClearDataAction": "Effacer les donnees personnelles",
   "shellClearDataConfirmBody": "Ceci retire votre inventaire personnel, vos ventes et les données de compte mises en cache sur cet appareil. Les données des espaces partagés ne sont pas supprimées.",
   "shellClearDataConfirmTitle": "Effacer les donnees personnelles de cet appareil?",

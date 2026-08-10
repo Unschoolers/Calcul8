@@ -96,34 +96,6 @@
           class="app-context-action app-context-action--slot-1"
         ></v-fab>
 
-        <div v-if="currentTab === 'live'" class="app-context-action-badge-wrap app-context-action--slot-1">
-          <v-fab icon="mdi-calculator" color="secondary" size="large"
-            :title="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
-            :aria-label="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
-            :disabled="!hasLotSelected" @click="accessProFeature('autoCalculate')"
-            class="app-context-action"></v-fab>
-          <div
-            v-if="liveProfitTargetBadgeVisible"
-            class="app-context-action-profit-target-badge"
-            aria-hidden="true"
-          >{{ liveProfitTargetBadgeLabel }}</div>
-        </div>
-
-        <v-fab
-          v-if="currentTab === 'wheel'
-            && $refs.wheelWindow?.wheelIsCompactLayout
-            && !$refs.wheelWindow?.wheelPresentationMode
-            && !$refs.wheelWindow?.wheelMobileInspectorOpen"
-          icon="mdi-tune-variant"
-          color="secondary"
-          size="large"
-          :title="t('shellGameControlsAction')"
-          :aria-label="t('shellGameControlsAction')"
-          :disabled="!hasLotSelected"
-          @click="$refs.wheelWindow?.openWheelInspector?.($refs.wheelWindow?.wheelMode === 'live' ? 'session' : 'config')"
-          class="app-context-action app-context-action--slot-1"
-        ></v-fab>
-
         <!-- Primary FAB - Sales -->
         <div v-if="currentTab === 'sales' && hasProAccess" class="app-context-action-wrap app-context-action--slot-1">
           <v-speed-dial v-model="speedDialOpenSales" location="top center" transition="scale-transition"

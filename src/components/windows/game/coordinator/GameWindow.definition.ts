@@ -202,6 +202,12 @@ export const gameWindowDefinition = {
     ...wheelSessionMethods,
     ...gameSpectatorMethods,
     ...mysteryGridMethods,
+    activateWheelContextAction(this: GameWindowThis, actionId: string): void {
+      if (actionId === "session") this.openWheelInspector("session");
+      else if (actionId === "builder") this.openWheelInspector("config");
+      else if (actionId === "history") this.openWheelInspector("history");
+      else if (actionId === "end") this.requestWheelSessionEnd();
+    },
     applyRealtimeWheelSession(this: GameWindowOverlayThis): void {
       this._wheelAppliedRealtimeRevision = this.wheelRealtimeApplyRevision;
       const config = this.activeWheelConfig as WheelConfig | null;
@@ -643,4 +649,3 @@ export const gameWindowDefinition = {
     return useGameCoordinatorPorts();
   }
 };
-

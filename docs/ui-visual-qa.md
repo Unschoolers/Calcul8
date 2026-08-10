@@ -10,12 +10,14 @@ Run the smoke screenshots:
 npm run test:visual
 ```
 
-The smoke suite starts Vite dev on `127.0.0.1:4177`, uses `/nologin`, seeds one realistic local-first lot with sales, then captures Config, Live, Sales, and Portfolio in:
+The smoke suite starts Vite dev on `127.0.0.1:4177`, uses `/nologin`, seeds one realistic local-first lot with sales, then captures Config, Live, Sales, Game, and Portfolio in:
 
 - desktop, English, light theme
 - mobile, French, dark theme
 
 Each screen also gets a page-level horizontal overflow assertion before the screenshot. Screenshots and traces are local Playwright artifacts under `test-results/` and are ignored by git.
+
+The mobile Game capture keeps its secondary-action menu open and verifies that Session remains directly accessible while History and Builder stay discoverable.
 
 ## When To Run
 

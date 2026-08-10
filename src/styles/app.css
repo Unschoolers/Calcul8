@@ -1304,7 +1304,7 @@
     }
     .app-shell-root {
       min-height: 100dvh;
-      padding-top: calc(var(--v-layout-top) + var(--app-safe-area-top)) !important;
+      padding-top: calc(var(--v-layout-top) + var(--app-shell-top-inset)) !important;
     }
     .app-shell-bottom-nav {
       height: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom)) !important;
@@ -1317,8 +1317,7 @@
       pointer-events: none;
     }
     .app-context-action,
-    .app-context-action-wrap,
-    .app-context-action-badge-wrap {
+    .app-context-action-wrap {
       position: fixed !important;
       right: var(--app-context-action-inline-offset) !important;
       left: auto !important;
@@ -1330,34 +1329,6 @@
     .app-context-action--slot-1 {
       bottom: var(--app-context-action-bottom-1) !important;
       inset-block-end: var(--app-context-action-bottom-1) !important;
-    }
-    .app-context-action-badge-wrap .app-context-action {
-      position: static !important;
-      right: auto !important;
-      left: auto !important;
-      inset-inline-end: auto !important;
-      inset-inline-start: auto !important;
-    }
-    .app-context-action-profit-target-badge {
-      position: absolute;
-      top: calc(-1 * var(--app-space-4));
-      right: calc(-1 * var(--app-space-4));
-      min-width: var(--app-fab-badge-size, 2rem);
-      height: var(--app-fab-badge-size, 2rem);
-      padding: var(--app-fab-badge-padding, 0 0.2rem);
-      border-radius: var(--app-radius-pill);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--app-success-gradient);
-      color: var(--app-success-contrast);
-      font-size: var(--app-font-size-badge);
-      font-weight: var(--app-font-weight-emphasis);
-      line-height: 1;
-      letter-spacing: var(--app-letter-spacing-ui);
-      box-shadow: var(--app-shadow-lg);
-      border: var(--app-fab-badge-border-width) solid var(--app-surface-solid);
-      pointer-events: none;
     }
     .app-shell-blocking-surface {
       align-items: flex-start;

@@ -15,11 +15,19 @@ Every remaining item is done only when the affected screens pass these checks:
 - Screens use shared spacing, typography, radius, elevation, icon, empty-state, loading, error, and dialog patterns unless an exception is documented.
 - Visual QA screenshots exist for changed top-level screens and modals when the change affects layout, theme contrast, responsive behavior, brand polish, or public-facing presentation.
 
+### Persistent Shell Action Contract
+
+- Floating action buttons and contextual action docks must render in `.app-shell-action-zone`, never inside a tab window, scrolling panel, card, or other transformed content ancestor.
+- Feature windows keep ownership of their action definitions and handlers by using `ContextActionDock`, which teleports its rendered controls into the shell action layer.
+- Because top-level Vuetify windows are eager, every feature dock must receive an explicit active-tab condition so inactive tabs cannot expose overlapping actions.
+- Keep the primary action on the shared right-edge anchor; secondary actions expand toward the content side.
+- `tests/vue/context-action-dock.scenario.test.ts` protects the rendered shell-layer placement and inactive-tab behavior. `tests/ui-shell-contract.test.ts` protects feature adoption of that boundary.
+
 ## Current Smoke Evidence
 
 `npm run test:visual` now runs a Playwright smoke path for seeded real app-shell tabs on desktop/light/English and mobile/dark/French. The seed includes long accented names, dense buyer labels, and USD cost/CAD selling data so compact cards and metric chips stay exercised. Screenshots are local artifacts only and ignored by git.
 
-The mobile shell now uses one shared bottom-navigation, contextual-action, and content-clearance contract. Seeded Pixel 7 screenshots cover Config, Live, Sales, and Portfolio with the compact lot header, one persistent action, long French labels, and dense content. Game and report-specific bottom-content captures remain part of expanded visual QA.
+The mobile shell now uses one shared bottom-navigation, contextual-action, and content-clearance contract. Seeded Pixel 7 screenshots cover Config, Live, Sales, Game, and Portfolio with the compact lot header, contextual actions, long French labels, and dense content. Report-specific bottom-content captures remain part of expanded visual QA.
 
 The remaining smoke issue is desktop Portfolio content running close to persistent navigation, which makes the bottom of the dashboard feel unfinished even on a large viewport.
 
@@ -143,7 +151,7 @@ The remaining smoke issue is desktop Portfolio content running close to persiste
 
 ### Expand Visual QA Coverage Beyond Smoke
 
-**Why now:** The smoke path is done, but it intentionally covers only seeded app-shell Config, Live, Sales, and Portfolio states on desktop/light/English and mobile/dark/French. The missing coverage is still useful, but it is no longer the top blocker now that a local visual QA command exists.
+**Why now:** The smoke path is done, but it intentionally covers only seeded app-shell Config, Live, Sales, Game, and Portfolio states on desktop/light/English and mobile/dark/French. The missing coverage is still useful, but it is no longer the top blocker now that a local visual QA command exists.
 
 **Scope:** Tablet fixtures, high-risk modals, Whatnot import/review, Game wheel/grid/bracket, spectator pages, Portfolio reports, high-zoom checks, deeper overflow assertions.
 

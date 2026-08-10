@@ -1,8 +1,64 @@
 import { useLiveWindowPorts } from "./liveWindowPorts.ts";
+import type { ContextActionDockAction } from "../../shell/ContextActionDock.ts";
 
 export const liveWindowDefinition = {
   name: "LiveWindow",
+  computed: {
+    liveContextPrimaryAction(this: any): ContextActionDockAction {
+      if (this.currentLotType === "singles") {
+        return {
+          id: "calculator",
+          icon: "mdi-calculator",
+          color: "secondary",
+          label: this.t(this.hasProAccess ? "shellPriceCalculatorAction" : "shellUpgradePriceCalculatorAction"),
+          disabled: !this.hasLotSelected
+        };
+      }
+      return {
+        id: "save",
+        icon: "mdi-content-save-outline",
+        color: "primary",
+        label: this.t("shellApplyLivePricesAction"),
+        disabled: !this.hasLotSelected
+      };
+    },
+    liveContextSecondaryActions(this: any): ContextActionDockAction[] {
+      const actions: ContextActionDockAction[] = [];
+      if (this.currentLotType !== "singles") {
+        actions.push({
+          id: "calculator",
+          icon: "mdi-calculator",
+          color: "secondary",
+          label: this.t(this.hasProAccess ? "shellPriceCalculatorAction" : "shellUpgradePriceCalculatorAction"),
+          disabled: !this.hasLotSelected
+        });
+      }
+      actions.push({
+        id: "reset",
+        icon: "mdi-restore",
+        color: "surface",
+        label: this.t(this.currentLotType === "singles" ? "shellResetLiveSinglesPricesAction" : "shellResetLivePricesAction"),
+        disabled: !this.hasLotSelected
+      });
+      if (this.currentLotType === "singles") {
+        actions.push({
+          id: "clear",
+          icon: "mdi-broom",
+          color: "error",
+          label: this.t("shellClearLiveSinglesAction"),
+          disabled: !this.hasLotSelected || this.effectiveLiveSinglesIds.length === 0
+        });
+      }
+      return actions;
+    }
+  },
   methods: {
+    activateLiveContextAction(this: any, actionId: string): void {
+      if (actionId === "save") this.applyLivePricesToDefaults();
+      else if (actionId === "calculator") void this.accessProFeature("autoCalculate");
+      else if (actionId === "reset") this.resetLivePrices();
+      else if (actionId === "clear") this.confirmClearLiveSingles();
+    },
     getLiveSinglesPanelVm(this: any): Record<string, unknown> | null {
       const refs = this?.$refs as Record<string, unknown> | undefined;
       const panel = refs?.liveSinglesPanel;

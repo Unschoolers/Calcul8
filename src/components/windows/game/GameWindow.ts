@@ -9,6 +9,7 @@ import MysteryGridSurface from "./stage/MysteryGridSurface.vue";
 import GameSpectatorDialog from "./dialogs/GameSpectatorDialog.vue";
 import WheelStageSummary from "./stage/WheelStageSummary.vue";
 import WheelStageTopbar from "./stage/WheelStageTopbar.vue";
+import ContextActionDock from "../../shell/ContextActionDock.vue";
 import { gameWindowDefinition } from "./coordinator/GameWindow.definition.ts";
 
 export const GameWindow = {
@@ -23,6 +24,7 @@ export const GameWindow = {
     WheelCreateGameDialog,
     GameSpectatorDialog,
     WheelStageSummary,
-    WheelStageTopbar
+    WheelStageTopbar,
+    ContextActionDock
   }
 };

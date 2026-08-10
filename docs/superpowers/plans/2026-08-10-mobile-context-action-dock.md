@@ -29,13 +29,13 @@
 
 **Interfaces:**
 - Produces: `ContextActionDockAction = { id: string; icon: string; color: string; label: string; disabled?: boolean }`.
-- Props: `primaryAction: ContextActionDockAction`, `secondaryActions: ContextActionDockAction[]`, `secondaryLabel: string`.
+- Props: `primaryAction: ContextActionDockAction`, `secondaryActions: ContextActionDockAction[]`, `secondaryLabel: string`, and optional `badgeLabel: string`.
 - Emits: `activate(actionId: string)`.
 
-- [ ] **Step 1: Write a failing DOM test** proving the component renders exactly two persistent controls, opens labeled secondary rows, emits primary and secondary ids, and respects disabled actions.
-- [ ] **Step 2: Run `npm run test:vue -- tests/vue/context-action-dock.scenario.test.ts`** and verify failure because the component does not exist.
-- [ ] **Step 3: Implement the minimal component** with a direct primary FAB and a secondary `v-menu` FAB; keep all business behavior outside it.
-- [ ] **Step 4: Rerun the focused Vue test** and verify it passes.
+- [x] **Step 1: Write a failing DOM test** proving the component renders exactly two persistent controls, opens labeled secondary rows, emits primary and secondary ids, and respects disabled actions.
+- [x] **Step 2: Run `npm run test:vue -- tests/vue/context-action-dock.scenario.test.ts`** and verify failure because the component does not exist.
+- [x] **Step 3: Implement the minimal component** with a direct primary FAB and a secondary `v-menu` FAB; keep all business behavior outside it.
+- [x] **Step 4: Rerun the focused Vue test** and verify it passes.
 
 ### Task 2: Live Action Ownership
 
@@ -55,10 +55,10 @@
 - Singles primary id `calculator` calls `accessProFeature("autoCalculate")`.
 - Secondary ids `calculator`, `reset`, and `clear` call the existing capability paths; `clear` calls `confirmClearLiveSingles()`.
 
-- [ ] **Step 1: Add failing tests** for bulk direct Save, bulk Calculator/Reset secondary actions, Singles direct Calculator, and Singles Reset/Clear secondary actions.
-- [ ] **Step 2: Run `npm run test -- tests/live-window-actions.test.ts`** and verify the new action contract is missing.
-- [ ] **Step 3: Implement typed Live descriptors and routing**, register the shared dock, add `accessProFeature` to the Live capability port, and remove the old top toolbar plus root Live FAB.
-- [ ] **Step 4: Rerun the focused Live tests** and verify they pass.
+- [x] **Step 1: Add failing tests** for bulk direct Save, bulk Calculator/Reset secondary actions, Singles direct Calculator, and Singles Reset/Clear secondary actions.
+- [x] **Step 2: Run `npm run test -- tests/live-window-actions.test.ts`** and verify the new action contract is missing.
+- [x] **Step 3: Implement typed Live descriptors and routing**, register the shared dock, add `accessProFeature` to the Live capability port, and remove the old top toolbar plus root Live FAB.
+- [x] **Step 4: Rerun the focused Live tests** and verify they pass.
 
 ### Task 3: Always-Accessible Game Session
 
@@ -75,10 +75,10 @@
 - `wheelContextSecondaryActions` contains Builder plus History in config mode, and History plus End Game in live mode.
 - `activateWheelContextAction(id)` delegates to `openWheelInspector(targetTab)` or `requestWheelSessionEnd()`.
 
-- [ ] **Step 1: Add failing tests** proving Session is primary in both modes and secondary action ids preserve Builder, History, and End Game.
-- [ ] **Step 2: Run `npm run test -- tests/game-window-facade.test.ts`** and verify failure against the single Controls FAB.
-- [ ] **Step 3: Register and render the shared dock inside GameWindow**, route its ids through existing methods, and remove the root Game FAB.
-- [ ] **Step 4: Rerun the focused Game tests** and verify they pass.
+- [x] **Step 1: Add failing tests** proving Session is primary in both modes and secondary action ids preserve Builder, History, and End Game.
+- [x] **Step 2: Run `npm run test -- tests/game-window-facade.test.ts`** and verify failure against the single Controls FAB.
+- [x] **Step 3: Register and render the shared dock inside GameWindow**, route its ids through existing methods, and remove the root Game FAB.
+- [x] **Step 4: Rerun the focused Game tests** and verify they pass.
 
 ### Task 4: Shell Contract And Verification
 
@@ -91,8 +91,7 @@
 - Root persistent actions remain for Config, Sales, and Portfolio only.
 - Live and Game use `.app-context-action-dock` with `--app-context-action-bottom-1` and the existing inline safe-area offset.
 
-- [ ] **Step 1: Update the shell regression contract** to reject root-owned Live/Game FABs and require the reusable two-control dock without retired vertical action rails.
-- [ ] **Step 2: Run focused unit and Vue tests** and fix only contract integration issues.
-- [ ] **Step 3: Run `npm run verify`**, the mobile visual smoke path, and `git diff --check`.
-- [ ] **Step 4: Inspect the mobile Live and Game screenshots** for nav clearance, menu readability, and one-tap Session/Save access.
-
+- [x] **Step 1: Update the shell regression contract** to reject root-owned Live/Game FABs and require the reusable two-control dock without retired vertical action rails.
+- [x] **Step 2: Run focused unit and Vue tests** and fix only contract integration issues.
+- [x] **Step 3: Run `npm run verify`**, the mobile visual smoke path, and `git diff --check`.
+- [x] **Step 4: Inspect the mobile Live and Game screenshots** for nav clearance, menu readability, and one-tap Session/Save access.

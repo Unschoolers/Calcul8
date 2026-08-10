@@ -25,7 +25,7 @@
   "shellAddRtyhSaleAction": "Add random hit sale",
   "shellAddSinglesPurchaseAction": "Add item purchase",
   "shellAppSectionLabel": "App",
-  "shellApplyLivePricesAction": "Apply live prices",
+  "shellApplyLivePricesAction": "Save live prices",
   "shellClearDataAction": "Clear personal data",
   "shellClearDataConfirmBody": "This removes your personal inventory, sales, and cached account data from this device. Shared workspace data is not deleted.",
   "shellClearDataConfirmTitle": "Clear personal data from this device?",

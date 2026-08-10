@@ -1,4 +1,4 @@
-.config-layout {
+.singles-config-layout {
   padding-bottom: calc(var(--app-sticky-footer-offset) + var(--app-space-4));
 }
 
@@ -1617,7 +1617,7 @@
     align-self: end;
   }
 
-  .config-layout {
+  .singles-config-layout {
     padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
   }
 

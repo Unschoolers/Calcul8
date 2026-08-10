@@ -1,4 +1,5 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import type { ContextActionDockAction } from "../../../shell/ContextActionDock.ts";
 
 type InspectorTab = "config" | "session" | "history";
 type InspectorPanelMeta = { icon: string; titleKey: string; subtitleKey: string };
@@ -36,6 +37,33 @@ function translate(language: string, key: string): string {
   return translateAppMessage(language, key);
 }
 
+function resolveCompactActions(context: Record<string, unknown>) {
+  const language = String(context.preferredLanguage ?? "");
+  const mode = String(context.wheelMode || "config") as "config" | "live";
+  const hasLotSelected = Boolean(context.hasLotSelected);
+  return COMPACT_ACTIONS
+    .filter((action) => !action.mode || action.mode === mode)
+    .map((action) => ({
+      id: action.id,
+      icon: action.icon,
+      color: action.color,
+      title: translate(language, action.titleKey),
+      actionType: action.actionType,
+      targetTab: action.targetTab,
+      disabled: !hasLotSelected || (action.id === "end" && Boolean(context.wheelEndingSession))
+    }));
+}
+
+function toDockAction(action: ReturnType<typeof resolveCompactActions>[number]): ContextActionDockAction {
+  return {
+    id: action.id,
+    icon: action.icon,
+    color: action.color,
+    label: action.title,
+    disabled: action.disabled
+  };
+}
+
 export const wheelInspectorComputeds = {
   wheelInspectorPanelMeta(this: Record<string, unknown>): { icon: string; title: string; subtitle: string } {
     const language = String(this.preferredLanguage ?? "");
@@ -60,19 +88,18 @@ export const wheelInspectorComputeds = {
   },
 
   wheelCompactFabActions(this: Record<string, unknown>) {
-    const language = String(this.preferredLanguage ?? "");
-    const mode = String(this.wheelMode || "config") as "config" | "live";
-    const hasLotSelected = Boolean(this.hasLotSelected);
-    return COMPACT_ACTIONS
-      .filter((action) => !action.mode || action.mode === mode)
-      .map((action) => ({
-        id: action.id,
-        icon: action.icon,
-        color: action.color,
-        title: translate(language, action.titleKey),
-        actionType: action.actionType,
-        targetTab: action.targetTab,
-        disabled: !hasLotSelected || (action.id === "end" && Boolean(this.wheelEndingSession))
-      }));
+    return resolveCompactActions(this);
+  },
+
+  wheelContextPrimaryAction(this: Record<string, unknown>): ContextActionDockAction {
+    const session = resolveCompactActions(this).find((action) => action.id === "session");
+    if (!session) throw new Error("The mobile game dock requires a Session action.");
+    return toDockAction(session);
+  },
+
+  wheelContextSecondaryActions(this: Record<string, unknown>): ContextActionDockAction[] {
+    return resolveCompactActions(this)
+      .filter((action) => action.id !== "session")
+      .map(toDockAction);
   }
 };

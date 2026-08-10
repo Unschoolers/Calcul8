@@ -38,6 +38,8 @@ export type GameWindowHostState = GameHostState
   wheelHasRequiredLotSelection: boolean;
   wheelIsMysteryGrid: boolean;
   wheelIsBracketBattle: boolean;
+  wheelContextPrimaryAction: import("../../../shell/ContextActionDock.ts").ContextActionDockAction;
+  wheelContextSecondaryActions: import("../../../shell/ContextActionDock.ts").ContextActionDockAction[];
   currentLotCostPerPack: number;
   hasPendingWheelChanges: boolean;
   canApplyWheelConfig: boolean;
@@ -118,6 +120,7 @@ export type GameCommandPorts = {
   normalizeWheelCompactInspectorState(): void;
   refreshWheelCanvas(): void;
   openWheelInspector(tab: "config" | "session" | "history"): void;
+  requestWheelSessionEnd(): void;
   isWheelMobileViewport(): boolean;
 };
 
@@ -134,5 +137,4 @@ export function getGameWindowLocalKeys(): string[] {
 export function createGameWindowState(): GameHostState {
   return createGameHostState();
 }
-
 

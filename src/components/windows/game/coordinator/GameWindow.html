@@ -5,6 +5,14 @@
     'wheel-layout--live': wheelMode === 'live',
     'wheel-layout--bracket': wheelIsBracketBattle
 }">
+    <context-action-dock
+        :active="currentTab === 'wheel' && wheelIsCompactLayout && !wheelPresentationMode && !wheelMobileInspectorOpen"
+        :primary-action="wheelContextPrimaryAction"
+        :secondary-actions="wheelContextSecondaryActions"
+        :secondary-label="t('shellGameControlsAction')"
+        @activate="activateWheelContextAction"
+    ></context-action-dock>
+
     <!-- SPINNER PANEL -->
     <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
         <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">

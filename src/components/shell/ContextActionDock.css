@@ -1,0 +1,65 @@
+.app-context-action-dock {
+  position: fixed;
+  right: var(--app-context-action-inline-offset);
+  bottom: var(--app-context-action-bottom-1);
+  z-index: 1300;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: var(--app-space-2);
+  pointer-events: auto;
+}
+
+.app-context-action-dock__primary,
+.app-context-action-dock__secondary {
+  flex: 0 0 auto;
+  border-radius: var(--app-radius-pill) !important;
+}
+
+.app-context-action-dock__primary-wrap {
+  position: relative;
+  display: flex;
+}
+
+.app-context-action-profit-target-badge {
+  position: absolute;
+  top: calc(-1 * var(--app-space-4));
+  right: calc(-1 * var(--app-space-4));
+  min-width: var(--app-fab-badge-size, 2rem);
+  height: var(--app-fab-badge-size, 2rem);
+  padding: var(--app-fab-badge-padding, 0 0.2rem);
+  border: var(--app-fab-badge-border-width) solid var(--app-surface-solid);
+  border-radius: var(--app-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--app-success-gradient);
+  color: var(--app-success-contrast);
+  box-shadow: var(--app-shadow-lg);
+  font-size: var(--app-font-size-badge);
+  font-weight: var(--app-font-weight-emphasis);
+  line-height: 1;
+  letter-spacing: var(--app-letter-spacing-ui);
+  pointer-events: none;
+}
+
+.app-context-action-dock__primary {
+  width: var(--app-context-action-size) !important;
+  height: var(--app-context-action-size) !important;
+}
+
+.app-context-action-dock__secondary {
+  width: 3rem !important;
+  height: 3rem !important;
+}
+
+.app-context-action-dock__menu {
+  min-width: min(17rem, calc(100vw - (2 * var(--app-space-4))));
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  background: var(--app-surface-overlay) !important;
+  box-shadow: var(--app-shadow-lg);
+}
+
+.app-context-action-dock__menu .v-list-item {
+  min-height: var(--app-action-size-min);
+}

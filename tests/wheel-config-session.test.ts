@@ -1488,6 +1488,44 @@ test("wheelCompactFabActions expose live-mode history, session, end ordering", (
   assert.equal(actions[2]?.color, "error");
 });
 
+test("wheel mobile dock keeps Session direct in config and live modes", () => {
+  for (const wheelMode of ["config", "live"] as const) {
+    const context = {
+      wheelMode,
+      preferredLanguage: "en",
+      hasLotSelected: true,
+      wheelEndingSession: false
+    };
+    const primary = GameWindow.computed!.wheelContextPrimaryAction.call(context as never);
+    const secondary = GameWindow.computed!.wheelContextSecondaryActions.call(context as never);
+
+    assert.equal(primary.id, "session");
+    assert.equal(primary.label, "Session");
+    assert.deepEqual(
+      secondary.map((action: { id: string }) => action.id),
+      wheelMode === "config" ? ["history", "builder"] : ["history", "end"]
+    );
+  }
+});
+
+test("wheel mobile dock routes Session, Builder, History, and End through existing commands", () => {
+  const calls: string[] = [];
+  const context = {
+    openWheelInspector(tab: string) {
+      calls.push(`open:${tab}`);
+    },
+    requestWheelSessionEnd() {
+      calls.push("end");
+    }
+  };
+
+  for (const actionId of ["session", "builder", "history", "end"]) {
+    GameWindow.methods!.activateWheelContextAction.call(context as never, actionId);
+  }
+
+  assert.deepEqual(calls, ["open:session", "open:config", "open:history", "end"]);
+});
+
 test("wheel window local keys include top-level mode and inspector state", () => {
   const localKeys = getGameWindowLocalKeys();
 

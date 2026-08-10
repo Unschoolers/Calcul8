@@ -1,16 +1,6 @@
 .v-app-bar {
   box-sizing: border-box;
-  padding-top: 0;
-}
-
-:root.app-runtime-android .v-app-bar {
-  padding-top: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
-}
-
-@media (max-width: 640px) {
-  .v-app-bar {
-    padding-top: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
-  }
+  padding-top: var(--app-shell-top-inset);
 }
 
 .app-bar-title-wrap {

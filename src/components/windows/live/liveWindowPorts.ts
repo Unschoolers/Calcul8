@@ -1,22 +1,24 @@
 import { inject, type InjectionKey } from "vue";
 import { createCapabilityPorts } from "../../../app-core/context/capabilityPorts.ts";
 import type { CommerceComputedState, CommerceMethodState } from "../../../app-core/context/commerce.ts";
+import type { EntitlementMethodState } from "../../../app-core/context/entitlements.ts";
 import type { RuntimeMethodState } from "../../../app-core/context/runtime.ts";
 import type { AppState } from "../../../types/app.ts";
 
 const liveWindowPortKeys = [
-  "currentLotType", "hasLotSelected", "livePackPrice", "liveBoxPriceSell", "liveSpotPrice", "totalPacks", "totalSpots",
+  "currentTab", "currentLotType", "hasLotSelected", "hasProAccess", "livePackPrice", "liveBoxPriceSell", "liveSpotPrice", "totalPacks", "totalSpots",
   "boxesPurchased", "requiredPackPriceFromNow", "requiredBoxPriceFromNow", "requiredSpotPriceFromNow",
   "remainingPacksCount", "remainingBoxesEquivalent", "remainingSpotsEquivalent", "targetProfitPercent",
   "totalCaseCost", "totalRevenue", "liveForecastScenarios", "sellingShippingPerOrder", "singlesPurchases",
   "singlesSoldCountByPurchaseId", "effectiveLiveSinglesIds", "effectiveLiveSinglesEntries", "sellingCurrency",
-  "currency", "exchangeRate", "preferredLanguage", "calculateProfit", "calculatePriceForUnits", "netFromGross",
+  "currency", "exchangeRate", "preferredLanguage", "liveProfitTargetBadgeVisible", "liveProfitTargetBadgeLabel",
+  "calculateProfit", "calculatePriceForUnits", "netFromGross", "accessProFeature",
   "addLiveSinglesSelection", "removeLiveSinglesSelection", "clearLiveSinglesSelection",
   "openConvertLiveSinglesSaleModal", "resetLivePrices", "applyLivePricesToDefaults", "askConfirmation",
   "formatCurrency", "safeFixed", "t"
 ] as const;
 
-type LiveCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & RuntimeMethodState;
+type LiveCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & RuntimeMethodState & EntitlementMethodState;
 export type LiveWindowSource = Pick<LiveCapabilitySource, typeof liveWindowPortKeys[number]>;
 export type LiveWindowPorts = LiveWindowSource & {
   rootTranslate: RuntimeMethodState["t"];

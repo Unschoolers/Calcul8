@@ -46,20 +46,32 @@ test("auth startup renders the sign-in button before retrying auto-login", () =>
   );
 });
 
-test("contextual shell exposes only one persistent action slot", () => {
+test("contextual shell exposes one root slot and feature-owned action docks", () => {
   const template = read("src/App.html");
   const styles = read("src/styles/app.css");
   const tokens = read("src/styles/design-tokens.css");
+  const dockTemplate = read("src/components/shell/ContextActionDock.html");
+  const dockStyles = read("src/components/shell/ContextActionDock.css");
+  const liveTemplate = read("src/components/windows/live/LiveWindow.html");
+  const gameTemplate = read("src/components/windows/game/coordinator/GameWindow.html");
 
   for (const requiredClass of [
     "app-context-action",
     "app-context-action-wrap",
-    "app-context-action--slot-1",
-    "app-context-action-badge-wrap"
+    "app-context-action--slot-1"
   ]) {
     assert.match(template, new RegExp(requiredClass), `template missing ${requiredClass}`);
     assert.match(styles, new RegExp(`\\.${requiredClass}`), `styles missing ${requiredClass}`);
   }
+
+  assert.match(dockTemplate, /app-context-action-dock/);
+  assert.match(dockTemplate, /<teleport defer to="\.app-shell-action-zone">/);
+  assert.match(dockStyles, /\.app-context-action-dock/);
+  assert.match(liveTemplate, /<context-action-dock[\s\S]*:active="currentTab === 'live'"/);
+  assert.match(gameTemplate, /<context-action-dock[\s\S]*:active="currentTab === 'wheel' &&/);
+  assert.doesNotMatch(template, /v-if="currentTab === 'live'"/);
+  assert.doesNotMatch(template, /v-if="currentTab === 'wheel'/);
+  assert.doesNotMatch(styles, /\.app-context-action-badge-wrap/);
 
   for (const token of [
     "--app-context-action-inline-offset",
