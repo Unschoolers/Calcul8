@@ -23,6 +23,16 @@ export const liveWindowDefinition = {
         (fn as () => void).call(panel);
       }
     },
+    confirmClearLiveSingles(this: any): void {
+      this.askConfirmation(
+        {
+          title: this.t("shellClearLiveSinglesConfirmTitle"),
+          text: this.t("shellClearLiveSinglesConfirmBody"),
+          color: "error"
+        },
+        () => this.clearLiveSinglesSelection()
+      );
+    },
     profitForLive(units: number, pricePerUnit: number): number {
       const fn = (this as Record<string, unknown>).calculateProfit;
       if (typeof fn === "function") {

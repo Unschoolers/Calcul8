@@ -5,14 +5,15 @@ import type { RuntimeMethodState } from "../../../app-core/context/runtime.ts";
 import type { AppState } from "../../../types/app.ts";
 
 const liveWindowPortKeys = [
-  "currentLotType", "livePackPrice", "liveBoxPriceSell", "liveSpotPrice", "totalPacks", "totalSpots",
+  "currentLotType", "hasLotSelected", "livePackPrice", "liveBoxPriceSell", "liveSpotPrice", "totalPacks", "totalSpots",
   "boxesPurchased", "requiredPackPriceFromNow", "requiredBoxPriceFromNow", "requiredSpotPriceFromNow",
   "remainingPacksCount", "remainingBoxesEquivalent", "remainingSpotsEquivalent", "targetProfitPercent",
   "totalCaseCost", "totalRevenue", "liveForecastScenarios", "sellingShippingPerOrder", "singlesPurchases",
   "singlesSoldCountByPurchaseId", "effectiveLiveSinglesIds", "effectiveLiveSinglesEntries", "sellingCurrency",
   "currency", "exchangeRate", "preferredLanguage", "calculateProfit", "calculatePriceForUnits", "netFromGross",
   "addLiveSinglesSelection", "removeLiveSinglesSelection", "clearLiveSinglesSelection",
-  "openConvertLiveSinglesSaleModal", "formatCurrency", "safeFixed", "t"
+  "openConvertLiveSinglesSaleModal", "resetLivePrices", "applyLivePricesToDefaults", "askConfirmation",
+  "formatCurrency", "safeFixed", "t"
 ] as const;
 
 type LiveCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & RuntimeMethodState;

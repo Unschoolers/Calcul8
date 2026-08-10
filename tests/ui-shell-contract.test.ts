@@ -46,17 +46,15 @@ test("auth startup renders the sign-in button before retrying auto-login", () =>
   );
 });
 
-test("contextual shell actions use shared slots instead of per-tab bottom offsets", () => {
+test("contextual shell exposes only one persistent action slot", () => {
   const template = read("src/App.html");
   const styles = read("src/styles/app.css");
   const tokens = read("src/styles/design-tokens.css");
 
   for (const requiredClass of [
     "app-context-action",
+    "app-context-action-wrap",
     "app-context-action--slot-1",
-    "app-context-action--slot-2",
-    "app-context-action--slot-3",
-    "app-context-action-rail",
     "app-context-action-badge-wrap"
   ]) {
     assert.match(template, new RegExp(requiredClass), `template missing ${requiredClass}`);
@@ -65,13 +63,34 @@ test("contextual shell actions use shared slots instead of per-tab bottom offset
 
   for (const token of [
     "--app-context-action-inline-offset",
+    "--app-context-action-size",
     "--app-context-action-bottom-1",
-    "--app-context-action-bottom-2",
-    "--app-context-action-bottom-3",
     "--app-shell-content-bottom-padding",
     "--app-shell-snackbar-bottom"
   ]) {
     assert.match(tokens, new RegExp(token), `missing token ${token}`);
+  }
+
+  assert.match(tokens, /--app-bottom-nav-height:\s*4rem/);
+  assert.match(tokens, /--app-context-action-size:\s*3\.5rem/);
+  assert.match(tokens, /--app-shell-content-bottom-padding:[^;]*var\(--app-context-action-size\)/);
+
+  for (const retiredToken of [
+    "--app-context-action-bottom-2",
+    "--app-context-action-bottom-3",
+    "--app-fab-bottom-2",
+    "--app-fab-bottom-3"
+  ]) {
+    assert.doesNotMatch(tokens, new RegExp(retiredToken), `tokens still define ${retiredToken}`);
+  }
+
+  for (const retiredClass of [
+    "app-context-action--slot-2",
+    "app-context-action--slot-3",
+    "app-context-action-rail"
+  ]) {
+    assert.doesNotMatch(template, new RegExp(retiredClass), `template still uses ${retiredClass}`);
+    assert.doesNotMatch(styles, new RegExp(`\\.${retiredClass}`), `styles still defines ${retiredClass}`);
   }
 
   for (const removedClass of [

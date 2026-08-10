@@ -9,6 +9,20 @@
   width: 100%;
 }
 
+.live-window-toolbar {
+  width: min(100%, var(--app-content-max-width-wide));
+  min-height: var(--app-action-size-min);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0 auto var(--app-space-1);
+}
+
+.live-window-toolbar__menu {
+  min-width: var(--app-action-size-min) !important;
+  min-height: var(--app-action-size-min) !important;
+}
+
 .live-pricing-grid {
   width: min(100%, var(--app-content-max-width-wide));
   margin: 0 auto;
@@ -486,6 +500,10 @@
 @media (max-width: 600px) {
   .live-singles-shell {
     width: 100%;
+  }
+
+  .live-window-toolbar {
+    margin-bottom: 0;
   }
 
   .live-pricing-card__hero {

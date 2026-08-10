@@ -30,6 +30,10 @@
   --app-font-size-title: 1.12rem;
   --app-font-size-display-sm: 1.55rem;
   --app-font-size-badge: 0.7rem;
+  --app-font-size-mobile-nav: 0.6875rem;
+  --app-font-size-mobile-caption: 0.75rem;
+  --app-font-size-mobile-helper: 0.8125rem;
+  --app-font-size-mobile-body: 0.875rem;
   --app-font-weight-normal: 400;
   --app-font-weight-strong: 700;
   --app-font-weight-emphasis: 800;
@@ -53,26 +57,23 @@
   --app-safe-area-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --app-safe-area-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
   --app-action-size-min: 44px;
-  --app-bottom-nav-height: 4.5rem;
+  --app-bottom-nav-height: 4rem;
   --app-bottom-nav-active-surface: rgba(var(--v-theme-primary), 0.16);
   --app-bottom-nav-active-text: rgb(var(--v-theme-primary));
   --app-bottom-nav-inactive-text: rgba(var(--v-theme-on-surface), 0.72);
   --app-shell-mobile-padding-top: 0.6rem;
   --app-current-price-border-width: 3px;
   --app-context-action-inline-offset: max(var(--app-space-4), var(--app-safe-area-right));
+  --app-context-action-size: 3.5rem;
   --app-context-action-gap: var(--app-space-4);
   --app-context-action-bottom-1: calc(var(--app-bottom-nav-height) + var(--app-space-2) + var(--app-safe-area-bottom));
-  --app-context-action-bottom-2: calc(var(--app-bottom-nav-height) + 5.5rem + var(--app-safe-area-bottom));
-  --app-context-action-bottom-3: calc(var(--app-bottom-nav-height) + 10.5rem + var(--app-safe-area-bottom));
-  --app-shell-content-bottom-padding: calc(var(--app-bottom-nav-height) + var(--app-space-5) + var(--app-safe-area-bottom));
+  --app-shell-content-bottom-padding: calc(var(--app-bottom-nav-height) + var(--app-context-action-size) + var(--app-space-6) + var(--app-safe-area-bottom));
   --app-shell-snackbar-bottom: calc(var(--app-bottom-nav-height) + var(--app-space-3) + var(--app-safe-area-bottom));
   --app-fab-inline-offset: var(--app-context-action-inline-offset);
   --app-fab-badge-size: 2rem;
   --app-fab-badge-padding: 0 0.2rem;
   --app-fab-badge-border-width: 3px;
   --app-fab-bottom-1: var(--app-context-action-bottom-1);
-  --app-fab-bottom-2: var(--app-context-action-bottom-2);
-  --app-fab-bottom-3: var(--app-context-action-bottom-3);
   --app-sticky-footer-offset: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom));
   --app-skip-link-hidden-top: -48px;
   --app-skip-link-focus-top: 10px;
@@ -274,6 +275,15 @@
   --app-bg-wash-a: rgba(var(--v-theme-primary), 0.08);
   --app-bg-wash-b: rgba(var(--v-theme-secondary), 0.07);
   --app-bg-wash-c: rgba(var(--v-theme-success), 0.06);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --app-font-size-caption: var(--app-font-size-mobile-caption);
+    --app-font-size-meta: var(--app-font-size-mobile-caption);
+    --app-font-size-body-sm: var(--app-font-size-mobile-helper);
+    --app-font-size-body: var(--app-font-size-mobile-body);
+  }
 }
 
 .v-theme--unionArenaLight {

@@ -1,6 +1,6 @@
-<v-app-bar density="compact" flat border height="80">
+<v-app-bar density="compact" flat border :height="$vuetify?.display?.xs ? 64 : 80">
   <v-app-bar-title>
-    <div class="app-bar-title-wrap">
+    <div class="app-bar-title-wrap app-bar-title-wrap--desktop">
       <span class="app-bar-brand-lockup" aria-hidden="true">
         <span class="app-bar-brand-badge">
           <img src="../../../icons/icon-192.png" alt="" class="app-bar-brand-badge__img" />
@@ -16,6 +16,12 @@
         </v-icon>
         {{ scopeChipLabel }}
       </span>
+    </div>
+    <div class="app-bar-mobile-title">
+      <span class="app-bar-brand-badge app-bar-brand-badge--mobile" aria-hidden="true">
+        <img src="../../../icons/icon-192.png" alt="" class="app-bar-brand-badge__img" />
+      </span>
+      <mobile-lot-switcher></mobile-lot-switcher>
     </div>
   </v-app-bar-title>
 

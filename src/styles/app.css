@@ -1269,9 +1269,32 @@
       color: var(--app-bottom-nav-inactive-text) !important;
     }
     .v-theme--unionArenaDark .v-bottom-navigation .v-btn.v-btn--active {
-      background: var(--app-bottom-nav-active-surface) !important;
+      background: transparent !important;
       color: var(--app-bottom-nav-active-text) !important;
+      box-shadow: none;
+    }
+    .app-shell-bottom-nav .v-btn {
+      min-height: var(--app-action-size-min);
+      background: transparent !important;
+    }
+    .app-shell-bottom-nav .v-btn__content {
+      min-width: 0;
+      padding: 0.28rem 0.48rem;
+      border-radius: var(--app-radius-lg);
+      transition:
+        background-color var(--app-motion-standard) var(--app-ease-standard),
+        color var(--app-motion-standard) var(--app-ease-standard);
+    }
+    .app-shell-bottom-nav .v-btn.v-btn--active .v-btn__content {
+      background: var(--app-bottom-nav-active-surface);
+      color: var(--app-bottom-nav-active-text);
       box-shadow: inset 0 0 0 var(--app-stroke-hairline) rgba(var(--v-theme-primary), 0.18);
+    }
+    .app-shell-nav-item--unavailable:not(.v-btn--active) {
+      opacity: 0.48;
+    }
+    .app-shell-nav-label--mobile {
+      display: none;
     }
     .v-theme--unionArenaDark .v-alert {
       border: var(--app-stroke-hairline) solid var(--app-stroke-default);
@@ -1299,8 +1322,8 @@
       pointer-events: none;
     }
     .app-context-action,
-    .app-context-action-badge-wrap,
-    .app-context-action-rail {
+    .app-context-action-wrap,
+    .app-context-action-badge-wrap {
       position: fixed !important;
       right: var(--app-context-action-inline-offset) !important;
       left: auto !important;
@@ -1313,27 +1336,12 @@
       bottom: var(--app-context-action-bottom-1) !important;
       inset-block-end: var(--app-context-action-bottom-1) !important;
     }
-    .app-context-action--slot-2 {
-      bottom: var(--app-context-action-bottom-2) !important;
-      inset-block-end: var(--app-context-action-bottom-2) !important;
-    }
-    .app-context-action--slot-3 {
-      bottom: var(--app-context-action-bottom-3) !important;
-      inset-block-end: var(--app-context-action-bottom-3) !important;
-    }
-    .app-context-action-badge-wrap .app-context-action,
-    .app-context-action-rail .app-context-action {
+    .app-context-action-badge-wrap .app-context-action {
       position: static !important;
       right: auto !important;
       left: auto !important;
       inset-inline-end: auto !important;
       inset-inline-start: auto !important;
-    }
-    .app-context-action-rail {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: var(--app-context-action-gap);
     }
     .app-context-action-profit-target-badge {
       position: absolute;
@@ -1378,6 +1386,38 @@
     .sync-spinning {
       animation: sync-spin 0.9s linear infinite;
       transform-origin: center;
+    }
+
+    @media (max-width: 600px) {
+      .app-shell-content-zone input,
+      .app-shell-content-zone textarea {
+        font-size: 1rem !important;
+      }
+
+      .app-shell-nav-label--desktop {
+        display: none;
+      }
+
+      .app-shell-nav-label--mobile {
+        display: inline;
+      }
+
+      .app-shell-bottom-nav .v-btn {
+        min-width: 0;
+        padding-inline: 0.1rem;
+      }
+
+      .app-shell-bottom-nav .v-btn__content {
+        gap: 0.12rem;
+        padding: 0.22rem 0.34rem;
+        font-size: var(--app-font-size-mobile-nav);
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .app-shell-bottom-nav .v-icon {
+        font-size: 1.2rem;
+      }
     }
     @keyframes sync-spin {
       from { transform: rotate(0deg); }

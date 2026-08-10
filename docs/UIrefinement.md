@@ -19,32 +19,11 @@ Every remaining item is done only when the affected screens pass these checks:
 
 `npm run test:visual` now runs a Playwright smoke path for seeded real app-shell tabs on desktop/light/English and mobile/dark/French. The seed includes long accented names, dense buyer labels, and USD cost/CAD selling data so compact cards and metric chips stay exercised. Screenshots are local artifacts only and ignored by git.
 
-The first smoke screenshots surfaced these remaining UI issues:
+The mobile shell now uses one shared bottom-navigation, contextual-action, and content-clearance contract. Seeded Pixel 7 screenshots cover Config, Live, Sales, and Portfolio with the compact lot header, one persistent action, long French labels, and dense content. Game and report-specific bottom-content captures remain part of expanded visual QA.
 
-- Mobile screenshots show fixed bottom navigation and floating actions covering meaningful content, especially Sales charts, Portfolio charts, and lower Config inventory/totals content.
-- Mobile Config inventory rows are still vulnerable to bottom-nav overlap near the end of the list.
-- Desktop Portfolio has chart/card content running close to or underneath persistent navigation, which makes the bottom of dashboards feel unfinished even on a large viewport.
+The remaining smoke issue is desktop Portfolio content running close to persistent navigation, which makes the bottom of the dashboard feel unfinished even on a large viewport.
 
 ## Critical
-
-### Fix Mobile Shell Overlays And Safe Areas
-
-**Why now:** The first smoke screenshots show the fixed bottom nav and floating action buttons covering real content on mobile. This is critical because the user cannot reliably read Sales charts, Portfolio charts, Config item rows, or footer totals without scrolling around persistent chrome.
-
-**Scope:** App shell bottom navigation, contextual FAB rail, mobile Config, Live, Sales, Portfolio, Game, and report screens.
-
-**Must do:**
-
-- Define one mobile safe-area contract for bottom navigation plus contextual actions.
-- Add consistent bottom padding or scroll affordance so the last card, table row, chart, and footer metric are never hidden behind fixed chrome.
-- Prevent red primary FABs from overlapping chart cards and dashboard content on mobile.
-- Verify 360x740, 390x844, and 412x915 with English/French and both themes.
-- Add visual smoke assertions or targeted screenshots for the bottom of each top-level tab.
-
-**Acceptance:**
-
-- The last meaningful element on every top-level mobile tab is readable and tappable without being covered by nav or FAB controls.
-- Mobile screenshots show a deliberate relationship between content, fixed navigation, and floating actions.
 
 ### Normalize Recoverable States And Offline/Sync Feedback
 

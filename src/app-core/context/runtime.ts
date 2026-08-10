@@ -1,4 +1,5 @@
 import type {
+  AppTab,
   BeforeInstallPromptEvent,
   LotType,
   UiColor
@@ -11,6 +12,7 @@ export interface RuntimeComputedState {
 
 export interface RuntimeMethodState {
   t(key: AppTranslationKey, params?: Record<string, string | number | null | undefined>): string;
+  selectPrimaryTab(tab: AppTab): void;
   setPreferredLanguage(language: string): void;
   syncGuidedOnboarding(): void;
   startGuidedOnboarding(lotType: LotType): void;

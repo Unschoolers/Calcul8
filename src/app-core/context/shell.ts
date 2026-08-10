@@ -67,6 +67,15 @@ export type BaseUiMethodImplementation = FeatureMethodImplementation<
   BaseUiMethodState
 >;
 
+export type ShellNavigationContext = Pick<AppState, "currentTab"> &
+  Pick<CommerceComputedState, "hasLotSelected"> &
+  Pick<RuntimeMethodState, "notify" | "t">;
+
+export type ShellNavigationMethodImplementation = FeatureMethodImplementation<
+  ShellNavigationContext,
+  Pick<RuntimeMethodState, "selectPrimaryTab">
+>;
+
 export type OnboardingMethodState = Pick<
   RuntimeMethodState,
   | "syncGuidedOnboarding"

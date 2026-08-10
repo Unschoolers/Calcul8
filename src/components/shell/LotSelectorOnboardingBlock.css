@@ -165,6 +165,10 @@
 }
 
 @media (max-width: 600px) {
+  .lot-selector-shell-card--desktop {
+    display: none;
+  }
+
   .onboarding-intro-card__content {
     padding: 0.88rem 0.9rem 0.95rem;
   }

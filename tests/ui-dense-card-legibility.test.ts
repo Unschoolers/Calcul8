@@ -15,6 +15,18 @@ test("shared dense-card utilities preserve mobile names and metric values", () =
   assert.match(styles, /@media \(max-width:\s*600px\)[\s\S]*\.app-dense-metric\s*{[\s\S]*grid-template-columns:\s*1fr/);
 });
 
+test("mobile typography stays compact without shrinking body or form text below safe sizes", () => {
+  const tokens = read("src/styles/design-tokens.css");
+  const styles = read("src/styles/app.css");
+
+  assert.match(tokens, /--app-font-size-mobile-nav:\s*0\.6875rem/);
+  assert.match(tokens, /--app-font-size-mobile-caption:\s*0\.75rem/);
+  assert.match(tokens, /--app-font-size-mobile-helper:\s*0\.8125rem/);
+  assert.match(tokens, /--app-font-size-mobile-body:\s*0\.875rem/);
+  assert.match(tokens, /@media \(max-width:\s*600px\)[\s\S]*--app-font-size-body:\s*var\(--app-font-size-mobile-body\)/);
+  assert.match(styles, /@media \(max-width:\s*600px\)[\s\S]*\.app-shell-content-zone input[\s\S]*font-size:\s*1rem/);
+});
+
 test("current inventory selector uses dense-card text rules on mobile", () => {
   const template = read("src/components/shell/LotSelectorOnboardingBlock.html");
   const styles = read("src/components/shell/LotSelectorOnboardingBlock.css");

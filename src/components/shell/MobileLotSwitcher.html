@@ -1,0 +1,125 @@
+<div class="mobile-lot-switcher">
+  <button
+    type="button"
+    class="mobile-lot-switcher__trigger"
+    :aria-label="lotSwitcherAriaLabel"
+    aria-haspopup="dialog"
+    :aria-expanded="isOpen"
+    @click="openLotSwitcher"
+  >
+    <span class="mobile-lot-switcher__lot-icon" aria-hidden="true">
+      <v-icon size="18">{{ selectedLotItem?.symbolIcon || 'mdi-package-variant-closed' }}</v-icon>
+      <v-icon
+        v-if="selectedLotItem?.completionIcon"
+        class="mobile-lot-switcher__completion"
+        size="11"
+        color="success"
+      >{{ selectedLotItem.completionIcon }}</v-icon>
+    </span>
+    <span class="mobile-lot-switcher__copy">
+      <span class="mobile-lot-switcher__title">
+        {{ selectedLotItem?.title || t('shellNoLotTitle') }}
+      </span>
+      <span class="mobile-lot-switcher__subtitle">{{ lotSummarySubtitle }}</span>
+    </span>
+    <v-icon class="mobile-lot-switcher__chevron" size="20" aria-hidden="true">mdi-chevron-down</v-icon>
+  </button>
+
+  <v-bottom-sheet v-model="isOpen" inset content-class="mobile-lot-sheet-overlay">
+    <v-card
+      class="mobile-lot-sheet"
+      role="dialog"
+      :aria-label="t('shellLotSwitcherTitle')"
+    >
+      <div class="mobile-lot-sheet__handle" aria-hidden="true"></div>
+      <v-card-title class="mobile-lot-sheet__header">
+        <div class="mobile-lot-sheet__heading">
+          <span>{{ t('shellLotSwitcherTitle') }}</span>
+          <span class="mobile-lot-sheet__scope">
+            {{ t('shellScopeLabel') }}: {{ currentWorkspaceName }}
+          </span>
+        </div>
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          size="small"
+          class="mobile-lot-sheet__close"
+          :aria-label="t('commonClose')"
+          @click="closeLotSwitcher"
+        ></v-btn>
+      </v-card-title>
+
+      <v-card-text class="mobile-lot-sheet__body">
+        <v-text-field
+          v-if="showLotSearch"
+          v-model="searchQuery"
+          type="search"
+          :label="t('shellLotSearchLabel')"
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          class="mobile-lot-sheet__search"
+        ></v-text-field>
+
+        <v-list v-if="visibleLotItems.length" class="mobile-lot-sheet__list" role="listbox">
+          <template v-for="item in visibleLotItems" :key="item.value">
+            <div v-if="item.groupLabel" class="mobile-lot-sheet__group-label">
+              <v-icon size="14">
+                {{ item.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+              </v-icon>
+              {{ item.groupLabel }}
+            </div>
+            <v-list-item
+              role="option"
+              :aria-selected="item.value === currentLotId"
+              :active="item.value === currentLotId"
+              class="mobile-lot-sheet__option"
+              @click="chooseLot(item.value)"
+            >
+              <template #prepend>
+                <span class="lot-selector-icon-stack mr-3" aria-hidden="true">
+                  <v-icon size="20">{{ item.symbolIcon }}</v-icon>
+                  <v-icon
+                    v-if="item.completionIcon"
+                    size="12"
+                    color="success"
+                    class="lot-selector-icon-stack__badge"
+                  >{{ item.completionIcon }}</v-icon>
+                </span>
+              </template>
+              <v-list-item-title>{{ item.title }}</v-list-item-title>
+              <v-list-item-subtitle>{{ item.subtitle }}</v-list-item-subtitle>
+              <template #append>
+                <v-icon v-if="item.value === currentLotId" color="primary" size="20">mdi-check-circle</v-icon>
+              </template>
+            </v-list-item>
+          </template>
+        </v-list>
+
+        <div v-else class="mobile-lot-sheet__empty">
+          <v-icon size="30">mdi-package-variant</v-icon>
+          <span>{{ t('shellLotSwitcherEmptyTitle') }}</span>
+        </div>
+      </v-card-text>
+
+      <v-card-actions class="mobile-lot-sheet__actions">
+        <v-btn
+          v-if="hasLotSelected"
+          variant="tonal"
+          color="secondary"
+          prepend-icon="mdi-pencil"
+          @click="editCurrentLot"
+        >{{ t('shellEditLotAction') }}</v-btn>
+        <v-btn
+          color="primary"
+          variant="flat"
+          prepend-icon="mdi-bookmark-plus"
+          @click="createLot"
+        >{{ t('shellAddLotAction') }}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-bottom-sheet>
+</div>
+

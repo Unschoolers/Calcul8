@@ -1,5 +1,6 @@
 import { uiAccountMethods } from "./ui/auth/account.ts";
 import { uiBaseMethods } from "./ui/common/base.ts";
+import { uiShellNavigationMethods } from "./ui/common/shell-navigation.ts";
 import { uiEntitlementMethods } from "./ui/entitlements/entitlements.ts";
 import { uiOnboardingMethods } from "./ui/common/onboarding.ts";
 import { uiSyncMethods } from "./ui/sync/sync.ts";
@@ -9,6 +10,7 @@ import { uiBuyerProfileMethods } from "./ui/buyers/buyer-profiles.ts";
 
 export const uiMethods = {
   ...uiBaseMethods,
+  ...uiShellNavigationMethods,
   ...uiOnboardingMethods,
   ...uiAccountMethods,
   ...uiEntitlementMethods,

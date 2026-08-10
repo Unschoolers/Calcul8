@@ -20,6 +20,13 @@
   min-width: 0;
 }
 
+.app-bar-mobile-title {
+  display: none;
+  align-items: center;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
 .app-bar-brand-lockup {
   display: inline-flex;
   align-items: center;
@@ -531,6 +538,34 @@
     max-width: 31vw;
     padding-inline: 0.55rem;
     font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-bar-title-wrap--desktop {
+    display: none;
+  }
+
+  .app-bar-mobile-title {
+    display: flex;
+  }
+
+  .app-bar-brand-badge--mobile {
+    width: 30px;
+    height: 44px;
+  }
+
+  .app-bar-brand-badge--mobile .app-bar-brand-badge__img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .v-app-bar .v-toolbar-title {
+    min-width: 0;
+  }
+
+  .v-app-bar .v-toolbar-title__placeholder {
+    overflow: visible;
   }
 }
 
