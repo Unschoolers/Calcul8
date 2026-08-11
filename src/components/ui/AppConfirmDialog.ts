@@ -1,9 +1,11 @@
 import { defineComponent, type PropType } from "vue";
+import AppDialogShell from "./AppDialogShell.vue";
 
 type ButtonColor = "primary" | "secondary" | "error" | "warning" | "success";
 
 export const AppConfirmDialog = defineComponent({
   name: "AppConfirmDialog",
+  components: { AppDialogShell },
   props: {
     modelValue: {
       type: Boolean,

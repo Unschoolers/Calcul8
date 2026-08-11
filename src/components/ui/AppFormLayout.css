@@ -1,0 +1,45 @@
+.app-form-layout {
+  display: grid;
+  gap: var(--app-space-4);
+  min-width: 0;
+}
+
+.app-form-layout--compact {
+  gap: var(--app-space-3);
+}
+
+.app-form-header,
+.app-form-validation,
+.app-form-helper,
+.app-form-fields {
+  min-width: 0;
+}
+
+.app-form-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--app-space-3);
+}
+
+.app-form-fields > *,
+.app-form-fields label {
+  min-width: 0;
+}
+
+.app-form-fields label {
+  display: grid;
+  gap: var(--app-space-1);
+}
+
+.app-form-validation {
+  padding: var(--app-space-3);
+  border: var(--app-stroke-hairline) solid rgba(var(--v-theme-warning), 0.32);
+  border-radius: var(--app-radius-md);
+  background: rgba(var(--v-theme-warning), 0.08);
+}
+
+@media (min-width: 601px) {
+  .app-form-layout--responsive .app-form-fields {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+}

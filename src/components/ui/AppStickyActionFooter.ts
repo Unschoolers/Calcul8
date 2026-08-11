@@ -13,7 +13,7 @@ export const AppStickyActionFooter = defineComponent({
   },
   computed: {
     resolvedClasses(): unknown[] {
-      return ["app-dialog-actions", "app-sticky-action-footer", this.footerClass];
+      return ["app-dialog-actions", "app-form-actions", "app-sticky-action-footer", this.footerClass];
     }
   }
 });

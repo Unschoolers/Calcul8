@@ -1,0 +1,7 @@
+<div class="app-form-layout" :class="layoutClasses">
+  <div v-if="$slots.header" class="app-form-header app-text-wrap"><slot name="header"></slot></div>
+  <div v-if="$slots.validation" class="app-form-validation app-text-wrap" aria-live="polite"><slot name="validation"></slot></div>
+  <div class="app-form-fields"><slot></slot></div>
+  <div v-if="$slots.helper" class="app-form-helper app-text-wrap"><slot name="helper"></slot></div>
+  <div v-if="$slots.actions" class="app-form-actions" :class="{ 'app-form-actions--sticky': stickyActions }"><slot name="actions"></slot></div>
+</div>
