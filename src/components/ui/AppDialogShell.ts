@@ -4,6 +4,13 @@ import "./AppDialogShell.css";
 
 export type AppDialogVariant = "standard" | "report" | "checkout" | "media";
 
+const dialogVariantDefaultMaxWidths: Record<AppDialogVariant, number> = {
+  standard: 560,
+  report: 980,
+  checkout: 720,
+  media: 560
+};
+
 let dialogSequence = 0;
 
 export const AppDialogShell = defineComponent({
@@ -13,7 +20,7 @@ export const AppDialogShell = defineComponent({
     modelValue: { type: Boolean, default: false },
     title: { type: String, required: true },
     description: { type: String, default: "" },
-    maxWidth: { type: [String, Number], default: 560 },
+    maxWidth: { type: [String, Number], default: undefined },
     persistent: { type: Boolean, default: false },
     scrollable: { type: Boolean, default: true },
     variant: { type: String as PropType<AppDialogVariant>, default: "standard" },
@@ -44,6 +51,14 @@ export const AppDialogShell = defineComponent({
     }
     if (this.keyDownListener) {
       document.removeEventListener("keydown", this.keyDownListener, true);
+    }
+  },
+  computed: {
+    effectiveMaxWidth(): string | number {
+      return this.maxWidth ?? dialogVariantDefaultMaxWidths[this.variant];
+    },
+    isMobileFullscreen(): boolean {
+      return this.variant !== "media" && this.$vuetify.display.width <= 600;
     }
   },
   watch: {
