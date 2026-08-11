@@ -58,6 +58,7 @@
   --app-safe-area-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
   --app-shell-top-inset: var(--app-safe-area-top);
   --app-action-size-min: 44px;
+  --app-touch-target-min: var(--app-action-size-min);
   --app-bottom-nav-height: 4rem;
   --app-bottom-nav-active-surface: rgba(var(--v-theme-primary), 0.16);
   --app-bottom-nav-active-text: rgb(var(--v-theme-primary));
@@ -69,6 +70,9 @@
   --app-context-action-gap: var(--app-space-4);
   --app-context-action-bottom-1: calc(var(--app-bottom-nav-height) + var(--app-space-2) + var(--app-safe-area-bottom));
   --app-shell-content-bottom-padding: calc(var(--app-bottom-nav-height) + var(--app-context-action-size) + var(--app-space-6) + var(--app-safe-area-bottom));
+  --app-shell-content-clearance-nav: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom) + var(--app-space-3));
+  --app-shell-content-clearance-actions: calc(var(--app-shell-content-clearance-nav) + var(--app-context-action-size) + var(--app-space-4));
+  --app-sticky-content-top: var(--app-shell-top-inset);
   --app-shell-snackbar-bottom: calc(var(--app-bottom-nav-height) + var(--app-space-3) + var(--app-safe-area-bottom));
   --app-fab-inline-offset: var(--app-context-action-inline-offset);
   --app-fab-badge-size: 2rem;
@@ -87,8 +91,10 @@
   --app-dialog-actions-padding: var(--app-space-3) var(--app-space-5) var(--app-space-4);
   --app-section-title-padding: var(--app-space-4) var(--app-space-5) 0.35rem;
   --app-dialog-mobile-width: 100vw;
-  --app-dialog-mobile-top-inset: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
-  --app-dialog-mobile-height: calc(100dvh - var(--app-dialog-mobile-top-inset) - var(--app-safe-area-bottom));
+  --app-overlay-mobile-top: max(var(--app-safe-area-top), 24px);
+  --app-overlay-mobile-height: calc(100dvh - var(--app-overlay-mobile-top) - var(--app-safe-area-bottom));
+  --app-dialog-mobile-top-inset: var(--app-overlay-mobile-top);
+  --app-dialog-mobile-height: var(--app-overlay-mobile-height);
   --app-dialog-mobile-max-width: none;
   --app-dialog-mobile-margin: var(--app-dialog-mobile-top-inset) 0 var(--app-safe-area-bottom);
   --app-dialog-mobile-radius: 0;
@@ -97,6 +103,8 @@
   --app-surface-padding: var(--app-space-4);
   --app-surface-gap: var(--app-space-3);
   --app-form-grid-gap: var(--app-space-3);
+  --app-form-mobile-inline-padding: var(--app-space-4);
+  --app-form-section-gap: var(--app-space-4);
   --app-table-cell-padding-y: 0.52rem;
   --app-table-cell-padding-x: 0.6rem;
   --app-chart-min-height: 230px;

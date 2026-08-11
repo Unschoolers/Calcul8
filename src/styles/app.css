@@ -508,6 +508,11 @@
   box-shadow: var(--app-shadow-modal);
 }
 
+.app-text-wrap {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .app-section-card {
   background: var(--app-section-card-bg);
 }

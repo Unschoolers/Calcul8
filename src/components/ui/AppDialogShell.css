@@ -1,0 +1,103 @@
+.app-dialog-overlay {
+  max-height: var(--app-dialog-max-height);
+}
+
+.app-overlay-frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.app-dialog-overlay .app-dialog-card {
+  width: 100%;
+}
+
+.app-dialog-overlay .app-dialog-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: 0 0 auto;
+  background: rgb(var(--v-theme-surface));
+}
+
+.app-dialog-description {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 var(--app-space-5) var(--app-space-3);
+  background: rgb(var(--v-theme-surface));
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  font-size: var(--app-font-size-body-sm);
+  line-height: var(--app-line-height-normal);
+}
+
+.app-dialog-overlay .app-dialog-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.app-dialog-overlay .app-sticky-action-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex: 0 0 auto;
+  padding-bottom: max(var(--app-space-4), var(--app-safe-area-bottom));
+  background: rgb(var(--v-theme-surface));
+}
+
+.app-dialog-overlay--report {
+  width: min(calc(100vw - (2 * var(--app-space-6))), 980px) !important;
+}
+
+.app-dialog-overlay--checkout {
+  width: min(calc(100vw - (2 * var(--app-space-6))), 720px) !important;
+}
+
+.app-dialog-overlay--media {
+  width: min(calc(100vw - (2 * var(--app-space-4))), 42rem) !important;
+  max-height: min(80dvh, var(--app-dialog-max-height));
+}
+
+.app-dialog-overlay--media .app-dialog-card {
+  max-height: min(80dvh, var(--app-dialog-max-height));
+}
+
+@media (max-width: 600px) {
+  .app-dialog-overlay:not(.app-dialog-overlay--media),
+  .app-dialog-overlay:not(.app-dialog-overlay--media) .app-dialog-card {
+    height: var(--app-overlay-mobile-height);
+    max-height: var(--app-overlay-mobile-height);
+  }
+
+  .app-dialog-overlay:not(.app-dialog-overlay--media) .app-dialog-card {
+    border-radius: 0 !important;
+  }
+
+  .app-dialog-overlay .app-dialog-title {
+    padding-top: max(var(--app-space-4), var(--app-safe-area-top)) !important;
+  }
+
+  .app-dialog-description {
+    padding-inline: var(--app-form-mobile-inline-padding);
+  }
+
+  .app-dialog-overlay .app-sticky-action-footer {
+    padding-bottom: max(var(--app-space-4), var(--app-safe-area-bottom));
+  }
+
+  .app-dialog-overlay--media {
+    width: min(calc(100vw - (2 * var(--app-space-4))), 42rem) !important;
+    margin-top: var(--app-overlay-mobile-top);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog-overlay,
+  .app-dialog-overlay,
+  .app-dialog-overlay .app-dialog-card {
+    transition: none !important;
+  }
+}

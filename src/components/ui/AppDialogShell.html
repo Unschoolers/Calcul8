@@ -1,0 +1,18 @@
+<v-dialog
+  :model-value="modelValue"
+  :max-width="maxWidth"
+  :persistent="persistent"
+  :scrollable="scrollable"
+  :fullscreen="$vuetify.display.xs && variant !== 'media'"
+  :content-class="['app-dialog-overlay', `app-dialog-overlay--${variant}`]"
+  :aria-labelledby="titleId"
+  :aria-describedby="description ? descriptionId : undefined"
+  @update:model-value="updateModelValue"
+>
+  <v-card ref="surface" class="app-dialog-card app-overlay-frame">
+    <v-card-title :id="titleId" class="app-dialog-title app-text-wrap"><slot name="title">{{ title }}</slot></v-card-title>
+    <p v-if="description" :id="descriptionId" class="app-dialog-description app-text-wrap">{{ description }}</p>
+    <v-card-text class="app-dialog-content"><slot></slot></v-card-text>
+    <app-sticky-action-footer v-if="$slots.actions"><slot name="actions"></slot></app-sticky-action-footer>
+  </v-card>
+</v-dialog>
