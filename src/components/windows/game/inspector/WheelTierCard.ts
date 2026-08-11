@@ -8,6 +8,8 @@ import {
 import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
+import AppDialogShell from "../../../ui/AppDialogShell.vue";
+import AppFormLayout from "../../../ui/AppFormLayout.vue";
 import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 
@@ -26,6 +28,7 @@ function getTierOutcomeLabel(config: WheelConfig | null, tier: WheelTier): strin
 
 export const WheelTierCard = {
   name: "WheelTierCard",
+  components: { AppDialogShell, AppFormLayout },
   props: {
     ctx: gameContextProp,
     tier: {

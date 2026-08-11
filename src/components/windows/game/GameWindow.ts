@@ -10,12 +10,16 @@ import GameSpectatorDialog from "./dialogs/GameSpectatorDialog.vue";
 import WheelStageSummary from "./stage/WheelStageSummary.vue";
 import WheelStageTopbar from "./stage/WheelStageTopbar.vue";
 import ContextActionDock from "../../shell/ContextActionDock.vue";
+import AppDialogShell from "../../ui/AppDialogShell.vue";
+import AppFormLayout from "../../ui/AppFormLayout.vue";
 import { gameWindowDefinition } from "./coordinator/GameWindow.definition.ts";
 
 export const GameWindow = {
   ...gameWindowDefinition,
   components: {
     BracketBattlePanel,
+    AppDialogShell,
+    AppFormLayout,
     GameStageOverlayShell,
     WheelHistoryPanel,
     WheelInspector,

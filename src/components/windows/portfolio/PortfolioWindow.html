@@ -508,14 +508,15 @@
                   :fmt-currency="fmtCurrency"
                 ></buyer-quick-view-host>
 
-                <v-dialog
+                <app-dialog-shell
                   v-model="portfolioSalesByUserDrilldownDialog"
-                  max-width="840"
-                  scrollable
-                  content-class="portfolio-sales-drilldown-dialog app-mobile-fullscreen-dialog"
+                  :title="portfolioSalesByUserDrilldownTitle()"
+                  :max-width="840"
+                  variant="report"
+                  class="portfolio-sales-drilldown-dialog"
                 >
-                  <v-card class="portfolio-sales-drilldown-card app-dialog-card">
-                    <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
+                    <template #title>
+                      <div class="d-flex align-center justify-space-between flex-grow-1">
                       <div>
                         <div class="text-subtitle-1 font-weight-bold">
                           {{ portfolioSalesByUserDrilldownTitle() }}
@@ -532,8 +533,9 @@
                         :aria-label="portfolioCopy('portfolioSalesByUserDrilldownCloseLabel', 'Close sales drilldown')"
                         @click="closePortfolioSalesByUserWeekDrilldown"
                       ></app-action-button>
-                    </v-card-title>
-                    <v-card-text class="portfolio-sales-drilldown-content app-dialog-content">
+                      </div>
+                    </template>
+                    <div class="portfolio-sales-drilldown-content">
                       <div class="portfolio-sales-drilldown-desktop-table app-table-wrap app-table-wrap--scroll" tabindex="0">
                         <span class="app-table-scroll-hint" aria-hidden="true">
                           <v-icon size="14">mdi-arrow-left-right</v-icon>
@@ -638,8 +640,8 @@
                           </dl>
                         </article>
                       </div>
-                    </v-card-text>
-                    <v-card-actions class="app-dialog-actions">
+                    </div>
+                    <template #actions>
                       <v-spacer></v-spacer>
                       <v-btn
                         variant="text"
@@ -647,6 +649,5 @@
                       >
                         {{ portfolioCopy('commonClose', 'Close') }}
                       </v-btn>
-                    </v-card-actions>
-                  </v-card>
-                </v-dialog>
+                    </template>
+                </app-dialog-shell>

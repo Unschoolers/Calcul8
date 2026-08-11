@@ -258,19 +258,21 @@
         </v-card>
     </div>
 
-    <v-dialog
+    <app-dialog-shell
         v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues.length"
         :model-value="true"
-        max-width="520"
+        :title="wheelPendingInventoryIssuesTitle"
+        :max-width="520"
         persistent
-        content-class="wheel-pending-lot-dialog app-mobile-fullscreen-dialog"
+        class="wheel-pending-lot-dialog"
     >
-        <v-card class="app-dialog-card">
-            <v-card-title class="app-dialog-title">
+        <template #title>
+            <span>
                 <v-icon start size="small" color="warning">mdi-clipboard-list</v-icon>
                 {{ wheelPendingInventoryIssuesTitle }}
-            </v-card-title>
-            <v-card-text class="app-dialog-content">
+            </span>
+        </template>
+        <app-form-layout :responsive="false">
                 <div class="wheel-batch-list">
                     <div v-for="(entry, bIdx) in wheelPendingInventoryIssues" :key="bIdx" class="wheel-batch-row">
                         <div class="wheel-batch-slot">
@@ -286,17 +288,16 @@
                             :title="t('wheelRecordSaleAction')"></v-btn>
                     </div>
                 </div>
-            </v-card-text>
-            <v-card-actions class="app-dialog-actions">
-                <v-spacer></v-spacer>
-                <v-btn color="success" variant="elevated" size="small"
-                    :disabled="wheelPendingInventoryIssues.some((entry) => !entry.selectedLotId)"
-                    @click="confirmAllBatchSales">
-                    {{ t('wheelRecordAllAction') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+        </app-form-layout>
+        <template #actions>
+            <v-spacer></v-spacer>
+            <v-btn color="success" variant="elevated" size="small"
+                :disabled="wheelPendingInventoryIssues.some((entry) => !entry.selectedLotId)"
+                @click="confirmAllBatchSales">
+                {{ t('wheelRecordAllAction') }}
+            </v-btn>
+        </template>
+    </app-dialog-shell>
 
     <button
         v-if="!wheelPresentationMode && wheelMobileInspectorOpen"
@@ -316,70 +317,57 @@
     ></wheel-inspector>
 
     <!-- Confirm Dialog -->
-    <v-dialog
+    <app-dialog-shell
         v-if="!wheelIsBracketBattle && wheelConfirmDialog"
         v-model="wheelConfirmDialog"
-        max-width="380"
+        :title="wheelConfirmTitle"
+        :max-width="380"
         persistent
-        content-class="wheel-confirm-dialog app-mobile-fullscreen-dialog"
+        class="wheel-confirm-dialog"
     >
-        <v-card class="app-dialog-card">
-            <v-card-title class="app-dialog-title">
-                {{ wheelConfirmTitle }}
-            </v-card-title>
-            <v-card-text class="app-dialog-content text-body-2">
-                {{ wheelConfirmBody }}
-            </v-card-text>
-            <v-card-actions class="app-dialog-actions">
-                <v-spacer></v-spacer>
-                <v-btn variant="text" @click="wheelConfirmDialog = false">{{ t('commonCancel') }}</v-btn>
-                <v-btn :color="wheelConfirmButtonColor" variant="elevated" @click="confirmWheelAction">
-                    {{ wheelConfirmButtonLabel }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+        <p class="text-body-2">{{ wheelConfirmBody }}</p>
+        <template #actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="wheelConfirmDialog = false">{{ t('commonCancel') }}</v-btn>
+            <v-btn :color="wheelConfirmButtonColor" variant="elevated" @click="confirmWheelAction">
+                {{ wheelConfirmButtonLabel }}
+            </v-btn>
+        </template>
+    </app-dialog-shell>
 
-    <v-dialog
+    <app-dialog-shell
         v-if="!wheelIsBracketBattle && wheelLiveConfirmDialog"
         v-model="wheelLiveConfirmDialog"
-        max-width="420"
+        :title="t('wheelGoLiveTitle')"
+        :max-width="420"
         persistent
-        content-class="wheel-live-confirm-dialog app-mobile-fullscreen-dialog"
+        class="wheel-live-confirm-dialog"
     >
-        <v-card class="app-dialog-card">
-            <v-card-title class="app-dialog-title">
-                {{ t('wheelGoLiveTitle') }}
-            </v-card-title>
-            <v-card-text class="app-dialog-content text-body-2">
-                {{ t('wheelGoLiveBody') }}
-                <div class="wheel-live-confirm-summary">
-                    <div><strong>{{ t('wheelGoLiveNameLabel') }}:</strong> {{ wheelLiveConfirmSummaryName }}</div>
-                    <div><strong>{{ t('wheelSlotsSummaryLabel') }}:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
-                    <div><strong>{{ t('wheelSpinPriceSummaryLabel') }}:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
-                </div>
-            </v-card-text>
-            <v-card-actions class="app-dialog-actions">
-                <v-spacer></v-spacer>
-                <v-btn variant="text" @click="cancelWheelModeChange">{{ t('commonCancel') }}</v-btn>
-                <v-btn color="success" variant="elevated" @click="confirmWheelModeChange">
-                    {{ t('wheelGoLiveAction') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+        <div class="text-body-2">
+            {{ t('wheelGoLiveBody') }}
+            <div class="wheel-live-confirm-summary">
+                <div><strong>{{ t('wheelGoLiveNameLabel') }}:</strong> {{ wheelLiveConfirmSummaryName }}</div>
+                <div><strong>{{ t('wheelSlotsSummaryLabel') }}:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
+                <div><strong>{{ t('wheelSpinPriceSummaryLabel') }}:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
+            </div>
+        </div>
+        <template #actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="cancelWheelModeChange">{{ t('commonCancel') }}</v-btn>
+            <v-btn color="success" variant="elevated" @click="confirmWheelModeChange">
+                {{ t('wheelGoLiveAction') }}
+            </v-btn>
+        </template>
+    </app-dialog-shell>
 
-    <v-dialog
+    <app-dialog-shell
         v-if="wheelManageDialog"
         v-model="wheelManageDialog"
-        max-width="420"
-        content-class="wheel-manage-dialog app-mobile-fullscreen-dialog"
+        :title="t('wheelEditWheelTitle')"
+        :max-width="420"
+        class="wheel-manage-dialog"
     >
-        <v-card class="app-dialog-card">
-            <v-card-title class="app-dialog-title">
-                {{ t('wheelEditWheelTitle') }}
-            </v-card-title>
-            <v-card-text class="app-dialog-content text-body-2">
+        <app-form-layout compact>
                 <v-text-field
                     v-model="wheelManageName"
                     :label="t('wheelNameLabel')"
@@ -399,16 +387,15 @@
                 >
                     {{ t('wheelDeleteWheelAction') }}
                 </v-btn>
-            </v-card-text>
-            <v-card-actions class="app-dialog-actions">
-                <v-spacer></v-spacer>
-                <v-btn variant="text" @click="closeWheelManageDialog">{{ t('commonCancel') }}</v-btn>
-                <v-btn color="primary" variant="elevated" @click="applyWheelManageDialog">
-                    {{ t('commonSave') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+        </app-form-layout>
+        <template #actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="closeWheelManageDialog">{{ t('commonCancel') }}</v-btn>
+            <v-btn color="primary" variant="elevated" @click="applyWheelManageDialog">
+                {{ t('commonSave') }}
+            </v-btn>
+        </template>
+    </app-dialog-shell>
 
     <game-spectator-dialog :ctx="getWindowComponentContext()"></game-spectator-dialog>
 

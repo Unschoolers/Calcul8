@@ -1,4 +1,5 @@
 import { fireEvent, screen } from "@testing-library/vue";
+import { readFileSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
 import { defineComponent, h, nextTick, provide, reactive } from "vue";
 import WheelHistoryPanel from "../../src/components/windows/game/inspector/WheelHistoryPanel.vue";
@@ -9,6 +10,22 @@ import MysteryGridSurface from "../../src/components/windows/game/stage/MysteryG
 import { renderWithApp } from "./render.ts";
 
 describe("game inspector scenarios", () => {
+  test("Game overlays use the shared dialog shell", () => {
+    const paths = [
+      "src/components/windows/game/coordinator/GameWindow.html",
+      "src/components/windows/game/dialogs/WheelCreateGameDialog.html",
+      "src/components/windows/game/dialogs/GameSpectatorDialog.html",
+      "src/components/windows/game/bracket/BracketBattlePanel.html",
+      "src/components/windows/game/inspector/WheelTierCard.html"
+    ];
+
+    for (const path of paths) {
+      const template = readFileSync(path, "utf8");
+      expect(template).not.toMatch(/<v-dialog\b/);
+      expect(template).toMatch(/<app-(?:dialog-shell|confirm-dialog)\b/);
+    }
+  });
+
   test("renders the Mystery Grid builder and keeps its primary control interactive", async () => {
     const addTier = vi.fn();
     const config = {

@@ -1,14 +1,11 @@
-<v-dialog
+<app-dialog-shell
   v-if="gameSpectatorDialog"
   v-model="gameSpectatorDialog"
-  max-width="480"
-  content-class="game-spectator-dialog app-mobile-fullscreen-dialog"
+  :title="t('gameSpectatorDialogTitle')"
+  :max-width="480"
+  class="game-spectator-dialog"
 >
-  <v-card class="app-dialog-card">
-    <v-card-title class="app-dialog-title text-subtitle-1">
-      {{ t('gameSpectatorDialogTitle') }}
-    </v-card-title>
-    <v-card-text class="app-dialog-content text-body-2">
+    <div class="text-body-2">
       <div class="game-spectator-dialog__intro">
         <div>{{ gameSpectatorDialogHint }}</div>
         <div
@@ -38,53 +35,54 @@
           {{ gameSpectatorSessionUrl }}
         </div>
       </template>
-    </v-card-text>
-    <v-card-actions class="game-spectator-dialog__actions app-dialog-actions">
-      <v-spacer></v-spacer>
-      <app-action-button
-        v-if="!gameSpectatorSessionId || gameSpectatorSessionStatus === 'ended'"
-        action="live"
-        :loading="gameSpectatorPublishPending"
-        :label="gameSpectatorStartButtonLabel"
-        @click="startGameSpectatorMode"
-      >
-        {{ gameSpectatorStartButtonLabel }}
-      </app-action-button>
-      <template v-if="gameSpectatorSessionId">
+    </div>
+    <template #actions>
+      <div class="game-spectator-dialog__actions d-flex align-center flex-wrap flex-grow-1">
+        <v-spacer></v-spacer>
         <app-action-button
-          action="copy"
-          variant="text"
-          :label="t('gameSpectatorCopyAction')"
-          @click="copyGameSpectatorLink"
-        >
-          {{ t('gameSpectatorCopyAction') }}
-        </app-action-button>
-        <app-action-button
-          action="open"
-          variant="text"
-          :label="t('gameSpectatorOpenAction')"
-          @click="openGameSpectatorPage"
-        >
-          {{ t('gameSpectatorOpenAction') }}
-        </app-action-button>
-        <app-action-button
-          v-if="gameSpectatorSessionStatus !== 'ended'"
-          action="delete"
+          v-if="!gameSpectatorSessionId || gameSpectatorSessionStatus === 'ended'"
+          action="live"
           :loading="gameSpectatorPublishPending"
-          :label="t('gameSpectatorEndAction')"
-          @click="endGameSpectatorMode"
+          :label="gameSpectatorStartButtonLabel"
+          @click="startGameSpectatorMode"
         >
-          {{ t('gameSpectatorEndAction') }}
+          {{ gameSpectatorStartButtonLabel }}
         </app-action-button>
-      </template>
-      <app-action-button
-        action="close"
-        variant="text"
-        :label="t('commonClose')"
-        @click="closeGameSpectatorDialog"
-      >
-        {{ t('commonClose') }}
-      </app-action-button>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+        <template v-if="gameSpectatorSessionId">
+          <app-action-button
+            action="copy"
+            variant="text"
+            :label="t('gameSpectatorCopyAction')"
+            @click="copyGameSpectatorLink"
+          >
+            {{ t('gameSpectatorCopyAction') }}
+          </app-action-button>
+          <app-action-button
+            action="open"
+            variant="text"
+            :label="t('gameSpectatorOpenAction')"
+            @click="openGameSpectatorPage"
+          >
+            {{ t('gameSpectatorOpenAction') }}
+          </app-action-button>
+          <app-action-button
+            v-if="gameSpectatorSessionStatus !== 'ended'"
+            action="delete"
+            :loading="gameSpectatorPublishPending"
+            :label="t('gameSpectatorEndAction')"
+            @click="endGameSpectatorMode"
+          >
+            {{ t('gameSpectatorEndAction') }}
+          </app-action-button>
+        </template>
+        <app-action-button
+          action="close"
+          variant="text"
+          :label="t('commonClose')"
+          @click="closeGameSpectatorDialog"
+        >
+          {{ t('commonClose') }}
+        </app-action-button>
+      </div>
+    </template>
+</app-dialog-shell>

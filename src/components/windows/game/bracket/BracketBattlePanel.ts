@@ -1,6 +1,7 @@
 import { defineComponent, nextTick } from "vue";
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import type { BracketBattleConfig, WheelConfig } from "../../../../types/app.ts";
+import AppConfirmDialog from "../../../ui/AppConfirmDialog.vue";
 import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
 import type { GameStageOverlayAnchor, GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
@@ -105,6 +106,7 @@ function commitBracketBattleLifecycleState(
 
 export const BracketBattlePanel = defineComponent({
   name: "BracketBattlePanel",
+  components: { AppConfirmDialog },
   props: {
     ctx: gameContextProp
   },

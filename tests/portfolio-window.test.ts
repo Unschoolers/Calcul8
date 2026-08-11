@@ -829,6 +829,9 @@ test("PortfolioWindow sales per user drilldown opens rows for the selected week"
   const vm = {
     portfolioSalesByUserDrilldownDialog: false,
     portfolioSalesByUserDrilldownWeekKey: "",
+    portfolioSalesByUserMetric: "profit",
+    portfolioLotTypeFilter: "bulk",
+    portfolioLotFilterIds: [11],
     portfolioSalesByUserDrilldownRows: [
       {
         weekKey: "2026-03-09",
@@ -890,6 +893,9 @@ test("PortfolioWindow sales per user drilldown opens rows for the selected week"
 
   assert.equal(vm.portfolioSalesByUserDrilldownDialog, false);
   assert.equal(vm.portfolioSalesByUserDrilldownWeekKey, "");
+  assert.equal(vm.portfolioSalesByUserMetric, "profit");
+  assert.equal(vm.portfolioLotTypeFilter, "bulk");
+  assert.deepEqual(vm.portfolioLotFilterIds, [11]);
 });
 
 test("PortfolioWindow sales per user summary helpers derive leader, totals, and legend items", () => {

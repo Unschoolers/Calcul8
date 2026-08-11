@@ -1,9 +1,10 @@
-<v-dialog v-if="wheelCreateDialog" v-model="wheelCreateDialog" max-width="520">
-  <v-card>
-    <v-card-title class="text-subtitle-1">
-      {{ t('wheelCreateGameTitle') }}
-    </v-card-title>
-    <v-card-text class="text-body-2">
+<app-dialog-shell
+  v-if="wheelCreateDialog"
+  v-model="wheelCreateDialog"
+  :title="t('wheelCreateGameTitle')"
+  :max-width="520"
+>
+    <div class="text-body-2">
       <div class="wheel-create-game-grid">
         <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('wheel')">
           <v-icon size="28">mdi-chart-donut</v-icon>
@@ -21,10 +22,9 @@
           <span class="wheel-create-game-card__copy">{{ t('bracketBattleCreateBody') }}</span>
         </button>
       </div>
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer></v-spacer>
-      <v-btn variant="text" @click="closeWheelCreateDialog">{{ t('commonCancel') }}</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+    </div>
+    <template #actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="closeWheelCreateDialog">{{ t('commonCancel') }}</v-btn>
+    </template>
+</app-dialog-shell>

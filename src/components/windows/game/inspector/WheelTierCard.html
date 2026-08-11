@@ -76,17 +76,15 @@
       <span class="wheel-tier-card__meta-value">{{ tierInventoryWarning }}</span>
     </div>
   </div>
-  <v-dialog
+  <app-dialog-shell
     :model-value="editorOpen"
-    max-width="560"
-    :fullscreen="$vuetify?.display?.smAndDown"
-    scrollable
-    content-class="wheel-tier-editor-dialog"
-    transition="dialog-bottom-transition"
+    :title="editorTier.label"
+    :max-width="560"
+    class="wheel-tier-editor-dialog"
     @update:model-value="onTierEditorModelValue"
   >
-    <v-card class="wheel-tier-editor">
-      <v-card-title class="wheel-tier-editor__title">
+    <template #title>
+      <div class="wheel-tier-editor__title">
         <div class="wheel-tier-editor__handle" aria-hidden="true"></div>
         <div class="wheel-tier-editor__title-main">
           <div class="wheel-tier-editor__title-bar">
@@ -102,8 +100,10 @@
           </div>
         </div>
         <v-btn icon="mdi-close" variant="text" size="small" @click="cancelTierEditor()"></v-btn>
-      </v-card-title>
-      <v-card-text class="wheel-tier-editor__body">
+      </div>
+    </template>
+    <app-form-layout :responsive="false" compact>
+      <div class="wheel-tier-editor__body">
         <section class="wheel-tier-editor__section">
           <div class="wheel-tier-editor__section-head">
             <div class="wheel-tier-editor__section-title">{{ t('wheelTierBasicsSectionTitle') }}</div>
@@ -280,12 +280,14 @@
             </div>
           </div>
         </section>
-      </v-card-text>
-      <v-card-actions class="wheel-tier-editor__actions">
+      </div>
+    </app-form-layout>
+    <template #actions>
+      <div class="wheel-tier-editor__actions d-flex align-center flex-grow-1">
         <v-btn variant="tonal" color="error" @click="deleteTierAndClose()">{{ t('commonDelete') }}</v-btn>
         <v-spacer></v-spacer>
         <v-btn variant="elevated" color="primary" @click="finishTierEditor()">{{ t('commonDone') }}</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+      </div>
+    </template>
+  </app-dialog-shell>
 </div>
