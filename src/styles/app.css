@@ -771,7 +771,28 @@
   min-height: var(--app-touch-target-min);
 }
 
+/* Migrated dialog segments keep compact labels while preserving a full touch target. */
+.app-responsive-segment-toggle {
+  flex-wrap: wrap;
+  height: auto !important;
+  max-width: 100%;
+}
+
+.segment-toggle.app-responsive-segment-toggle .v-btn {
+  min-height: var(--app-touch-target-min) !important;
+  height: auto !important;
+}
+
 @media (max-width: 360px) {
+  .app-responsive-segment-toggle {
+    width: 100%;
+  }
+
+  .app-responsive-segment-toggle .v-btn {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
   .app-form-actions > :not(.v-spacer) {
     flex: 1 1 100%;
   }

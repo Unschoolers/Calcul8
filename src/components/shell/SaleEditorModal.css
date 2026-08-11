@@ -50,9 +50,10 @@
 }
 
 .sale-editor-singles-line-delete {
-  min-width: 36px !important;
-  width: 36px;
-  height: 36px;
+  min-width: var(--app-touch-target-min) !important;
+  min-height: var(--app-touch-target-min) !important;
+  width: var(--app-touch-target-min);
+  height: var(--app-touch-target-min);
 }
 
 .sale-editor-singles-grid {
@@ -209,12 +210,6 @@
 
   .sale-editor-line-layout {
     gap: 0.4rem;
-  }
-
-  .sale-editor-singles-line-delete {
-    min-width: 40px !important;
-    width: 40px;
-    height: 40px;
   }
 
   .sale-editor-singles-profit-pill {

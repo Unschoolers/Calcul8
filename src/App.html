@@ -145,14 +145,14 @@
               <v-text-field id="guided-onboarding-lot-name-field" v-model="lotNameDraft" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="createNewLot"></v-text-field>
               <v-btn-toggle v-model="newLotType" mandatory divided density="compact" variant="outlined"
-                class="mt-2 segment-toggle app-form-row">
+                class="mt-2 segment-toggle app-form-row app-responsive-segment-toggle">
                 <v-btn class="app-touch-target" value="bulk" size="small">{{ t('commonBulk') }}</v-btn>
                 <v-btn class="app-touch-target" value="singles" size="small">{{ t('commonSingles') }}</v-btn>
               </v-btn-toggle>
               <div v-if="newLotType === 'singles'" class="mt-3">
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle v-model="newLotCatalogSource" mandatory divided density="compact" variant="outlined"
-                  class="segment-toggle">
+                  class="segment-toggle app-responsive-segment-toggle">
                   <v-btn class="app-touch-target" value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
                   <v-btn class="app-touch-target" value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
                   <v-btn class="app-touch-target" value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
@@ -174,7 +174,7 @@
               <div v-if="currentLotType === 'singles'" class="mt-3">
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle :model-value="currentLotCatalogSource" mandatory divided density="compact"
-                  variant="outlined" class="segment-toggle" @update:model-value="setCurrentLotCatalogSource">
+                  variant="outlined" class="segment-toggle app-responsive-segment-toggle" @update:model-value="setCurrentLotCatalogSource">
                   <v-btn class="app-touch-target" value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
                   <v-btn class="app-touch-target" value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
                   <v-btn class="app-touch-target" value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>

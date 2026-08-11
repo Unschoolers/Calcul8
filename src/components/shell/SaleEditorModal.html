@@ -92,7 +92,7 @@
                     <v-col v-if="(newSale.singlesItems?.length || 0) > 1"
                       :cols="$vuetify?.display?.smAndDown ? 2 : 1" class="d-flex align-center justify-end">
                       <v-btn icon size="small" variant="text" color="error"
-                        class="sale-editor-singles-line-delete" :title="t('saleEditorRemoveLineAction')" :aria-label="t('saleEditorRemoveLineAction')"
+                        class="sale-editor-singles-line-delete app-touch-target" :title="t('saleEditorRemoveLineAction')" :aria-label="t('saleEditorRemoveLineAction')"
                         @click="removeSinglesSaleLine(lineIndex)">
                         <v-icon size="18">mdi-trash-can-outline</v-icon>
                       </v-btn>

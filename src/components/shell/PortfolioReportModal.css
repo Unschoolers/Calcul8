@@ -194,6 +194,14 @@
   color: rgba(var(--v-theme-on-surface), 0.68);
 }
 
+.portfolio-report-secondary-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+  min-width: 0;
+}
+
 @media (max-width: 600px) {
   .portfolio-report-content {
     padding-inline: 0.8rem !important;
@@ -216,5 +224,17 @@
   .portfolio-report-card-toggle {
     align-self: flex-end;
     margin-top: -2.3rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .portfolio-report-secondary-actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .portfolio-report-secondary-actions > * {
+    flex: 1 1 100%;
+    width: 100%;
   }
 }

@@ -129,6 +129,39 @@ describe("workflow dialog scenarios", () => {
     expect(template).not.toMatch(/<v-dialog\b/);
   });
 
+  test("migrated compact dialog controls preserve a 44px interaction target", () => {
+    const rootTemplate = readFileSync("src/App.html", "utf8");
+    const appStyles = readFileSync("src/styles/app.css", "utf8");
+    const designTokens = readFileSync("src/styles/design-tokens.css", "utf8");
+    const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
+    const systemStyles = readFileSync("src/components/shell/SystemConfigurationDialog.css", "utf8");
+    const saleTemplate = readFileSync("src/components/shell/SaleEditorModal.html", "utf8");
+    const saleStyles = readFileSync("src/components/shell/SaleEditorModal.css", "utf8");
+
+    expect(designTokens).toMatch(/--app-action-size-min:\s*44px;/);
+    expect(designTokens).toMatch(/--app-touch-target-min:\s*var\(--app-action-size-min\);/);
+    expect(rootTemplate.match(/app-responsive-segment-toggle/g) ?? []).toHaveLength(3);
+    expect(appStyles).toMatch(/\.segment-toggle\.app-responsive-segment-toggle \.v-btn\s*\{[^}]*min-height:\s*var\(--app-touch-target-min\)\s*!important;[^}]*height:\s*auto\s*!important;/s);
+    expect(systemTemplate.match(/class="app-touch-target" value="(?:CAD|USD)"/g) ?? []).toHaveLength(4);
+    expect(systemStyles).toMatch(/\.config-system-dialog \.pill-toggle \.v-btn\s*\{[^}]*min-height:\s*var\(--app-touch-target-min\)\s*!important;[^}]*height:\s*auto\s*!important;/s);
+    expect(saleTemplate).toMatch(/class="[^"]*sale-editor-singles-line-delete[^"]*app-touch-target[^"]*"/);
+    expect(saleStyles).toMatch(/\.sale-editor-singles-line-delete\s*\{[^}]*min-width:\s*var\(--app-touch-target-min\)\s*!important;[^}]*min-height:\s*var\(--app-touch-target-min\)\s*!important;/s);
+  });
+
+  test("root segments and portfolio report actions expose narrow-screen wrapping contracts", () => {
+    const rootTemplate = readFileSync("src/App.html", "utf8");
+    const appStyles = readFileSync("src/styles/app.css", "utf8");
+    const reportTemplate = readFileSync("src/components/shell/PortfolioReportModal.html", "utf8");
+    const reportStyles = readFileSync("src/components/shell/PortfolioReportModal.css", "utf8");
+
+    expect(rootTemplate.match(/app-responsive-segment-toggle/g) ?? []).toHaveLength(3);
+    expect(appStyles).toMatch(/\.app-responsive-segment-toggle\s*\{[^}]*flex-wrap:\s*wrap;[^}]*height:\s*auto\s*!important;/s);
+    expect(appStyles).toMatch(/@media \(max-width:\s*360px\)[\s\S]*\.app-responsive-segment-toggle \.v-btn\s*\{[^}]*flex:\s*1 1 100%;/);
+    expect(reportTemplate).toMatch(/class="portfolio-report-secondary-actions"/);
+    expect(reportStyles).toMatch(/\.portfolio-report-secondary-actions\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;/s);
+    expect(reportStyles).toMatch(/@media \(max-width:\s*360px\)[\s\S]*\.portfolio-report-secondary-actions > \*\s*\{[^}]*flex:\s*1 1 100%;/);
+  });
+
   test("starts native Google sign-in from the primary Android action", async () => {
     const promptGoogleSignIn = vi.fn();
     renderWithCapabilities(AuthGateCard, shellPortsKey, {
