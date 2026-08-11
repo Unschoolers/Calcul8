@@ -38,7 +38,7 @@ describe("live price card scenarios", () => {
   test("selects a visible price scenario", async () => {
     const { onUpdate } = renderLivePriceCard();
 
-    await fireEvent.click(screen.getByRole("button", { name: /^\+\$1\$11\.00/ }));
+    await fireEvent.click(screen.getByRole("button", { name: /^\$11\.00/ }));
 
     expect(onUpdate).toHaveBeenCalledWith(11);
   });
