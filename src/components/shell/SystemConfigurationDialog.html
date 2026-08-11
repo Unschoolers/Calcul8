@@ -1,8 +1,8 @@
-<v-dialog v-model="showSystemConfigurationDialog" max-width="900" scrollable>
-  <v-card class="config-system-dialog">
-    <v-card-title class="config-system-dialog__title">
+<app-dialog-shell v-model="showSystemConfigurationDialog" :title="t('configSystemConfigurationTitle')" :max-width="900">
+  <template #title>
+    <div class="config-system-dialog__title">
       <div>
-        <div class="config-system-dialog__eyebrow">{{ t('configSellingTitle') }}</div>
+        <div class="config-system-dialog__eyebrow" aria-hidden="true">{{ t('configSellingTitle') }}</div>
         <div>{{ t('configSystemConfigurationTitle') }}</div>
       </div>
       <v-btn
@@ -12,8 +12,10 @@
         :aria-label="t('commonClose')"
         @click="showSystemConfigurationDialog = false"
       ></v-btn>
-    </v-card-title>
-    <v-card-text class="config-system-dialog__body">
+    </div>
+  </template>
+  <app-form-layout>
+    <div class="config-system-dialog config-system-dialog__body">
       <p class="config-system-dialog__help">{{ t('configSystemConfigurationHelp') }}</p>
       <v-row density="comfortable">
         <v-col cols="12" md="6">
@@ -245,10 +247,10 @@
           </section>
         </v-col>
       </v-row>
-    </v-card-text>
-    <v-card-actions>
+    </div>
+    <template #actions>
       <v-spacer></v-spacer>
-      <v-btn variant="text" @click="showSystemConfigurationDialog = false">{{ t('commonClose') }}</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+      <v-btn class="app-touch-target" variant="text" @click="showSystemConfigurationDialog = false">{{ t('commonClose') }}</v-btn>
+    </template>
+  </app-form-layout>
+</app-dialog-shell>

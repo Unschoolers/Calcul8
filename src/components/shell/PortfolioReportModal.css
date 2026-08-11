@@ -195,11 +195,6 @@
 }
 
 @media (max-width: 600px) {
-  .portfolio-report-dialog {
-    width: min(96vw, 980px) !important;
-    max-width: min(96vw, 980px) !important;
-  }
-
   .portfolio-report-content {
     padding-inline: 0.8rem !important;
   }

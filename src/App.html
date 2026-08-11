@@ -140,49 +140,44 @@
         <system-configuration-dialog></system-configuration-dialog>
 
         <!-- New Lot Modal -->
-        <v-dialog v-model="showNewLotModal" max-width="400">
-          <v-card id="guided-onboarding-new-lot-card" data-driver-target="guided-onboarding-new-lot-card">
-            <v-card-title>{{ t('newLotTitle') }}</v-card-title>
-            <v-card-text>
+        <app-dialog-shell v-model="showNewLotModal" :title="t('newLotTitle')" :max-width="400">
+          <app-form-layout id="guided-onboarding-new-lot-card" data-driver-target="guided-onboarding-new-lot-card">
               <v-text-field id="guided-onboarding-lot-name-field" v-model="lotNameDraft" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="createNewLot"></v-text-field>
               <v-btn-toggle v-model="newLotType" mandatory divided density="compact" variant="outlined"
-                class="mt-2 segment-toggle">
-                <v-btn value="bulk" size="small">{{ t('commonBulk') }}</v-btn>
-                <v-btn value="singles" size="small">{{ t('commonSingles') }}</v-btn>
+                class="mt-2 segment-toggle app-form-row">
+                <v-btn class="app-touch-target" value="bulk" size="small">{{ t('commonBulk') }}</v-btn>
+                <v-btn class="app-touch-target" value="singles" size="small">{{ t('commonSingles') }}</v-btn>
               </v-btn-toggle>
               <div v-if="newLotType === 'singles'" class="mt-3">
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle v-model="newLotCatalogSource" mandatory divided density="compact" variant="outlined"
                   class="segment-toggle">
-                  <v-btn value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
-                  <v-btn value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
-                  <v-btn value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
+                  <v-btn class="app-touch-target" value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
+                  <v-btn class="app-touch-target" value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
+                  <v-btn class="app-touch-target" value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
                 </v-btn-toggle>
               </div>
-            </v-card-text>
-            <v-card-actions>
+            <template #actions>
               <v-spacer></v-spacer>
-              <v-btn text @click="showNewLotModal = false">{{ t('commonCancel') }}</v-btn>
-              <v-btn id="guided-onboarding-create-lot-btn" color="primary" @click="createNewLot">{{ t('commonCreate') }}</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
+              <v-btn class="app-touch-target" variant="text" @click="showNewLotModal = false">{{ t('commonCancel') }}</v-btn>
+              <v-btn id="guided-onboarding-create-lot-btn" class="app-touch-target" color="primary" @click="createNewLot">{{ t('commonCreate') }}</v-btn>
+            </template>
+          </app-form-layout>
+        </app-dialog-shell>
 
         <!-- Edit Lot Modal -->
-        <v-dialog v-model="showRenameLotModal" max-width="400">
-          <v-card>
-            <v-card-title>{{ t('editLotTitle') }}</v-card-title>
-            <v-card-text>
+        <app-dialog-shell v-model="showRenameLotModal" :title="t('editLotTitle')" :max-width="400">
+          <app-form-layout>
               <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="renameCurrentLot"></v-text-field>
               <div v-if="currentLotType === 'singles'" class="mt-3">
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle :model-value="currentLotCatalogSource" mandatory divided density="compact"
                   variant="outlined" class="segment-toggle" @update:model-value="setCurrentLotCatalogSource">
-                  <v-btn value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
-                  <v-btn value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
-                  <v-btn value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
+                  <v-btn class="app-touch-target" value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
+                  <v-btn class="app-touch-target" value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
+                  <v-btn class="app-touch-target" value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
                 </v-btn-toggle>
                 <div class="text-caption text-medium-emphasis mt-2">
                   {{
@@ -192,59 +187,55 @@
                   }}
                 </div>
               </div>
-            </v-card-text>
-            <v-card-actions>
-              <v-btn variant="text" color="error" :disabled="!currentLotId"
+            <template #actions>
+              <v-btn class="app-touch-target" variant="text" color="error" :disabled="!currentLotId"
                 @click="showRenameLotModal = false; deleteCurrentLot()">
                 {{ t('commonDelete') }}
               </v-btn>
               <v-spacer></v-spacer>
-              <v-btn text @click="showRenameLotModal = false">{{ t('commonCancel') }}</v-btn>
-              <v-btn color="primary" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
+              <v-btn class="app-touch-target" variant="text" @click="showRenameLotModal = false">{{ t('commonCancel') }}</v-btn>
+              <v-btn class="app-touch-target" color="primary" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
+            </template>
+          </app-form-layout>
+        </app-dialog-shell>
 
         <!-- Verify Play Purchase Modal -->
-        <v-dialog v-if="showManualPurchaseVerify" v-model="showVerifyPurchaseModal" max-width="520">
-          <v-card>
-            <v-card-title>
+        <app-dialog-shell v-if="showManualPurchaseVerify" v-model="showVerifyPurchaseModal"
+          :title="t('purchaseVerifyTitle')" :max-width="520">
+          <template #title>
               <v-icon class="mr-2">mdi-check-decagram</v-icon>
               {{ t('purchaseVerifyTitle') }}
-            </v-card-title>
-            <v-card-text>
+          </template>
+          <app-form-layout>
               <v-text-field v-model="purchaseTokenInput" :label="t('purchaseTokenLabel')" variant="outlined" autocomplete="off"
                 class="mb-2" :hint="t('purchaseTokenHint')" persistent-hint></v-text-field>
               <v-text-field v-model="purchaseProductIdInput" :label="t('purchaseProductIdOptionalLabel')" variant="outlined"
                 autocomplete="off" class="mb-2"></v-text-field>
               <v-text-field v-model="purchasePackageNameInput" :label="t('purchasePackageNameOptionalLabel')" variant="outlined"
                 autocomplete="off"></v-text-field>
-            </v-card-text>
-            <v-card-actions>
+            <template #actions>
               <v-spacer></v-spacer>
-              <v-btn text @click="showVerifyPurchaseModal = false">{{ t('commonCancel') }}</v-btn>
-              <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">{{ t('purchaseVerifySubmitAction') }}</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
+              <v-btn class="app-touch-target" variant="text" @click="showVerifyPurchaseModal = false">{{ t('commonCancel') }}</v-btn>
+              <v-btn class="app-touch-target" color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">{{ t('purchaseVerifySubmitAction') }}</v-btn>
+            </template>
+          </app-form-layout>
+        </app-dialog-shell>
 
         <!-- Embedded Stripe Checkout Modal -->
-        <v-dialog v-model="showStripeCheckoutModal" max-width="560" :fullscreen="$vuetify?.display?.smAndDown"
-          persistent>
-          <v-card>
-            <v-card-title>
+        <app-dialog-shell v-model="showStripeCheckoutModal" :title="t('stripeCheckoutTitle')" :max-width="560"
+          variant="checkout" persistent>
+          <template #title>
               <v-icon class="mr-2">mdi-credit-card-lock-outline</v-icon>
               {{ t('stripeCheckoutTitle') }}
-            </v-card-title>
-            <v-card-text>
-              <div id="stripe-embedded-checkout" class="stripe-embedded-checkout"></div>
-            </v-card-text>
-            <v-card-actions>
+          </template>
+          <app-form-layout>
+            <div id="stripe-embedded-checkout" class="stripe-embedded-checkout"></div>
+            <template #actions>
               <v-spacer></v-spacer>
-              <v-btn text @click="closeStripeCheckoutModal">{{ t('stripeCheckoutCancelAction') }}</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
+              <v-btn class="app-touch-target" variant="text" @click="closeStripeCheckoutModal">{{ t('stripeCheckoutCancelAction') }}</v-btn>
+            </template>
+          </app-form-layout>
+        </app-dialog-shell>
 
         <!-- Profit Calculator Modal -->
         <auto-calculate-modal></auto-calculate-modal>
@@ -253,17 +244,14 @@
 
         <portfolio-report-modal></portfolio-report-modal>
 
-        <v-dialog v-model="confirmDialog" max-width="420">
-          <v-card>
-            <v-card-title>{{ confirmTitle }}</v-card-title>
-            <v-card-text>{{ confirmText }}</v-card-text>
-            <v-card-actions>
-              <v-spacer></v-spacer>
-              <v-btn variant="text" @click="cancelConfirmAction">{{ t('commonCancel') }}</v-btn>
-              <v-btn :color="confirmColor" @click="runConfirmAction">{{ t('commonConfirm') }}</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
+        <app-dialog-shell v-model="confirmDialog" :title="confirmTitle" :max-width="420">
+          <p class="app-text-wrap">{{ confirmText }}</p>
+          <template #actions>
+            <v-spacer></v-spacer>
+            <v-btn class="app-touch-target" variant="text" @click="cancelConfirmAction">{{ t('commonCancel') }}</v-btn>
+            <v-btn class="app-touch-target" :color="confirmColor" @click="runConfirmAction">{{ t('commonConfirm') }}</v-btn>
+          </template>
+        </app-dialog-shell>
 
         <whatnot-csv-import-dialog></whatnot-csv-import-dialog>
         <whatnot-review-dialog></whatnot-review-dialog>

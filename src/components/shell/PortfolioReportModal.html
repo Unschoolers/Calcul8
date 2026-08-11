@@ -1,6 +1,6 @@
-<v-dialog v-model="showPortfolioReportModal" max-width="980" scrollable content-class="portfolio-report-dialog app-mobile-fullscreen-dialog">
-  <v-card class="portfolio-report-modal-card app-dialog-card app-report-surface">
-    <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
+<app-dialog-shell v-model="showPortfolioReportModal" :title="t('portfolioReportTitle')" :max-width="980" variant="report">
+  <template #title>
+    <div class="portfolio-report-modal-card d-flex align-center justify-space-between">
       <div>
         <v-icon class="mr-2">mdi-table</v-icon>
         {{ t('portfolioReportTitle') }}
@@ -14,10 +14,11 @@
         :aria-label="t('portfolioReportCloseAction')"
         @click="showPortfolioReportModal = false"
       ></app-action-button>
-    </v-card-title>
+    </div>
+  </template>
     <v-divider></v-divider>
 
-    <v-card-text class="portfolio-report-content app-dialog-content">
+    <div class="portfolio-report-content app-report-surface">
       <div class="app-report-meta mb-4">
         {{ t('portfolioReportGeneratedOnLabel') }} {{ formatDate(new Date().toISOString()) }}
       </div>
@@ -240,11 +241,12 @@
           </div>
         </article>
       </div>
-    </v-card-text>
+    </div>
 
-    <app-sticky-action-footer footer-class="justify-space-between portfolio-report-actions">
+    <template #actions>
       <app-action-button
         action="close"
+        class="mr-auto"
         variant="text"
         :label="t('portfolioReportCloseAction')"
         @click="showPortfolioReportModal = false"
@@ -269,6 +271,5 @@
           {{ t('portfolioReportSaveAction') }}
         </app-action-button>
       </div>
-    </app-sticky-action-footer>
-  </v-card>
-</v-dialog>
+    </template>
+</app-dialog-shell>

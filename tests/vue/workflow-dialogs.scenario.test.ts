@@ -1,8 +1,11 @@
 import { fireEvent, screen } from "@testing-library/vue";
+import { readFileSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
 import AuthGateCard from "../../src/components/shell/AuthGateCard.vue";
 import AutoCalculateModal from "../../src/components/modals/AutoCalculateModal.vue";
 import SaleEditorModal from "../../src/components/shell/SaleEditorModal.vue";
+import PortfolioReportModal from "../../src/components/shell/PortfolioReportModal.vue";
+import SystemConfigurationDialog from "../../src/components/shell/SystemConfigurationDialog.vue";
 import WorkspaceModals from "../../src/components/shell/WorkspaceModals.vue";
 import WheelCreateGameDialog from "../../src/components/windows/game/dialogs/WheelCreateGameDialog.vue";
 import WhatnotCsvImportDialog from "../../src/components/windows/whatnot/WhatnotCsvImportDialog.vue";
@@ -38,6 +41,28 @@ function translate(key: string): string {
     shellCreateWorkspaceBody: "Create a shared workspace.",
     shellWorkspaceNameLabel: "Workspace name",
     shellCreateWorkspaceConfirmAction: "Create workspace",
+    shellSharedWorkspaceTitle: "Shared workspace",
+    shellLeaveWorkspaceTitle: "Leave shared workspace",
+    shellLeaveWorkspaceOwnerBody: "Choose a new owner or delete this workspace.",
+    shellLeaveWorkspaceMemberBody: "Leave this shared workspace.",
+    shellLeaveWorkspaceAction: "Leave workspace",
+    shellLeaveWorkspaceDeleteConfirm: "Supprimer définitivement cet espace de travail partagé",
+    configSellingTitle: "Selling",
+    configSystemConfigurationTitle: "System configuration",
+    configSystemConfigurationHelp: "Default seller assumptions stay separate from lot overrides.",
+    configSystemDefaultsTitle: "System defaults",
+    configSystemDefaultsHelp: "These defaults apply to new lots.",
+    configSellingTaxesLabel: "Selling taxes",
+    configAverageBuyerShippingLabel: "Average buyer shipping",
+    configFeeProfileLabel: "Fee profile",
+    configFeeProfileWhatnot: "Whatnot",
+    configFeeProfileNoFees: "No fees",
+    configLotOverridesTitle: "Lot overrides",
+    configLotOverridesHelp: "Override defaults for this lot.",
+    configUseSystemPricingDefaultsLabel: "Use system pricing defaults",
+    configMarketplaceSkuLabel: "Importer depuis l’identifiant utilisateur",
+    configMarketplaceSkuPlaceholder: "External SKU",
+    commonClose: "Close",
     wheelCreateGameTitle: "Create a game",
     wheelGameTypeWheelLabel: "Wheel",
     wheelCreateWheelBody: "Spin a wheel.",
@@ -80,11 +105,30 @@ function translate(key: string): string {
     saleEditorBuyerShippingLabel: "Buyer shipping",
     saleEditorDateLabel: "Date",
     saleEditorNotesLabel: "Notes",
-    saleEditorAddAction: "Add sale"
+    saleEditorAddAction: "Add sale",
+    portfolioReportTitle: "Portfolio report",
+    portfolioReportCloseAction: "Close report",
+    portfolioReportGeneratedOnLabel: "Generated on",
+    portfolioReportCopyAction: "Copy report",
+    portfolioReportSaveAction: "Print report"
   } as Record<string, string>)[key] ?? key;
 }
 
 describe("workflow dialog scenarios", () => {
+  test("root dialogs delegate to AppDialogShell with their current state", () => {
+    const template = readFileSync("src/App.html", "utf8");
+    for (const model of [
+      "showNewLotModal",
+      "showRenameLotModal",
+      "showVerifyPurchaseModal",
+      "showStripeCheckoutModal",
+      "confirmDialog"
+    ]) {
+      expect(template).toMatch(new RegExp(`<app-dialog-shell[^>]*v-model="${model}"`));
+    }
+    expect(template).not.toMatch(/<v-dialog\b/);
+  });
+
   test("starts native Google sign-in from the primary Android action", async () => {
     const promptGoogleSignIn = vi.fn();
     renderWithCapabilities(AuthGateCard, shellPortsKey, {
@@ -170,6 +214,28 @@ describe("workflow dialog scenarios", () => {
     expect(createWorkspace).not.toHaveBeenCalled();
   });
 
+  test("creates a named workspace through the shared form actions", async () => {
+    const ctx = workspaceContext("personal");
+    renderWithCapabilities(WorkspaceModals, workspaceDialogPortsKey, ctx);
+
+    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeVisible();
+    expect(screen.getByLabelText("Workspace name")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Create workspace" }).closest(".app-form-actions")).not.toBeNull();
+    await fireEvent.click(screen.getByRole("button", { name: "Create workspace" }));
+
+    expect(ctx.createWorkspace).toHaveBeenCalledOnce();
+  });
+
+  test("keeps destructive workspace copy visible in the owner confirmation", () => {
+    const ctx = workspaceContext("workspace");
+    ctx.showCreateWorkspaceModal = false;
+    ctx.showLeaveWorkspaceModal = true;
+    ctx.isCurrentWorkspaceOwner = true;
+    renderWithCapabilities(WorkspaceModals, workspaceDialogPortsKey, ctx);
+
+    expect(screen.getByText("Supprimer définitivement cet espace de travail partagé")).toBeVisible();
+  });
+
   test("does not allow workspace creation while already in a shared workspace", () => {
     const ctx = workspaceContext("workspace");
     renderWithCapabilities(WorkspaceModals, workspaceDialogPortsKey, ctx);
@@ -237,6 +303,47 @@ describe("workflow dialog scenarios", () => {
     expect(saveSale).not.toHaveBeenCalled();
   });
 
+  test("selects a sale type and saves through the shared form actions", async () => {
+    const ctx = saleEditorContext();
+    renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, ctx);
+
+    expect(screen.getByRole("dialog", { name: "Add sale" })).toBeVisible();
+    expect(screen.getByLabelText("Type")).toBeVisible();
+    const typeInput = screen.getByLabelText("Type");
+    await fireEvent.mouseDown(typeInput);
+    await fireEvent.click(await screen.findByText("Box"));
+    expect(ctx.onNewSaleTypeChange).toHaveBeenCalledWith("box");
+
+    const saveButton = screen.getByRole("button", { name: "Add sale" });
+    expect(saveButton.closest(".app-form-actions")).not.toBeNull();
+    await fireEvent.click(saveButton);
+    expect(ctx.saveSale).toHaveBeenCalledOnce();
+  });
+
+  test("closes system configuration without changing its labeled inputs", async () => {
+    const ctx = systemConfigurationContext();
+    renderWithCapabilities(SystemConfigurationDialog, workspaceDialogPortsKey, ctx);
+
+    expect(screen.getByRole("dialog", { name: "System configuration" })).toBeVisible();
+    expect(screen.getByLabelText("Importer depuis l’identifiant utilisateur")).toBeVisible();
+    await fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    expect(ctx.showSystemConfigurationDialog).toBe(false);
+  });
+
+  test("closes and prints the portfolio report through its preserved actions", async () => {
+    const closeContext = portfolioReportContext();
+    const closeRender = renderWithCapabilities(PortfolioReportModal, commerceDialogPortsKey, closeContext);
+    expect(screen.getByRole("dialog", { name: "Portfolio report" })).toBeVisible();
+    await fireEvent.click(screen.getAllByRole("button", { name: "Close report" })[0]);
+    expect(closeContext.showPortfolioReportModal).toBe(false);
+    closeRender.unmount();
+
+    const printContext = portfolioReportContext();
+    renderWithCapabilities(PortfolioReportModal, commerceDialogPortsKey, printContext);
+    await fireEvent.click(screen.getByRole("button", { name: "Print report" }));
+    expect(printContext.savePortfolioReportTable).toHaveBeenCalledOnce();
+  });
+
   test("does not allow a locked seller to save a sale", () => {
     renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, {
       showAddSaleModal: true, editingSale: null, currentLotType: "pack", hasLotSelected: true, hasProAccess: false, canUsePaidActions: false,
@@ -257,6 +364,55 @@ function workspaceContext(activeScopeType: "personal" | "workspace") {
     getWorkspaceMemberPresenceLabel: () => "Offline", formatDate: () => "", removeWorkspaceMember: vi.fn(),
     leaveWorkspaceTransferMemberUserId: null, leaveWorkspaceDeleteConfirmation: false, showWorkspaceJoinDialog: false,
     pendingWorkspaceInviteTargetName: "", isAcceptingWorkspaceInvite: false, dismissPendingWorkspaceInvite: vi.fn(), acceptPendingWorkspaceInvite: vi.fn()
+  };
+}
+
+function saleEditorContext() {
+  return {
+    showAddSaleModal: true, editingSale: null, currentLotType: "pack", hasLotSelected: true, hasProAccess: true, canUsePaidActions: true,
+    newSale: { type: "pack", quantity: 1, price: 20, customer: "", buyerShipping: 0, date: "2026-07-15", memo: "" },
+    t: translate, cancelSale: vi.fn(), saveSale: vi.fn(), onNewSaleTypeChange: vi.fn(), formatCurrency: (value: number) => value.toFixed(2)
+  };
+}
+
+function systemConfigurationContext() {
+  return {
+    ...workspaceContext("personal"),
+    showCreateWorkspaceModal: false,
+    showSystemConfigurationDialog: true,
+    systemPricingDefaults: { sellingCurrency: "CAD", targetProfitPercent: 20, sellingTaxPercent: 13, sellingShippingPerOrder: 5, feeProfilePreset: "whatnot", spotsPerBox: 10 },
+    hasProAccess: true,
+    externalSku: "",
+    sellingCurrency: "CAD",
+    targetProfitPercent: 20,
+    sellingTaxPercent: 13,
+    sellingShippingPerOrder: 5,
+    feeProfilePreset: "whatnot",
+    spotsPerBox: 10,
+    currentLotType: "singles",
+    currentLotUsesSystemPricingDefaults: false,
+    hasLotSelected: true,
+    onSystemPricingDefaultsChange: vi.fn(),
+    setSystemFeeProfilePreset: vi.fn(),
+    setCurrentLotSystemPricingDefaultsMode: vi.fn(),
+    onPurchaseConfigChange: vi.fn(),
+    setFeeProfilePreset: vi.fn(),
+    accessProFeature: vi.fn()
+  };
+}
+
+function portfolioReportContext() {
+  return {
+    showPortfolioReportModal: true,
+    portfolioReportExpandedLotIds: [],
+    allLotPerformance: [],
+    hasPortfolioData: true,
+    togglePortfolioReportLot: vi.fn(),
+    copyPortfolioReportTable: vi.fn(),
+    savePortfolioReportTable: vi.fn(),
+    formatCurrency: (value: number) => value.toFixed(2),
+    formatDate: () => "August 11, 2026",
+    t: translate
   };
 }
 

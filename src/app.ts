@@ -12,6 +12,8 @@ import PortfolioReportModal from "./components/shell/PortfolioReportModal.vue";
 import SaleEditorModal from "./components/shell/SaleEditorModal.vue";
 import SystemConfigurationDialog from "./components/shell/SystemConfigurationDialog.vue";
 import WorkspaceModals from "./components/shell/WorkspaceModals.vue";
+import AppDialogShell from "./components/ui/AppDialogShell.vue";
+import AppFormLayout from "./components/ui/AppFormLayout.vue";
 import ConfigWindow from "./components/windows/config/ConfigWindow.vue";
 import LiveWindow from "./components/windows/live/LiveWindow.vue";
 import PortfolioWindow from "./components/windows/portfolio/PortfolioWindow.vue";
@@ -82,6 +84,8 @@ export const appOptions = {
     AutoCalculateModal,
     AuthGateCard,
     AppShellTopBar,
+    AppDialogShell,
+    AppFormLayout,
     LotSelectorOnboardingBlock,
     PortfolioReportModal,
     SaleEditorModal,
