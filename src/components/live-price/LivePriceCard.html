@@ -117,7 +117,6 @@
         @click="selectScenarioPrice(offset)"
       >
         <div class="live-pricing-card__scenario-main">
-          <span class="live-pricing-card__scenario-chip">{{ scenarioDeltaLabel(offset) }}</span>
           <span class="live-pricing-card__scenario-price">${{ formatCurrency(modelValue + offset) }}</span>
           <span class="live-pricing-card__scenario-percent">
             {{ formatCurrency(displayProfitPercentAtPrice(modelValue + offset), 1) }}%

@@ -51,22 +51,24 @@
         ></bracket-battle-builder>
 
         <template v-else>
-        <div class="wheel-compact-settings">
+        <app-form-layout compact :responsive="false">
+        <div class="wheel-compact-settings app-form-row">
           <div class="wheel-compact-setting">
-            <div class="wheel-compact-setting__label">{{ t('wheelInspectorSpinPriceLabel') }}</div>
+            <div class="wheel-compact-setting__label app-text-wrap">{{ t('wheelInspectorSpinPriceLabel') }}</div>
             <v-text-field v-model.number="editingWheelConfig.spinPrice" type="number"
               :aria-label="t('wheelInspectorSpinPriceLabel')"
               min="0.5" step="0.5" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
           </div>
           <div class="wheel-compact-setting">
-            <div class="wheel-compact-setting__label">{{ t('wheelInspectorOutcomeCountLabel') }}</div>
+            <div class="wheel-compact-setting__label app-text-wrap">{{ t('wheelInspectorOutcomeCountLabel') }}</div>
             <v-text-field v-model.number="editingWheelConfig.outcomeCount"
               :aria-label="t('wheelInspectorOutcomeCountLabel')"
               type="number" min="4" max="200" step="1" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
           </div>
         </div>
+        </app-form-layout>
 
         <v-divider class="my-2"></v-divider>
         <div class="wheel-section-heading">

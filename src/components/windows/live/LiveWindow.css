@@ -414,26 +414,12 @@
 }
 
 .live-pricing-card__scenario-main {
-  display: grid;
+  display: flex;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   min-width: 0;
-}
-
-.live-pricing-card__scenario-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.55rem;
-  padding: 0.14rem 0.5rem;
-  border-radius: var(--app-radius-pill);
-  background: rgba(var(--v-theme-surface), 0.86);
-  border: var(--app-stroke-hairline) solid rgba(var(--v-theme-on-surface), 0.18);
-  box-shadow: 0 1px 4px rgba(var(--v-theme-shadow), 0.18);
-  font-size: 0.68rem;
-  font-weight: var(--app-font-weight-emphasis);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  justify-content: space-between;
 }
 
 .live-pricing-card__scenario-price {
@@ -575,7 +561,7 @@
 
   .live-pricing-card__scenario-detail {
     min-height: 1.25rem;
-    opacity: 0;
+    opacity: 0.25;
     transform: translateY(2px);
     transition:
       opacity var(--app-motion-standard) ease,

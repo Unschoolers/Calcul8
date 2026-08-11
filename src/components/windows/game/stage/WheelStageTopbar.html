@@ -1,7 +1,7 @@
 <div class="wheel-stage-topbar">
   <div class="wheel-stage-headline">
     <div v-if="wheelPresentationMode" class="wheel-stage-title">{{ wheelStageTitle }}</div>
-    <div v-else class="wheel-stage-game-toolbar">
+    <div v-else class="wheel-stage-game-toolbar app-form-row">
       <v-select
         v-model="activeWheelConfigId"
         :items="wheelConfigItems"

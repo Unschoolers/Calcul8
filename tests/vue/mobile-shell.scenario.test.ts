@@ -86,6 +86,19 @@ describe("mobile lot switcher", () => {
     expect(screen.queryByRole("dialog", { name: "Choose inventory" })).not.toBeInTheDocument();
   });
 
+  test("moves focus into the search form and restores it to the trigger when closed", async () => {
+    renderSwitcher();
+
+    const trigger = screen.getByRole("button", { name: "Current inventory: My Hero Academia" });
+    await fireEvent.click(trigger);
+
+    expect(screen.getByRole("searchbox", { name: "Search inventory" })).toHaveFocus();
+
+    await fireEvent.click(screen.getByRole("button", { name: "commonClose" }));
+
+    expect(trigger).toHaveFocus();
+  });
+
   test("keeps search out of the way for a short lot list", async () => {
     renderSwitcher({ lotItems: [lot(1, "My Hero Academia"), lot(2, "Kaiju No. 8")] });
 

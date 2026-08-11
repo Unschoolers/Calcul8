@@ -7,18 +7,20 @@
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
-        <div class="text-caption text-medium-emphasis mb-2">
-          Copy cloud sync data from a source userId into your current personal account or active workspace (debug tool).
-        </div>
-        <div class="text-caption text-medium-emphasis mb-3">
-          Target:
-          <strong v-if="activeScopeType === 'workspace' && activeWorkspaceId">
-            Workspace {{ currentWorkspaceName || activeWorkspaceId }}
-          </strong>
-          <strong v-else>Personal account</strong>
-        </div>
-        <v-row density="comfortable">
-          <v-col cols="12" md="4">
+        <app-form-layout compact>
+          <template #helper>
+            <div class="text-caption text-medium-emphasis app-text-wrap">
+              Copy cloud sync data from a source userId into your current personal account or active workspace (debug tool).
+            </div>
+            <div class="text-caption text-medium-emphasis app-text-wrap">
+              Target:
+              <strong v-if="activeScopeType === 'workspace' && activeWorkspaceId" class="app-long-token">
+                Workspace {{ currentWorkspaceName || activeWorkspaceId }}
+              </strong>
+              <strong v-else>Personal account</strong>
+            </div>
+          </template>
+          <div class="app-form-row">
             <v-text-field
               v-model="adminImportSourceUserId"
               label="Source userId"
@@ -27,8 +29,6 @@
               hide-details
               autocomplete="off"
             ></v-text-field>
-          </v-col>
-          <v-col cols="12" md="4">
             <v-text-field
               v-model="adminImportSourceWorkspaceId"
               label="Source workspaceId"
@@ -38,9 +38,10 @@
               hide-details
               autocomplete="off"
             ></v-text-field>
-          </v-col>
-          <v-col cols="12" md="4" class="d-flex align-center">
+          </div>
+          <template #actions>
             <v-btn
+              class="app-touch-target"
               block
               color="warning"
               prepend-icon="mdi-database-sync"
@@ -49,8 +50,8 @@
             >
               Import from userId
             </v-btn>
-          </v-col>
-        </v-row>
+          </template>
+        </app-form-layout>
       </v-card-text>
     </v-card>
   </v-col>

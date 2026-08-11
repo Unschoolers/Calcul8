@@ -61,13 +61,14 @@
                       </v-card-title>
                       <v-divider></v-divider>
                       <v-card-text>
+                        <app-form-layout compact>
                         <v-btn-toggle
                           :model-value="purchaseUiMode"
                           mandatory
                           divided
                           density="compact"
                           variant="outlined"
-                          class="mb-2 segment-toggle"
+                          class="app-form-row segment-toggle"
                           @update:model-value="requestPurchaseUiMode($event)"
                         >
                           <v-btn value="simple" size="small">{{ t('configSimpleModeLabel') }}</v-btn>
@@ -81,14 +82,15 @@
                           </v-btn>
                         </v-btn-toggle>
 
-                        <div v-if="purchaseUiMode === 'expert'" class="mb-2">
-                          <div class="text-caption text-medium-emphasis mb-1">{{ t('configCostInputModeLabel') }}</div>
+                        <div v-if="purchaseUiMode === 'expert'" class="app-form-row">
+                          <div class="text-caption text-medium-emphasis mb-1 app-text-wrap">{{ t('configCostInputModeLabel') }}</div>
                           <v-btn-toggle
                             v-model="costInputMode"
+                            divided
                             mandatory
                             density="compact"
-                            variant="tonal"
-                            class="pill-toggle"
+                            variant="outlined"
+                            class="app-form-row segment-toggle"
                             @update:model-value="onPurchaseConfigChange"
                           >
                             <v-btn value="perBox" size="small">{{ t('configPerBoxModeLabel') }}</v-btn>
@@ -96,7 +98,7 @@
                           </v-btn-toggle>
                         </div>
 
-                        <div v-if="purchaseUiMode === 'simple'" class="text-caption text-medium-emphasis mb-2">
+                        <div v-if="purchaseUiMode === 'simple'" class="text-caption text-medium-emphasis app-text-wrap">
                           {{
                             hasProAccess
                               ? ""
@@ -104,8 +106,8 @@
                           }}
                         </div>
 
-                        <v-row density="comfortable">
-                            <v-col :cols="purchaseUiMode === 'simple' ? 8 : 6">
+                        <v-row density="comfortable" class="app-form-row">
+                            <v-col :cols="6">
                               <v-text-field
                               id="guided-onboarding-bulk-cost-input"
                               :model-value="purchaseCostInputValue"
@@ -118,7 +120,7 @@
                               @update:model-value="updatePurchaseCostInput"
                             ></v-text-field>
                           </v-col>
-                          <v-col :cols="purchaseUiMode === 'simple' ? 4 : 6">
+                          <v-col :cols="4">
                             <v-btn-toggle
                               v-model="currency"
                               mandatory
@@ -218,12 +220,13 @@
 
                         <v-checkbox
                           v-model="includeTax"
-                          :label="`${t('configIncludePurchaseTaxLabel')} (${purchaseTaxPercent || 0}%)`"
+                          :label="`${t('configIncludePurchaseTaxLabel')} `"
                           density="compact"
                           hide-details
                           @change="onPurchaseConfigChange"
                         ></v-checkbox>
                         </template>
+                        </app-form-layout>
 
                       </v-card-text>
                     </v-card>

@@ -6,6 +6,7 @@ import {
   resolveVuetifySlotString
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { BracketBattleConfig, BracketBattleConfigPrize, Lot, WheelConfig } from "../../../../types/app.ts";
+import AppFormLayout from "../../../ui/AppFormLayout.vue";
 import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import {
   applyBracketBattlePrizeCatalogSelection,
@@ -32,6 +33,7 @@ function getBracketConfig(context: BracketBattleBuilderThis): BracketBattleConfi
 
 export const BracketBattleBuilder = {
   name: "BracketBattleBuilder",
+  components: { AppFormLayout },
   props: {
     ctx: gameContextProp
   },

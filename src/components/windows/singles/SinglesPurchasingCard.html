@@ -8,14 +8,15 @@
     content-class="singles-grid-card__content"
     divider
   >
+      <app-form-layout compact>
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
-        <div class="text-caption text-medium-emphasis">{{ t('singlesDefaultPurchaseCurrencyLabel') }}</div>
+        <div class="text-caption text-medium-emphasis app-text-wrap">{{ t('singlesDefaultPurchaseCurrencyLabel') }}</div>
         <v-btn-toggle
           v-model="currency"
           mandatory
           density="compact"
           variant="tonal"
-          class="pill-toggle"
+          class="pill-toggle app-form-row"
           @update:model-value="onPurchaseConfigChange"
         >
           <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
@@ -24,7 +25,7 @@
       </div>
       <div
         v-if="!showCatalogSuggestions"
-        class="text-caption text-medium-emphasis mb-3"
+        class="text-caption text-medium-emphasis app-text-wrap"
       >
       </div>
       <v-text-field
@@ -36,10 +37,9 @@
         density="compact"
         step="0.01"
         hide-details
-        class="mb-3"
         @input="onPurchaseConfigChange"
       ></v-text-field>
-      <v-alert v-if="conversionInfo" type="info" density="compact" class="mb-3">
+      <v-alert v-if="conversionInfo" type="info" density="compact">
         {{ conversionInfo }}
       </v-alert>
       <v-alert
@@ -48,11 +48,11 @@
         variant="tonal"
         density="compact"
         closable
-        class="mb-3"
         @click:close="dismissSinglesInfoNotice"
       >
         {{ t('singlesInfoNotice') }}
       </v-alert>
+      </app-form-layout>
       <app-toolbar-card card-class="singles-mobile-sticky-tools" content-class="singles-mobile-sticky-tools__content">
         <v-text-field
           v-model="singlesSearchQuery"
@@ -60,7 +60,7 @@
           density="compact"
           hide-details
           prepend-inner-icon="mdi-magnify"
-          class="singles-search-input mb-3"
+          class="singles-search-input app-form-row"
           :placeholder="t('singlesSearchPlaceholder')"
           @update:model-value="onSinglesSearchInput"
         >

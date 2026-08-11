@@ -25,6 +25,7 @@
   </div>
 
   <div class="bracket-battle-builder-card">
+    <app-form-layout compact>
     <div class="bracket-battle-grid bracket-battle-grid--buyers">
       <v-text-field
         v-for="(_buyer, index) in bracketConfig.participants"
@@ -36,6 +37,7 @@
         hide-details="auto"
       ></v-text-field>
     </div>
+    </app-form-layout>
   </div>
 
   <div class="bracket-battle-section-head bracket-battle-section-head--prizes">
@@ -53,7 +55,7 @@
         </div>
       </div>
 
-      <div class="bracket-battle-prize-controls">
+      <div class="bracket-battle-prize-controls app-form-row">
         <v-btn-toggle
           :model-value="bracketSourceMode(prize)"
           mandatory

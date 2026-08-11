@@ -51,3 +51,40 @@ test("feature styles do not encode shell chrome measurements", () => {
   ].map((path) => readFileSync(path, "utf8")).join("\n");
   assert.doesNotMatch(guarded, /calc\((?:72px|108px|7rem|2\.7rem|8\.5rem)\s*\+/);
 });
+
+test("editable feature forms use the shared form contract", () => {
+  const required = [
+    "src/App.html",
+    "src/components/customers/BuyerQuickViewModal.html",
+    "src/components/modals/AutoCalculateModal.html",
+    "src/components/shell/LotSelectorOnboardingBlock.html",
+    "src/components/shell/MobileLotSwitcher.html",
+    "src/components/shell/SaleEditorModal.html",
+    "src/components/shell/SystemConfigurationDialog.html",
+    "src/components/shell/WorkspaceModals.html",
+    "src/components/windows/config/ConfigWindow.html",
+    "src/components/windows/config/AdminSyncImportCard.html",
+    "src/components/windows/game/coordinator/GameWindow.html",
+    "src/components/windows/singles/SinglesConfigWindow.html",
+    "src/components/windows/singles/SinglesCsvImportDialog.html",
+    "src/components/windows/singles/SinglesPurchasingCard.html",
+    "src/components/windows/game/bracket/BracketBattleBuilder.html",
+    "src/components/windows/game/inspector/WheelInspector.html",
+    "src/components/windows/game/inspector/WheelTierCard.html",
+    "src/components/windows/game/stage/WheelStageTopbar.html",
+    "src/components/windows/live/LiveSinglesPanel.html",
+    "src/components/windows/portfolio/PortfolioWindow.html",
+    "src/components/windows/whatnot/WhatnotCsvImportDialog.html",
+    "src/components/windows/whatnot/WhatnotReviewDialog.html"
+  ];
+
+  for (const path of required) {
+    assert.match(readFileSync(path, "utf8"), /<app-form-layout\b|app-form-row/);
+  }
+});
+
+test("configuration forms do not create viewport-filling gaps", () => {
+  const styles = readFileSync("src/components/windows/config/ConfigWindow.css", "utf8");
+  assert.doesNotMatch(styles, /min-height:\s*(?:100vh|calc\(100vh)/);
+  assert.doesNotMatch(styles, /flex-grow:\s*1[^}]*admin/i);
+});

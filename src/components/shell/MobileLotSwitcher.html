@@ -1,5 +1,6 @@
 <div class="mobile-lot-switcher">
   <button
+    ref="lotSwitcherTrigger"
     type="button"
     class="mobile-lot-switcher__trigger"
     :aria-label="lotSwitcherAriaLabel"
@@ -27,7 +28,7 @@
 
   <v-bottom-sheet v-model="isOpen" inset content-class="mobile-lot-sheet-overlay">
     <v-card
-      class="mobile-lot-sheet"
+      class="mobile-lot-sheet app-overlay-frame"
       role="dialog"
       :aria-label="t('shellLotSwitcherTitle')"
     >
@@ -52,6 +53,7 @@
       <v-card-text class="mobile-lot-sheet__body">
         <v-text-field
           v-if="showLotSearch"
+          ref="lotSearchInput"
           v-model="searchQuery"
           type="search"
           :label="t('shellLotSearchLabel')"
@@ -60,7 +62,7 @@
           density="compact"
           hide-details
           clearable
-          class="mobile-lot-sheet__search"
+          class="mobile-lot-sheet__search app-form-row"
         ></v-text-field>
 
         <v-list v-if="visibleLotItems.length" class="mobile-lot-sheet__list" role="listbox">
@@ -122,4 +124,3 @@
     </v-card>
   </v-bottom-sheet>
 </div>
-

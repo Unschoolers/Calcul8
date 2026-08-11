@@ -345,17 +345,17 @@
 .sales-history-ledger__sortbar {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.1rem 0.42rem;
-  overflow-x: auto;
+  gap: 0.05rem;
+  padding: 0.2rem 0.1rem 0.2rem;
+  overflow-x: hidden;
 }
 
 .sales-history-ledger__sort {
   display: inline-flex;
   align-items: center;
-  gap: 0.18rem;
+  gap: 0rem;
   min-height: 1.55rem;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.2rem;
   border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   border-radius: var(--app-radius-pill);
   background: rgba(var(--v-theme-on-surface), 0.035);

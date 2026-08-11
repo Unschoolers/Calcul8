@@ -3,6 +3,7 @@ import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getWheelChanceTotal } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
+import AppFormLayout from "../../../ui/AppFormLayout.vue";
 import AppSectionCard from "../../../ui/AppSectionCard.vue";
 import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
 import BracketBattleBuilder from "../bracket/BracketBattleBuilder.vue";
@@ -28,6 +29,7 @@ export const WheelInspector = {
   name: "WheelInspector",
   components: {
     AppSectionCard,
+    AppFormLayout,
     BracketBattleBuilder,
     WheelHistoryPanel,
     WheelTierCard,
@@ -175,4 +177,3 @@ export const WheelInspector = {
   },
   setup: setupGameContext
 };
-
