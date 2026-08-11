@@ -422,11 +422,6 @@
   color: rgba(var(--v-theme-on-surface), 0.56);
 }
 
-.wheel-tier-editor {
-  border-radius: 24px !important;
-  overflow: hidden;
-}
-
 .wheel-tier-editor__title {
   display: block;
   position: sticky;

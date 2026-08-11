@@ -472,10 +472,6 @@
   color: var(--app-text-strong);
 }
 
-.portfolio-sales-drilldown-card {
-  max-height: min(78vh, 720px);
-}
-
 .portfolio-sales-drilldown-content {
   overflow-x: auto;
 }

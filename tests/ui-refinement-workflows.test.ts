@@ -36,31 +36,51 @@ test("Portfolio sales drilldown has mobile cards with the same row actions and v
   assert.match(template, /portfolio-sales-drilldown-desktop-table/);
   assert.match(styles, /\.portfolio-sales-drilldown-mobile-list/);
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]+\.portfolio-sales-drilldown-desktop-table/);
+  assert.doesNotMatch(styles, /\.portfolio-sales-drilldown-card\b/);
 });
 
 test("Game workflow dialogs and inspector use shared dialog and section contracts", () => {
   const gameTemplate = read("src/components/windows/game/coordinator/GameWindow.html");
   const inspectorScript = read("src/components/windows/game/inspector/WheelInspector.ts");
   const inspectorTemplate = read("src/components/windows/game/inspector/WheelInspector.html");
+  const tierEditorStyles = read("src/components/windows/game/styles/wheel-tier-editor.css");
+  const sharedDialogBlocks = gameTemplate.match(/<app-dialog-shell\b[\s\S]*?<\/app-dialog-shell>/g) ?? [];
 
-  for (const dialogClass of [
-    "wheel-pending-lot-dialog",
-    "wheel-confirm-dialog",
-    "wheel-live-confirm-dialog",
-    "wheel-manage-dialog"
+  assert.doesNotMatch(gameTemplate, /<v-dialog\b/);
+  assert.equal(sharedDialogBlocks.length, 4);
+
+  for (const dialogContract of [
+    {
+      className: "wheel-pending-lot-dialog",
+      state: /v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/,
+      actions: [/:title="wheelPendingInventoryIssuesTitle"/, /@click="confirmAllBatchSales"/]
+    },
+    {
+      className: "wheel-confirm-dialog",
+      state: /v-model="wheelConfirmDialog"/,
+      actions: [/@click="wheelConfirmDialog = false"/, /@click="confirmWheelAction"/]
+    },
+    {
+      className: "wheel-live-confirm-dialog",
+      state: /v-model="wheelLiveConfirmDialog"/,
+      actions: [/@click="cancelWheelModeChange"/, /@click="confirmWheelModeChange"/]
+    },
+    {
+      className: "wheel-manage-dialog",
+      state: /v-model="wheelManageDialog"/,
+      actions: [/@click="closeWheelManageDialog"/, /@click="applyWheelManageDialog"/]
+    }
   ]) {
-    assert.match(gameTemplate, new RegExp(dialogClass));
+    const dialogBlock = sharedDialogBlocks.find((block) => block.includes(`class="${dialogContract.className}"`));
+    assert.ok(dialogBlock, `${dialogContract.className} must be owned by AppDialogShell`);
+    assert.match(dialogBlock, dialogContract.state);
+    for (const action of dialogContract.actions) assert.match(dialogBlock, action);
   }
 
-  assert.match(gameTemplate, /app-dialog-card/);
-  assert.match(gameTemplate, /app-dialog-title/);
-  assert.match(gameTemplate, /app-dialog-content/);
-  assert.match(gameTemplate, /app-dialog-actions/);
-  assert.match(gameTemplate, /app-mobile-fullscreen-dialog/);
+  assert.doesNotMatch(tierEditorStyles, /^\.wheel-tier-editor\s*\{/m);
 
   assert.match(inspectorScript, /AppSectionCard/);
   assert.match(inspectorTemplate, /<app-section-card[\s\S]+wheel-inspector-panel/);
   assert.match(inspectorTemplate, /app-section-title-bar/);
   assert.doesNotMatch(inspectorTemplate, /^<v-card[\s\S]+wheel-inspector-panel/);
 });
-
