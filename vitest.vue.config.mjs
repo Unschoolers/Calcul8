@@ -10,5 +10,8 @@ export default createVitestConfig({
   exclude: ["**/dist/**", "**/node_modules/**"],
   environment: "jsdom",
   setupFiles: ["tests/vue/setup.ts"],
-  inlineDeps: ["vuetify"]
+  inlineDeps: ["vuetify"],
+  css: {
+    include: [/AppFormLayout\.css/]
+  }
 });

@@ -9,7 +9,8 @@ export function createVitestConfig({
   exclude = ["**/dist/**", "**/node_modules/**", "tests/vue/**/*.scenario.test.ts"],
   environment = "node",
   setupFiles = [],
-  inlineDeps = []
+  inlineDeps = [],
+  css = false
 } = {}) {
   return defineConfig({
     plugins: useVue ? [vue()] : [],
@@ -26,6 +27,7 @@ export function createVitestConfig({
       include,
       exclude,
       setupFiles,
+      css,
       fileParallelism: true,
       maxWorkers: Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : undefined,
       coverage: {

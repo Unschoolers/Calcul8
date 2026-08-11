@@ -5,6 +5,7 @@
   :persistent="persistent"
   @update:model-value="updateModelValue"
 >
+  <template #title><slot name="title">{{ title }}</slot></template>
   <p v-if="body" class="text-body-2 text-medium-emphasis app-text-wrap">{{ body }}</p>
   <slot></slot>
   <template #actions>

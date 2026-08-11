@@ -1,5 +1,4 @@
 import { defineComponent, nextTick } from "vue";
-import "./AppFormLayout.css";
 
 export const AppFormLayout = defineComponent({
   name: "AppFormLayout",

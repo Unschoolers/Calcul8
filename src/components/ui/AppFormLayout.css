@@ -31,6 +31,14 @@
   gap: var(--app-space-1);
 }
 
+/* Native buttons supplied through the actions slot need the same hit area as Vuetify buttons. */
+.app-form-actions > button {
+  min-inline-size: var(--app-touch-target-min);
+  min-block-size: var(--app-touch-target-min);
+  min-width: var(--app-touch-target-min);
+  min-height: var(--app-touch-target-min);
+}
+
 .app-form-validation {
   padding: var(--app-space-3);
   border: var(--app-stroke-hairline) solid rgba(var(--v-theme-warning), 0.32);

@@ -25,6 +25,23 @@ describe("AppFormLayout", () => {
     expect(screen.getByText(/Identifiant de synchronisation/).closest("label")).toHaveClass("app-text-wrap");
     expect(screen.getByRole("button", { name: /Importer/ }).closest(".app-form-actions")).toHaveClass("app-form-actions--sticky");
   });
+
+  test("gives native action-slot buttons the shared touch target", () => {
+    const FormScenario = defineComponent({
+      components: { AppFormLayout },
+      template: `
+        <app-form-layout>
+          <template #actions><button>Enregistrer les modifications</button></template>
+        </app-form-layout>
+      `
+    });
+
+    renderWithApp(FormScenario);
+
+    const action = screen.getByRole("button", { name: "Enregistrer les modifications" });
+    expect(getComputedStyle(action).minWidth).toBe("var(--app-touch-target-min)");
+    expect(getComputedStyle(action).minHeight).toBe("var(--app-touch-target-min)");
+  });
 });
 
 describe("AppConfirmDialog", () => {
@@ -57,5 +74,21 @@ describe("AppConfirmDialog", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog.querySelector(".app-sticky-action-footer.app-form-actions")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Annuler" })).toHaveClass("app-touch-target");
+  });
+
+  test("forwards a custom title slot to the dialog shell", async () => {
+    const ConfirmScenario = defineComponent({
+      components: { AppConfirmDialog },
+      template: `
+        <app-confirm-dialog :model-value="true" title="Titre de secours">
+          <template #title><span>Titre personnalisé</span></template>
+        </app-confirm-dialog>
+      `
+    });
+
+    renderWithApp(ConfirmScenario);
+
+    expect(await screen.findByText("Titre personnalisé")).toBeInTheDocument();
+    expect(screen.queryByText("Titre de secours")).not.toBeInTheDocument();
   });
 });

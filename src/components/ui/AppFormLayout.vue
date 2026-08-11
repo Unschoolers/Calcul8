@@ -5,3 +5,5 @@ export default AppFormLayout;
 </script>
 
 <template src="./AppFormLayout.html"></template>
+
+<style src="./AppFormLayout.css"></style>
