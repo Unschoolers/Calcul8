@@ -2,6 +2,7 @@ import "./PortfolioWindow.css";
 import AppActionButton from "../../ui/AppActionButton.vue";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
 import AppEmptyState from "../../ui/AppEmptyState.vue";
+import AppFormLayout from "../../ui/AppFormLayout.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
 import AppSectionCard from "../../ui/AppSectionCard.vue";
 import AppToolbarCard from "../../ui/AppToolbarCard.vue";
@@ -17,6 +18,7 @@ export const PortfolioWindow = {
     AppActionButton,
     AppDialogShell,
     AppEmptyState,
+    AppFormLayout,
     AppMetricValue,
     AppSectionCard,
     AppToolbarCard,

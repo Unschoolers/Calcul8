@@ -1357,6 +1357,12 @@
       min-height: 100dvh;
       padding-top: calc(var(--v-layout-top) + var(--app-shell-top-inset)) !important;
     }
+    .app-shell-root[data-has-context-actions="false"] {
+      --app-shell-current-bottom-clearance: var(--app-shell-content-clearance-nav);
+    }
+    .app-shell-root[data-has-context-actions="true"] {
+      --app-shell-current-bottom-clearance: var(--app-shell-content-clearance-actions);
+    }
     .app-shell-bottom-nav {
       height: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom)) !important;
       padding-bottom: var(--app-safe-area-bottom);

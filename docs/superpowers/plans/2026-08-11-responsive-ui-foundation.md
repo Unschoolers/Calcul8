@@ -222,11 +222,15 @@ Expected: FAIL because `AppDialogShell.vue` does not exist.
 --app-shell-content-clearance-nav: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom) + var(--app-space-3));
 --app-shell-content-clearance-actions: calc(var(--app-shell-content-clearance-nav) + var(--app-context-action-size) + var(--app-space-4));
 --app-sticky-content-top: var(--app-shell-top-inset);
---app-overlay-mobile-top: max(var(--app-safe-area-top), 24px);
+--app-overlay-mobile-top: var(--app-safe-area-top);
 --app-overlay-mobile-height: calc(100dvh - var(--app-overlay-mobile-top) - var(--app-safe-area-bottom));
 --app-form-mobile-inline-padding: var(--app-space-4);
 --app-form-section-gap: var(--app-space-4);
 ```
+
+Do not manufacture a mobile safe-area floor. In the responsive web app this
+resolves to `0px` when the browser reports no inset; native Android receives
+the actual CSS inset through `SystemBars.insetsHandling: "css"`.
 
 Keep the existing token names as aliases during migration where removing them immediately would create unrelated churn.
 
@@ -906,6 +910,8 @@ git commit -m "refactor: standardize editable form layouts"
 **Interfaces:**
 - Consumes: `--app-shell-content-clearance-nav`, `--app-shell-content-clearance-actions`, `--app-sticky-content-top`, `--app-touch-target-min`, and `.app-shell-action-zone`.
 - Produces: shell-owned clearance selected through `data-has-context-actions`, plus shared `.app-touch-target`, `.app-text-wrap`, `.app-text-ellipsis`, and `.app-long-token` behavior.
+
+Safe-area contract: `src/styles/design-tokens.css` is the only source that may read `env(safe-area-inset-*)`. All surfaces consume the `--app-safe-area-*` tokens. Never manufacture a `24px` safe-area fallback: responsive web/PWA receives `0px` when no real inset exists, while Android receives the native SystemBars CSS inset.
 
 - [ ] **Step 1: Add failing shell-clearance and touch assertions**
 

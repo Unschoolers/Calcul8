@@ -527,7 +527,7 @@
   }
 
   .live-singles-panel > .v-card-text {
-    padding-bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(var(--app-live-singles-mobile-content-clearance) + var(--app-safe-area-bottom)) !important;
   }
 
   .live-singles-item-layout {
@@ -601,7 +601,7 @@
 
   .live-singles-summary-card {
     position: sticky;
-    bottom: calc(-0.9rem - env(safe-area-inset-bottom));
+    bottom: var(--app-safe-area-bottom);
     z-index: 14;
     margin-inline: calc(-1 * var(--app-space-1));
     border-color: var(--app-stroke-default) !important;
@@ -613,7 +613,7 @@
   .live-singles-summary-card > .v-card-text {
     display: grid;
     gap: var(--app-space-2);
-    padding-bottom: calc(var(--app-space-3) + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(var(--app-space-3) + var(--app-safe-area-bottom)) !important;
   }
 
   .live-singles-mobile-summary-head {

@@ -10,6 +10,11 @@
   padding-bottom: 0.7rem !important;
 }
 
+.portfolio-filter-form,
+.portfolio-filter-form .app-form-fields {
+  gap: 0;
+}
+
 .portfolio-section-card {
   position: relative;
   overflow: hidden;

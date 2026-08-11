@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <div class="live-singles-composer">
+    <app-form-layout compact :responsive="false" class="live-singles-composer">
       <div class="live-singles-toolbar">
         <v-btn-toggle
           v-model="liveSinglesPricingMode"
@@ -27,8 +27,7 @@
         </v-btn-toggle>
       </div>
 
-      <v-row density="comfortable">
-        <v-col cols="12">
+      <div class="app-form-row">
           <v-autocomplete
             v-model="liveSinglesSelectedId"
             v-model:search="liveSinglesSearchText"
@@ -97,9 +96,8 @@
               </v-list-item>
             </template>
           </v-autocomplete>
-        </v-col>
-      </v-row>
-    </div>
+      </div>
+    </app-form-layout>
 
     <v-alert
       v-if="!hasLiveSinglesSelection"
@@ -146,7 +144,8 @@
                     size="small"
                     variant="tonal"
                     color="error"
-                    class="live-singles-step-btn"
+                    class="live-singles-step-btn app-touch-target"
+                    :aria-label="t('liveSinglesDecreasePriceAction')"
                     @click="adjustBundlePrice(-1)"
                   ></v-btn>
                   <v-btn
@@ -154,7 +153,8 @@
                     size="small"
                     variant="tonal"
                     color="success"
-                    class="live-singles-step-btn"
+                    class="live-singles-step-btn app-touch-target"
+                    :aria-label="t('liveSinglesIncreasePriceAction')"
                     @click="adjustBundlePrice(1)"
                   ></v-btn>
                 </div>
@@ -236,7 +236,8 @@
                       size="x-small"
                       variant="tonal"
                       color="default"
-                      class="live-singles-mini-step-btn"
+                      class="live-singles-mini-step-btn app-touch-target"
+                      :aria-label="t('liveSinglesDecreaseQuantityAction')"
                       :disabled="getLiveSinglesEntryQuantity(entry) <= 1"
                       @click="adjustLiveSinglesEntryQuantity(entry.id, -1)"
                     ></v-btn>
@@ -246,7 +247,8 @@
                       size="x-small"
                       variant="tonal"
                       color="default"
-                      class="live-singles-mini-step-btn"
+                      class="live-singles-mini-step-btn app-touch-target"
+                      :aria-label="t('liveSinglesIncreaseQuantityAction')"
                       :disabled="getLiveSinglesEntryQuantity(entry) >= getLiveSinglesEntryMaxQuantity(entry)"
                       @click="adjustLiveSinglesEntryQuantity(entry.id, 1)"
                     ></v-btn>
@@ -283,7 +285,8 @@
                       size="x-small"
                       variant="tonal"
                       color="error"
-                      class="live-singles-step-btn"
+                      class="live-singles-step-btn app-touch-target"
+                      :aria-label="t('liveSinglesDecreasePriceAction')"
                       @click="adjustIndividualPrice(entry.id, -1)"
                     ></v-btn>
                     <v-btn
@@ -291,7 +294,8 @@
                       size="x-small"
                       variant="tonal"
                       color="success"
-                      class="live-singles-step-btn"
+                      class="live-singles-step-btn app-touch-target"
+                      :aria-label="t('liveSinglesIncreasePriceAction')"
                       @click="adjustIndividualPrice(entry.id, 1)"
                     ></v-btn>
                     </div>

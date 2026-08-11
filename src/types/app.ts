@@ -604,6 +604,7 @@ export interface AppState extends LotSetup {
   isResolvingWorkspaceInvite: boolean;
   isAcceptingWorkspaceInvite: boolean;
   currentTab: AppTab;
+  visibleShellContextActionIds: string[];
   showNewLotModal: boolean;
   showRenameLotModal: boolean;
   speedDialOpenSales: boolean;

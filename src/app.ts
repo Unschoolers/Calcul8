@@ -62,6 +62,7 @@ import {
   shellPortsKey,
   type ShellPortSource
 } from "./components/shell/shellPorts.ts";
+import { createShellActionPresence, shellActionPresenceKey } from "./components/shell/shellActionPresence.ts";
 import {
   commerceDialogPortsKey,
   createCommerceDialogPorts,
@@ -77,6 +78,7 @@ import {
   whatnotDialogPortsKey,
   type WhatnotDialogPorts
 } from "./components/windows/whatnot/whatnotDialogPorts.ts";
+import type { AppState } from "./types/app.ts";
 
 export const appOptions = {
   components: {
@@ -101,7 +103,7 @@ export const appOptions = {
     WhatnotReviewDialog
   },
   data: createInitialState,
-  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts) {
+  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds">) {
     return {
       [buyerProfilePortsKey]: createBuyerProfilePorts(this),
       [commerceDialogPortsKey]: createCommerceDialogPorts(this),
@@ -111,6 +113,7 @@ export const appOptions = {
       [portfolioWindowPortsKey]: createPortfolioWindowPorts(this),
       [salesWindowPortsKey]: createSalesWindowPorts(this),
       [shellPortsKey]: createShellPorts(this),
+      [shellActionPresenceKey]: createShellActionPresence(this),
       [singlesConfigPortsKey]: createSinglesConfigPorts(this),
       [whatnotDialogPortsKey]: createWhatnotDialogPorts(this),
       [workspaceDialogPortsKey]: createWorkspaceDialogPorts(this)

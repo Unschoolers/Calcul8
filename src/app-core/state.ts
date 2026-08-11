@@ -97,6 +97,7 @@ export function createInitialState(): AppState {
     isAcceptingWorkspaceInvite: false,
     // UI State
     currentTab: "config",
+    visibleShellContextActionIds: [],
     showNewLotModal: false,
     showRenameLotModal: false,
     speedDialOpenSales: false,

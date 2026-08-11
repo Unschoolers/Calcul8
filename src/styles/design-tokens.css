@@ -64,16 +64,24 @@
   --app-bottom-nav-active-text: rgb(var(--v-theme-primary));
   --app-bottom-nav-inactive-text: rgba(var(--v-theme-on-surface), 0.72);
   --app-shell-mobile-padding-top: 0.6rem;
+  --app-live-singles-mobile-content-clearance: 7rem;
+  --app-singles-mobile-sticky-tools-offset: 2.7rem;
+  --app-singles-mobile-summary-offset: 8.5rem;
+  --app-singles-desktop-sticky-tools-offset: 3.4rem;
+  --app-singles-mobile-editor-bottom-clearance: 108px;
+  --app-wheel-mobile-action-rail-height: 5.5rem;
+  --app-wheel-mobile-inspector-clearance: 5.75rem;
   --app-current-price-border-width: 3px;
   --app-context-action-inline-offset: max(var(--app-space-4), var(--app-safe-area-right));
   --app-context-action-size: 3.5rem;
   --app-context-action-gap: var(--app-space-4);
   --app-context-action-bottom-1: calc(var(--app-bottom-nav-height) + var(--app-space-2) + var(--app-safe-area-bottom));
-  --app-shell-content-bottom-padding: calc(var(--app-bottom-nav-height) + var(--app-context-action-size) + var(--app-space-6) + var(--app-safe-area-bottom));
   --app-shell-content-clearance-nav: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom) + var(--app-space-3));
   --app-shell-content-clearance-actions: calc(var(--app-shell-content-clearance-nav) + var(--app-context-action-size) + var(--app-space-4));
+  --app-shell-current-bottom-clearance: var(--app-shell-content-clearance-nav);
+  --app-shell-content-bottom-padding: var(--app-shell-current-bottom-clearance);
   --app-sticky-content-top: var(--app-shell-top-inset);
-  --app-shell-snackbar-bottom: calc(var(--app-bottom-nav-height) + var(--app-space-3) + var(--app-safe-area-bottom));
+  --app-shell-snackbar-bottom: var(--app-shell-current-bottom-clearance);
   --app-fab-inline-offset: var(--app-context-action-inline-offset);
   --app-fab-badge-size: 2rem;
   --app-fab-badge-padding: 0 0.2rem;
@@ -91,7 +99,7 @@
   --app-dialog-actions-padding: var(--app-space-3) var(--app-space-5) var(--app-space-4);
   --app-section-title-padding: var(--app-space-4) var(--app-space-5) 0.35rem;
   --app-dialog-mobile-width: 100vw;
-  --app-overlay-mobile-top: max(var(--app-safe-area-top), 24px);
+  --app-overlay-mobile-top: var(--app-safe-area-top);
   --app-overlay-mobile-height: calc(100dvh - var(--app-overlay-mobile-top) - var(--app-safe-area-bottom));
   --app-dialog-mobile-top-inset: var(--app-overlay-mobile-top);
   --app-dialog-mobile-height: var(--app-overlay-mobile-height);
@@ -286,22 +294,12 @@
   --app-bg-wash-c: rgba(var(--v-theme-success), 0.06);
 }
 
-:root.app-runtime-android {
-  --app-shell-top-inset: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
-}
-
 @media (max-width: 600px) {
   :root {
     --app-font-size-caption: var(--app-font-size-mobile-caption);
     --app-font-size-meta: var(--app-font-size-mobile-caption);
     --app-font-size-body-sm: var(--app-font-size-mobile-helper);
     --app-font-size-body: var(--app-font-size-mobile-body);
-  }
-}
-
-@media (max-width: 640px) {
-  :root {
-    --app-shell-top-inset: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
   }
 }
 

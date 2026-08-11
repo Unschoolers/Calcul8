@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  padding: max(1rem, var(--app-safe-area-top)) 1rem max(1rem, var(--app-safe-area-bottom));
 }
 
 .auth-gate-card {

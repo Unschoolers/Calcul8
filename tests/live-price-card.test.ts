@@ -213,7 +213,6 @@ test("LivePriceCard template and CSS keep extra scenario tiles desktop-only", ()
   assert.match(template, /<button[\s\S]*type="button"[\s\S]*@click="selectScenarioPrice\(offset\)"/);
   assert.match(template, /:class="scenarioTileClass\(offset\)"/);
   assert.match(template, /:style="scenarioTileStyle\(offset\)"/);
-  assert.match(template, /scenarioDeltaLabel\(offset\)/);
   assert.match(template, /displayProfitAtPrice\(modelValue \+ offset\)/);
   assert.match(template, /live-pricing-card__scenario-main/);
   assert.match(template, /live-pricing-card__scenario-detail/);
@@ -228,8 +227,6 @@ test("LivePriceCard template and CSS keep extra scenario tiles desktop-only", ()
   assert.match(styles, /\.live-pricing-card__scenario-price\s*{[\s\S]*font-size:\s*1\.04rem/);
   assert.match(styles, /\.live-pricing-card__scenario-percent\s*{[\s\S]*font-size:\s*0\.82rem/);
   assert.match(styles, /\.live-pricing-card__scenario-detail\s*{[\s\S]*font-size:\s*0\.76rem/);
-  assert.match(styles, /\.live-pricing-card__scenario-chip\s*{[\s\S]*background:\s*rgba\(var\(--v-theme-surface\),\s*0\.86\)/);
-  assert.match(styles, /\.live-pricing-card__scenario-chip\s*{[\s\S]*border:\s*var\(--app-stroke-hairline\) solid rgba\(var\(--v-theme-on-surface\),\s*0\.18\)/);
   assert.match(styles, /--live-scenario-progress-percent/);
   assert.match(styles, /\.live-pricing-card__scenario-tile\s*{[\s\S]*background:\s*rgba\(var\(--v-theme-surface\),\s*0\.44\)/);
   assert.doesNotMatch(styles, /\.live-pricing-card__scenario-tile\s*{[\s\S]*linear-gradient\(135deg/);

@@ -213,6 +213,19 @@ test("live singles image preview opens and closes for selected cards", () => {
   assert.equal(context.liveSinglesImagePreviewTitle, "");
 });
 
+test("live singles icon steppers retain localized action names and shared touch targets", async () => {
+  const template = await readFile("src/components/windows/live/LiveSinglesPanel.html", "utf8");
+
+  for (const action of [
+    "liveSinglesDecreasePriceAction",
+    "liveSinglesIncreasePriceAction",
+    "liveSinglesDecreaseQuantityAction",
+    "liveSinglesIncreaseQuantityAction"
+  ]) {
+    assert.match(template, new RegExp(`class="[^\"]*app-touch-target[^\"]*"[\\s\\S]*:aria-label="t\\('${action}'\\)"`));
+  }
+});
+
 test("bundle metrics and allocations are derived from selected entries", () => {
   const context = createContext({
     effectiveLiveSinglesIds: [1, 2],

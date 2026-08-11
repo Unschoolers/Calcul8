@@ -27,6 +27,7 @@ import type { SyncMethodState } from "./sync.ts";
 export interface CommerceComputedState {
   liveProfitTargetBadgeVisible: boolean;
   liveProfitTargetBadgeLabel: string;
+  hasVisibleContextActions: boolean;
   lotNameDraft: string;
   canUsePaidActions: boolean;
   currentLotType: LotType;
@@ -217,6 +218,7 @@ type CommerceState = Pick<
   | "costInputMode"
   | "currency"
   | "currentLotId"
+  | "currentTab"
   | "editingSale"
   | "exchangeRate"
   | "feeProfilePreset"
@@ -251,6 +253,7 @@ type CommerceState = Pick<
   | "spotPrice"
   | "spotsPerBox"
   | "targetProfitPercent"
+  | "visibleShellContextActionIds"
 >;
 
 export type CommerceContext = CommerceState &

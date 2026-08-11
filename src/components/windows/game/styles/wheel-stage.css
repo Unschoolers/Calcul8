@@ -1,10 +1,10 @@
 .wheel-layout {
   --wheel-panel-border: rgba(var(--v-theme-on-surface), 0.1);
   --wheel-panel-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
-  --wheel-mobile-app-bar-offset: calc(72px + env(safe-area-inset-top));
-  --wheel-mobile-nav-height: calc(72px + env(safe-area-inset-bottom));
+  --wheel-mobile-app-bar-offset: calc(var(--v-layout-top) + var(--app-shell-top-inset));
+  --wheel-mobile-nav-height: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom));
   --wheel-mobile-rail-offset: calc(var(--wheel-mobile-nav-height) + 12px);
-  --wheel-mobile-sheet-bottom: calc(var(--wheel-mobile-nav-height) + 88px);
+  --wheel-mobile-sheet-bottom: calc(var(--wheel-mobile-nav-height) + var(--app-wheel-mobile-action-rail-height));
   --wheel-panel-bg:
     radial-gradient(120% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.16), transparent 52%),
     linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.03), rgba(var(--v-theme-on-surface), 0)),
@@ -53,7 +53,7 @@
   width: 100%;
   max-width: none;
   min-height: calc(100dvh - 220px);
-  padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
+  padding: 24px 16px calc(32px + var(--app-safe-area-bottom));
   justify-items: center;
   align-items: center;
 }

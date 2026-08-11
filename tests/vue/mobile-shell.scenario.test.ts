@@ -1,6 +1,8 @@
 import { fireEvent, screen } from "@testing-library/vue";
+import { defineComponent } from "vue";
 import { describe, expect, test } from "vitest";
 import MobileLotSwitcher from "../../src/components/shell/MobileLotSwitcher.vue";
+import AppFormLayout from "../../src/components/ui/AppFormLayout.vue";
 import { shellPortsKey } from "../../src/components/shell/shellPorts.ts";
 import { renderWithApp } from "./render.ts";
 
@@ -62,6 +64,27 @@ function renderSwitcher(overrides: Record<string, unknown> = {}) {
 }
 
 describe("mobile lot switcher", () => {
+  test("keeps full French form actions and long workspace copy in wrapped form primitives", () => {
+    const frenchImportAction = "Importer depuis l’identifiant utilisateur";
+    const longWorkspaceName = "Atelier de cartes Montréal — espace de travail de synchronisation historique";
+    const FormScenario = defineComponent({
+      components: { AppFormLayout },
+      template: `
+        <app-form-layout>
+          <label>${frenchImportAction}<input aria-label="Identifiant utilisateur" /></label>
+          <template #helper>${longWorkspaceName}</template>
+          <template #actions><button>${frenchImportAction}</button></template>
+        </app-form-layout>
+      `
+    });
+
+    renderWithApp(FormScenario);
+
+    expect(screen.getByLabelText("Identifiant utilisateur").closest("label")).toHaveClass("app-text-wrap");
+    expect(screen.getByText(longWorkspaceName).closest(".app-form-helper")).toHaveClass("app-text-wrap");
+    expect(screen.getByRole("button", { name: frenchImportAction }).closest(".app-form-actions")).not.toBeNull();
+  });
+
   test("shows the current lot without a permanent personal label", () => {
     renderSwitcher();
 

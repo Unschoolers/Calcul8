@@ -2,7 +2,8 @@
       <template v-if="isGoogleSignedIn">
         <app-shell-top-bar></app-shell-top-bar>
 
-        <v-main id="app-main" class="app-shell-root" tabindex="-1">
+        <v-main id="app-main" class="app-shell-root" tabindex="-1"
+          :data-has-context-actions="hasVisibleContextActions ? 'true' : 'false'">
           <v-container fluid class="pa-4 app-shell app-shell-content-zone fill-height">
             <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="app-shell-offline-notice mb-3">
               {{ t('shellOfflineNotice') }}

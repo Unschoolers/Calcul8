@@ -238,6 +238,12 @@ export const appComputed: AppComputedComposition = {
   ...runtimeComputed,
   ...authProfileComputed,
   ...commerceProxyComputed,
+  hasVisibleContextActions(): boolean {
+    const hasRootContextAction = (this.currentTab === "config" && this.currentLotType === "singles")
+      || this.currentTab === "sales"
+      || this.currentTab === "portfolio";
+    return hasRootContextAction || this.visibleShellContextActionIds.length > 0;
+  },
   liveProfitTargetBadgeVisible() {
     return this.hasLotSelected && (Number(this.targetProfitPercent) || 0) > 0;
   },

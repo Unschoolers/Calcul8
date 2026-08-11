@@ -50,6 +50,7 @@ test("contextual shell exposes one root slot and feature-owned action docks", ()
   const template = read("src/App.html");
   const styles = read("src/styles/app.css");
   const tokens = read("src/styles/design-tokens.css");
+  const computed = read("src/app-core/computed.ts");
   const dockTemplate = read("src/components/shell/ContextActionDock.html");
   const dockStyles = read("src/components/shell/ContextActionDock.css");
   const liveTemplate = read("src/components/windows/live/LiveWindow.html");
@@ -72,12 +73,17 @@ test("contextual shell exposes one root slot and feature-owned action docks", ()
   assert.doesNotMatch(template, /v-if="currentTab === 'live'"/);
   assert.doesNotMatch(template, /v-if="currentTab === 'wheel'/);
   assert.doesNotMatch(styles, /\.app-context-action-badge-wrap/);
+  assert.match(template, /class="app-shell-root"[^>]*:data-has-context-actions="hasVisibleContextActions \? 'true' : 'false'"/);
+  assert.match(computed, /hasVisibleContextActions\(\): boolean/);
+  assert.match(styles, /\.app-shell-root\[data-has-context-actions="true"\][\s\S]*--app-shell-current-bottom-clearance:\s*var\(--app-shell-content-clearance-actions\)/);
+  assert.match(styles, /\.app-shell-root\[data-has-context-actions="false"\][\s\S]*--app-shell-current-bottom-clearance:\s*var\(--app-shell-content-clearance-nav\)/);
 
   for (const token of [
     "--app-context-action-inline-offset",
     "--app-context-action-size",
     "--app-context-action-bottom-1",
     "--app-shell-content-bottom-padding",
+    "--app-shell-current-bottom-clearance",
     "--app-shell-snackbar-bottom"
   ]) {
     assert.match(tokens, new RegExp(token), `missing token ${token}`);
@@ -85,7 +91,8 @@ test("contextual shell exposes one root slot and feature-owned action docks", ()
 
   assert.match(tokens, /--app-bottom-nav-height:\s*4rem/);
   assert.match(tokens, /--app-context-action-size:\s*3\.5rem/);
-  assert.match(tokens, /--app-shell-content-bottom-padding:[^;]*var\(--app-context-action-size\)/);
+  assert.match(tokens, /--app-shell-content-clearance-actions:[^;]*var\(--app-context-action-size\)/);
+  assert.match(tokens, /--app-shell-content-bottom-padding:\s*var\(--app-shell-current-bottom-clearance\)/);
 
   for (const retiredToken of [
     "--app-context-action-bottom-2",

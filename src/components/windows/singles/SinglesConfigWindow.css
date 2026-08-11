@@ -1381,7 +1381,7 @@
 
   .singles-mobile-sticky-tools {
     position: sticky;
-    top: calc(2.7rem + env(safe-area-inset-top, 0px));
+    top: calc(var(--app-singles-mobile-sticky-tools-offset) + var(--app-safe-area-top));
     z-index: 5;
     border-radius: var(--app-radius-media);
     background: rgba(var(--v-theme-surface), 0.94);
@@ -1393,7 +1393,7 @@
 
   .singles-mobile-summary-panel {
     position: sticky;
-    top: calc(8.5rem + env(safe-area-inset-top, 0px));
+    top: calc(var(--app-singles-mobile-summary-offset) + var(--app-safe-area-top));
     z-index: 4;
     display: grid;
     gap: var(--app-space-3);
@@ -1542,7 +1542,7 @@
 
   .singles-mobile-sticky-tools {
     position: sticky;
-    top: calc(3.4rem + env(safe-area-inset-top, 0px));
+    top: calc(var(--app-singles-desktop-sticky-tools-offset) + var(--app-safe-area-top));
     z-index: 6;
     margin-bottom: 0.75rem;
     padding: 0.6rem 0.65rem 0.55rem;
@@ -1603,7 +1603,7 @@
   }
 
   .singles-config-layout {
-    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--app-singles-mobile-editor-bottom-clearance) + var(--app-safe-area-bottom));
   }
 
   .singles-editor-sheet {
@@ -1613,7 +1613,7 @@
   }
 
   .singles-editor-form {
-    max-height: calc(88vh - 154px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(88vh - 154px - var(--app-safe-area-bottom));
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-top: 10px;

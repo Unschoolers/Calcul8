@@ -1,4 +1,5 @@
 import { defineComponent, type PropType } from "vue";
+import { useShellActionPresence } from "./shellActionPresence.ts";
 import "./ContextActionDock.css";
 
 export type ContextActionDockAction = {
@@ -37,7 +38,23 @@ export const ContextActionDock = defineComponent({
     activate: (actionId: string) => typeof actionId === "string" && actionId.length > 0
   },
   data() {
-    return { menuOpen: false };
+    const shellActionPresence = useShellActionPresence();
+    return {
+      actionPresenceId: shellActionPresence.createActionId(),
+      menuOpen: false,
+      shellActionPresence
+    };
+  },
+  mounted(): void {
+    this.shellActionPresence.setVisible(this.actionPresenceId, this.active);
+  },
+  beforeUnmount(): void {
+    this.shellActionPresence.setVisible(this.actionPresenceId, false);
+  },
+  watch: {
+    active(active: boolean): void {
+      this.shellActionPresence.setVisible(this.actionPresenceId, active);
+    }
   },
   methods: {
     activate(actionId: string): void {

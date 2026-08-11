@@ -52,6 +52,29 @@ test("feature styles do not encode shell chrome measurements", () => {
   assert.doesNotMatch(guarded, /calc\((?:72px|108px|7rem|2\.7rem|8\.5rem)\s*\+/);
 });
 
+test("safe-area insets are centralized and never fabricate web top padding", () => {
+  const safeAreaOwners = collectSourceFiles(sourceRoot, new Set([".css", ".html", ".ts", ".vue"]))
+    .filter((path) => /env\(safe-area-inset-/.test(readFileSync(path, "utf8")))
+    .map((path) => relative(".", path).replaceAll("\\", "/"));
+  const tokens = readFileSync("src/styles/design-tokens.css", "utf8");
+  const capacitorConfig = readFileSync("capacitor.config.ts", "utf8");
+
+  assert.deepEqual(safeAreaOwners, ["src/styles/design-tokens.css"]);
+  for (const side of ["top", "right", "bottom", "left"]) {
+    assert.match(tokens, new RegExp(`--app-safe-area-${side}:`));
+  }
+  assert.match(tokens, /--app-shell-top-inset:\s*var\(--app-safe-area-top\);/);
+  assert.match(tokens, /--app-overlay-mobile-top:\s*var\(--app-safe-area-top\);/);
+  assert.doesNotMatch(tokens, /--app-(?:shell-top-inset|overlay-mobile-top):[^;]*24px/);
+  assert.doesNotMatch(tokens, /max\(var\(--app-safe-area-(?:top|right|bottom|left)\),\s*(?:env\([^)]*\),\s*)?24px\)/);
+  assert.match(capacitorConfig, /SystemBars:\s*\{\s*insetsHandling:\s*["']css["']/);
+});
+
+test("wheel mobile styles do not target the retired tier editor root", () => {
+  const wheelMobileStyles = readFileSync("src/components/windows/game/styles/wheel-mobile.css", "utf8");
+  assert.doesNotMatch(wheelMobileStyles, /\.wheel-tier-editor\s*\{/);
+});
+
 test("editable feature forms use the shared form contract", () => {
   const required = [
     "src/App.html",
@@ -81,10 +104,50 @@ test("editable feature forms use the shared form contract", () => {
   for (const path of required) {
     assert.match(readFileSync(path, "utf8"), /<app-form-layout\b|app-form-row/);
   }
+
+  const liveSingles = readFileSync("src/components/windows/live/LiveSinglesPanel.html", "utf8");
+  const portfolio = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+  assert.match(liveSingles, /<app-form-layout\b[^>]*class="live-singles-composer"[\s\S]*<div class="app-form-row">[\s\S]*<v-autocomplete/);
+  assert.match(portfolio, /<app-form-layout\b[^>]*class="portfolio-filter-form"[\s\S]*<v-select[\s\S]*<v-autocomplete/);
 });
 
 test("configuration forms do not create viewport-filling gaps", () => {
   const styles = readFileSync("src/components/windows/config/ConfigWindow.css", "utf8");
   assert.doesNotMatch(styles, /min-height:\s*(?:100vh|calc\(100vh)/);
   assert.doesNotMatch(styles, /flex-grow:\s*1[^}]*admin/i);
+});
+
+test("long English and French form copy stays bound to shared wrapping contracts", () => {
+  const formLayout = readFileSync("src/components/ui/AppFormLayout.html", "utf8");
+  const formLayoutScript = readFileSync("src/components/ui/AppFormLayout.ts", "utf8");
+  const adminImport = readFileSync("src/components/windows/config/AdminSyncImportCard.html", "utf8");
+  const singlesPurchasing = readFileSync("src/components/windows/singles/SinglesPurchasingCard.html", "utf8");
+  const wheelInspector = readFileSync("src/components/windows/game/inspector/WheelInspector.html", "utf8");
+  const bracketBuilder = readFileSync("src/components/windows/game/bracket/BracketBattleBuilder.html", "utf8");
+  const enSingles = JSON.parse(readFileSync("src/app-core/i18n/locales/en/singles.json", "utf8")) as Record<string, string>;
+  const frSingles = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/singles.json", "utf8")) as Record<string, string>;
+  const enWheel = JSON.parse(readFileSync("src/app-core/i18n/locales/en/wheel.json", "utf8")) as Record<string, string>;
+  const frWheel = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/wheel.json", "utf8")) as Record<string, string>;
+
+  // The shared action slot is exercised with full French copy in the Vue contract scenario.
+  assert.match(formLayout, /class="app-form-actions"[\s\S]*<slot name="actions"><\/slot>/);
+  assert.match(formLayoutScript, /app-form-fields label[\s\S]*classList\.add\("app-text-wrap"\)/);
+
+  assert.equal(enSingles.singlesDefaultPurchaseCurrencyLabel, "Default purchase currency");
+  assert.equal(frSingles.singlesDefaultPurchaseCurrencyLabel, "Devise d'achat par defaut");
+  assert.equal(enSingles.singlesUsdToCadRateLabel, "USD to CAD rate");
+  assert.equal(frSingles.singlesUsdToCadRateLabel, "Taux USD vers CAD");
+  assert.match(singlesPurchasing, /app-text-wrap[\s\S]*t\('singlesDefaultPurchaseCurrencyLabel'\)/);
+  assert.match(singlesPurchasing, /<app-form-layout\b[\s\S]*t\('singlesUsdToCadRateLabel'\)/);
+
+  assert.equal(enWheel.wheelInspectorSpinPriceLabel, "Price per play ($)");
+  assert.equal(frWheel.wheelInspectorSpinPriceLabel, "Prix par partie ($)");
+  assert.equal(enWheel.bracketBattleBuyerLabel, "Buyer {{number}}");
+  assert.equal(frWheel.bracketBattleBuyerLabel, "Acheteur {{number}}");
+  assert.match(wheelInspector, /wheel-compact-setting__label app-text-wrap[\s\S]*wheelInspectorSpinPriceLabel/);
+  assert.match(wheelInspector, /wheel-compact-setting__label app-text-wrap[\s\S]*wheelInspectorOutcomeCountLabel/);
+  assert.match(bracketBuilder, /<app-form-layout\b[\s\S]*bracketBattleBuyerLabel/);
+
+  assert.match(adminImport, /<template #helper>[\s\S]*app-text-wrap[\s\S]*Copy cloud sync data/);
+  assert.match(adminImport, /<strong[^>]*class="app-long-token"[^>]*>[\s\S]*Workspace \{\{ currentWorkspaceName \|\| activeWorkspaceId \}\}/);
 });

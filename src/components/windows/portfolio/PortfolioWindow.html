@@ -1,4 +1,5 @@
                 <app-toolbar-card card-class="mb-4 portfolio-filter-bar" content-class="py-2">
+                  <app-form-layout compact :responsive="false" class="portfolio-filter-form">
                     <div class="portfolio-filter-toolbar">
                       <v-btn-toggle
                         v-model="portfolioLotTypeFilter"
@@ -154,6 +155,7 @@
                         </template>
                       </v-autocomplete>
                     </div>
+                  </app-form-layout>
                 </app-toolbar-card>
 
                 <portfolio-pulse-panel
