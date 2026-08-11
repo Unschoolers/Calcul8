@@ -1,11 +1,6 @@
-<v-dialog
-  v-model="isOpen"
-  max-width="760"
-  scrollable
-  content-class="buyer-quick-view-dialog app-mobile-fullscreen-dialog"
->
-  <v-card class="buyer-quick-view-card">
-    <v-card-title class="buyer-quick-view-title">
+<app-dialog-shell v-model="isOpen" :title="t('buyerQuickViewTitle')" :max-width="760">
+  <template #title>
+    <div class="buyer-quick-view-title">
       <div class="buyer-quick-view-title__main">
         <v-avatar class="buyer-quick-view-title__icon" size="40">
           <v-icon size="22">mdi-account-circle-outline</v-icon>
@@ -31,9 +26,10 @@
       >
         <v-icon>mdi-close</v-icon>
       </v-btn>
-    </v-card-title>
+    </div>
+  </template>
 
-    <v-card-text v-if="summary" class="buyer-quick-view-content">
+    <div v-if="summary" class="buyer-quick-view-content">
       <section class="buyer-quick-view-profile" :aria-label="t('buyerQuickViewEditProfileLabel')">
         <div v-if="!isEditingProfile" class="buyer-quick-view-profile__summary">
           <v-btn
@@ -44,36 +40,38 @@
             @click="startProfileEdit"
           >{{ t('buyerQuickViewEditProfileLabel') }}</v-btn>
         </div>
-        <div v-else class="buyer-quick-view-profile__editor">
-          <v-text-field
-            v-model="preferredNameDraft"
-            :label="t('buyerQuickViewPreferredNameLabel')"
-            maxlength="80"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-          ></v-text-field>
-          <v-combobox
-            v-model="tagsDraft"
-            :label="t('buyerQuickViewTagsLabel')"
-            :items="tagSuggestions"
-            multiple
-            chips
-            closable-chips
-            maxlength="32"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-          ></v-combobox>
-          <div class="buyer-quick-view-profile__actions">
-            <v-btn variant="text" :disabled="isProfileSaving" @click="cancelProfileEdit">
-              {{ t('buyerQuickViewCancelEditLabel') }}
-            </v-btn>
-            <v-btn color="primary" :loading="isProfileSaving" @click="saveProfile">
-              {{ t('buyerQuickViewSaveProfileLabel') }}
-            </v-btn>
+        <app-form-layout v-else :responsive="false" compact>
+          <div class="buyer-quick-view-profile__editor">
+            <v-text-field
+              v-model="preferredNameDraft"
+              :label="t('buyerQuickViewPreferredNameLabel')"
+              maxlength="80"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+            ></v-text-field>
+            <v-combobox
+              v-model="tagsDraft"
+              :label="t('buyerQuickViewTagsLabel')"
+              :items="tagSuggestions"
+              multiple
+              chips
+              closable-chips
+              maxlength="32"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+            ></v-combobox>
+            <div class="buyer-quick-view-profile__actions">
+              <v-btn variant="text" :disabled="isProfileSaving" @click="cancelProfileEdit">
+                {{ t('buyerQuickViewCancelEditLabel') }}
+              </v-btn>
+              <v-btn color="primary" :loading="isProfileSaving" @click="saveProfile">
+                {{ t('buyerQuickViewSaveProfileLabel') }}
+              </v-btn>
+            </div>
           </div>
-        </div>
+        </app-form-layout>
 
         <v-alert v-if="saveState === 'conflict'" type="warning" variant="tonal" density="compact">
           <div>{{ t('buyerQuickViewConflictMessage') }}</div>
@@ -147,6 +145,5 @@
           </div>
         </div>
       </div>
-    </v-card-text>
-  </v-card>
-</v-dialog>
+    </div>
+</app-dialog-shell>

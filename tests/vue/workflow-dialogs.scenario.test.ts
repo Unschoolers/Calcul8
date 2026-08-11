@@ -321,6 +321,14 @@ describe("workflow dialog scenarios", () => {
     expect(ctx.closeWhatnotCsvDialog).toHaveBeenCalledOnce();
   });
 
+  test("keeps a long French Whatnot validation message readable", async () => {
+    renderWithCapabilities(WhatnotCsvImportDialog, whatnotDialogPortsKey, whatnotContext(false));
+
+    const dialog = await screen.findByRole("dialog", { name: "Import Whatnot CSV" });
+    expect(dialog.querySelector(".app-dialog-content")).not.toBeNull();
+    expect(screen.getByText("Map your fields.")).toHaveClass("app-text-wrap");
+  });
+
   test("cancels a sale editor without saving the current draft", async () => {
     const cancelSale = vi.fn();
     const saveSale = vi.fn();
@@ -463,6 +471,22 @@ function whatnotContext(ready: boolean) {
     whatnotCsvColumnOptions: [],
     whatnotCsvRows: [],
     whatnotCsvPreviewColumns: [],
+    whatnotCsvSellerAccountId: "",
+    whatnotCsvMapOrderId: null,
+    whatnotCsvMapTitle: null,
+    whatnotCsvMapQuantity: null,
+    whatnotCsvMapPrice: null,
+    whatnotCsvMapDate: null,
+    whatnotCsvMapExternalSaleId: null,
+    whatnotCsvMapOrderItemId: null,
+    whatnotCsvMapSellerAccountId: null,
+    whatnotCsvMapSku: null,
+    whatnotCsvMapBuyerName: null,
+    whatnotCsvMapListingTitle: null,
+    whatnotCsvMapOrderPlacedAt: null,
+    whatnotCsvMapOriginalItemPrice: null,
+    whatnotCsvMapBuyerShipping: null,
+    whatnotCsvMapOrderStatus: null,
     t: translate,
     formatCurrency: (value: number) => value.toFixed(2),
     loadWhatnotCsvFile: vi.fn(),

@@ -11,7 +11,8 @@ describe("buyer quick view UI contract", () => {
     assert.equal(existsSync("src/components/customers/BuyerIdentityLabel.vue"), true);
 
     const template = readFileSync("src/components/customers/BuyerQuickViewModal.html", "utf8");
-    assert.match(template, /<v-dialog/);
+    assert.match(template, /<app-dialog-shell/);
+    assert.doesNotMatch(template, /<v-dialog\b/);
     assert.match(template, /buyerQuickViewTotalLotLabel/);
     assert.match(template, /buyerQuickViewGroupedTitle/);
   });

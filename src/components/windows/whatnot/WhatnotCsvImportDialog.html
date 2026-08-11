@@ -1,12 +1,11 @@
-<v-dialog
+<app-dialog-shell
   :model-value="showWhatnotCsvImportDialog"
-  max-width="980"
-  scrollable
-  content-class="whatnot-csv-dialog app-mobile-fullscreen-dialog"
+  :title="t('whatnotCsvTitle')"
+  :max-width="980"
   @update:model-value="(value) => { if (!value) closeWhatnotCsvDialog(); }"
 >
-  <v-card class="whatnot-csv-card app-dialog-card">
-    <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
+  <template #title>
+    <div class="d-flex align-center justify-space-between ga-3 w-100">
       <div>
         <v-icon class="mr-2">mdi-file-delimited-outline</v-icon>
         {{ t('whatnotCsvTitle') }}
@@ -20,9 +19,10 @@
         :aria-label="t('whatnotCsvCloseAction')"
         @click="closeWhatnotCsvDialog"
       ></app-action-button>
-    </v-card-title>
-    <v-divider></v-divider>
-    <v-card-text class="whatnot-csv-content app-dialog-content">
+    </div>
+  </template>
+  <app-form-layout :responsive="false" sticky-actions>
+    <div class="whatnot-csv-content">
       <div class="text-medium-emphasis mb-4">
         {{ t('whatnotCsvIntro') }}
       </div>
@@ -129,8 +129,8 @@
           <v-expansion-panel-title>
             {{ t('whatnotCsvAdvancedMappingTitle') }}
           </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <div class="text-caption text-medium-emphasis mb-3">
+          <v-expansion-panel-text eager>
+            <div class="text-caption text-medium-emphasis mb-3 app-text-wrap">
               {{ t('whatnotCsvAdvancedMappingHelp') }}
             </div>
             <v-row density="comfortable">
@@ -410,8 +410,8 @@
           </div>
         </div>
       </div>
-    </v-card-text>
-    <v-card-actions class="app-dialog-actions">
+    </div>
+    <template #actions>
       <v-spacer></v-spacer>
       <app-action-button
         action="close"
@@ -431,6 +431,6 @@
       >
         {{ t('whatnotPrepareReviewAction') }}
       </app-action-button>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+    </template>
+  </app-form-layout>
+</app-dialog-shell>

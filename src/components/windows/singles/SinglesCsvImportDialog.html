@@ -1,18 +1,16 @@
-<v-dialog
+<app-dialog-shell
   v-model="showSinglesCsvMapperModal"
-  max-width="980"
-  scrollable
-  content-class="singles-csv-dialog app-mobile-fullscreen-dialog"
-  :fullscreen="$vuetify?.display?.smAndDown"
-  transition="dialog-bottom-transition"
+  :title="t('singlesCsvMapTitle')"
+  :max-width="980"
 >
-  <v-card class="singles-import-card app-dialog-card">
-    <v-card-title class="text-subtitle-1 d-flex align-center app-dialog-title">
+  <template #title>
+    <div class="text-subtitle-1 d-flex align-center app-text-wrap">
       <v-icon class="mr-2">mdi-table-arrow-right</v-icon>
       {{ t('singlesCsvMapTitle') }}
-    </v-card-title>
-    <v-divider></v-divider>
-    <v-card-text class="app-dialog-content">
+    </div>
+  </template>
+  <app-form-layout :responsive="false" sticky-actions>
+    <div class="singles-import-content">
       <div class="text-body-2 text-medium-emphasis mb-3">
         {{ t('singlesCsvMapIntro') }}
       </div>
@@ -301,8 +299,8 @@
           </dl>
         </div>
       </div>
-    </v-card-text>
-    <v-card-actions class="app-dialog-actions">
+    </div>
+    <template #actions>
       <v-spacer></v-spacer>
       <v-btn variant="text" @click="cancelSinglesPurchasesCsvImport">
         {{ t('commonCancel') }}
@@ -310,6 +308,6 @@
       <v-btn color="primary" variant="flat" @click="confirmSinglesPurchasesCsvImport">
         {{ t('commonImport') }}
       </v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+    </template>
+  </app-form-layout>
+</app-dialog-shell>

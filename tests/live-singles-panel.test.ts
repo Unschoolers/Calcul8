@@ -182,6 +182,17 @@ test("live singles autocomplete template renders normalized item fallbacks", asy
   assert.doesNotMatch(template, /item\??\.raw\??\./);
 });
 
+test("live image preview uses the media shell and retains a named close action", async () => {
+  const template = await readFile("src/components/windows/live/LiveSinglesPanel.html", "utf8");
+
+  assert.match(template, /<app-dialog-shell[\s\S]*v-model="liveSinglesImagePreviewOpen"[\s\S]*variant="media"/);
+  assert.match(
+    template,
+    /class="live-singles-image-preview-close app-touch-target"[\s\S]*:aria-label="t\('singlesEditorCloseImagePreviewAction'[^)]*\)"/
+  );
+  assert.doesNotMatch(template, /<v-dialog\b/);
+});
+
 test("live singles image preview opens and closes for selected cards", () => {
   const context = createContext();
   const openPreview = getMethod<(this: PanelCtx, entry: SinglesPurchaseEntry) => void>("openLiveSinglesImagePreview");

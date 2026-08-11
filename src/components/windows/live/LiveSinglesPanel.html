@@ -396,33 +396,31 @@
       </v-card>
     </template>
   </v-card-text>
-  <v-dialog
+  <app-dialog-shell
     v-model="liveSinglesImagePreviewOpen"
-    max-width="420"
+    :title="liveSinglesImagePreviewTitle || t('liveSinglesPanelTitle')"
+    variant="media"
+    :max-width="420"
     class="live-singles-image-preview-dialog"
     @update:model-value="onLiveSinglesImagePreviewModelValue"
   >
-    <div class="live-singles-image-preview-shell" @click="closeLiveSinglesImagePreview">
-      <div class="live-singles-image-preview-frame" @click.stop>
-        <button
-          type="button"
-          class="live-singles-image-preview-close"
-          :aria-label="t('singlesEditorCloseImagePreviewAction', 'Close image preview')"
-          @click="closeLiveSinglesImagePreview"
-        >
-          <v-icon size="18">mdi-close</v-icon>
-        </button>
-        <img
-          v-if="liveSinglesImagePreviewSrc"
-          :src="liveSinglesImagePreviewSrc"
-          :alt="liveSinglesImagePreviewTitle || t('liveSinglesPanelTitle')"
-          class="live-singles-image-preview-img"
-          @click="closeLiveSinglesImagePreview"
-        >
-        <div v-if="liveSinglesImagePreviewTitle" class="live-singles-image-preview-title">
-          {{ liveSinglesImagePreviewTitle }}
-        </div>
-      </div>
+    <button
+      type="button"
+      class="live-singles-image-preview-close app-touch-target"
+      :aria-label="t('singlesEditorCloseImagePreviewAction', 'Close image preview')"
+      @click="closeLiveSinglesImagePreview"
+    >
+      <v-icon size="18">mdi-close</v-icon>
+    </button>
+    <img
+      v-if="liveSinglesImagePreviewSrc"
+      :src="liveSinglesImagePreviewSrc"
+      :alt="liveSinglesImagePreviewTitle || t('liveSinglesPanelTitle')"
+      class="live-singles-image-preview-img"
+      @click="closeLiveSinglesImagePreview"
+    >
+    <div v-if="liveSinglesImagePreviewTitle" class="live-singles-image-preview-title app-text-wrap">
+      {{ liveSinglesImagePreviewTitle }}
     </div>
-  </v-dialog>
+  </app-dialog-shell>
 </v-card>

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
 import {
@@ -53,4 +54,18 @@ test("singles window renders its purchasing view through injected ports", () => 
   });
 
   expect(view.container.querySelector(".singles-grid-card")).not.toBeNull();
+});
+
+test("uses an inset media dialog for the singles image preview", () => {
+  const template = readFileSync("src/components/windows/singles/SinglesConfigWindow.html", "utf8");
+
+  expect(template).toMatch(/<app-dialog-shell[\s\S]*v-model="showSinglesImagePreview"[\s\S]*variant="media"/);
+  expect(template).not.toMatch(/<v-dialog\b/);
+});
+
+test("keeps the Singles row editor as a shared-contract bottom sheet", () => {
+  const template = readFileSync("src/components/windows/singles/SinglesConfigWindow.html", "utf8");
+
+  expect(template).toMatch(/<v-bottom-sheet[^>]*v-model="showSinglesRowEditor"/);
+  expect(template).toMatch(/<v-bottom-sheet[\s\S]*app-overlay-frame[\s\S]*<app-form-layout[\s\S]*<app-sticky-action-footer/);
 });

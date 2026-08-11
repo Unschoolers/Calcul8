@@ -2,6 +2,8 @@ import { useWhatnotDialogPorts } from "./whatnotDialogPorts.ts";
 import AppActionButton from "../../ui/AppActionButton.vue";
 import AppErrorState from "../../ui/AppErrorState.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
+import AppDialogShell from "../../ui/AppDialogShell.vue";
+import AppFormLayout from "../../ui/AppFormLayout.vue";
 import type { WhatnotImportReviewRow } from "../../../types/app.ts";
 import {
   buildWhatnotCsvImportDraft,
@@ -83,7 +85,9 @@ export const WhatnotCsvImportDialog = {
   name: "WhatnotCsvImportDialog",
   components: {
     AppActionButton,
+    AppDialogShell,
     AppErrorState,
+    AppFormLayout,
     AppMetricValue
   },
   setup() {

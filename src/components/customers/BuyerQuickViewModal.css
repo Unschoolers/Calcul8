@@ -13,8 +13,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   gap: 16px;
-  padding: 18px 20px 12px;
 }
 
 .buyer-quick-view-title__main {

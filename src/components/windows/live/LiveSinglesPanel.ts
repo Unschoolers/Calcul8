@@ -1,4 +1,5 @@
 import AppActionButton from "../../ui/AppActionButton.vue";
+import AppDialogShell from "../../ui/AppDialogShell.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import {
@@ -136,6 +137,7 @@ export const LiveSinglesPanel = {
   name: "LiveSinglesPanel",
   components: {
     AppActionButton,
+    AppDialogShell,
     AppMetricValue
   },
   data() {

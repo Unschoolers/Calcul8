@@ -1,12 +1,11 @@
-<v-dialog
+<app-dialog-shell
   :model-value="showWhatnotReviewDialog"
-  max-width="980"
-  scrollable
-  content-class="whatnot-review-dialog app-mobile-fullscreen-dialog"
+  :title="t('whatnotReviewTitle')"
+  :max-width="980"
   @update:model-value="(value) => { if (!value) closeWhatnotReviewDialog(); }"
 >
-  <v-card class="whatnot-review-card app-dialog-card">
-    <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
+  <template #title>
+    <div class="d-flex align-center justify-space-between ga-3 w-100">
       <div>
         <v-icon class="mr-2">mdi-shopping</v-icon>
         {{ t('whatnotReviewTitle') }}
@@ -20,9 +19,10 @@
         :aria-label="t('whatnotReviewCloseAction')"
         @click="closeWhatnotReviewDialog"
       ></app-action-button>
-    </v-card-title>
-    <v-divider></v-divider>
-    <v-card-text class="whatnot-review-content app-dialog-content">
+    </div>
+  </template>
+  <app-form-layout :responsive="false" sticky-actions>
+    <div class="whatnot-review-content">
       <div class="whatnot-review-summary app-summary-panel mb-4">
         <div class="text-medium-emphasis">
           {{ t('whatnotReviewSummaryIntro', { scope: activeScopeType === 'workspace' ? currentWorkspaceName : t('personalLabel') }) }}
@@ -393,50 +393,52 @@
           </v-card>
         </div>
       </div>
-    </v-card-text>
-    <v-card-actions class="app-dialog-actions justify-space-between">
-      <div class="d-flex align-center ga-2">
-        <app-action-button
-          v-if="whatnotReviewRows.length > 0"
-          action="delete"
-          variant="text"
-          color="warning"
-          :disabled="isConfirmingWhatnotImport"
-          :label="t('whatnotReviewDiscardBatchAction')"
-          @click="discardWhatnotReviewBatch"
-        >
-          {{ t('whatnotReviewDiscardBatchAction') }}
-        </app-action-button>
-        <app-action-button
-          action="close"
-          variant="text"
-          :label="t('commonClose')"
-          @click="closeWhatnotReviewDialog"
-        >
-          {{ t('commonClose') }}
-        </app-action-button>
+    </div>
+    <template #actions>
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2 w-100">
+        <div class="d-flex align-center ga-2">
+          <app-action-button
+            v-if="whatnotReviewRows.length > 0"
+            action="delete"
+            variant="text"
+            color="warning"
+            :disabled="isConfirmingWhatnotImport"
+            :label="t('whatnotReviewDiscardBatchAction')"
+            @click="discardWhatnotReviewBatch"
+          >
+            {{ t('whatnotReviewDiscardBatchAction') }}
+          </app-action-button>
+          <app-action-button
+            action="close"
+            variant="text"
+            :label="t('commonClose')"
+            @click="closeWhatnotReviewDialog"
+          >
+            {{ t('commonClose') }}
+          </app-action-button>
+        </div>
+        <div class="d-flex align-center ga-2">
+          <v-chip
+            v-if="whatnotReviewRows.length > 0"
+            size="small"
+            variant="tonal"
+            color="info"
+          >
+            {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewDecisionSummary.readyCount }) }}
+          </v-chip>
+          <app-action-button
+            action="import"
+            color="primary"
+            icon="mdi-check-bold"
+            :disabled="isConfirmingWhatnotImport || whatnotReviewRows.length === 0 || whatnotReviewDecisionSummary.blockedCount > 0"
+            :loading="isConfirmingWhatnotImport"
+            :label="t('whatnotReviewImportReviewedSalesAction')"
+            @click="confirmWhatnotImportBatch"
+          >
+            {{ t('whatnotReviewImportReviewedSalesAction') }}
+          </app-action-button>
+        </div>
       </div>
-      <div class="d-flex align-center ga-2">
-        <v-chip
-          v-if="whatnotReviewRows.length > 0"
-          size="small"
-          variant="tonal"
-          color="info"
-        >
-          {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewDecisionSummary.readyCount }) }}
-        </v-chip>
-        <app-action-button
-          action="import"
-          color="primary"
-          icon="mdi-check-bold"
-          :disabled="isConfirmingWhatnotImport || whatnotReviewRows.length === 0 || whatnotReviewDecisionSummary.blockedCount > 0"
-          :loading="isConfirmingWhatnotImport"
-          :label="t('whatnotReviewImportReviewedSalesAction')"
-          @click="confirmWhatnotImportBatch"
-        >
-          {{ t('whatnotReviewImportReviewedSalesAction') }}
-        </app-action-button>
-      </div>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+    </template>
+  </app-form-layout>
+</app-dialog-shell>

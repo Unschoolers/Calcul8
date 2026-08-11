@@ -4,7 +4,7 @@
   <admin-sync-import-card></admin-sync-import-card>
 
   <v-bottom-sheet v-model="showSinglesRowEditor" inset class="singles-editor-sheet-dialog">
-    <app-section-card card-class="singles-editor-sheet" content-class="singles-editor-form" divider>
+    <app-section-card card-class="singles-editor-sheet app-overlay-frame" content-class="singles-editor-form" divider>
       <template #header>
         <div class="singles-editor-title-bar__row">
           <div class="singles-section-title-group">
@@ -25,6 +25,7 @@
           </div>
         </div>
       </template>
+      <app-form-layout :responsive="false">
         <div class="singles-editor-preview">
           <button
             type="button"
@@ -378,6 +379,7 @@
             </v-col>
           </v-row>
         </div>
+      </app-form-layout>
       <template #actions>
       <app-sticky-action-footer footer-class="singles-editor-actions">
         <div class="singles-editor-actions__row singles-editor-actions__row--main">
@@ -420,30 +422,33 @@
     </app-section-card>
   </v-bottom-sheet>
 
-  <v-dialog v-model="showSinglesImagePreview" max-width="420" class="singles-image-preview-dialog">
-    <div class="singles-image-preview-shell" @click="closeSinglesImagePreview">
-      <div class="singles-image-preview-frame" @click.stop>
-        <button
-          type="button"
-          class="singles-image-preview-close"
-          :aria-label="t('singlesEditorCloseImagePreviewAction')"
-          @click="closeSinglesImagePreview"
-        >
-          <v-icon size="18">mdi-close</v-icon>
-        </button>
-        <img
-          v-if="singlesImagePreviewSrc"
-          :src="singlesImagePreviewSrc"
-          :alt="singlesImagePreviewTitle || t('singlesEditorPreviewEyebrow')"
-          class="singles-image-preview-img"
-          @click="closeSinglesImagePreview"
-        >
-        <div v-if="singlesImagePreviewTitle" class="singles-image-preview-title">
-          {{ singlesImagePreviewTitle }}
-        </div>
-      </div>
+  <app-dialog-shell
+    v-model="showSinglesImagePreview"
+    :title="t('singlesEditorPreviewEyebrow')"
+    variant="media"
+    :max-width="420"
+    class="singles-image-preview-dialog"
+    @update:model-value="(value) => { if (!value) closeSinglesImagePreview(); }"
+  >
+    <button
+      type="button"
+      class="singles-image-preview-close app-touch-target"
+      :aria-label="t('singlesEditorCloseImagePreviewAction')"
+      @click="closeSinglesImagePreview"
+    >
+      <v-icon size="18">mdi-close</v-icon>
+    </button>
+    <img
+      v-if="singlesImagePreviewSrc"
+      :src="singlesImagePreviewSrc"
+      :alt="singlesImagePreviewTitle || t('singlesEditorPreviewEyebrow')"
+      class="singles-image-preview-img"
+      @click="closeSinglesImagePreview"
+    >
+    <div v-if="singlesImagePreviewTitle" class="singles-image-preview-title app-text-wrap">
+      {{ singlesImagePreviewTitle }}
     </div>
-  </v-dialog>
+  </app-dialog-shell>
 
   <singles-csv-import-dialog></singles-csv-import-dialog>
 </v-row>

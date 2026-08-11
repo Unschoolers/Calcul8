@@ -1,6 +1,8 @@
 import { useWhatnotDialogPorts } from "./whatnotDialogPorts.ts";
 import AppActionButton from "../../ui/AppActionButton.vue";
+import AppDialogShell from "../../ui/AppDialogShell.vue";
 import AppEmptyState from "../../ui/AppEmptyState.vue";
+import AppFormLayout from "../../ui/AppFormLayout.vue";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import {
   buildWhatnotReviewChangeDiffs,
@@ -255,7 +257,9 @@ export const WhatnotReviewDialog = {
   name: "WhatnotReviewDialog",
   components: {
     AppActionButton,
-    AppEmptyState
+    AppDialogShell,
+    AppEmptyState,
+    AppFormLayout
   },
   setup() {
     return useWhatnotDialogPorts();

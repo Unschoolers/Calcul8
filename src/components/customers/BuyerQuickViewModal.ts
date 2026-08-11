@@ -2,12 +2,14 @@ import { defineComponent, type PropType } from "vue";
 import type { BuyerQuickViewSummary } from "../../app-core/computed/buyer-quick-view.ts";
 import { normalizeBuyerProfileTags } from "../../app-core/buyer-profile.ts";
 import type { BuyerProfile, BuyerProfileSaveState } from "../../types/app.ts";
+import AppDialogShell from "../ui/AppDialogShell.vue";
+import AppFormLayout from "../ui/AppFormLayout.vue";
 import BuyerIdentityLabel from "./BuyerIdentityLabel.vue";
 import "./BuyerQuickViewModal.css";
 
 export const BuyerQuickViewModal = defineComponent({
   name: "BuyerQuickViewModal",
-  components: { BuyerIdentityLabel },
+  components: { AppDialogShell, AppFormLayout, BuyerIdentityLabel },
   props: {
     modelValue: {
       type: Boolean,
