@@ -6,7 +6,7 @@
   :fullscreen="isMobileFullscreen"
   :content-class="['app-dialog-overlay', `app-dialog-overlay--${variant}`]"
   :aria-labelledby="titleId"
-  :aria-describedby="description ? descriptionId : undefined"
+  :aria-describedby="description ? descriptionId : null"
   @update:model-value="updateModelValue"
 >
   <v-card ref="surface" class="app-dialog-card app-overlay-frame">
