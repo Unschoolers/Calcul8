@@ -17,6 +17,21 @@ describe("buyer quick view UI contract", () => {
     assert.match(template, /buyerQuickViewGroupedTitle/);
   });
 
+  test("uses the shared shell as the only padded and themed dialog surface", () => {
+    const template = readFileSync("src/components/customers/BuyerQuickViewModal.html", "utf8");
+    const styles = readFileSync("src/components/customers/BuyerQuickViewModal.css", "utf8");
+    const contentRule = styles.match(/\.buyer-quick-view-content\s*\{(?<body>[^}]*)\}/)?.groups?.body ?? "";
+
+    assert.match(template, /<app-dialog-shell\b[^>]*class="buyer-quick-view-dialog"/s);
+    assert.doesNotMatch(contentRule, /padding(?:-inline|-left|-right)?\s*:/);
+    assert.doesNotMatch(styles, /\.buyer-quick-view-content\s*\{[^}]*padding-inline\s*:/s);
+    assert.match(
+      styles,
+      /\.buyer-quick-view-dialog\s+\.app-dialog-card\s*\{[^}]*border:[^}]*background:/s
+    );
+    assert.doesNotMatch(styles, /\.buyer-quick-view-card\s*\{/);
+  });
+
   test("sales history exposes named customers as the buyer quick-view entry point", () => {
     const definition = readFileSync("src/components/windows/sales/SalesHistoryLedger.ts", "utf8");
     const template = readFileSync("src/components/windows/sales/SalesHistoryLedger.html", "utf8");

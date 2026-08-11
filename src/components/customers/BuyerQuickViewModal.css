@@ -1,8 +1,5 @@
-.buyer-quick-view-dialog {
+.buyer-quick-view-dialog .app-dialog-card {
   color: rgb(var(--v-theme-on-surface));
-}
-
-.buyer-quick-view-card {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
   background:
     linear-gradient(135deg, rgba(var(--v-theme-primary), 0.08), transparent 42%),
@@ -57,7 +54,6 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 8px 20px 20px;
 }
 
 .buyer-quick-view-profile,
@@ -177,10 +173,6 @@
 
 @media (max-width: 699px) {
   .buyer-quick-view-title {
-    padding-inline: 16px;
-  }
-
-  .buyer-quick-view-content {
     padding-inline: 16px;
   }
 

@@ -1,4 +1,9 @@
-<app-dialog-shell v-model="isOpen" :title="t('buyerQuickViewTitle')" :max-width="760">
+<app-dialog-shell
+  v-model="isOpen"
+  class="buyer-quick-view-dialog"
+  :title="t('buyerQuickViewTitle')"
+  :max-width="760"
+>
   <template #title>
     <div class="buyer-quick-view-title">
       <div class="buyer-quick-view-title__main">
