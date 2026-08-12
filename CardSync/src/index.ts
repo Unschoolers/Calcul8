@@ -22,6 +22,8 @@ type PokemonSetSummary = {
   total: number | null;
 };
 
+const DEFAULT_POKEMON_DATA_REPOSITORY = "https://github.com/PokemonTCG/pokemon-tcg-data.git";
+
 function asRecord(value: unknown): JsonRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as JsonRecord;
@@ -639,16 +641,47 @@ function runGit(cwd: string, args: string[]): Promise<string> {
   });
 }
 
+async function isGitWorktreeAt(repoDir: string): Promise<boolean> {
+  try {
+    const worktreeRoot = await runGit(repoDir, ["rev-parse", "--show-toplevel"]);
+    return path.resolve(worktreeRoot) === path.resolve(repoDir);
+  } catch {
+    return false;
+  }
+}
+
+async function ensurePokemonDataRepository(repoDir: string): Promise<void> {
+  const resolvedRepoDir = path.resolve(repoDir);
+  if (await isGitWorktreeAt(resolvedRepoDir)) return;
+
+  try {
+    await fs.access(resolvedRepoDir);
+    throw new Error(
+      `Pokémon source directory is not an independent Git clone: ${resolvedRepoDir}. `
+      + "Use an empty --repo directory or remove it so CardSync can clone the source."
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Pokémon source directory")) throw error;
+  }
+
+  await fs.mkdir(path.dirname(resolvedRepoDir), { recursive: true });
+  const repositoryUrl = (process.env.CARDSYNC_POKEMON_REPOSITORY_URL || DEFAULT_POKEMON_DATA_REPOSITORY).trim();
+  if (!repositoryUrl) throw new Error("Missing CARDSYNC_POKEMON_REPOSITORY_URL.");
+  console.log(`Cloning Pokémon source into ${resolvedRepoDir}...`);
+  await runGit(path.dirname(resolvedRepoDir), ["clone", "--depth", "1", repositoryUrl, resolvedRepoDir]);
+}
+
 async function fetchPokemonData(options: { repoDir: string; outFile: string; setsOutFile: string }): Promise<void> {
   const { repoDir, outFile, setsOutFile } = options;
   const resolvedRepo = path.resolve(repoDir);
+  await ensurePokemonDataRepository(resolvedRepo);
   const cardsDir = path.join(resolvedRepo, "cards", "en");
   const setsFile = path.join(resolvedRepo, "sets", "en.json");
 
-  // git pull
+  // A fast-forward pull keeps the local catalog source current without
+  // rewriting user work if a custom source clone has local changes.
   console.log(`Pulling latest from ${resolvedRepo}...`);
-  await runGit(resolvedRepo, ["fetch", "origin"]);
-  const pullOutput = await runGit(resolvedRepo, ["merge", "origin/master"]);
+  const pullOutput = await runGit(resolvedRepo, ["pull", "--ff-only"]);
   console.log(pullOutput || "(already up to date)");
 
   // merge card files
@@ -671,6 +704,55 @@ async function fetchPokemonData(options: { repoDir: string; outFile: string; set
   const resolvedSetsOut = path.resolve(setsOutFile);
   await fs.copyFile(setsFile, resolvedSetsOut);
   console.log(`Copied sets to ${resolvedSetsOut}`);
+}
+
+async function refreshUnionArenaCatalog(options: {
+  databaseId: string;
+  containerId: string;
+  outputDir: string;
+  batchSize: number;
+  concurrency: number;
+  dryRun: boolean;
+}): Promise<void> {
+  const outputFile = path.join(path.resolve(options.outputDir), "union-arena.json");
+  await fs.mkdir(path.dirname(outputFile), { recursive: true });
+  const cards = await fetchUnionArenaCards();
+  await writeJsonArray(outputFile, cards);
+  console.log(`Saved ${cards.length} Union Arena card(s) to ${outputFile}`);
+  await importCardsToCosmosFromRows(cards, {
+    game: "ua",
+    databaseId: options.databaseId,
+    containerId: options.containerId,
+    batchSize: options.batchSize,
+    concurrency: options.concurrency,
+    dryRun: options.dryRun
+  });
+}
+
+async function refreshPokemonCatalog(options: {
+  databaseId: string;
+  containerId: string;
+  repoDir: string;
+  outputDir: string;
+  batchSize: number;
+  concurrency: number;
+  dryRun: boolean;
+}): Promise<void> {
+  const outputDir = path.resolve(options.outputDir);
+  const cardsFile = path.join(outputDir, "pokemon-all.json");
+  const setsFile = path.join(outputDir, "pokemon-sets.json");
+  await fs.mkdir(outputDir, { recursive: true });
+  await fetchPokemonData({ repoDir: options.repoDir, outFile: cardsFile, setsOutFile: setsFile });
+  const pokemonSetsById = await loadPokemonSetsById(setsFile);
+  await importCardsToCosmosFromFile(cardsFile, {
+    game: "pokemon",
+    databaseId: options.databaseId,
+    containerId: options.containerId,
+    batchSize: options.batchSize,
+    concurrency: options.concurrency,
+    dryRun: options.dryRun,
+    pokemonSetsById
+  });
 }
 
 async function main(): Promise<void> {
@@ -721,6 +803,48 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "run-union-arena") {
+    if (!databaseId) throw new Error("Missing COSMOS_DATABASE.");
+    if (!containerId) throw new Error("Missing COSMOS_CONTAINER.");
+    const sourceDir = path.dirname(fileURLToPath(import.meta.url));
+    const projectRoot = path.resolve(sourceDir, "..");
+    const outputDir = ((args["output-dir"] as string | undefined)?.trim())
+      || path.join(projectRoot, ".cache");
+
+    await refreshUnionArenaCatalog({
+      databaseId,
+      containerId,
+      outputDir,
+      batchSize,
+      concurrency,
+      dryRun
+    });
+    return;
+  }
+
+  if (command === "run-pokemon") {
+    if (!databaseId) throw new Error("Missing COSMOS_DATABASE.");
+    if (!containerId) throw new Error("Missing COSMOS_CONTAINER.");
+    const sourceDir = path.dirname(fileURLToPath(import.meta.url));
+    const projectRoot = path.resolve(sourceDir, "..");
+    const workspaceRoot = path.resolve(projectRoot, "..");
+    const repoDir = ((args.repo as string | undefined)?.trim())
+      || path.join(projectRoot, ".cache", "pokemon-tcg-data");
+    const outputDir = ((args["output-dir"] as string | undefined)?.trim())
+      || path.join(projectRoot, ".cache");
+
+    await refreshPokemonCatalog({
+      databaseId,
+      containerId,
+      repoDir,
+      outputDir,
+      batchSize,
+      concurrency,
+      dryRun
+    });
+    return;
+  }
+
   if (command === "filter-file") {
     const file = (args.file as string | undefined)?.trim();
     const out = (args.out as string | undefined)?.trim();
@@ -768,7 +892,7 @@ async function main(): Promise<void> {
   }
 
   throw new Error(
-    "Missing or invalid command. Use: fetch-ua | fetch-pokemon | filter-file | import-file"
+    "Missing or invalid command. Use: run-union-arena | run-pokemon | fetch-ua | fetch-pokemon | filter-file | import-file"
   );
 }
 

@@ -1,22 +1,23 @@
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
 import {
-    resolveVuetifySlotNumber,
-    resolveVuetifySlotString,
-    resolveVuetifySlotValue
+  resolveVuetifySlotNumber,
+  resolveVuetifySlotString,
+  resolveVuetifySlotValue
 } from "../../../app-core/shared/vuetify-slot-items.ts";
 import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import type { CurrencyCode, SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
+import type { SinglesCardSuggestion } from "./singlesCatalogSearch.ts";
 import { normalizeSinglesSearchTokens } from "./singlesCatalogSearch.ts";
 import {
-    createSinglesPurchasingPorts,
-    singlesPurchasingPortsKey,
-    useSinglesConfigPorts
+  createSinglesPurchasingPorts,
+  singlesPurchasingPortsKey,
+  useSinglesConfigPorts
 } from "./singlesConfigPorts.ts";
 import {
-    createSinglesCatalogSearchState,
-    singlesCatalogSearchComputed,
-    singlesCatalogSearchMethods
+  createSinglesCatalogSearchState,
+  singlesCatalogSearchComputed,
+  singlesCatalogSearchMethods
 } from "./useSinglesCatalogSearch.ts";
 import { singlesImportComputed, singlesImportMethods } from "./useSinglesImport.ts";
 import { singlesRowEditorMethods } from "./useSinglesRowEditor.ts";
@@ -103,6 +104,7 @@ type SinglesDesktopSortKeyWithMeta =
 export type SinglesWindowThis = {
   // ===== Local data =====
   showSinglesInfoNotice: boolean;
+  isSinglesMarketRefreshBusy: boolean;
   showSinglesRowEditor: boolean;
   showFullySoldSingles: boolean;
   singlesSearchQuery: string;
@@ -195,6 +197,8 @@ export type SinglesWindowThis = {
   conditionShortLabel(value: unknown): string;
   languageShortLabel(value: unknown): string;
   cancelSinglesItemSearch(): void;
+  requestSinglesCardSuggestions(query: string, signal?: AbortSignal): Promise<SinglesCardSuggestion[]>;
+  refreshSinglesMarketPricesFromCatalog(): Promise<void>;
   openSinglesRowEditor(entry: SinglesPurchaseEntry): void;
 
   // ===== Row editor spread methods =====
@@ -234,6 +238,7 @@ export const singlesConfigWindowDefinition = {
     return {
       ...createSinglesCatalogSearchState(),
       showSinglesInfoNotice: true,
+      isSinglesMarketRefreshBusy: false,
       showSinglesRowEditor: false,
       showFullySoldSingles: false,
       singlesSearchQuery: "",
@@ -679,6 +684,143 @@ export const singlesConfigWindowDefinition = {
 
     languageShortLabel(this: SinglesWindowThis, value: unknown): string {
       return toLanguageAbbreviation(value);
+    },
+
+    async refreshSinglesMarketPricesFromCatalog(this: SinglesWindowThis): Promise<void> {
+      if (this.isSinglesMarketRefreshBusy) return;
+      const t = this?.t as ((key: string) => string) | undefined;
+
+      if (!this.showCatalogSuggestions) {
+        this.notify?.(
+          typeof t === "function"
+            ? t("singlesMarketRefreshSelectCatalogWarning")
+            : "Select a catalog source before refreshing market values.",
+          "warning"
+        );
+        return;
+      }
+
+      const rows = Array.isArray(this.singlesPurchases)
+        ? this.singlesPurchases as SinglesPurchaseEntry[]
+        : [];
+      if (rows.length === 0) {
+        this.notify?.(
+          typeof t === "function"
+            ? t("singlesMarketRefreshNoRowsInfo")
+            : "No singles rows to refresh.",
+          "info"
+        );
+        return;
+      }
+
+      this.isSinglesMarketRefreshBusy = true;
+      let updatedCount = 0;
+      let attemptedCount = 0;
+      let failedCount = 0;
+      const requestSinglesCardSuggestions = (
+        this as { requestSinglesCardSuggestions: (query: string, signal?: AbortSignal) => Promise<SinglesCardSuggestion[]> }
+      ).requestSinglesCardSuggestions;
+
+      try {
+        const nextRows: SinglesPurchaseEntry[] = [...rows];
+
+        for (let index = 0; index < rows.length; index += 1) {
+          const entry = rows[index];
+          const item = String(entry.item || "").trim();
+          const cardNo = String(entry.cardNumber || "").trim();
+          if (!item) continue;
+
+          attemptedCount += 1;
+          const query = cardNo ? `${item} ${cardNo}` : item;
+
+          try {
+            const suggestions = await requestSinglesCardSuggestions(query);
+            if (!Array.isArray(suggestions) || suggestions.length === 0) continue;
+
+            const itemLower = item.toLocaleLowerCase();
+            const cardNoLower = cardNo.toLocaleLowerCase();
+            const exact = suggestions.find((suggestion) => {
+              const suggestionName = String(suggestion.name || "").trim().toLocaleLowerCase();
+              if (suggestionName !== itemLower) return false;
+              if (!cardNoLower) return true;
+              const suggestionCardNo = String(suggestion.cardNo || "").trim().toLocaleLowerCase();
+              return suggestionCardNo === cardNoLower;
+            });
+
+            const fallback = suggestions.find((suggestion) => (
+              String(suggestion.name || "").trim().toLocaleLowerCase() === itemLower
+            ));
+            const selected = exact ?? fallback;
+            if (!selected) continue;
+
+            const marketPrice = Number(selected.marketPrice);
+            if (!Number.isFinite(marketPrice) || marketPrice < 0) continue;
+
+            const previousMarketValue = Number(entry.marketValue);
+            const shouldUpdateMarketValue = !Number.isFinite(previousMarketValue)
+              || Math.abs(previousMarketValue - marketPrice) >= 0.0001;
+            const nextImage = String(entry.image || "").trim() || String(selected.image || "").trim();
+
+            if (!shouldUpdateMarketValue && nextImage === String(entry.image || "").trim()) {
+              continue;
+            }
+
+            nextRows[index] = {
+              ...entry,
+              marketValue: marketPrice,
+              image: nextImage
+            };
+            updatedCount += 1;
+          } catch {
+            failedCount += 1;
+          }
+        }
+
+        if (updatedCount > 0) {
+          this.singlesPurchases = nextRows;
+          this.onSinglesPurchaseRowsChange?.();
+          const suffix = updatedCount === 1 ? "" : "s";
+          const message = typeof t === "function"
+            ? t("singlesMarketRefreshUpdatedToast")
+              .replace(/\{\{count\}\}|\{count\}/g, String(updatedCount))
+              .replace(/\{\{suffix\}\}|\{suffix\}/g, suffix)
+            : `Updated market values for ${updatedCount} row${suffix}.`;
+          this.notify?.(
+            message,
+            "success"
+          );
+          return;
+        }
+
+        if (attemptedCount === 0) {
+          this.notify?.(
+            typeof t === "function"
+              ? t("singlesMarketRefreshNoEligibleInfo")
+              : "No catalog-linked singles rows were eligible for refresh.",
+            "info"
+          );
+          return;
+        }
+
+        if (failedCount > 0) {
+          this.notify?.(
+            typeof t === "function"
+              ? t("singlesMarketRefreshPartialWarning")
+              : "Market value refresh completed with errors. Try again.",
+            "warning"
+          );
+          return;
+        }
+
+        this.notify?.(
+          typeof t === "function"
+            ? t("singlesMarketRefreshAlreadyUpToDateInfo")
+            : "All market values are already up to date.",
+          "info"
+        );
+      } finally {
+        this.isSinglesMarketRefreshBusy = false;
+      }
     },
     ...singlesRowEditorMethods
   },

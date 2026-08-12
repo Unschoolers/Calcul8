@@ -41,7 +41,8 @@ export function useSinglesConfigPorts(): SinglesConfigPorts {
 export const singlesPurchasingPortKeys = [
   "currency", "sellingCurrency", "exchangeRate", "conversionInfo", "onPurchaseConfigChange", "t",
   "showCatalogSuggestions", "showSinglesInfoNotice", "dismissSinglesInfoNotice", "singlesSearchQuery",
-  "onSinglesSearchInput", "importSinglesPurchasesCsv", "showFullySoldSingles", "toggleShowFullySoldSingles",
+  "onSinglesSearchInput", "importSinglesPurchasesCsv", "refreshSinglesMarketPricesFromCatalog", "isSinglesMarketRefreshBusy",
+  "showFullySoldSingles", "toggleShowFullySoldSingles",
   "isDesktopSelectMode", "toggleDesktopSelectMode", "visibleSinglesPurchases", "singlesPurchases",
   "hasSinglesSearchQuery", "singlesPurchaseTotalCost", "singlesPurchaseTotalMarketValue", "fmtCurrency",
   "selectedDesktopRowIds", "deleteSelectedDesktopRows", "onDesktopRowsScroll", "setDesktopRowsScrollerRef",
@@ -56,7 +57,7 @@ export const singlesPurchasingPortKeys = [
 
 const singlesPurchasingRequiredFunctionKeys = [
   "onPurchaseConfigChange", "t", "dismissSinglesInfoNotice", "onSinglesSearchInput",
-  "importSinglesPurchasesCsv", "toggleShowFullySoldSingles", "toggleDesktopSelectMode",
+  "importSinglesPurchasesCsv", "refreshSinglesMarketPricesFromCatalog", "toggleShowFullySoldSingles", "toggleDesktopSelectMode",
   "deleteSelectedDesktopRows", "onDesktopRowsScroll", "setDesktopRowsScrollerRef",
   "sortIconFor", "toggleDesktopSort", "isDesktopRowSelected", "handleDesktopRowClick",
   "conditionShortLabel", "languageShortLabel", "openSinglesImagePreview", "getSinglesEntryPreviewImage",

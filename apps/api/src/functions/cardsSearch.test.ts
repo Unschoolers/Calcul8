@@ -8,9 +8,10 @@ vi.mock("@azure/functions", () => ({
   }
 }));
 
-const { getConfigMock, searchCardCatalogMock } = vi.hoisted(() => ({
+const { getConfigMock, searchCardCatalogMock, incrementRateLimitCounterMock } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
-  searchCardCatalogMock: vi.fn()
+  searchCardCatalogMock: vi.fn(),
+  incrementRateLimitCounterMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -19,6 +20,10 @@ vi.mock("../lib/config", () => ({
 
 vi.mock("../lib/cosmos/cardCatalogRepository", () => ({
   searchCardCatalog: searchCardCatalogMock
+}));
+
+vi.mock("../lib/cosmos/rateLimitRepository", () => ({
+  incrementRateLimitCounter: incrementRateLimitCounterMock
 }));
 
 import { cardsSearch } from "./cardsSearch";
@@ -35,6 +40,9 @@ beforeEach(() => {
       series: "blc"
     }
   ]);
+  incrementRateLimitCounterMock
+    .mockResolvedValueOnce(1)
+    .mockResolvedValueOnce(1);
 });
 
 test("cardsSearch returns results for valid query", async () => {
@@ -92,4 +100,22 @@ test("cardsSearch validates limit range", async () => {
   const response = await cardsSearch(request as never, context as never);
   assert.equal(response.status, 400);
   assert.equal(searchCardCatalogMock.mock.calls.length, 0);
+});
+
+test("cardsSearch returns 429 when route-specific rate limit is exceeded in prod", async () => {
+  getConfigMock.mockReturnValue(createApiConfig({ apiEnv: "prod", cardCatalogContainerId: "card_catalog" }));
+  incrementRateLimitCounterMock.mockReset();
+  incrementRateLimitCounterMock
+    .mockResolvedValueOnce(41)
+    .mockResolvedValueOnce(1);
+
+  const request = createHttpRequest({ method: "GET", query: "game=ua&q=asgu&limit=10" });
+  const context = createInvocationContext();
+
+  const response = await cardsSearch(request as never, context as never);
+
+  assert.equal(response.status, 429);
+  assert.equal(searchCardCatalogMock.mock.calls.length, 0);
+  assert.equal(incrementRateLimitCounterMock.mock.calls.length, 2);
+  assert.equal((response.jsonBody as { error: string }).error, "Too many card search requests. Please retry shortly.");
 });

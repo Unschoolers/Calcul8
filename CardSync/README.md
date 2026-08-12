@@ -10,9 +10,9 @@ Small local TypeScript utility to upsert card JSON arrays into Cosmos DB.
    - copy `CardSync/.env.example` to `CardSync/.env.local`
    - set `COSMOS_CONNECTION_STRING` (or `COSMOS_ENDPOINT` + `COSMOS_KEY`)
    - set `EXBURST_API_KEY` and `EXBURST_BEARER_TOKEN`
-3. Run fetch:
-   - `npm --prefix CardSync run fetch:ua -- --out ".\\ua-export.json"`
-   - `npm --prefix CardSync run fetch:ua -- --series "kgr" --out ".\\ua-kagurabachi.json"`
+3. Refresh the live catalog and market prices:
+   - `npm --prefix CardSync run run:union-arena`
+   - `npm --prefix CardSync run run:pokemon`
 4. Optionally filter an existing export to one set:
    - `npm --prefix CardSync run filter:file -- --file ".\\ua-export.json" --out ".\\ua-kagurabachi.json" --contains "kagurabachi"`
 4. Run import:
@@ -44,6 +44,22 @@ Each input row is upserted as:
 - plus all original input fields
 
 ## Commands
+
+- `run:union-arena`:
+  - fetches the complete published Union Arena catalog and its current market prices;
+  - upserts every card into Cosmos, so new cards are inserted and existing cards receive refreshed source data and market prices;
+  - stores the fetched snapshot under `CardSync/.cache/union-arena.json` for inspection.
+
+- `run:pokemon`:
+  - maintains its own source clone under `CardSync/.cache/pokemon-tcg-data`, rebuilds the complete Pokémon catalog, and upserts it into Cosmos;
+  - inserts new cards and refreshes existing card metadata and market prices from the source snapshot;
+  - stores snapshots under `CardSync/.cache/`.
+
+Both commands intentionally use normal upserts, not `--missing-only`: use `--dry-run` to validate without writes.
+
+`run:pokemon` optionally accepts `--repo <independent-git-clone>`. CardSync rejects
+a directory nested inside another repository because refreshing that path would update
+the wrong project instead of the Pokémon data source.
 
 - `fetch-ua`:
   - fetches all UA cards via paginated REST

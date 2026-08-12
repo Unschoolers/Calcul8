@@ -82,6 +82,22 @@
                   ></app-action-button>
                 </template>
               </v-tooltip>
+              <v-tooltip :text="t('singlesMarketRefreshAction')" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-refresh"
+                    size="x-small"
+                    variant="text"
+                    class="singles-search-action-btn"
+                    :loading="isSinglesMarketRefreshBusy"
+                    :disabled="isSinglesMarketRefreshBusy || !showCatalogSuggestions || singlesPurchases.length === 0"
+                    :title="t('singlesMarketRefreshAction')"
+                    :aria-label="t('singlesMarketRefreshAction')"
+                    @click.stop="refreshSinglesMarketPricesFromCatalog"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
               <v-tooltip :text="showFullySoldSingles ? t('singlesHideSoldOutItems') : t('singlesShowSoldOutItems')" location="top">
                 <template #activator="{ props }">
                   <v-btn
