@@ -14,6 +14,7 @@ import {
     readStorage,
     STORAGE_KEYS
 } from "./storageKeys.ts";
+import { cancelTabPrewarm, scheduleTabPrewarm } from "./tab-prewarm.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 function isAppTab(value: unknown): value is AppTab {
@@ -193,6 +194,9 @@ export const appLifecycle: AppLifecycleObject = {
       this.startCloudSyncScheduler();
       void this.refreshWhatnotStatus();
     }
+    if (isDevNoLoginRoute()) {
+      scheduleTabPrewarm(this);
+    }
     if (!isDevNoLoginRoute()) {
       refreshWorkspaceRealtime(this);
     }
@@ -219,6 +223,7 @@ export const appLifecycle: AppLifecycleObject = {
   },
 
   beforeUnmount() {
+    cancelTabPrewarm(this);
     if (typeof this.stopGuidedOnboarding === "function") {
       this.stopGuidedOnboarding();
     }

@@ -41,7 +41,10 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    html { scroll-behavior: auto; }
+    html {
+      scroll-behavior: auto;
+      scrollbar-gutter: stable;
+    }
     body {
       font-family: var(--app-font-family-base);
       overscroll-behavior-y: none;
@@ -1461,45 +1464,11 @@
     .tabs-window.tabs-window--allow-sticky .v-window-item {
       overflow: visible;
     }
-    .tabs-window .v-window-item {
-      will-change: transform, opacity;
-    }
-    .tab-slide-fast-enter-active,
-    .tab-slide-fast-leave-active,
-    .tab-slide-fast-reverse-enter-active,
-    .tab-slide-fast-reverse-leave-active {
-      transition: transform var(--app-motion-fast) var(--app-ease-standard), opacity var(--app-motion-fast) ease;
-    }
-    .tab-slide-fast-enter-from,
-    .tab-slide-fast-reverse-leave-to {
-      transform: translateX(var(--app-tab-slide-distance));
-      opacity: var(--app-tab-slide-opacity);
-    }
-    .tab-slide-fast-leave-to,
-    .tab-slide-fast-reverse-enter-from {
-      transform: translateX(calc(-1 * var(--app-tab-slide-distance)));
-      opacity: var(--app-tab-slide-opacity);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .tabs-window .tab-slide-fast-enter-active,
-      .tabs-window .tab-slide-fast-leave-active,
-      .tabs-window .tab-slide-fast-reverse-enter-active,
-      .tabs-window .tab-slide-fast-reverse-leave-active {
-        transition: none !important;
-        animation: none !important;
-      }
-      .tabs-window .tab-slide-fast-enter-from,
-      .tabs-window .tab-slide-fast-leave-to,
-      .tabs-window .tab-slide-fast-reverse-enter-from,
-      .tabs-window .tab-slide-fast-reverse-leave-to {
-        transform: none !important;
-        opacity: 1 !important;
-      }
+    .tabs-window-item--active {
+      animation: app-tab-content-enter var(--app-motion-fast) var(--app-ease-standard) both;
+      backface-visibility: hidden;
     }
     @media (max-width: 600px) {
-      .tabs-window .v-window__container {
-        transition: height var(--app-motion-fast) var(--app-ease-standard);
-      }
       .app-shell {
         padding-left: var(--app-space-3) !important;
         padding-right: var(--app-space-3) !important;
@@ -1515,6 +1484,16 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+    }
+    @keyframes app-tab-content-enter {
+      from {
+        opacity: 0.84;
+        transform: translate3d(0, 8px, 0);
+      }
+      to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
       }
     }
     @media (prefers-reduced-motion: reduce) {

@@ -14,36 +14,61 @@
 
             <!-- Tab Content -->
             <div class="app-shell-tab-zone">
-              <v-window v-model="currentTab"
+              <div
                 :class="['tabs-window', { 'tabs-window--allow-sticky': currentTab === 'wheel' || currentTab === 'portfolio' || (currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config')) }]"
-                transition="tab-slide-fast" reverse-transition="tab-slide-fast-reverse">
+              >
                 <!-- CONFIG -->
-                <v-window-item key="config" value="config" eager>
+                <section
+                  v-if="currentTab === 'config' || prewarmedTabs.includes('config')"
+                  v-show="currentTab === 'config'"
+                  :class="['tabs-window-item', { 'tabs-window-item--active': currentTab === 'config' }]"
+                  :aria-hidden="currentTab !== 'config'"
+                >
                   <singles-config-window v-if="hasLotSelected && currentLotType === 'singles'" ref="singlesConfigWindow"></singles-config-window>
                   <config-window v-else></config-window>
-                </v-window-item>
+                </section>
 
                 <!-- LIVE -->
-                <v-window-item key="live" value="live" eager>
+                <section
+                  v-if="currentTab === 'live' || prewarmedTabs.includes('live')"
+                  v-show="currentTab === 'live'"
+                  :class="['tabs-window-item', { 'tabs-window-item--active': currentTab === 'live' }]"
+                  :aria-hidden="currentTab !== 'live'"
+                >
                   <live-window ref="liveWindow"></live-window>
-                </v-window-item>
+                </section>
 
                 <!-- SALES -->
-                <v-window-item key="sales" value="sales" eager>
+                <section
+                  v-if="currentTab === 'sales' || prewarmedTabs.includes('sales')"
+                  v-show="currentTab === 'sales'"
+                  :class="['tabs-window-item', { 'tabs-window-item--active': currentTab === 'sales' }]"
+                  :aria-hidden="currentTab !== 'sales'"
+                >
                   <sales-window ref="salesWindow"></sales-window>
-                </v-window-item>
+                </section>
 
                 <!-- WHEEL -->
-                <v-window-item key="wheel" value="wheel" eager>
+                <section
+                  v-if="currentTab === 'wheel' || prewarmedTabs.includes('wheel')"
+                  v-show="currentTab === 'wheel'"
+                  :class="['tabs-window-item', { 'tabs-window-item--active': currentTab === 'wheel' }]"
+                  :aria-hidden="currentTab !== 'wheel'"
+                >
                   <game-window ref="wheelWindow"></game-window>
-                </v-window-item>
+                </section>
 
                 <!-- PORTFOLIO -->
-                <v-window-item key="portfolio" value="portfolio" eager>
+                <section
+                  v-if="currentTab === 'portfolio' || prewarmedTabs.includes('portfolio')"
+                  v-show="currentTab === 'portfolio'"
+                  :class="['tabs-window-item', { 'tabs-window-item--active': currentTab === 'portfolio' }]"
+                  :aria-hidden="currentTab !== 'portfolio'"
+                >
                   <portfolio-window ref="portfolioWindow"></portfolio-window>
-                </v-window-item>
+                </section>
 
-              </v-window>
+              </div>
             </div>
 
             

@@ -2,14 +2,14 @@ import type { AppState } from "../../types/app.ts";
 import type { AuthComputedState, AuthMethodState } from "./auth.ts";
 import type { BuyerMethodState } from "./buyers.ts";
 import type {
-  CommerceMethodState,
-  LivePricingHydrationContext,
-  SalesFreshnessContext
+    CommerceMethodState,
+    LivePricingHydrationContext,
+    SalesFreshnessContext
 } from "./commerce.ts";
 import type {
-  EntitlementMethodState,
-  EntitlementUiContext,
-  StripeCheckoutContext
+    EntitlementMethodState,
+    EntitlementUiContext,
+    StripeCheckoutContext
 } from "./entitlements.ts";
 import type { GameMethodState } from "./game.ts";
 import type { AppVueContext, RuntimeMethodState } from "./runtime.ts";
@@ -32,6 +32,7 @@ export type AppMountContext = WorkspaceRealtimeContext &
     | "isAuthSessionResolving"
     | "lastSyncedPayloadHash"
     | "lots"
+    | "prewarmedTabs"
     | "pendingWorkspaceInviteToken"
     | "portfolioDashboardPreset"
     | "portfolioLotFilterIds"

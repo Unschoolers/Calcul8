@@ -96,6 +96,7 @@ export function createInitialState(): AppState {
     isResolvingWorkspaceInvite: false,
     isAcceptingWorkspaceInvite: false,
     // UI State
+    prewarmedTabs: [],
     currentTab: "config",
     visibleShellContextActionIds: [],
     showNewLotModal: false,

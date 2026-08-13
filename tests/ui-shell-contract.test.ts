@@ -70,8 +70,6 @@ test("contextual shell exposes one root slot and feature-owned action docks", ()
   assert.match(dockStyles, /\.app-context-action-dock/);
   assert.match(liveTemplate, /<context-action-dock[\s\S]*:active="currentTab === 'live'"/);
   assert.match(gameTemplate, /<context-action-dock[\s\S]*:active="currentTab === 'wheel' &&/);
-  assert.doesNotMatch(template, /v-if="currentTab === 'live'"/);
-  assert.doesNotMatch(template, /v-if="currentTab === 'wheel'/);
   assert.doesNotMatch(styles, /\.app-context-action-badge-wrap/);
   assert.match(template, /class="app-shell-root"[^>]*:data-has-context-actions="hasVisibleContextActions \? 'true' : 'false'"/);
   assert.match(computed, /hasVisibleContextActions\(\): boolean/);
@@ -137,6 +135,28 @@ test("bottom navigation uses one active surface instead of a nested pill", () =>
     /\.app-shell-bottom-nav \.v-btn\.v-btn--active \.v-btn__content\s*\{/,
     "active navigation must not combine the selected tab surface with an inner pill"
   );
+});
+
+test("primary tabs are lazy-mounted and state-preserving", () => {
+  const template = read("src/App.html");
+  const tabSections = [...template.matchAll(/<section\b[\s\S]*?:class="\['tabs-window-item'[\s\S]*?<\/section>/g)]
+    .map((match) => match[0]);
+
+  assert.equal(tabSections.length, 5);
+  assert.ok(tabSections.every((section) => section.includes("v-if=") && section.includes("v-show=")));
+  assert.equal((template.match(/prewarmedTabs\.includes\('/g) || []).length, 5);
+});
+
+test("primary tab switching does not run forced-reflow transition hooks", () => {
+  const template = read("src/App.html");
+  const styles = read("src/styles/app.css");
+
+  assert.doesNotMatch(template, /<v-window\b|<v-window-item\b/);
+  assert.doesNotMatch(styles, /\.tabs-window \.v-window-item\s*\{[\s\S]*will-change:\s*transform/);
+  assert.match(styles, /scrollbar-gutter:\s*stable/);
+  assert.equal((template.match(/tabs-window-item--active/g) || []).length, 5);
+  assert.match(styles, /\.tabs-window-item--active\s*\{[\s\S]*animation:\s*app-tab-content-enter/);
+  assert.match(styles, /@keyframes app-tab-content-enter[\s\S]*transform:\s*translate3d/);
 });
 
 test("no-lot blocking state uses the shared error state surface", () => {

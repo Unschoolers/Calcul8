@@ -1,6 +1,6 @@
 import type {
-  LivePricingHydrationContext,
-  SalesFreshnessContext
+    LivePricingHydrationContext,
+    SalesFreshnessContext
 } from "./context/commerce.ts";
 import type { AppWatchObject, TabSalesFreshnessContext } from "./context/watch.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
@@ -11,6 +11,7 @@ import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot/whatnot.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace/workspace-realtime.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
+import { scheduleTabPrewarm } from "./tab-prewarm.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 const TAB_SALES_FRESHNESS_DELAY_MS = 500;
@@ -220,6 +221,7 @@ export const appWatch: AppWatchObject = {
     if (isDevNoLoginRoute()) {
       return;
     }
+    scheduleTabPrewarm(this);
     this.startCloudSyncScheduler();
     void this.hydrateBuyerProfiles();
     void this.retryPendingBuyerProfiles();
@@ -283,6 +285,7 @@ export const appWatch: AppWatchObject = {
     refreshWorkspaceRealtime(this);
     queueCurrentLotSalesFreshnessCheck(this, newVal);
     hydrateCurrentLotLivePricing(this, newVal);
+    scheduleTabPrewarm(this);
   },
 
   chartView() {

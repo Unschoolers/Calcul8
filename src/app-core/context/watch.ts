@@ -1,32 +1,32 @@
 import type {
-  AppState,
-  AppTab,
-  PortfolioDashboardPreset,
-  PortfolioLotTypeFilter,
-  PortfolioSalesByUserMetric,
-  WorkspaceScopeType
+    AppState,
+    AppTab,
+    PortfolioDashboardPreset,
+    PortfolioLotTypeFilter,
+    PortfolioSalesByUserMetric,
+    WorkspaceScopeType
 } from "../../types/app.ts";
 import type { AuthComputedState, AuthMethodState } from "./auth.ts";
 import type { BuyerMethodState, BuyerProfileCacheContext } from "./buyers.ts";
 import type {
-  CommerceMethodState,
-  LivePricingHydrationContext,
-  SalesChartRefreshContext,
-  SalesFreshnessContext
+    CommerceMethodState,
+    LivePricingHydrationContext,
+    SalesChartRefreshContext,
+    SalesFreshnessContext
 } from "./commerce.ts";
+import type { GameMethodState } from "./game.ts";
 import type { PortfolioMethodState, PortfolioSalesHydrationContext } from "./portfolio.ts";
 import type { AppVueContext, RuntimeMethodState } from "./runtime.ts";
 import type { OnboardingMethodState } from "./shell.ts";
 import type { SyncMethodState } from "./sync.ts";
 import type {
-  WhatnotMethodState,
-  WhatnotTransientStateContext
+    WhatnotMethodState,
+    WhatnotTransientStateContext
 } from "./whatnot.ts";
 import type {
-  WorkspaceMethodState,
-  WorkspaceRealtimeContext
+    WorkspaceMethodState,
+    WorkspaceRealtimeContext
 } from "./workspace.ts";
-import type { GameMethodState } from "./game.ts";
 
 export type ScopeWatchContext = WorkspaceRealtimeContext &
   WhatnotTransientStateContext &
@@ -73,6 +73,7 @@ export type AuthWatchContext = WorkspaceRealtimeContext &
     | "availableWorkspaces"
     | "isAuthSessionResolving"
     | "pendingWorkspaceInviteToken"
+    | "prewarmedTabs"
     | "showWorkspaceMembersModal"
     | "workspaceMembers"
   > &
@@ -89,7 +90,7 @@ export type AuthWatchContext = WorkspaceRealtimeContext &
 export type CurrentLotWatchContext = WorkspaceRealtimeContext &
   SalesFreshnessContext &
   LivePricingHydrationContext &
-  Pick<AppState, "currentTab" | "salesChart"> &
+  Pick<AppState, "currentTab" | "prewarmedTabs" | "salesChart"> &
   Pick<CommerceMethodState, "clearLiveSinglesSelection">;
 
 export type PortfolioWatchContext = Pick<
