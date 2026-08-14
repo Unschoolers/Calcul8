@@ -68,6 +68,8 @@ test("contextual shell exposes one root slot and feature-owned action docks", ()
   assert.match(dockTemplate, /app-context-action-dock/);
   assert.match(dockTemplate, /<teleport defer to="\.app-shell-action-zone">/);
   assert.match(dockStyles, /\.app-context-action-dock/);
+  assert.match(template, /class="app-shell-action-zone"[\s\S]*@touchstart\.passive="onTabTouchStart"/);
+  assert.match(template, /class="app-shell-action-zone"[\s\S]*@click\.capture="onTabClickCapture"/);
   assert.match(liveTemplate, /<context-action-dock[\s\S]*:active="currentTab === 'live'"/);
   assert.match(gameTemplate, /<context-action-dock[\s\S]*:active="currentTab === 'wheel' &&/);
   assert.doesNotMatch(styles, /\.app-context-action-badge-wrap/);

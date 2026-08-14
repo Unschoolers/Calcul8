@@ -16,6 +16,11 @@
             <div class="app-shell-tab-zone">
               <div
                 :class="['tabs-window', { 'tabs-window--allow-sticky': currentTab === 'wheel' || currentTab === 'portfolio' || (currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config')) }]"
+                @touchstart.passive="onTabTouchStart"
+                @touchmove="onTabTouchMove"
+                @touchend="onTabTouchEnd"
+                @touchcancel.passive="onTabTouchCancel"
+                @click.capture="onTabClickCapture"
               >
                 <!-- CONFIG -->
                 <section
@@ -107,7 +112,15 @@
           </v-bottom-navigation>
         </v-main>
 
-        <div class="app-shell-action-zone" :aria-label="t('shellContextActionsAriaLabel')">
+        <div
+          class="app-shell-action-zone"
+          :aria-label="t('shellContextActionsAriaLabel')"
+          @touchstart.passive="onTabTouchStart"
+          @touchmove="onTabTouchMove"
+          @touchend="onTabTouchEnd"
+          @touchcancel.passive="onTabTouchCancel"
+          @click.capture="onTabClickCapture"
+        >
         <v-fab
           v-if="currentTab === 'config' && currentLotType === 'singles'"
           id="guided-onboarding-singles-add-fab"

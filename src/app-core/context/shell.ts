@@ -5,10 +5,10 @@ import type { CommerceComputedState, CommerceMethodState } from "./commerce.ts";
 import type { EntitlementMethodState } from "./entitlements.ts";
 import type { PortfolioMethodState } from "./portfolio.ts";
 import type {
-  AppVueContext,
-  FeatureMethodImplementation,
-  RuntimeComputedState,
-  RuntimeMethodState
+    AppVueContext,
+    FeatureMethodImplementation,
+    RuntimeComputedState,
+    RuntimeMethodState
 } from "./runtime.ts";
 import type { SyncMethodState } from "./sync.ts";
 
@@ -69,11 +69,11 @@ export type BaseUiMethodImplementation = FeatureMethodImplementation<
 
 export type ShellNavigationContext = Pick<AppState, "currentTab"> &
   Pick<CommerceComputedState, "hasLotSelected"> &
-  Pick<RuntimeMethodState, "notify" | "t">;
+  Pick<RuntimeMethodState, "notify" | "selectPrimaryTab" | "t">;
 
 export type ShellNavigationMethodImplementation = FeatureMethodImplementation<
   ShellNavigationContext,
-  Pick<RuntimeMethodState, "selectPrimaryTab">
+  Pick<RuntimeMethodState, "selectPrimaryTab" | "onTabTouchStart" | "onTabTouchMove" | "onTabTouchEnd" | "onTabTouchCancel" | "onTabClickCapture">
 >;
 
 export type OnboardingMethodState = Pick<

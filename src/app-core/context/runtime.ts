@@ -1,8 +1,7 @@
 import type {
-  AppTab,
-  BeforeInstallPromptEvent,
-  LotType,
-  UiColor
+    AppTab,
+    LotType,
+    UiColor
 } from "../../types/app.ts";
 import type { AppTranslationKey } from "../i18n/index.ts";
 
@@ -13,6 +12,11 @@ export interface RuntimeComputedState {
 export interface RuntimeMethodState {
   t(key: AppTranslationKey, params?: Record<string, string | number | null | undefined>): string;
   selectPrimaryTab(tab: AppTab): void;
+  onTabTouchStart(event: TouchEvent): void;
+  onTabTouchMove(event: TouchEvent): void;
+  onTabTouchEnd(event: TouchEvent): void;
+  onTabTouchCancel(): void;
+  onTabClickCapture(event: MouseEvent): void;
   setPreferredLanguage(language: string): void;
   syncGuidedOnboarding(): void;
   startGuidedOnboarding(lotType: LotType): void;
