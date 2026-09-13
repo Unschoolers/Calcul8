@@ -6,7 +6,7 @@ import type {
 } from "../../types/app.ts";
 import type { SalesMethodImplementation } from "../context/commerce.ts";
 import { getScopedWheelConfigsStorageKey } from "../storageKeys.ts";
-import { getActiveStorageScope } from "../workspace-scope.ts";
+import { captureWorkspaceScopeGuard, getActiveStorageScope } from "../workspace-scope.ts";
 import { getTodayDate } from "./config-shared.ts";
 import { initPortfolioCharts, initSalesChartDisplay } from "./sales-charts.ts";
 import { buildSaleSaveResult } from "./sales-core.ts";
@@ -39,6 +39,7 @@ import {
 } from "./sales-ui-helpers.ts";
 import { normalizeWheelConfigs } from "../shared/normalize-wheel-config.ts";
 import { restoreStoredWheelConfigSelection } from "../shared/wheel-config-selection.ts";
+import { upsertById } from "../shared/collection-updaters.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { cacheRootLotSales, replaceRootLotSales } from "../shared/sales-root-state.ts";
 import {
@@ -219,13 +220,16 @@ export const salesMethods = {
           saveAuthoritatively: saveSaleAuthoritatively
         });
       } else if (canUseAuthoritativeSalesLiveApi()) {
+        const isCurrentScope = captureWorkspaceScopeGuard(this);
         void (async () => {
           try {
             const savedSale = await saveAuthoritativeSale(this, lotId, sale, 0);
-            const nextSales = [...this.loadSalesForLotId(lotId), savedSale];
+            if (!isCurrentScope()) return;
+            const nextSales = upsertById(this.loadSalesForLotId(lotId), savedSale);
             cacheAuthoritativeSales(this, lotId, nextSales);
             this.notify("Wheel sale recorded", "success");
           } catch (error) {
+            if (!isCurrentScope()) return;
             console.error("Failed to save wheel sale:", error);
             this.notify("Failed to save wheel sale", "error");
           }

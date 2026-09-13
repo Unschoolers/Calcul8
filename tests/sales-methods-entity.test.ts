@@ -536,3 +536,33 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
   assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   vi.useRealTimers();
 });
+
+test.each(["workspace", "auth", "return"])('cross-lot wheel save ignores a stale %s response', async change => {
+  const { setActiveWorkspaceScope } = await import("../src/app-core/workspace-scope.ts");
+  const ctx = Object.assign(createContext(), { activeScopeType: "workspace" as const, activeWorkspaceId: "a", googleAuthEpoch: 1 });
+  const sale = { id: 77, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  const deferred = Promise.withResolvers<typeof sale>();
+  saveAuthoritativeSaleMock.mockReturnValue(deferred.promise);
+  salesMethods.addWheelSaleToLot.call(ctx as never, 2, sale);
+  if (change === "auth") ctx.googleAuthEpoch++;
+  else {
+    setActiveWorkspaceScope(ctx, "workspace", "b");
+    if (change === "return") setActiveWorkspaceScope(ctx, "workspace", "a");
+  }
+  deferred.resolve(sale);
+  await deferred.promise;
+  await Promise.resolve();
+  assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 0);
+  assert.equal(ctx.loadSalesForLotId.mock.calls.length, 0);
+  assert.equal(ctx.notify.mock.calls.length, 0);
+});
+
+test("cross-lot wheel response upserts a sale already delivered by realtime", async () => {
+  const sale = { id: 77, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  const ctx = createContext({ loadSalesForLotId: vi.fn(() => [sale]) });
+  saveAuthoritativeSaleMock.mockResolvedValue(sale);
+  salesMethods.addWheelSaleToLot.call(ctx as never, 2, sale);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls[0]?.[2], [sale]);
+});
