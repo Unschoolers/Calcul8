@@ -90,6 +90,7 @@
     "tests/sales-methods-entity.test.ts",
     "tests/sales-methods.test.ts",
     "tests/sales-persistence.test.ts",
+    "tests/sales-persistence-scope.test.ts",
     "tests/sales-portfolio-hydration.test.ts",
     "tests/sales-ui-helpers.test.ts",
     "tests/sales-wheel-storage.test.ts",

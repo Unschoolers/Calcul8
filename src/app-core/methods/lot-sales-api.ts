@@ -2,6 +2,7 @@ import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
 import type { SalesEntityContext } from "../context/commerce.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { captureWorkspaceScopeGuard } from "../workspace-scope.ts";
 import { normalizeSyncSaleDto } from "./ui/sync/sync-contracts.ts";
 import {
   canUseAuthoritativeSalesLiveApi,
@@ -115,6 +116,7 @@ export async function fetchAuthoritativeSales(
   lotId: number
 ): Promise<Sale[] | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
+  const isCurrentScope = captureWorkspaceScopeGuard(app);
 
   const body = await requestJson(
     app,
@@ -125,6 +127,7 @@ export async function fetchAuthoritativeSales(
     "Failed to load lot sales."
   ) as SaleResponse | null;
 
+  if (!isCurrentScope()) return null;
   const sales = normalizeSales(body?.sales);
   persistSalesCache(app, lotId, sales);
   return sales;
@@ -135,6 +138,7 @@ export async function fetchAuthoritativeLotSalesSyncMeta(
   lotId: number
 ): Promise<LotSalesSyncMeta | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
+  const isCurrentScope = captureWorkspaceScopeGuard(app);
 
   const body = await requestJson(
     app,
@@ -145,7 +149,7 @@ export async function fetchAuthoritativeLotSalesSyncMeta(
     "Failed to load lot sales metadata."
   ) as SalesSyncMetaResponse | null;
 
-  return normalizeLotSalesSyncMeta(body?.salesMeta);
+  return isCurrentScope() ? normalizeLotSalesSyncMeta(body?.salesMeta) : null;
 }
 
 export async function fetchAuthoritativeAllSales(
@@ -153,6 +157,7 @@ export async function fetchAuthoritativeAllSales(
   lotIds: number[] | null = null
 ): Promise<Map<number, Sale[]> | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
+  const isCurrentScope = captureWorkspaceScopeGuard(app);
 
   const normalizedLotIds = Array.from(new Set(
     (lotIds ?? [])
@@ -177,6 +182,7 @@ export async function fetchAuthoritativeAllSales(
     "Failed to load sales."
   ) as AllSalesResponse | null;
 
+  if (!isCurrentScope()) return null;
   const salesByLot = normalizeSalesByLot(body?.salesByLot, normalizedLotIds);
   for (const [lotId, sales] of salesByLot.entries()) {
     persistSalesCache(app, lotId, sales);

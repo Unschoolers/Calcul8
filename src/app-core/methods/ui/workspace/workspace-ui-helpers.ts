@@ -1,7 +1,7 @@
 import type { WorkspaceUiHelperContext } from "../../../context/workspace.ts";
 import type { WorkspaceSummary } from "../../../../types/app.ts";
 import { getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_KEYS } from "../../../storageKeys.ts";
-import { resolveWorkspaceScopeContext, sortWorkspacesByName } from "../../../workspace-scope.ts";
+import { resolveWorkspaceScopeContext, setActiveWorkspaceScope, sortWorkspacesByName } from "../../../workspace-scope.ts";
 
 type WorkspaceApiError = {
   code?: unknown;
@@ -170,8 +170,7 @@ export async function applyWorkspaceScope(
     getGoogleIdToken(): string;
   }
 ): Promise<void> {
-  app.activeScopeType = scopeType;
-  app.activeWorkspaceId = scopeType === "workspace" ? workspaceId : null;
+  setActiveWorkspaceScope(app, scopeType, workspaceId);
   if (scopeType !== "workspace") {
     app.workspaceMembers = [];
     app.workspacePresenceByUserId = {};

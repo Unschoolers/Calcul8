@@ -1,22 +1,22 @@
 import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
 import type { SalesFreshnessContext } from "../context/commerce.ts";
 import { getSalesSyncMetaKey } from "../storageKeys.ts";
-import { getActiveStorageScope } from "../workspace-scope.ts";
+import { captureWorkspaceScopeGuard, getActiveStorageScope, getWorkspaceScopeRevision, resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import {
   fetchAuthoritativeLotSalesSyncMeta,
   fetchAuthoritativeSales
 } from "./lot-sales-api.ts";
 
-const inFlightSalesFreshnessChecks = new WeakMap<object, Map<number, Promise<boolean>>>();
+const inFlightSalesFreshnessChecks = new WeakMap<object, Map<string, Promise<boolean>>>();
 
 function isPersonalScope(context: Pick<SalesFreshnessContext, "activeScopeType" | "activeWorkspaceId">): boolean {
   return context.activeScopeType !== "workspace" || !context.activeWorkspaceId;
 }
 
-function getSalesFreshnessCheckMap(context: object): Map<number, Promise<boolean>> {
+function getSalesFreshnessCheckMap(context: object): Map<string, Promise<boolean>> {
   let checks = inFlightSalesFreshnessChecks.get(context);
   if (!checks) {
-    checks = new Map<number, Promise<boolean>>();
+    checks = new Map<string, Promise<boolean>>();
     inFlightSalesFreshnessChecks.set(context, checks);
   }
   return checks;
@@ -87,10 +87,13 @@ export async function hydrateAuthoritativeLotSalesWithSyncMeta(
   context: SalesFreshnessContext,
   lotId: number
 ): Promise<Sale[] | null> {
+  const isCurrentScope = captureWorkspaceScopeGuard(context);
   const [sales, salesMeta] = await Promise.all([
     fetchAuthoritativeSales(context, lotId),
     fetchAuthoritativeLotSalesSyncMeta(context, lotId).catch(() => null)
   ]);
+
+  if (!isCurrentScope()) return null;
 
   if (salesMeta) {
     persistStoredLotSalesSyncMeta(context, lotId, salesMeta);
@@ -106,9 +109,11 @@ export async function refreshPersonalLotSalesIfStale(
   lotId: number
 ): Promise<boolean> {
   if (!isPersonalScope(context)) return false;
+  const isCurrentScope = captureWorkspaceScopeGuard(context);
 
   const checks = getSalesFreshnessCheckMap(context as object);
-  const existing = checks.get(lotId);
+  const checkKey = JSON.stringify([context.googleAuthEpoch, getWorkspaceScopeRevision(context), resolveWorkspaceScopeContext(context).scopeKey, lotId]);
+  const existing = checks.get(checkKey);
   if (existing) {
     return existing;
   }
@@ -125,7 +130,7 @@ export async function refreshPersonalLotSalesIfStale(
     }
 
     const latestMeta = await fetchAuthoritativeLotSalesSyncMeta(context, lotId);
-    if (!latestMeta) {
+    if (!latestMeta || !isCurrentScope()) {
       return false;
     }
 
@@ -136,9 +141,9 @@ export async function refreshPersonalLotSalesIfStale(
 
     return Boolean(await fetchAuthoritativeSales(context, lotId));
   })().finally(() => {
-    checks.delete(lotId);
+    checks.delete(checkKey);
   });
 
-  checks.set(lotId, pendingCheck);
+  checks.set(checkKey, pendingCheck);
   return pendingCheck;
 }

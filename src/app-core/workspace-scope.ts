@@ -6,6 +6,28 @@ export type ScopeState = {
   activeWorkspaceId: string | null;
 };
 
+const scopeRevisions = new WeakMap<object, number>();
+
+export function getWorkspaceScopeRevision(state: ScopeState): number {
+  return scopeRevisions.get(state) ?? 0;
+}
+
+/** A new visit must invalidate requests from an earlier visit to the same scope. */
+export function setActiveWorkspaceScope(state: ScopeState, scopeType: WorkspaceScopeType, workspaceId: string | null): void {
+  scopeRevisions.set(state, getWorkspaceScopeRevision(state) + 1);
+  state.activeScopeType = scopeType;
+  state.activeWorkspaceId = scopeType === "workspace" ? workspaceId : null;
+}
+
+export function captureWorkspaceScopeGuard(state: ScopeState & { googleAuthEpoch: number }): () => boolean {
+  const scopeKey = resolveWorkspaceScopeContext(state).scopeKey;
+  const authEpoch = state.googleAuthEpoch;
+  const revision = getWorkspaceScopeRevision(state);
+  return () => state.googleAuthEpoch === authEpoch
+    && getWorkspaceScopeRevision(state) === revision
+    && resolveWorkspaceScopeContext(state).scopeKey === scopeKey;
+}
+
 function normalizeWorkspaceId(workspaceId: string | null | undefined): string {
   return String(workspaceId ?? "").trim();
 }
