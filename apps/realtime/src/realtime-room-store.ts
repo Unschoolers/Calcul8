@@ -100,6 +100,8 @@ export class RealtimeRoomStore {
     for (const clientId of members) {
       const state = this.clients.get(clientId);
       if (!state || state.socket.readyState !== WebSocket.OPEN) continue;
+      // Timers may be delayed by a busy event loop; never deliver past expiry.
+      if (state.authorizationExpiresAt != null && Date.now() >= state.authorizationExpiresAt) continue;
       sendJson(state.socket, outgoingPayload);
       delivered += 1;
     }

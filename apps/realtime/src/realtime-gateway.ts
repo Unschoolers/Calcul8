@@ -49,6 +49,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
 
   const roomStore = new RealtimeRoomStore();
   const presenceStore = new WorkspacePresenceStore();
+  const authorizationTimers = new Map<ClientState, ReturnType<typeof setTimeout>>();
 
   const server = createServer(async (request, response) => {
     try {
@@ -224,6 +225,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
   }
 
   function handleClientMessage(state: ClientState, rawMessage: string, queryToken: string | undefined): void {
+    if (!roomStore.hasClient(state)) return;
     const message = parseClientMessage(rawMessage);
 
     if (message.type === "ping") {
@@ -256,6 +258,20 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
       return;
     }
 
+    if (authorizedPayload.exp != null) {
+      // A token for another room must not extend existing room authorizations.
+      state.authorizationExpiresAt = Math.min(
+        state.authorizationExpiresAt ?? Infinity, authorizedPayload.exp * 1000
+      );
+      clearTimeout(authorizationTimers.get(state));
+      const timer = setTimeout(() => {
+        disconnectClient(state);
+        state.socket.close(4003, "realtime-authorization-expired");
+      }, Math.max(0, Math.min(2147483647, state.authorizationExpiresAt - Date.now())));
+      timer.unref();
+      authorizationTimers.set(state, timer);
+    }
+
     if (authorizedPayload.userId) {
       state.userId = authorizedPayload.userId;
     }
@@ -272,6 +288,8 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
   }
 
   function disconnectClient(state: ClientState): void {
+    clearTimeout(authorizationTimers.get(state));
+    authorizationTimers.delete(state);
     if (roomStore.disconnectClient(state)) {
       syncClientPresenceState(state);
     }

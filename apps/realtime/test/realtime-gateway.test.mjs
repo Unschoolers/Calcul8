@@ -387,3 +387,48 @@ function timeout(label) {
     setTimeout(() => reject(new Error(`Timed out waiting for ${label}.`)), TEST_TIMEOUT_MS);
   });
 }
+
+test("expires an open subscription even when the client stays alive or adds another token", async () => {
+  const tokenSecret = "expiry-secret";
+  const context = await startGateway({ tokenSecret, internalApiKey: "key", heartbeatMs: 60000 });
+  try {
+    const socket = await openSocket(context.socketUrl);
+    const closed = once(socket, "close");
+    for (const [room, exp] of [
+      ["workspace:removed:lot:1", Date.now() / 1000 + 0.3],
+      ["workspace:allowed:lot:2", Date.now() / 1000 + 60]
+    ]) {
+      const subscribed = waitForMessage(socket, message => message.type === "subscribed");
+      socket.send(JSON.stringify({ type: "subscribe", rooms: [room], token: signSubscribeToken({
+        rooms: [room], userId: "member", exp
+      }, tokenSecret) }));
+      await subscribed;
+    }
+    const [code] = await Promise.race([closed, timeout("authorization expiry")]);
+    assert.equal(code, 4003);
+    const response = await postJson(context.baseUrl, "/internal/publish", {
+      room: "workspace:removed:lot:1", eventType: "sale.upserted", data: { customer: "private" }
+    }, { "x-realtime-key": "key" });
+    assert.equal((await response.json()).delivered, 0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("rejects signed subscriptions without a finite future expiry", async () => {
+  const tokenSecret = "expiry-secret";
+  const context = await startGateway({ tokenSecret });
+  try {
+    const socket = await openSocket(context.socketUrl);
+    for (const exp of [undefined, null, 0, "9999999999999", Date.now() / 1000 - 1]) {
+      const rejected = waitForMessage(socket, message => message.type === "error");
+      socket.send(JSON.stringify({ type: "subscribe", rooms: ["private"], token: signSubscribeToken({
+        rooms: ["private"], exp
+      }, tokenSecret) }));
+      await rejected;
+    }
+    socket.close();
+  } finally {
+    await context.close();
+  }
+});

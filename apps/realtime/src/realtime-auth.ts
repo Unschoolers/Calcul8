@@ -49,7 +49,7 @@ export function getAuthorizedSubscribePayload(args: {
 
   const payload = verifySignedToken(token, tokenSecret);
   if (!payload) return null;
-  if (payload.exp && Date.now() >= payload.exp * 1000) return null;
+  if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || Date.now() >= payload.exp * 1000) return null;
 
   const allowedRooms = new Set(sanitizeRooms(payload.rooms));
   return requestedRooms.every((room) => allowedRooms.has(room))

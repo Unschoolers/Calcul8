@@ -23,6 +23,7 @@ export type ClientState = {
   socket: WebSocket;
   rooms: Set<string>;
   isAlive: boolean;
+  authorizationExpiresAt?: number;
   userId?: string;
 };
 

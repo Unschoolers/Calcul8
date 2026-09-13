@@ -122,3 +122,13 @@ function createSocket() {
     }
   };
 }
+
+test("does not broadcast private data after authorization expiry even before timer cleanup", () => {
+  const store = new RealtimeRoomStore();
+  const socket = createSocket();
+  const client = store.addClient(socket);
+  store.addClientToRoom(client, "workspace:private:lot:1");
+  client.authorizationExpiresAt = Date.now() - 1;
+  assert.equal(store.broadcastToRoom({ room: "workspace:private:lot:1", eventType: "sale.upserted" }), 0);
+  assert.deepEqual(socket.sentMessages, []);
+});
