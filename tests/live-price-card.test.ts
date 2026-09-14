@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test, vi } from "vitest";
 import { LivePriceCard } from "../src/components/live-price/LivePriceCard.ts";
 
@@ -205,48 +204,6 @@ test("desktop scenario grid omits impossible negative prices", () => {
   assert.deepEqual(scenarioOffsets.call(context), [-2, 1, -1, 2, 3, 4, 5]);
 });
 
-test("LivePriceCard template and CSS keep extra scenario tiles desktop-only", () => {
-  const template = readFileSync("src/components/live-price/LivePriceCard.html", "utf8");
-  const styles = readFileSync("src/components/windows/live/LiveWindow.css", "utf8");
-
-  assert.match(template, /v-for="offset in scenarioOffsets\(\)"/);
-  assert.match(template, /<button[\s\S]*type="button"[\s\S]*@click="selectScenarioPrice\(offset\)"/);
-  assert.match(template, /:class="scenarioTileClass\(offset\)"/);
-  assert.match(template, /:style="scenarioTileStyle\(offset\)"/);
-  assert.match(template, /displayProfitAtPrice\(modelValue \+ offset\)/);
-  assert.match(template, /live-pricing-card__scenario-main/);
-  assert.match(template, /live-pricing-card__scenario-detail/);
-  assert.ok(
-    template.indexOf("live-pricing-card__scenario-price") < template.indexOf("live-pricing-card__scenario-percent"),
-    "scenario price should render before percentage"
-  );
-  assert.ok(
-    template.indexOf("live-pricing-card__scenario-percent") < template.indexOf("live-pricing-card__scenario-profit"),
-    "scenario percentage should render before profit dollars"
-  );
-  assert.match(styles, /\.live-pricing-card__scenario-price\s*{[\s\S]*font-size:\s*1\.04rem/);
-  assert.match(styles, /\.live-pricing-card__scenario-percent\s*{[\s\S]*font-size:\s*0\.82rem/);
-  assert.match(styles, /\.live-pricing-card__scenario-detail\s*{[\s\S]*font-size:\s*0\.76rem/);
-  assert.match(styles, /--live-scenario-progress-percent/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile\s*{[\s\S]*background:\s*rgba\(var\(--v-theme-surface\),\s*0\.44\)/);
-  assert.doesNotMatch(styles, /\.live-pricing-card__scenario-tile\s*{[\s\S]*linear-gradient\(135deg/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile\s*{[\s\S]*cursor:\s*pointer/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile:focus-visible\s*{/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile::before[\s\S]*linear-gradient\(90deg/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile::after[\s\S]*left:\s*var\(--live-scenario-progress-percent\)/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile--mobile-negative\s*{[\s\S]*order:\s*1/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile--mobile-positive\s*{[\s\S]*order:\s*2/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*none/);
-  assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-detail\s*{[\s\S]*min-height:\s*1\.25rem[\s\S]*opacity:\s*0[\s\S]*transition:\s*opacity/);
-  assert.doesNotMatch(styles, /\.live-pricing-card__scenario-detail\s*{[\s\S]*max-height/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile:hover \.live-pricing-card__scenario-detail[\s\S]*opacity:\s*1/);
-  assert.match(styles, /\.live-pricing-card__scenario-tile:focus-visible \.live-pricing-card__scenario-detail[\s\S]*opacity:\s*1/);
-  assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-tile\s*{[\s\S]*order:\s*0/);
-  assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*flex/);
-  assert.match(styles, /\.live-pricing-card__decision-tile--success\s*{[\s\S]*display:\s*flex[\s\S]*align-items:\s*center/);
-  assert.match(styles, /\.live-pricing-card__decision-tile--success\s*{[\s\S]*padding:\s*0\.65rem 0\.75rem/);
-  assert.doesNotMatch(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
-});
 
 test("needed display helpers and delta use needed values", () => {
   const context = createContext({

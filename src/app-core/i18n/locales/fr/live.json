@@ -61,6 +61,10 @@
   "liveSinglesSummaryMarginLabel": "marge estimee",
   "liveSinglesSummaryProfitLabel": "Profit",
   "liveSinglesSummaryTotalLabel": "Total",
-  "liveSinglesUnnamedItemLabel": "Item sans nom"
+  "liveSinglesUnnamedItemLabel": "Item sans nom",
+  "livePriceCardProjectionLabel": "Profit projeté du lot",
+  "livePriceCardCompactTargetLabel": "Cible",
+  "livePriceCardApplyLabel": "Appliquer",
+  "livePriceCardCompareLabel": "Comparer les prix",
+  "liveTargetMarginLabel": "Marge cible"
 }
-

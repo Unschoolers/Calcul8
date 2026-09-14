@@ -38,6 +38,9 @@ describe("live price card scenarios", () => {
   test("selects a visible price scenario", async () => {
     const { onUpdate } = renderLivePriceCard();
 
+    const disclosure = screen.getByText("Compare prices").closest("details")!;
+    expect(disclosure.open).toBe(false);
+    disclosure.open = true;
     await fireEvent.click(screen.getByRole("button", { name: /^\$11\.00/ }));
 
     expect(onUpdate).toHaveBeenCalledWith(11);
@@ -46,7 +49,7 @@ describe("live price card scenarios", () => {
   test("shows a back-to-target recommendation when the remaining price is short", () => {
     renderLivePriceCard({ avgPriceNeeded: 14, remainingUnits: 2 });
 
-    expect(screen.getByText("Back to target")).toBeVisible();
+    expect(screen.getByText("Target")).toBeVisible();
   });
 
   test("applies the recommended target price from the adjustment link", async () => {

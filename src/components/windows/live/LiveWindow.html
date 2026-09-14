@@ -4,14 +4,21 @@
     :primary-action="liveContextPrimaryAction"
     :secondary-actions="liveContextSecondaryActions"
     :secondary-label="t('shellLiveActionsLabel')"
-    :badge-label="liveProfitTargetBadgeVisible ? liveProfitTargetBadgeLabel : ''"
+    :badge-label="currentLotType === 'singles' && liveProfitTargetBadgeVisible ? liveProfitTargetBadgeLabel : ''"
     @activate="activateLiveContextAction"
   ></context-action-dock>
 
   <div v-if="currentLotType === 'singles'" class="live-singles-shell">
     <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>
   </div>
-  <v-row v-else density="comfortable" class="live-pricing-grid">
+  <div v-else class="live-bulk-pricing">
+    <div class="live-pricing-toolbar">
+      <v-btn variant="text" prepend-icon="mdi-target" append-icon="mdi-chevron-right"
+        :disabled="!hasLotSelected" @click="activateLiveContextAction('calculator')">
+        {{ t('liveTargetMarginLabel') }}: {{ formatCurrency(targetProfitPercent, 1) }}%
+      </v-btn>
+    </div>
+  <v-row density="comfortable" class="live-pricing-grid">
     <v-col cols="12" lg="4" class="live-pricing-grid__col">
       <live-price-card
         :translate-text="t"
@@ -84,4 +91,5 @@
       ></live-price-card>
     </v-col>
   </v-row>
+  </div>
 </v-container>

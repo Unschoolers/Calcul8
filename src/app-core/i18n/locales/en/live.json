@@ -61,5 +61,10 @@
   "liveSinglesSummaryMarginLabel": "estimated margin",
   "liveSinglesSummaryProfitLabel": "Profit",
   "liveSinglesSummaryTotalLabel": "Total",
-  "liveSinglesUnnamedItemLabel": "Unnamed item"
+  "liveSinglesUnnamedItemLabel": "Unnamed item",
+  "livePriceCardProjectionLabel": "Projected lot profit",
+  "livePriceCardCompactTargetLabel": "Target",
+  "livePriceCardApplyLabel": "Apply",
+  "livePriceCardCompareLabel": "Compare prices",
+  "liveTargetMarginLabel": "Target margin"
 }
