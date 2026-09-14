@@ -520,8 +520,12 @@ export const SalesWindowDefinition = {
     },
 
     loadMoreSalesHistory(): void {
-      const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number };
-      vm.salesHistoryRenderCount = Number(vm.salesHistoryRenderCount || 0) + SALES_HISTORY_RENDER_BATCH_SIZE;
+      const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number; salesHistoryExpanded?: boolean };
+      const visibleCount = vm.salesHistoryExpanded
+        ? Math.max(0, Number(vm.salesHistoryRenderCount) || 0)
+        : 5;
+      vm.salesHistoryExpanded = true;
+      vm.salesHistoryRenderCount = visibleCount + SALES_HISTORY_RENDER_BATCH_SIZE;
     },
 
     showAllSalesHistory(): void {

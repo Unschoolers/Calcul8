@@ -449,7 +449,8 @@ test("SalesWindow saleListTitle formats explicit bulk and singles labels", () =>
 
 test("SalesWindow render count helpers mutate expected values", () => {
   const vm = {
-    salesHistoryRenderCount: 5
+    salesHistoryRenderCount: 5,
+    salesHistoryExpanded: true
   };
   SalesWindowDefinition.methods.resetSalesHistoryRenderCount.call(vm as never);
   assert.equal(vm.salesHistoryRenderCount, 80);
@@ -518,4 +519,34 @@ test("SalesWindow expands the five-sale overview without changing the full ledge
   SalesWindowDefinition.methods.showAllSalesHistory.call(vm as never);
   assert.equal(vm.salesHistoryExpanded, true);
   assert.equal(SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never).length, 8);
+});
+
+test("SalesWindow load more exits the preview and reveals the advertised batch", () => {
+  for (const total of [8, 205]) {
+    const sales = Array.from({ length: total }, (_, idx) => makeSale({ id: idx + 1 }));
+    const vm = {
+      sortedSales: sales,
+      ...SalesWindowDefinition.data(),
+      get visibleSortedSales(): Sale[] {
+        return SalesWindowDefinition.computed.visibleSortedSales.call(this as never);
+      }
+    };
+
+    for (let visibleCount = 5; visibleCount < total;) {
+      const batch = SalesWindowDefinition.computed.nextSalesHistoryBatchCount.call(vm as never);
+      assert.ok(batch > 0);
+      SalesWindowDefinition.methods.loadMoreSalesHistory.call(vm as never);
+      visibleCount += batch;
+      assert.equal(vm.salesHistoryExpanded, true);
+      assert.deepEqual(
+        SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never),
+        sales.slice(0, visibleCount)
+      );
+      assert.equal(
+        SalesWindowDefinition.computed.remainingSalesHistoryCount.call(vm as never),
+        total - visibleCount
+      );
+    }
+    assert.equal(SalesWindowDefinition.computed.hasMoreSalesHistory.call(vm as never), false);
+  }
 });
