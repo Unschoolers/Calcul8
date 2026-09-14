@@ -1,3 +1,4 @@
+import { EntityVersionConflictError } from "../../lib/cosmos/salesRepository";
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { createApiConfig } from "../../test-support/function-test-helpers";
@@ -70,7 +71,8 @@ vi.mock("../../lib/cosmos/whatnotRepository", () => ({
   upsertWhatnotTargetMapping: upsertWhatnotTargetMappingMock
 }));
 
-vi.mock("../../lib/cosmos/salesRepository", () => ({
+vi.mock("../../lib/cosmos/salesRepository", async () => ({
+  ...await vi.importActual<typeof import("../../lib/cosmos/salesRepository")>("../../lib/cosmos/salesRepository"),
   findSaleDocumentForWhatnotRecovery: findSaleDocumentForWhatnotRecoveryMock,
   upsertSaleDocument: upsertSaleDocumentMock,
   listSalesForLot: listSalesForLotMock,
@@ -491,6 +493,7 @@ test("confirmWhatnotImportBatchForActor updates a manual candidate sale and pres
     updatedCount: 1,
     skippedCount: 0
   });
+  assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.baseVersion, 1);
   assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.saleId, "7");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).customer, "Jordan Lee");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).memo, "Keep this memo");
@@ -1762,4 +1765,84 @@ test("discardWhatnotImportBatchForActor completes and clears a pending review ba
   assert.equal(upsertWhatnotImportBatchMock.mock.calls.length, 1);
   assert.equal(upsertWhatnotImportBatchMock.mock.calls[0]?.[1]?.status, "completed");
   assert.deepEqual(upsertWhatnotImportBatchMock.mock.calls[0]?.[1]?.rows, []);
+});
+
+test("confirmWhatnotImportBatchForActor rejects a concurrent seller edit at the final write", async () => {
+  const operationKey = buildWhatnotConfirmationOperationKey("batch-manual-recovery", ["item-manual-recovery"]);
+  getWhatnotImportBatchMock.mockResolvedValue({
+    id: "batch-manual-recovery-doc",
+    batchId: "batch-manual-recovery",
+    scopeKey: "user-a",
+    status: "recoverable_error",
+    confirmationAttempt: {
+      attemptId: "first-attempt",
+      actorUserId: "user-a",
+      attemptNumber: 1,
+      claimedAt: "2026-03-25T17:00:00.000Z",
+      leaseExpiresAt: "2026-03-25T17:05:00.000Z"
+    },
+    confirmationPlan: [{
+      operationKey,
+      rowIds: ["item-manual-recovery"],
+      mutationId: "whatnot_import:batch-manual-recovery:order-manual-recovery:item-manual-recovery",
+      outcome: "updated",
+      updateMode: "manual",
+      lotId: "10",
+      saleId: "9",
+      targetSaleType: "box",
+      expectedSaleVersion: 3,
+      expectedSaleMutationId: "seller-base-mutation",
+      saleWriteProven: false,
+      externalSaleKeyHashes: [],
+      rememberedMatchKeyHashes: []
+    }],
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    rows: [{
+      rowId: "item-manual-recovery",
+      externalSaleId: "order-manual-recovery:item-manual-recovery",
+      externalOrderId: "order-manual-recovery",
+      externalOrderItemId: "item-manual-recovery",
+      externalAccountId: "seller-1",
+      title: "Lot A box",
+      buyerName: "buyer",
+      quantity: 1,
+      price: 18,
+      buyerShipping: 0,
+      date: "2026-03-25",
+      orderStatus: "COMPLETED",
+      payloadFingerprint: "fp-manual-recovery",
+      action: "update",
+      targetKind: "manual_candidate",
+      targetSaleId: "9",
+      matchSource: "none",
+      requiresManualReview: true
+    }]
+  });
+  getSaleDocumentMock.mockResolvedValue({
+    id: "sale-doc-9",
+    docType: "sale",
+    userId: "user-a",
+    scopeKey: "user-a",
+    lotId: "10",
+    saleId: "9",
+    sale: { id: 9, type: "box", quantity: 1, price: 10, memo: "seller memo" },
+    version: 3,
+    mutationId: "seller-base-mutation"
+  });
+
+  upsertSaleDocumentMock.mockImplementation(async (_config, write) => {
+    // The seller saves version 4 after the runner read version 3.
+    if (write.baseVersion != null && write.baseVersion !== 4) {
+      throw new EntityVersionConflictError("Concurrent seller edit");
+    }
+    return { version: 5, sale: write.sale };
+  });
+  await assert.rejects(() => confirmWhatnotImportBatchForActor(createApiConfig(), "user-a", {
+    batchId: "batch-manual-recovery",
+    decisions: [{ rowId: "item-manual-recovery", lotId: "10", saleType: "box", targetKind: "manual_candidate", targetSaleId: "9" }]
+  }), (error: unknown) => error instanceof Error && "status" in error && error.status === 409);
+  assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 0);
+  assert.equal(checkpointWhatnotImportOperationMock.mock.calls.length, 0);
+  assert.equal(completeWhatnotImportBatchMock.mock.calls.length, 0);
 });

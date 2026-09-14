@@ -1,5 +1,6 @@
 import { HttpError } from "../../lib/auth";
 import {
+  EntityVersionConflictError,
   findSaleDocumentForWhatnotRecovery,
   getSaleDocument,
   upsertSaleDocument
@@ -226,14 +227,22 @@ export async function runWhatnotConfirmationPlan(
 
     if (shouldWriteSale) {
       await renewLease(operationKey, "sale");
-      await upsertSaleDocument(config, {
-        scopeKey: input.scopeKey,
-        lotId: lot.id,
-        saleId: String(saleIdNumber),
-        sale: salePayload,
-        updatedBy: input.actorUserId,
-        mutationId
-      });
+      try {
+        await upsertSaleDocument(config, {
+          scopeKey: input.scopeKey,
+          lotId: lot.id,
+          saleId: String(saleIdNumber),
+          sale: salePayload,
+          updatedBy: input.actorUserId,
+          mutationId,
+          baseVersion: operation.plan.expectedSaleVersion ?? 0
+        });
+      } catch (error) {
+        if (error instanceof EntityVersionConflictError) {
+          throw new HttpError(409, "The Whatnot target sale changed during import. Refresh and review it again.", "RECOVERY_CONFLICT");
+        }
+        throw error;
+      }
     }
 
     for (const mappingRow of operation.rows) {
