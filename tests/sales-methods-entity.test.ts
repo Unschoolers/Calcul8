@@ -541,7 +541,7 @@ test.each(["workspace", "auth", "return"])('cross-lot wheel save ignores a stale
   const { setActiveWorkspaceScope } = await import("../src/app-core/workspace-scope.ts");
   const ctx = Object.assign(createContext(), { activeScopeType: "workspace" as const, activeWorkspaceId: "a", googleAuthEpoch: 1 });
   const sale = { id: 77, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
-  const deferred = Promise.withResolvers<typeof sale>();
+  const deferred = createDeferred<typeof sale>();
   saveAuthoritativeSaleMock.mockReturnValue(deferred.promise);
   salesMethods.addWheelSaleToLot.call(ctx as never, 2, sale);
   if (change === "auth") ctx.googleAuthEpoch++;
@@ -566,3 +566,35 @@ test("cross-lot wheel response upserts a sale already delivered by realtime", as
   await Promise.resolve();
   assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls[0]?.[2], [sale]);
 });
+
+test("wheel save reports failure without a premature success or local mutation", async () => {
+  const ctx = createContext();
+  const sale = { id: 77, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  const deferred = createDeferred<typeof sale>();
+  saveAuthoritativeSaleMock.mockReturnValue(deferred.promise);
+  const pending = salesMethods.addWheelSaleToLot.call(ctx as never, 1, sale);
+  assert.equal(ctx.notify.mock.calls.length, 0);
+  deferred.reject(new Error("offline"));
+  assert.equal(await pending, false);
+  assert.deepEqual(ctx.sales, []);
+  assert.deepEqual(ctx.notify.mock.calls, [["Failed to save wheel sale", "error"]]);
+});
+
+test("a local wheel sale fails when storage cannot persist it", async () => {
+  canUseAuthoritativeSalesLiveApiMock.mockReturnValue(false);
+  vi.mocked(localStorage.setItem).mockImplementation(() => { throw new Error("quota"); });
+  const ctx = createContext();
+  const sale = { id: 77, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  assert.equal(await salesMethods.addWheelSaleToLot.call(ctx as never, 1, sale), false);
+  assert.deepEqual(ctx.sales, []);
+});
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}

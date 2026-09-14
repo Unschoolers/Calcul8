@@ -36,12 +36,12 @@ const input = {
   lots: [lot]
 } satisfies GameOutcomeSaleInput;
 
-test("records one deterministic game outcome sale", () => {
+test("records one deterministic game outcome sale", async () => {
   const recorded: Array<{ lotId: number; sale: Sale }> = [];
-  const sale = settleGameOutcomeSale(input, {
+  const sale = await settleGameOutcomeSale(input, {
     now: () => new Date(2026, 6, 21),
     nextId: () => 42,
-    recordSale: (lotId, value) => recorded.push({ lotId, sale: value })
+    recordSale: (lotId, value) => { recorded.push({ lotId, sale: value }); }
   });
 
   assert.deepEqual(sale, {
@@ -62,9 +62,9 @@ test("records one deterministic game outcome sale", () => {
   assert.ok(Number.isFinite(sale?.netRevenue));
 });
 
-test("uses the spin number for identity and memo while preserving singles linkage", () => {
+test("uses the spin number for identity and memo while preserving singles linkage", async () => {
   let idSpinNumber: number | undefined;
-  const sale = settleGameOutcomeSale({
+  const sale = await settleGameOutcomeSale({
     ...input,
     deductionType: "singles",
     singlesEntryId: 91,
@@ -84,9 +84,9 @@ test("uses the spin number for identity and memo while preserving singles linkag
   assert.equal(sale?.memo, "Wheel spin #8: Prize");
 });
 
-test("records nothing when the outcome does not deduct inventory", () => {
+test("records nothing when the outcome does not deduct inventory", async () => {
   let recordCount = 0;
-  const sale = settleGameOutcomeSale({ ...input, deductionType: "none" }, {
+  const sale = await settleGameOutcomeSale({ ...input, deductionType: "none" }, {
     now: () => new Date(2026, 6, 21),
     nextId: () => 42,
     recordSale: () => { recordCount += 1; }
@@ -95,3 +95,48 @@ test("records nothing when the outcome does not deduct inventory", () => {
   assert.equal(sale, null);
   assert.equal(recordCount, 0);
 });
+
+test("session revenue waits for a successful sale and stays unchanged on failure", async () => {
+  const { settleSessionGameOutcomeSale } = await import("../src/components/windows/game/services/gameOutcomeSettlement.ts");
+  for (const success of [true, false]) {
+    const deferred = createDeferred<boolean>();
+    const revenue = { wheelSessionNetRevenue: 5 };
+    const pending = settleSessionGameOutcomeSale(input, { addWheelSaleToLot: () => deferred.promise }, revenue);
+    assert.equal(revenue.wheelSessionNetRevenue, 5);
+    deferred.resolve(success);
+    const sale = await pending;
+    assert.equal(Boolean(sale), success);
+    assert.equal(revenue.wheelSessionNetRevenue, 5 + (success ? Number(sale?.netRevenue) : 0));
+  }
+});
+
+test("a rejected or missing sale recorder cannot settle revenue", async () => {
+  const { settleSessionGameOutcomeSale } = await import("../src/components/windows/game/services/gameOutcomeSettlement.ts");
+  for (const recorder of [{}, { addWheelSaleToLot: () => Promise.reject(new Error("offline")) }]) {
+    const revenue = { wheelSessionNetRevenue: 5 };
+    assert.equal(await settleSessionGameOutcomeSale(input, recorder, revenue), null);
+    assert.equal(revenue.wheelSessionNetRevenue, 5);
+  }
+});
+
+test("a reset session ignores a late successful settlement", async () => {
+  const { captureGameOutcomeGuard, invalidateGameOutcomeSettlements, settleSessionGameOutcomeSale } = await import("../src/components/windows/game/services/gameOutcomeSettlement.ts");
+  const context = { activeScopeType: "personal" as const, activeWorkspaceId: null, googleAuthEpoch: 1, activeWheelConfigId: 5 };
+  const deferred = createDeferred<boolean>();
+  const revenue = { wheelSessionNetRevenue: 0 };
+  const pending = settleSessionGameOutcomeSale(input, { addWheelSaleToLot: () => deferred.promise }, revenue, captureGameOutcomeGuard(context));
+  invalidateGameOutcomeSettlements(context);
+  deferred.resolve(true);
+  assert.equal(await pending, null);
+  assert.equal(revenue.wheelSessionNetRevenue, 0);
+});
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}

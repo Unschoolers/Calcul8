@@ -33,7 +33,7 @@ test("buildWheelReadableVerificationUrl targets the public proof view", () => {
   assert.doesNotMatch(url, /layout=/);
 });
 
-test("recordSpinResult increments spin counts", () => {
+test("recordSpinResult increments spin counts", async () => {
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
       { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false },
@@ -62,7 +62,7 @@ test("recordSpinResult increments spin counts", () => {
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   assert.equal(vm.wheelTotalSpins, 1);
   assert.deepEqual(vm.wheelSpinCounts, [1, 0]);
   assert.ok(Math.abs((vm.wheelSessionNetRevenue as number) - 8.61) < 0.001);
@@ -716,7 +716,7 @@ test("config mode session cost updates after preview spin", () => {
   assert.equal(controller.wheelPreviewTotalSpins, 1);
 });
 
-test("live mode session cost updates after recording a spin result", () => {
+test("live mode session cost updates after recording a spin result", async () => {
   const slot = { name: "A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "none", isChase: false };
   const vm: Record<string, unknown> = {
     wheelMode: "live",
@@ -740,7 +740,7 @@ test("live mode session cost updates after recording a spin result", () => {
   assert.equal(getCost(), 0);
 
   // Record a live spin
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
 
   // After spin: cost should reflect the new spin
   assert.equal(getCost(), 5);

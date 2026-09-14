@@ -18,12 +18,14 @@ import {
 } from "../src/components/windows/game/GameWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
-function settleTestGameOutcome(input: GameOutcomeSaleInput) {
-  return settleGameOutcomeSale(input, {
+async function settleTestGameOutcome(input: GameOutcomeSaleInput) {
+  const sale = await settleGameOutcomeSale(input, {
     now: () => new Date(),
     nextId: (spinNumber) => Date.now() + (spinNumber ?? 0),
     recordSale: () => undefined
-  })!;
+  });
+  assert.ok(sale);
+  return sale;
 }
 
 function completeGameSession<T extends Record<string, unknown>>(context: T): T {
@@ -539,7 +541,7 @@ test("queueWheelConfigSync keeps config sync pending until valid auto-apply fini
   vi.useRealTimers();
 });
 
-test("preview chase replacement keeps prior chase tally as a separate tracker line", () => {
+test("preview chase replacement keeps prior chase tally as a separate tracker line", async () => {
   const vm: Record<string, unknown> = {
     wheelConfigs: [{
       id: 1,
@@ -582,7 +584,7 @@ test("preview chase replacement keeps prior chase tally as a separate tracker li
     drawWheel: vi.fn()
   };
 
-  GameWindow.methods!.confirmChaseReplacement.call(completeGameSession(vm) as never);
+  await GameWindow.methods!.confirmChaseReplacement.call(completeGameSession(vm) as never);
   const history = vm.wheelPreviewChaseTallyHistory as Array<{ tierId: string; label: string; color: string; count: number }>;
   assert.deepEqual(history, [{ tierId: "tc", label: "Old Chase", color: "#09f", count: 2 }]);
 
@@ -634,7 +636,7 @@ test("landOnSlot opens chase dialog for chase tiers", () => {
   assert.equal(triggerWheelCelebration.mock.calls.length, 1);
 });
 
-test("recordSpinResult auto-records sale for non-chase tiers with bound lot", () => {
+test("recordSpinResult auto-records sale for non-chase tiers with bound lot", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
@@ -656,7 +658,7 @@ test("recordSpinResult auto-records sale for non-chase tiers with bound lot", ()
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 1);
   assert.equal(addSaleFn.mock.calls[0]![0], 42);
   const sale = addSaleFn.mock.calls[0]![1];
@@ -665,7 +667,7 @@ test("recordSpinResult auto-records sale for non-chase tiers with bound lot", ()
   assert.equal(sale.packsCount, 2);
 });
 
-test("recordSpinResult does not record sale when tier items count is zero", () => {
+test("recordSpinResult does not record sale when tier items count is zero", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
@@ -687,12 +689,12 @@ test("recordSpinResult does not record sale when tier items count is zero", () =
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 0);
 });
 
-test("recordSpinResult auto-skips singles with quantity 0", () => {
+test("recordSpinResult auto-skips singles with quantity 0", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
@@ -711,14 +713,14 @@ test("recordSpinResult auto-skips singles with quantity 0", () => {
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   // Should NOT record sale
   assert.equal(addSaleFn.mock.calls.length, 0);
   // Should add to skipped deductions
   assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
 });
 
-test("recordSpinResult skips sold-out singles when linked entry has no remaining stock", () => {
+test("recordSpinResult skips sold-out singles when linked entry has no remaining stock", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
@@ -749,12 +751,12 @@ test("recordSpinResult skips sold-out singles when linked entry has no remaining
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
 });
 
-test("recordSpinResult skips pack sale when bound lot lacks remaining packs", () => {
+test("recordSpinResult skips pack sale when bound lot lacks remaining packs", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
@@ -776,7 +778,7 @@ test("recordSpinResult skips pack sale when bound lot lacks remaining packs", ()
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
   assert.match(String(vm.wheelInventoryWarning), /only 2 remain/i);
@@ -988,7 +990,7 @@ test("onTierLotChange accepts string values from the tier source selector", () =
   assert.equal(tier.packsCount, 1);
 });
 
-test("confirmChaseReplacement preserves session cost via adjustment", () => {
+test("confirmChaseReplacement preserves session cost via adjustment", async () => {
   // Setup: chase tier "tc" costs $50, has 2 spins already counted
   // Replacement item costs $10 → adjustment should be 2 × (50 - 10) = 80
   const config: WheelConfig = {
@@ -1036,7 +1038,7 @@ test("confirmChaseReplacement preserves session cost via adjustment", () => {
   (vm as Record<string, unknown>).drawWheel = vi.fn();
   vm.recordChaseSale = GameWindow.methods!.recordChaseSale.bind(vm as never);
 
-  GameWindow.methods!.confirmChaseReplacement.call(completeGameSession(vm) as never);
+  await GameWindow.methods!.confirmChaseReplacement.call(completeGameSession(vm) as never);
 
   // Adjustment should compensate: 2 spins × ($50 old - $10 new) = 80
   assert.equal(vm.wheelSessionCostAdjustment, 80);
@@ -1069,7 +1071,7 @@ test("confirmChaseReplacement preserves session cost via adjustment", () => {
   assert.equal(sale.memo, "Wheel spin: Old Chase");
 });
 
-test("confirmChaseReplacement accumulates adjustment across multiple replacements", () => {
+test("confirmChaseReplacement accumulates adjustment across multiple replacements", async () => {
   // First chase was $50 → replaced with $30 (1 spin) → adj = 20
   // Then $30 → replaced with $10 (2 spins now) → adj += 2 × (30 - 10) = 40 → total 60
   const config: WheelConfig = {
@@ -1109,7 +1111,7 @@ test("confirmChaseReplacement accumulates adjustment across multiple replacement
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.confirmChaseReplacement.call(completeGameSession(vm) as never);
+  await GameWindow.methods!.confirmChaseReplacement.call(completeGameSession(vm) as never);
 
   // Previous adjustment: 20
   // New adjustment: 2 × (30 - 10) = 40
@@ -1165,7 +1167,7 @@ test("resetWheelSession clears cost adjustment", () => {
   assert.equal((vm.publishGameSpectatorSessionSnapshot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
-test("game outcome settlement builds a sale with lot shipping", () => {
+test("game outcome settlement builds a sale with lot shipping", async () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
   const lots = [{
     id: 42,
@@ -1176,7 +1178,7 @@ test("game outcome settlement builds a sale with lot shipping", () => {
     additionalFeeAppliesTo: "sale_plus_shipping",
     fixedFeePerOrder: 0.3
   }] as never;
-  const sale = settleTestGameOutcome({
+  const sale = await settleTestGameOutcome({
     config, tierId: "t1", cost: 5, packsCount: 2, deductionType: "packs",
     label: "Prize", lotId: 42, lots
   });
@@ -1191,28 +1193,28 @@ test("game outcome settlement builds a sale with lot shipping", () => {
   assert.ok(Math.abs((sale.netRevenue ?? 0) - 8.5085) < 0.001);
 });
 
-test("game outcome settlement uses spinNumber in memo when provided", () => {
+test("game outcome settlement uses spinNumber in memo when provided", async () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
   const lots = [{ id: 42, name: "My Lot", sellingShippingPerOrder: 0 }] as never;
-  const sale = settleTestGameOutcome({
+  const sale = await settleTestGameOutcome({
     config, tierId: "t1", cost: 5, packsCount: 1, deductionType: "packs",
     label: "Prize", lotId: 42, lots, spinNumber: 7
   });
   assert.equal(sale.memo, "Wheel spin #7: Prize");
 });
 
-test("game outcome settlement defaults buyerShipping to 0 when lot not found", () => {
+test("game outcome settlement defaults buyerShipping to 0 when lot not found", async () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const sale = settleTestGameOutcome({
+  const sale = await settleTestGameOutcome({
     config, tierId: "t1", cost: 5, packsCount: 1, deductionType: "packs",
     label: "Prize", lotId: 99, lots: []
   });
   assert.equal(sale.buyerShipping, 0);
 });
 
-test("game outcome settlement uses one item and links singles inventory", () => {
+test("game outcome settlement uses one item and links singles inventory", async () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const sale = settleTestGameOutcome({
+  const sale = await settleTestGameOutcome({
     config, tierId: "t1", cost: 25, packsCount: 3, deductionType: "singles",
     label: "Chase Card", lotId: 42, lots: [], singlesEntryId: 777
   });
@@ -1220,9 +1222,9 @@ test("game outcome settlement uses one item and links singles inventory", () => 
   assert.equal(sale.singlesPurchaseEntryId, 777);
 });
 
-test("game outcome settlement omits singlesPurchaseEntryId when not provided", () => {
+test("game outcome settlement omits singlesPurchaseEntryId when not provided", async () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const sale = settleTestGameOutcome({
+  const sale = await settleTestGameOutcome({
     config, tierId: "t1", cost: 5, packsCount: 2, deductionType: "packs",
     label: "Prize", lotId: 42, lots: []
   });
@@ -1231,7 +1233,7 @@ test("game outcome settlement omits singlesPurchaseEntryId when not provided", (
 
 // ── Chase sale recording ────────────────────────────────────────
 
-test("recordChaseSale calls addWheelSaleToLot for the tier's bound lot", () => {
+test("recordChaseSale calls addWheelSaleToLot for the tier's bound lot", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     wheelConfigs: [{
@@ -1249,7 +1251,7 @@ test("recordChaseSale calls addWheelSaleToLot for the tier's bound lot", () => {
     addWheelSaleToLot: addSaleFn
   };
 
-  GameWindow.methods!.recordChaseSale.call(completeGameSession(vm) as never, "tc");
+  await GameWindow.methods!.recordChaseSale.call(completeGameSession(vm) as never, "tc");
 
   assert.equal(addSaleFn.mock.calls.length, 1);
   assert.equal(addSaleFn.mock.calls[0]![0], 100);
@@ -1262,7 +1264,7 @@ test("recordChaseSale calls addWheelSaleToLot for the tier's bound lot", () => {
   assert.equal(sale.linkedWheelId, 1);
 });
 
-test("recordChaseSale does nothing when tier has no bound lot", () => {
+test("recordChaseSale does nothing when tier has no bound lot", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     wheelConfigs: [{
@@ -1273,12 +1275,12 @@ test("recordChaseSale does nothing when tier has no bound lot", () => {
     addWheelSaleToLot: addSaleFn
   };
 
-  GameWindow.methods!.recordChaseSale.call(completeGameSession(vm) as never, "tc");
+  await GameWindow.methods!.recordChaseSale.call(completeGameSession(vm) as never, "tc");
 
   assert.equal(addSaleFn.mock.calls.length, 0);
 });
 
-test("keepChase records sale and closes dialog", () => {
+test("keepChase records sale and closes dialog", async () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
     wheelChasePendingTierId: "tc",
@@ -1302,7 +1304,7 @@ test("keepChase records sale and closes dialog", () => {
     activeWorkspaceId: null
   };
 
-  GameWindow.methods!.keepChase.call(completeGameSession(vm) as never);
+  await GameWindow.methods!.keepChase.call(completeGameSession(vm) as never);
 
   assert.equal(vm.wheelChaseDialog, false);
   assert.equal(addSaleFn.mock.calls.length, 1);
@@ -2134,3 +2136,19 @@ test("loadWheelFromSession returns false when slot count mismatches", () => {
 
 
 
+
+test("failed normal wheel sales stay in pending inventory without crediting revenue", async () => {
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [{ name: "Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }],
+    wheelSpinCounts: [0], wheelTotalSpins: 0, activeWheelConfigId: 1,
+    activeWheelConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42 }] },
+    addWheelSaleToLot: vi.fn().mockResolvedValue(false),
+    lots: [{ id: 42, boxesPurchased: 1, packsPerBox: 8 }],
+    loadSalesForLotId: vi.fn(() => []), saveWheelSession: vi.fn()
+  };
+  await GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
+  const controller = getWheelController(vm);
+  assert.equal(Number(controller.wheelSessionNetRevenue), 0);
+  assert.equal(controller.wheelPendingInventoryIssues.length, 1);
+  assert.equal(controller.wheelPendingInventoryIssues[0]?.selectedLotId, 42);
+});

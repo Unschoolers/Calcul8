@@ -23,7 +23,7 @@ import {
 import { playWheelTick } from "../services/wheelAudio.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
 import { getWheelController } from "../services/gameSessionState.ts";
-import { settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
+import { captureGameOutcomeGuard, settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import { serializeWheelLayoutForFairness } from "../services/wheelFairnessLayout.ts";
 import {
@@ -67,7 +67,7 @@ type WheelSpinCommandContext = GameSessionStateContext
     drawWheel(offset?: number): void;
     landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
     recordPreviewSpinResult(slotIndex: number): void;
-    recordSpinResult(slotIndex: number): void;
+    recordSpinResult(slotIndex: number): Promise<void>;
     saveWheelSession(): void;
     scheduleNextWheelAutospin(delayMs?: number): void;
     spinWheelInternal(recordSession?: boolean): Promise<void>;
@@ -308,7 +308,9 @@ export const wheelSpinMethods = {
     const startTime = performance.now();
     vm._gameSpectatorSpinAnimation = plan.spectatorAnimation;
     if (shouldRecordLiveSession) {
-      vm.recordSpinResult(targetIndex);
+      const isCurrent = captureGameOutcomeGuard(vm);
+      await vm.recordSpinResult(targetIndex);
+      if (!isCurrent()) return;
     } else {
       vm.recordPreviewSpinResult(targetIndex);
     }
@@ -438,7 +440,8 @@ export const wheelSpinMethods = {
     recordWheelSessionSpin(this, controller, "preview", slotIndex, slots.length);
   },
 
-  recordSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {
+  async recordSpinResult(this: WheelSpinCommandContext, slotIndex: number): Promise<void> {
+    const isCurrent = captureGameOutcomeGuard(this);
     const recordController = getWheelController(this);
     const slots = getWheelSpinSlots(this);
     const slot = slots[slotIndex];
@@ -504,12 +507,20 @@ export const wheelSpinMethods = {
             return;
           }
         }
-        settleSessionGameOutcomeSale({
+        const sale = await settleSessionGameOutcomeSale({
           config: config!, tierId: slot.tier, cost: slot.cost,
           packsCount: slot.packsCount, deductionType: slot.deductionType,
           label: slot.name, lotId: tier.boundLotId, lots,
           singlesEntryId: tier.boundSinglesId
-        }, this, recordController);
+        }, this, recordController, isCurrent);
+        if (!isCurrent()) return;
+        if (!sale) {
+          queuePendingInventoryIssue(this, {
+            slot, slotIndex, boundLotId: tier.boundLotId, boundSinglesId: tier.boundSinglesId,
+            warningText: "Sale could not be saved. Retry it from pending inventory."
+          });
+          return;
+        }
       }
     }
     this.saveWheelSession();

@@ -15,7 +15,7 @@ import {
 } from "../services/gameSessionStore.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { readGameSpectatorSessionStorageState } from "../services/gameSpectatorSessionStorage.ts";
-import { settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
+import { captureGameOutcomeGuard, invalidateGameOutcomeSettlements, settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
@@ -41,6 +41,8 @@ type StoredWheelConfigSession = { [K in keyof WheelSessionSnapshot]?: unknown }
   & Partial<Record<StoredGameSpectatorField, unknown>>;
 type StoredWheelRootSession = StoredWheelConfigSession & { activeWheelConfigId: number };
 type UnknownFields = { [key: string]: unknown };
+const pendingSaleWrites = new WeakSet<object>();
+const chaseSaleWrites = new WeakSet<object>();
 const LEGACY_PENDING_ISSUES_KEY = ["wheel", "Skipped", "Deductions"].join("");
 
 type WheelSessionCommandContext = WheelSessionContext
@@ -52,13 +54,13 @@ type WheelSessionCommandContext = WheelSessionContext
   & {
     activeWheelConfig: WheelConfig | null;
     appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
-    confirmBatchSale(index: number): void;
+    confirmBatchSale(index: number): Promise<void>;
     deleteWheelConfig(): void;
     drawWheel(offset?: number): void;
     isWheelMobileViewport(): boolean;
     openWheelInspector(tab: "config" | "session" | "history"): void;
     publishGameSpectatorSessionSnapshot?(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
-    recordChaseSale(tierId: string): void;
+    recordChaseSale(tierId: string): Promise<boolean>;
     resetPreviewSession(): void;
     resetWheelSession(): void;
     saveWheelSession(): void;
@@ -199,7 +201,8 @@ export const wheelSessionMethods = {
       }));
   },
 
-  confirmChaseReplacement(this: WheelSessionCommandContext): void {
+  async confirmChaseReplacement(this: WheelSessionCommandContext): Promise<void> {
+    const isCurrent = captureGameOutcomeGuard(this);
     const selectedId = this.wheelChaseReplacementSinglesId as number | null;
     const tierId = this.wheelChasePendingTierId as string;
     const isPreview = (this.wheelChasePreviewMode as boolean) === true;
@@ -261,7 +264,7 @@ export const wheelSessionMethods = {
     const tier = config.tiers.find((t) => t.id === tierId);
     if (tier) {
       // Auto-record sale for the won chase item BEFORE changing tier label/cost
-      this.recordChaseSale(tierId);
+      if (await this.recordChaseSale(tierId) === false || !isCurrent()) return;
 
       // Preserve session cost for already-counted spins at the old cost
       const oldCost = tier.costPerTier;
@@ -318,7 +321,8 @@ export const wheelSessionMethods = {
     ));
   },
 
-  keepChase(this: WheelSessionCommandContext): void {
+  async keepChase(this: WheelSessionCommandContext): Promise<void> {
+    const isCurrent = captureGameOutcomeGuard(this);
     const tierId = this.wheelChasePendingTierId as string;
     if ((this.wheelChasePreviewMode as boolean) === true) {
       const controller = getWheelController(this);
@@ -328,7 +332,7 @@ export const wheelSessionMethods = {
       return;
     }
     if (tierId) {
-      this.recordChaseSale(tierId);
+      if (await this.recordChaseSale(tierId) === false || !isCurrent()) return;
       this.wheelSessionUpdatedAt = Date.now();
       this.saveWheelSession();
       void broadcastWheelSession(this);
@@ -336,27 +340,35 @@ export const wheelSessionMethods = {
     clearWheelChaseDialogState(this);
   },
 
-  recordChaseSale(this: WheelSessionCommandContext, tierId: string): void {
+  async recordChaseSale(this: WheelSessionCommandContext, tierId: string): Promise<boolean> {
+    const isCurrent = captureGameOutcomeGuard(this);
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
-    if (!config) return;
+    if (!config) return false;
     const tier = config.tiers.find((t) => t.id === tierId);
-    if (!tier?.boundLotId || tier.deductionType === "none" || (tier.packsCount || 0) <= 0) return;
+    if (!tier?.boundLotId || tier.deductionType === "none" || (tier.packsCount || 0) <= 0) return true;
     if (tier.deductionType === "singles") {
       if (tier.boundSinglesId
         ? getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) <= 0
         : !hasAnyAvailableSinglesForWheelTier(this, tier)) {
-        return;
+        return false;
       }
     }
 
-    settleSessionGameOutcomeSale({
-      config, tierId: tier.id, cost: tier.costPerTier,
-      packsCount: tier.packsCount, deductionType: tier.deductionType,
-      label: tier.label, lotId: tier.boundLotId, lots: (this.lots || []) as Lot[],
-      singlesEntryId: tier.boundSinglesId
-    }, this, getWheelController(this));
+    if (chaseSaleWrites.has(this)) return false;
+    chaseSaleWrites.add(this);
+    try {
+      const sale = await settleSessionGameOutcomeSale({
+        config, tierId: tier.id, cost: tier.costPerTier,
+        packsCount: tier.packsCount, deductionType: tier.deductionType,
+        label: tier.label, lotId: tier.boundLotId, lots: (this.lots || []) as Lot[],
+        singlesEntryId: tier.boundSinglesId
+      }, this, getWheelController(this), isCurrent);
+      return sale != null;
+    } finally {
+      chaseSaleWrites.delete(this);
+    }
   },
 
   canKeepChase(this: WheelSessionCommandContext): boolean {
@@ -371,6 +383,7 @@ export const wheelSessionMethods = {
   },
 
   resetWheelSession(this: WheelSessionCommandContext): void {
+    invalidateGameOutcomeSettlements(this);
     const resetController = getWheelController(this);
     const slots = resetController.activeWheelSlots as WheelSlot[];
     this.wheelSessionUpdatedAt = Date.now();
@@ -443,7 +456,8 @@ export const wheelSessionMethods = {
     this.wheelEndingSession = true;
   },
 
-  confirmBatchSale(this: WheelSessionCommandContext, index: number): void {
+  async confirmBatchSale(this: WheelSessionCommandContext, index: number): Promise<void> {
+    const isCurrent = captureGameOutcomeGuard(this);
     const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
     const entry = pendingIssues[index];
     if (!entry?.selectedLotId) return;
@@ -451,23 +465,32 @@ export const wheelSessionMethods = {
     const config = this.activeWheelConfig as WheelConfig | null;
     if (!config) return;
 
-    settleSessionGameOutcomeSale({
-      config, tierId: entry.slotTier, cost: entry.slotCost,
-      packsCount: entry.slotPacksCount, deductionType: entry.slotDeductionType,
-      label: entry.slotName, lotId: entry.selectedLotId, lots: (this.lots || []) as Lot[],
-      singlesEntryId: entry.slotSinglesId,
-      spinNumber: entry.spinNumber
-    }, this, getWheelController(this));
+    if (pendingSaleWrites.has(entry)) return;
+    pendingSaleWrites.add(entry);
+    try {
+      const sale = await settleSessionGameOutcomeSale({
+        config, tierId: entry.slotTier, cost: entry.slotCost,
+        packsCount: entry.slotPacksCount, deductionType: entry.slotDeductionType,
+        label: entry.slotName, lotId: entry.selectedLotId, lots: (this.lots || []) as Lot[],
+        singlesEntryId: entry.slotSinglesId,
+        spinNumber: entry.spinNumber
+      }, this, getWheelController(this), isCurrent);
+      if (!sale || !isCurrent()) return;
 
-    pendingIssues.splice(index, 1);
-    assignWheelPendingInventoryIssues(this, pendingIssues);
+      const entryIndex = pendingIssues.indexOf(entry);
+      if (entryIndex < 0) return;
+      pendingIssues.splice(entryIndex, 1);
+      assignWheelPendingInventoryIssues(this, pendingIssues);
 
-    if (!pendingIssues.length) {
-      this.wheelEndingSession = false;
+      if (!pendingIssues.length) {
+        this.wheelEndingSession = false;
+      }
+      this.wheelSessionUpdatedAt = Date.now();
+      this.saveWheelSession();
+      void broadcastWheelSession(this);
+    } finally {
+      pendingSaleWrites.delete(entry);
     }
-    this.wheelSessionUpdatedAt = Date.now();
-    this.saveWheelSession();
-    void broadcastWheelSession(this);
   },
 
   getPendingWheelIssueLotItems(this: WheelSessionCommandContext, entry: PendingWheelInventoryIssue): Array<{ title: string; value: number; lotType?: string }> {
@@ -483,11 +506,11 @@ export const wheelSessionMethods = {
       }));
   },
 
-  confirmAllBatchSales(this: WheelSessionCommandContext): void {
+  async confirmAllBatchSales(this: WheelSessionCommandContext): Promise<void> {
     const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
     for (let i = pendingIssues.length - 1; i >= 0; i--) {
       if (pendingIssues[i]!.selectedLotId) {
-        this.confirmBatchSale(i);
+        await this.confirmBatchSale(i);
       }
     }
   },

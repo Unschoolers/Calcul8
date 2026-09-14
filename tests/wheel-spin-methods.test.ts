@@ -166,7 +166,7 @@ test("runWheelAutoPreviewAnimation spins visually without recording preview proo
   assert.equal((vm.scheduleNextWheelAutospin as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
-test("recordSpinResult initializes pending inventory issues when older wheel state is missing the array", () => {
+test("recordSpinResult initializes pending inventory issues when older wheel state is missing the array", async () => {
   const state = createGameWindowState() as Record<string, unknown>;
   state.wheelMode = "live";
   state.wheelSpinCounts = [0];
@@ -203,7 +203,7 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
   state.saveWheelSession = vi.fn();
   delete state.wheelPendingInventoryIssues;
 
-  wheelSpinMethods.recordSpinResult.call(completeGameSession(state) as never, 0);
+  await wheelSpinMethods.recordSpinResult.call(completeGameSession(state) as never, 0);
 
   assert.deepEqual(state.wheelPendingInventoryIssues, [{
     slotName: "1 Pack",
@@ -219,7 +219,7 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
   }]);
 });
 
-test("recordSpinResult queues required lot selection for multi-lot bulk tiers without creating a sale", () => {
+test("recordSpinResult queues required lot selection for multi-lot bulk tiers without creating a sale", async () => {
   const state = createGameWindowState() as Record<string, unknown>;
   state.wheelMode = "live";
   state.wheelSpinCounts = [0];
@@ -255,7 +255,7 @@ test("recordSpinResult queues required lot selection for multi-lot bulk tiers wi
   state.addWheelSaleToLot = vi.fn();
   state.saveWheelSession = vi.fn();
 
-  wheelSpinMethods.recordSpinResult.call(completeGameSession(state) as never, 0);
+  await wheelSpinMethods.recordSpinResult.call(completeGameSession(state) as never, 0);
 
   assert.equal((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.deepEqual(state.wheelPendingInventoryIssues, [{
@@ -304,7 +304,7 @@ test("wheelSpinBlockedReason keeps live spins blocked after a required lot is se
   assert.match(reason, /Resolve the pending lot selection/);
 });
 
-test("confirmBatchSale records a required multi-lot hit against the selected lot", () => {
+test("confirmBatchSale records a required multi-lot hit against the selected lot", async () => {
   const state = createGameWindowState() as Record<string, unknown>;
   state.activeWheelConfig = {
     id: 1,
@@ -342,7 +342,7 @@ test("confirmBatchSale records a required multi-lot hit against the selected lot
   state.addWheelSaleToLot = vi.fn();
   state.saveWheelSession = vi.fn();
 
-  wheelSessionMethods.confirmBatchSale.call(completeGameSession(state) as never, 0);
+  await wheelSessionMethods.confirmBatchSale.call(completeGameSession(state) as never, 0);
 
   assert.equal((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], 20);
   assert.equal(((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as { buyerShipping?: number }).buyerShipping, 2);
@@ -351,3 +351,39 @@ test("confirmBatchSale records a required multi-lot hit against the selected lot
 
 
 
+
+test("batch settlement retains a failed sale and ignores repeated clicks while saving", async () => {
+  const state = createGameWindowState() as Record<string, unknown>;
+  const entry = { slotName: "Prize", slotTier: "t1", slotCost: 2, slotPacksCount: 1,
+    slotDeductionType: "packs", selectedLotId: 20, spinNumber: 1 };
+  state.activeWheelConfig = { id: 1, spinPrice: 10, tiers: [] };
+  state.lots = [{ id: 20 }];
+  state.wheelPendingInventoryIssues = [entry];
+  state.saveWheelSession = vi.fn();
+  const deferred = createDeferred<boolean>();
+  const save = vi.fn(() => deferred.promise);
+  state.addWheelSaleToLot = save;
+  completeGameSession(state);
+  const first = wheelSessionMethods.confirmBatchSale.call(state as never, 0);
+  await wheelSessionMethods.confirmBatchSale.call(state as never, 0);
+  assert.equal(save.mock.calls.length, 1);
+  assert.deepEqual(state.wheelPendingInventoryIssues, [entry]);
+  deferred.resolve(false);
+  await first;
+  assert.deepEqual(state.wheelPendingInventoryIssues, [entry]);
+  assert.equal(Number(getWheelController(state).wheelSessionNetRevenue), 0);
+  save.mockResolvedValue(true);
+  await wheelSessionMethods.confirmBatchSale.call(state as never, 0);
+  assert.deepEqual(state.wheelPendingInventoryIssues, []);
+  assert.ok(Number(getWheelController(state).wheelSessionNetRevenue) > 0);
+});
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}

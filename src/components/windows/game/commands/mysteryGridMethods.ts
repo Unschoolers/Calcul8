@@ -1,4 +1,5 @@
-import type { GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import { captureGameOutcomeGuard } from "../services/gameOutcomeSettlement.ts";
+import type { GameSessionStateContext, GameBroadcastContext } from "../../../../app-core/context/game.ts";
 import type { MysteryGridReveal, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
   buildMysteryGridCellStates,
@@ -27,6 +28,7 @@ import {
 export type MysteryGridCell = MysteryGridCellState;
 
 type MysteryGridCommandContext = GameSessionStateContext
+  & Pick<GameBroadcastContext, "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "activeWheelConfigId">
   & Pick<GameHostState,
     | "wheelAutospinEnabled" | "wheelGridHighlightCellIndex" | "wheelGridResetAnimating"
     | "wheelGridRevealAnimating" | "wheelMode" | "wheelSoundEnabled"
@@ -39,7 +41,7 @@ type MysteryGridCommandContext = GameSessionStateContext
     appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
     landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
     recordPreviewSpinResult(slotIndex: number): void;
-    recordSpinResult(slotIndex: number): void;
+    recordSpinResult(slotIndex: number): Promise<void>;
     revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
     saveWheelSession(): void;
     scheduleNextWheelAutospin(delayMs?: number): void;
@@ -292,7 +294,9 @@ export const mysteryGridMethods = {
     beginWheelSpin(vm, fairnessResult);
 
     if (shouldRecordLiveSession) {
-      vm.recordSpinResult(targetIndex);
+      const isCurrent = captureGameOutcomeGuard(vm);
+      await vm.recordSpinResult(targetIndex);
+      if (!isCurrent()) return;
     } else {
       vm.recordPreviewSpinResult(targetIndex);
     }

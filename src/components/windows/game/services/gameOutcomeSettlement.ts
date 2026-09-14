@@ -1,3 +1,4 @@
+import { captureWorkspaceScopeGuard, type ScopeState } from "../../../../app-core/workspace-scope.ts";
 import type { Lot, Sale, WheelConfig } from "../../../../types/app.ts";
 import { calculateWheelSaleNetRevenue } from "./wheelPricing.ts";
 
@@ -15,15 +16,15 @@ export type GameOutcomeSaleInput = {
 };
 
 export type GameOutcomeSettlementPorts = {
-  recordSale(lotId: number, sale: Sale): void;
+  recordSale(lotId: number, sale: Sale): boolean | void | Promise<boolean | void>;
   now(): Date;
   nextId(spinNumber?: number): number;
 };
 
-export function settleGameOutcomeSale(
+export async function settleGameOutcomeSale(
   input: GameOutcomeSaleInput,
   ports: GameOutcomeSettlementPorts
-): Sale | null {
+): Promise<Sale | null> {
   if (input.deductionType === "none" || input.packsCount <= 0) return null;
   const lot = input.lots.find((entry) => entry.id === input.lotId);
   const now = ports.now();
@@ -42,22 +43,44 @@ export function settleGameOutcomeSale(
     netRevenue: calculateWheelSaleNetRevenue(input.config, lot),
     ...(input.singlesEntryId != null ? { singlesPurchaseEntryId: input.singlesEntryId } : {})
   };
-  ports.recordSale(input.lotId, sale);
+  try {
+    if (await ports.recordSale(input.lotId, sale) === false) return null;
+  } catch {
+    return null;
+  }
   return sale;
 }
 
-export function settleSessionGameOutcomeSale(
+export async function settleSessionGameOutcomeSale(
   input: GameOutcomeSaleInput,
-  recorder: { addWheelSaleToLot?(lotId: number, sale: Sale): void },
-  revenue: { wheelSessionNetRevenue: number | null }
-): Sale | null {
-  const sale = settleGameOutcomeSale(input, {
+  recorder: { addWheelSaleToLot?(lotId: number, sale: Sale): boolean | void | Promise<boolean | void> },
+  revenue: { wheelSessionNetRevenue: number | null },
+  isCurrent: () => boolean = () => true
+): Promise<Sale | null> {
+  if (!recorder.addWheelSaleToLot) return null;
+  const sale = await settleGameOutcomeSale(input, {
     now: () => new Date(),
     nextId: (spinNumber) => Date.now() + (spinNumber ?? 0),
     recordSale: (lotId, value) => recorder.addWheelSaleToLot?.(lotId, value)
   });
+  if (!isCurrent()) return null;
   const netRevenue = Number(sale?.netRevenue);
   if (sale && Number.isFinite(netRevenue))
     revenue.wheelSessionNetRevenue = (Number(revenue.wheelSessionNetRevenue) || 0) + Math.max(0, netRevenue);
   return sale;
+}
+
+const settlementRevisions = new WeakMap<object, number>();
+type SettlementContext = ScopeState & { googleAuthEpoch: number; activeWheelConfigId: number | null };
+
+export function invalidateGameOutcomeSettlements(context: object): void {
+  settlementRevisions.set(context, (settlementRevisions.get(context) ?? 0) + 1);
+}
+
+export function captureGameOutcomeGuard(context: SettlementContext): () => boolean {
+  const isCurrentScope = captureWorkspaceScopeGuard(context);
+  const configId = context.activeWheelConfigId;
+  const revision = settlementRevisions.get(context);
+  return () => isCurrentScope() && context.activeWheelConfigId === configId
+    && settlementRevisions.get(context) === revision;
 }

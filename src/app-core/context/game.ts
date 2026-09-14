@@ -4,7 +4,7 @@ import type { CommerceComputedState, CommerceMethodState } from "./commerce.ts";
 import type { RuntimeMethodState } from "./runtime.ts";
 
 export interface GameMethodState {
-  addWheelSaleToLot(lotId: number, sale: Sale): void;
+  addWheelSaleToLot(lotId: number, sale: Sale): Promise<boolean>;
   loadWheelFromStorage(): void;
   saveWheelConfigsToStorage(): void;
 }

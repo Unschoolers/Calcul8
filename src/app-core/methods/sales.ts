@@ -203,51 +203,35 @@ export const salesMethods = {
     initPortfolioCharts(this);
   },
 
-  addWheelSaleToLot(lotId: number, sale: Sale): void {
+  async addWheelSaleToLot(lotId: number, sale: Sale): Promise<boolean> {
+    const isCurrentScope = captureWorkspaceScopeGuard(this);
     try {
-      if (this.currentLotId === lotId) {
-        // Use the same persistence pipeline as regular sales (handles API + local)
-        saveSaleWithPersistence(this, {
-          lotId,
-          pendingSale: sale,
-          editingSaleId: null,
-          editingIndex: -1,
-          baseVersion: 0
-        }, {
-          canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
-          persistLocally: (ctx, s) => { ctx.sales = [...ctx.sales, s]; },
-          refreshCharts: refreshChartsForCurrentTab,
-          saveAuthoritatively: saveSaleAuthoritatively
-        });
-      } else if (canUseAuthoritativeSalesLiveApi()) {
-        const isCurrentScope = captureWorkspaceScopeGuard(this);
-        void (async () => {
-          try {
-            const savedSale = await saveAuthoritativeSale(this, lotId, sale, 0);
-            if (!isCurrentScope()) return;
-            const nextSales = upsertById(this.loadSalesForLotId(lotId), savedSale);
-            cacheAuthoritativeSales(this, lotId, nextSales);
-            this.notify("Wheel sale recorded", "success");
-          } catch (error) {
-            if (!isCurrentScope()) return;
-            console.error("Failed to save wheel sale:", error);
-            this.notify("Failed to save wheel sale", "error");
-          }
-        })();
-        return;
+      if (canUseAuthoritativeSalesLiveApi()) {
+        const savedSale = await saveAuthoritativeSale(this, lotId, sale, 0);
+        if (!isCurrentScope()) return false;
+        const sales = upsertById(
+          this.currentLotId === lotId ? this.sales : this.loadSalesForLotId(lotId), savedSale
+        );
+        replaceRootLotSales(this, lotId, sales);
+        try {
+          cacheAuthoritativeSales(this, lotId, sales);
+        } catch {
+          // The authoritative write succeeded; a cache failure must not cause another sale.
+          this.notify("Wheel sale saved in the cloud, but its local cache could not be updated.", "warning");
+        }
       } else {
-        // Different lot — persist to localStorage directly
-        const raw = localStorage.getItem(this.getSalesStorageKey(lotId));
-        const existingSales: Sale[] = raw ? JSON.parse(raw) : [];
-        existingSales.push(sale);
-        persistSalesCacheToStorage(this, lotId, existingSales);
-        replaceRootLotSales(this, lotId, existingSales);
+        const sales = upsertById(
+          this.currentLotId === lotId ? this.sales : this.loadSalesForLotId(lotId), sale
+        );
+        persistSalesCacheToStorage(this, lotId, sales);
+        replaceRootLotSales(this, lotId, sales);
       }
-
-      this.notify(`Wheel sale recorded`, "success");
+      if (this.currentLotId === lotId) refreshChartsForCurrentTab(this);
+      this.notify("Wheel sale recorded", "success");
+      return true;
     } catch (error) {
-      console.error("Failed to save wheel sale:", error);
-      this.notify("Failed to save wheel sale", "error");
+      if (isCurrentScope()) this.notify("Failed to save wheel sale", "error");
+      return false;
     }
   },
 

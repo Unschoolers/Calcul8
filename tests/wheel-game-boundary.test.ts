@@ -61,11 +61,11 @@ test("game boundary modules keep slot construction in the game domain", () => {
   assert.equal(slots[0]?.tier, "tier-a");
 });
 
-test("game boundary modules keep sales creation separate from pricing math", () => {
+test("game boundary modules keep sales creation separate from pricing math", async () => {
   vi.spyOn(Date, "now").mockReturnValue(1000);
   vi.setSystemTime(new Date("2026-05-01T12:00:00Z"));
 
-  const sale = settleGameOutcomeSale({
+  const sale = await settleGameOutcomeSale({
     config: createSingleTierConfig(),
     tierId: "tier-a",
     cost: 4,
