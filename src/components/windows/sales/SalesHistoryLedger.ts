@@ -231,8 +231,7 @@ export const SalesHistoryLedgerDefinition = defineComponent({
       const prefix = preview ? preview.sign : value >= 0 ? "+" : "-";
       const basis = preview && Number(preview.marketBasisValue) > 0
         ? ` ${this.t("salesProfitVsLabel")} ${preview.basisLabel}` : "";
-      const label = basis ? "" : `${this.t("salesProfitLabel")} `;
-      return `${label}${prefix}$${this.fmtCurrency(Math.abs(value))}${basis}`;
+      return `${prefix}${this.fmtCurrency(Math.abs(value))}${basis}`;
     },
     saleSecondaryProfitLabel(sale: Sale): string {
       const preview = this.saleProfitPreview(sale);

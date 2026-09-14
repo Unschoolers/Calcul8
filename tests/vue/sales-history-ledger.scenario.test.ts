@@ -27,6 +27,7 @@ for (const theme of ["unionArenaLight", "unionArenaDark"]) {
         const rows = () => Array.from(container.querySelectorAll(".sales-history-ledger__row"));
         expect(rows()[0]).toHaveTextContent(locale.salesHistoryTypeSinglesLabel);
         expect(rows()[0]).toHaveTextContent(locale.salesHistoryTotalLabel);
+        expect(rows()[0].querySelector(".sales-history-ledger__profit-value")).toHaveTextContent("+$5.00");
         expect(rows()[1]).toHaveTextContent(locale.salesHistoryPerItemLabel);
         expect(screen.queryByText(locale.salesHistoryNoCustomerLabel)).toBeNull();
         await fireEvent.update(screen.getByRole("combobox"), "date:asc");

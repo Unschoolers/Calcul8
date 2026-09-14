@@ -62,6 +62,7 @@
         {{ saleRevenueLabel(sale) }} <span class="sales-history-ledger__basis">{{ salePriceBasis(sale) }}</span>
       </div>
       <div class="sales-history-ledger__cell sales-history-ledger__profit" role="cell" :data-label="t('salesHistoryColumnProfitLabel')">
+        <span class="sales-history-ledger__profit-label">{{ t('salesProfitLabel') }}</span>
         <app-metric-value
           kind="money"
           :tone="saleProfitTone(sale)"
@@ -79,9 +80,8 @@
         </app-metric-value>
       </div>
       <div class="sales-history-ledger__metadata" role="cell">
-        <div class="sales-history-ledger__date">
-          {{ formatDate(sale.date) }}
-        </div>
+        <div class="sales-history-ledger__date">{{ formatDate(sale.date) }}</div>
+        <span v-if="hasNamedCustomer(sale)" class="sales-history-ledger__metadata-separator" aria-hidden="true">·</span>
         <div class="sales-history-ledger__customer app-dense-card-meta" :data-label="t('salesHistoryColumnCustomerLabel')">
           <button
             v-if="hasNamedCustomer(sale)"
@@ -102,7 +102,7 @@
       <div class="sales-history-ledger__actions" role="cell" @click.stop @keydown.stop>
         <v-menu>
           <template #activator="{ props }">
-            <v-btn v-bind="props" icon="mdi-dots-horizontal" variant="text" size="44"
+            <v-btn v-bind="props" icon="mdi-dots-horizontal" variant="text" size="40"
               :aria-label="t('salesHistoryActionsLabel')"></v-btn>
           </template>
           <v-list density="compact">

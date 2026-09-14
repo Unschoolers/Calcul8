@@ -6,9 +6,9 @@
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__table { gap: 0; }
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__head { display: none; }
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__row {
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) 44px;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.05fr) 40px;
   grid-template-areas: "units type price actions" "metadata metadata profit actions";
-  gap: 5px 6px; min-height: 80px; padding: 10px 0;
+  gap: 3px 6px; min-height: 68px; padding: 8px 0;
   border: 0; border-bottom: 1px solid var(--app-stroke-subtle); border-radius: 0; background: transparent;
 }
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__row:hover { background: rgba(var(--v-theme-on-surface), 0.035); }
@@ -21,19 +21,23 @@
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__price { grid-area: price; text-align: right; color: var(--app-text-strong); font-weight: 650; font-variant-numeric: tabular-nums; }
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__basis { font-size: 0.7rem; font-weight: 400; color: var(--app-text-muted); }
 .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__profit { grid-area: profit; align-items: flex-end; text-align: right; }
-.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__profit-value { font-size: 0.75rem; font-weight: 600; line-height: 1.4; white-space: normal; }
-.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__metadata { grid-area: metadata; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; color: var(--app-text-muted); font-size: 0.72rem; }
-.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__customer { display: block; grid-area: auto; min-width: 0; max-width: 100%; font-size: inherit; }
-.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__customer-button { max-width: 100%; min-height: 28px; color: var(--app-text-muted); }
-.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__actions { grid-area: actions; align-self: start; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__profit { display: flex; justify-content: flex-end; gap: 4px; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__profit-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__profit-value { font-size: 0.82rem; font-weight: 650; line-height: 1.25; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__metadata { grid-area: metadata; min-width: 0; display: flex; flex-wrap: nowrap; align-items: center; gap: 0 6px; overflow: hidden; color: var(--app-text-muted); font-size: 0.72rem; white-space: nowrap; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__date { flex: 0 0 auto; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__metadata-separator { flex: 0 0 auto; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__customer { display: block; grid-area: auto; min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; -webkit-line-clamp: unset; }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__customer-button { display: block; max-width: 100%; min-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-text-muted); }
+.sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__actions { grid-area: actions; align-self: center; opacity: 0.7; }
 @container (min-width: 640px) {
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__sortbar { display: none; }
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__head,
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__row { display: grid; grid-template-columns: 40px minmax(60px, .7fr) minmax(85px, 1fr) minmax(105px, 1.2fr) minmax(115px, 1.3fr) 44px; grid-template-areas: "units type price profit metadata actions"; gap: 10px; }
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__head { padding: 6px 0; font-size: 0.7rem; text-transform: none; }
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__head-sort { min-height: 32px; }
-  .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__row { min-height: 64px; }
-  .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__metadata { flex-direction: column; align-items: flex-start; }
+  .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__row { min-height: 60px; }
+  .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__metadata { flex-direction: row; align-items: center; }
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__price { text-align: left; }
   .sales-history-ledger.sales-history-ledger--compact .sales-history-ledger__profit { align-items: flex-start; text-align: left; }
 }
