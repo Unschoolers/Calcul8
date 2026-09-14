@@ -140,7 +140,8 @@
           <v-speed-dial v-model="speedDialOpenSales" location="top center" transition="scale-transition"
             :open-on-hover="false" :close-on-content-click="false">
             <template v-slot:activator="{ props: activatorProps }">
-              <v-fab v-bind="activatorProps" icon="mdi-cart-plus" color="primary" size="large" :title="t('saleEditorAddTitle')"
+              <v-fab v-bind="activatorProps" icon="mdi-cart-plus" color="primary" size="large" extended
+                :text="t('saleEditorAddTitle')" :title="t('saleEditorAddTitle')"
                 :aria-label="t('saleEditorAddTitle')" :disabled="!hasLotSelected"></v-fab>
             </template>
 

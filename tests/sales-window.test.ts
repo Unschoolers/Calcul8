@@ -25,15 +25,18 @@ test("SalesWindow computed pagination helpers work from sortedSales and render c
   const sales = Array.from({ length: 205 }, (_, idx) => makeSale({ id: idx + 1 }));
   const vm = {
     sortedSales: sales,
-    salesHistoryRenderCount: 80
+    salesHistoryRenderCount: 80,
+    salesHistoryExpanded: false
   };
 
   const visible = SalesWindowDefinition.computed.visibleSortedSales.call(vm as never);
+  const overview = SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never);
   const hasMore = SalesWindowDefinition.computed.hasMoreSalesHistory.call(vm as never);
   const remaining = SalesWindowDefinition.computed.remainingSalesHistoryCount.call(vm as never);
   const nextBatch = SalesWindowDefinition.computed.nextSalesHistoryBatchCount.call(vm as never);
 
   assert.equal(visible.length, 80);
+  assert.equal(overview.length, 5);
   assert.equal(hasMore, true);
   assert.equal(remaining, 125);
   assert.equal(nextBatch, 80);
@@ -490,4 +493,16 @@ test("investment recovery is distinct from sold-item profit and handles empty or
     { revenue: 120, cost: 100, remaining: 0, percent: 100 });
   assert.equal(compute.call({ totalCaseCost: 0 } as never).percent, null);
   assert.equal(compute.call({ totalCaseCost: 100 } as never).remaining, 100);
+});
+
+
+test("SalesWindow expands the five-sale overview without changing the full ledger", () => {
+  const vm = {
+    visibleSortedSales: Array.from({ length: 8 }, (_, idx) => makeSale({ id: idx + 1 })),
+    salesHistoryExpanded: false
+  };
+  assert.equal(SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never).length, 5);
+  SalesWindowDefinition.methods.showAllSalesHistory.call(vm as never);
+  assert.equal(vm.salesHistoryExpanded, true);
+  assert.equal(SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never).length, 8);
 });

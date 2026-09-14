@@ -102,6 +102,7 @@ export const SalesWindowDefinition = {
   data() {
     return {
       salesHistoryRenderCount: SALES_HISTORY_INITIAL_RENDER_COUNT,
+      salesHistoryExpanded: false,
       liveForecastScenarioIndex: 0,
       buyerQuickViewOpen: false,
       buyerQuickViewName: ""
@@ -126,25 +127,31 @@ export const SalesWindowDefinition = {
       return sales.slice(0, limit);
     },
 
+    salesHistoryOverviewSales(this: Record<string, unknown>): Sale[] {
+      const vm = this as Record<string, unknown>;
+      const visible = Array.isArray(vm.visibleSortedSales) ? vm.visibleSortedSales as Sale[] : [];
+      return vm.salesHistoryExpanded ? visible : visible.slice(0, 5);
+    },
+
     hasMoreSalesHistory(this: Record<string, unknown>): boolean {
       const vm = this as Record<string, unknown>;
       const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
       const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
-      return sales.length > limit;
+      return vm.salesHistoryExpanded ? sales.length > limit : sales.length > 5;
     },
 
     remainingSalesHistoryCount(this: Record<string, unknown>): number {
       const vm = this as Record<string, unknown>;
       const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
       const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
-      return Math.max(0, sales.length - limit);
+      return vm.salesHistoryExpanded ? Math.max(0, sales.length - limit) : Math.max(0, sales.length - 5);
     },
 
     nextSalesHistoryBatchCount(this: Record<string, unknown>): number {
       const vm = this as Record<string, unknown>;
       const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
       const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
-      const remaining = Math.max(0, sales.length - limit);
+      const remaining = vm.salesHistoryExpanded ? Math.max(0, sales.length - limit) : Math.max(0, sales.length - 5);
       return Math.min(SALES_HISTORY_RENDER_BATCH_SIZE, remaining);
     },
 
@@ -355,10 +362,12 @@ export const SalesWindowDefinition = {
     currentLotId(this: Record<string, unknown>) {
       const vm = this as Record<string, unknown> & { resetSalesHistoryRenderCount?: () => void };
       vm.resetSalesHistoryRenderCount?.();
+      this.salesHistoryExpanded = false;
     },
     currentLotType(this: Record<string, unknown>) {
       const vm = this as Record<string, unknown> & { resetSalesHistoryRenderCount?: () => void };
       vm.resetSalesHistoryRenderCount?.();
+      this.salesHistoryExpanded = false;
     }
   },
   methods: {
@@ -513,6 +522,11 @@ export const SalesWindowDefinition = {
     loadMoreSalesHistory(): void {
       const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number };
       vm.salesHistoryRenderCount = Number(vm.salesHistoryRenderCount || 0) + SALES_HISTORY_RENDER_BATCH_SIZE;
+    },
+
+    showAllSalesHistory(): void {
+      const vm = this as Record<string, unknown> & { salesHistoryExpanded?: boolean };
+      vm.salesHistoryExpanded = true;
     },
 
     openBuyerQuickView(buyerName: string): void {

@@ -187,5 +187,6 @@
   "salesHistoryTotalLabel": "total",
   "salesHistoryPerItemLabel": "/item",
   "salesHistoryPerBoxLabel": "/box",
-  "salesHistoryPerSpotLabel": "/spot"
+  "salesHistoryPerSpotLabel": "/spot",
+  "salesHistoryViewAllLabel": "View all sales"
 }
