@@ -1,76 +1,49 @@
                 <v-row class="sales-screen-grid">
                   <!-- Snapshot + History -->
                   <v-col cols="12" lg="7">
-                    <v-card
-                      elevation="4"
-                      :class="['sales-status-card', salesStatusToneClass()]"
-                    >
+                    <v-card elevation="4" class="sales-status-card sales-status-card--primary sales-summary-compact">
                       <v-card-text class="sales-status-content">
-                        <div class="sales-status-head">
-                          <div class="sales-status-icon-wrap">
-                            <v-icon size="18">{{ salesStatus?.icon || 'mdi-information' }}</v-icon>
-                          </div>
-                          <div class="sales-status-title-wrap">
-                            <div class="sales-status-eyebrow">{{ t('salesSnapshotTitle') }}</div>
-                            <div class="sales-status-title">
-                              {{ salesStatus?.title || t('salesNoSalesTitle') }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="sales-status-progress-wrap" :aria-label="salesStatusProgressPercentLabel">
-                          <v-progress-linear
-                            :model-value="salesHistorySoldPercent"
-                            height="12"
-                            rounded
-                            class="sales-status-progress"
-                            :color="salesStatusProgressFillColor()"
-                          ></v-progress-linear>
-                          <span class="sales-status-progress-label">
-                            {{ salesStatusProgressPercentLabel }}
-                          </span>
-                        </div>
-                        <div class="sales-status-value-row">
-                          <div class="sales-status-primary-metric">
-                            <div class="sales-status-metric-label">
-                              {{ t('salesStatusRealizedProfitLabel') }}
-                            </div>
-                            <app-metric-value
-                              kind="money"
-                              :tone="(salesStatusRealizedProfit ?? 0) >= 0 ? 'positive' : 'negative'"
-                              value-class="sales-status-value"
-                            >
-                              <span class="sales-status-value__amount">
-                                {{ (salesStatusRealizedProfit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatusRealizedProfit ?? 0)) }}
-                              </span>
-                              <span v-if="salesStatusRealizedMarginPercent != null" class="sales-status-value__percent">
-                                ({{ salesStatusRealizedMarginPercent < 0 ? '-' : '' }}{{ fmtCurrency(Math.abs(salesStatusRealizedMarginPercent), 1) }}%)
-                              </span>
+                        <div class="sales-status-eyebrow">{{ t('salesSnapshotTitle') }}</div>
+                        <div class="sales-summary-metrics">
+                          <div>
+                            <div class="sales-status-metric-label">{{ t('salesStatusRealizedProfitLabel') }}</div>
+                            <app-metric-value kind="money"
+                              :tone="salesStatusRealizedProfit > 0 ? 'positive' : salesStatusRealizedProfit < 0 ? 'negative' : 'neutral'"
+                              value-class="sales-summary-profit">
+                              {{ salesStatusRealizedProfit > 0 ? '+' : salesStatusRealizedProfit < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatusRealizedProfit)) }}
                             </app-metric-value>
-                          </div>
-                          <div v-if="(sales?.length ?? 0) > 0" class="sales-status-gap-metric">
-                            <div class="sales-status-gap-label">
-                              {{ t('salesStatusBreakEvenGapLabel') }}
+                            <div v-if="salesStatusRealizedMarginPercent != null" class="sales-summary-caption">
+                              {{ fmtCurrency(salesStatusRealizedMarginPercent, 1) }}% {{ t('salesSummaryMargin') }}
                             </div>
-                            <app-metric-value
-                              kind="money"
-                              :tone="(salesStatus?.profit ?? 0) >= 0 ? 'positive' : 'negative'"
-                              pill
-                              value-class="sales-status-net-pill"
-                              :title="t('salesStatusBreakEvenGapLabel')"
-                              :aria-label="t('salesStatusBreakEvenGapLabel')"
-                            >
-                              <span class="sales-status-net-pill__value">
-                                {{ (salesStatus?.profit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatus?.profit ?? 0)) }}
-                              </span>
-                            </app-metric-value>
+                          </div>
+                          <div>
+                            <div class="sales-status-gap-label">{{ t('salesStatusBreakEvenGapLabel') }}</div>
+                            <div class="sales-summary-remaining">${{ fmtCurrency(salesInvestmentRecovery.remaining) }}</div>
+                            <div class="sales-summary-caption">{{ t('salesSummaryInitialInvestment') }}</div>
                           </div>
                         </div>
-                        <app-kpi-grid
-                          :items="salesSnapshotKpis"
-                          layout="six-three"
-                          grid-class="sales-snapshot-kpi-grid"
-                          card-class="sales-snapshot-kpi-card"
-                        ></app-kpi-grid>
+                        <div v-if="salesInvestmentRecovery.percent != null" class="sales-summary-recovery">
+                          <div class="sales-summary-progress-heading">
+                            <span>{{ t('salesSummaryRecovery') }}</span>
+                            <strong>{{ fmtCurrency(salesInvestmentRecovery.percent, 1) }}%</strong>
+                          </div>
+                          <v-progress-linear :model-value="salesInvestmentRecovery.percent" height="6" rounded
+                            color="primary" :aria-label="t('salesSummaryRecovery')"></v-progress-linear>
+                          <div class="sales-summary-caption">
+                            ${{ fmtCurrency(salesInvestmentRecovery.revenue) }} / ${{ fmtCurrency(salesInvestmentRecovery.cost) }}
+                            <span v-if="salesInvestmentRecovery.remaining === 0"> · {{ t('salesSummaryRecovered') }}</span>
+                          </div>
+                        </div>
+                        <div v-else class="sales-summary-caption">{{ t('salesSummaryNoCost') }}</div>
+                        <div class="sales-summary-inventory">
+                          <v-icon size="16" aria-hidden="true">mdi-package-variant-closed</v-icon>
+                          <span>{{ salesSnapshotKpis.find(item => item.id === 'inventory')?.meta }}</span>
+                        </div>
+                        <details class="sales-summary-details">
+                          <summary>{{ t('salesSummaryMoreDetails') }}</summary>
+                          <app-kpi-grid :items="salesSnapshotKpis" layout="six-three"
+                            grid-class="sales-snapshot-kpi-grid" card-class="sales-snapshot-kpi-card"></app-kpi-grid>
+                        </details>
                       </v-card-text>
                     </v-card>
 

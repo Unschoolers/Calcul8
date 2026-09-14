@@ -160,15 +160,20 @@
   "salesSaleTypeRandomHitLabel": "random hit",
   "salesSaleTypeWheelLabel": "spin",
   "salesSnapshotTitle": "Aperçu des ventes",
-  "salesStatusBreakEvenGapLabel": "Écart à récupérer",
+  "salesStatusBreakEvenGapLabel": "Reste à récupérer",
   "salesStatusNetBadgeLabel": "Net du lot",
-  "salesStatusRealizedProfitLabel": "Profit réalisé",
+  "salesStatusRealizedProfitLabel": "Profit sur les articles vendus",
   "salesStatusSoldProfitLabel": "Vendu",
   "salesStatusCostLabel": "Coût",
   "salesStatusRevenueLabel": "Revenu",
   "salesUnlinkedLabel": "non lie",
   "salesStatusNetNegative": "Net negatif",
   "salesStatusNetPositive": "Net positif",
-  "salesStatusNoSalesYet": "Aucune vente pour le moment"
+  "salesStatusNoSalesYet": "Aucune vente pour le moment",
+  "salesSummaryInitialInvestment": "de votre investissement initial",
+  "salesSummaryMargin": "de marge",
+  "salesSummaryRecovery": "Investissement récupéré",
+  "salesSummaryRecovered": "Entièrement récupéré",
+  "salesSummaryNoCost": "Ajoutez un coût au lot pour suivre sa récupération.",
+  "salesSummaryMoreDetails": "Plus de détails"
 }
-

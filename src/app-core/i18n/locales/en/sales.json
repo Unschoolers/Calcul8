@@ -160,14 +160,20 @@
   "salesSaleTypeRandomHitLabel": "random hit",
   "salesSaleTypeWheelLabel": "spin",
   "salesSnapshotTitle": "Sales snapshot",
-  "salesStatusBreakEvenGapLabel": "Break-even gap",
+  "salesStatusBreakEvenGapLabel": "Still to recover",
   "salesStatusNetBadgeLabel": "Lot net",
-  "salesStatusRealizedProfitLabel": "Realized profit",
+  "salesStatusRealizedProfitLabel": "Profit on items sold",
   "salesStatusSoldProfitLabel": "Sold",
   "salesStatusCostLabel": "Cost",
   "salesStatusRevenueLabel": "Revenue",
   "salesUnlinkedLabel": "unlinked",
   "salesStatusNetNegative": "Net Negative",
   "salesStatusNetPositive": "Net Positive",
-  "salesStatusNoSalesYet": "No Sales Yet"
+  "salesStatusNoSalesYet": "No Sales Yet",
+  "salesSummaryInitialInvestment": "of your initial investment",
+  "salesSummaryMargin": "margin",
+  "salesSummaryRecovery": "Investment recovered",
+  "salesSummaryRecovered": "Fully recovered",
+  "salesSummaryNoCost": "Add a lot cost to track investment recovery.",
+  "salesSummaryMoreDetails": "More details"
 }

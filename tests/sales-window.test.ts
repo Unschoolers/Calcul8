@@ -130,8 +130,8 @@ test("SalesWindow renders snapshot KPIs through the shared KPI grid", () => {
   const template = read("src/components/windows/sales/SalesWindow.html");
   const script = read("src/components/windows/sales/SalesWindow.ts");
 
-  assert.match(template, /sales-status-progress-wrap/);
-  assert.match(template, /salesStatusProgressPercentLabel/);
+  assert.match(template, /sales-summary-recovery/);
+  assert.match(template, /salesInvestmentRecovery.percent/);
   assert.match(template, /salesStatusRealizedProfitLabel/);
   assert.match(template, /salesStatusBreakEvenGapLabel/);
   assert.match(template, /salesForecastProjectionBadgeLabel/);
@@ -487,4 +487,16 @@ test("SalesWindow forecast carousel cycles index with wrap-around", () => {
   assert.equal(vm.liveForecastScenarioIndex, 2);
   SalesWindowDefinition.methods.cycleLiveForecastScenario.call(vm as never, 1);
   assert.equal(vm.liveForecastScenarioIndex, 0);
+});
+
+
+test("investment recovery is distinct from sold-item profit and handles empty or recovered lots", () => {
+  const compute = SalesWindowDefinition.computed.salesInvestmentRecovery;
+  const partial = compute.call({ salesStatus: { revenue: 247.10 }, totalCaseCost: 447.92 } as never);
+  assert.ok(Math.abs(partial.remaining - 200.82) < 0.001);
+  assert.ok(Math.abs(partial.percent! - 55.166) < 0.01);
+  assert.deepEqual(compute.call({ salesStatus: { revenue: 120 }, totalCaseCost: 100 } as never),
+    { revenue: 120, cost: 100, remaining: 0, percent: 100 });
+  assert.equal(compute.call({ totalCaseCost: 0 } as never).percent, null);
+  assert.equal(compute.call({ totalCaseCost: 100 } as never).remaining, 100);
 });

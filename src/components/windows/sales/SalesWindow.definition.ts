@@ -233,6 +233,15 @@ export const SalesWindowDefinition = {
       return (realizedProfit / realizedRevenue) * 100;
     },
 
+    salesInvestmentRecovery(this: Record<string, unknown>): { revenue: number; cost: number; remaining: number; percent: number | null } {
+      const revenueValue = Number((this.salesStatus as { revenue?: number } | undefined)?.revenue);
+      const costValue = Number(this.totalCaseCost);
+      const revenue = Number.isFinite(revenueValue) ? Math.max(0, revenueValue) : 0;
+      const cost = Number.isFinite(costValue) ? Math.max(0, costValue) : 0;
+      return { revenue, cost, remaining: Math.max(0, cost - revenue),
+        percent: cost > 0 ? Math.min(100, revenue / cost * 100) : null };
+    },
+
     salesSnapshotKpis(this: Record<string, unknown>): AppKpiItem[] {
       const lotType = String(this.currentLotType || "bulk");
       const sales = Array.isArray(this.sortedSales) ? this.sortedSales as Sale[] : [];
