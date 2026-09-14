@@ -173,21 +173,10 @@ test("SalesWindow renders sales history through one responsive ledger component"
   assert.match(template, /<sales-history-ledger\b/);
   assert.doesNotMatch(template, /<v-list v-else class="sales-history-list"/);
   assert.match(script, /SalesHistoryLedger/);
-  assert.match(
-    ledgerTemplate,
-    /sales-history-ledger__type-icon[\s\S]*salesHistoryColumnUnitsLabel[\s\S]*salesHistoryColumnTypeLabel[\s\S]*salesHistoryColumnPriceLabel[\s\S]*salesHistoryColumnProfitLabel[\s\S]*salesHistoryColumnDateLabel[\s\S]*salesHistoryColumnCustomerLabel/
-  );
-  assert.match(ledgerTemplate, /saleTypeIcon\(sale\)/);
   assert.match(ledgerTemplate, /saleTypeText\(sale\)/);
-  assert.match(ledgerTemplate, /sales-history-ledger__head-sort[\s\S]*@click="setSort\('units'\)"/);
-  assert.match(ledgerTemplate, /@click="setSort\('type'\)"[\s\S]*@click="setSort\('price'\)"[\s\S]*@click="setSort\('profit'\)"[\s\S]*@click="setSort\('date'\)"[\s\S]*@click="setSort\('customer'\)"/);
-  assert.doesNotMatch(ledgerTemplate, /sales-history-ledger__type"[\s\S]*<v-avatar/);
-  assert.doesNotMatch(ledgerTemplate, /saleListTitle\(sale\)/);
-  const ledgerCss = read("src/components/windows/sales/SalesWindow.css");
-  assert.match(ledgerCss, /grid-template-columns:\s*32px\s+58px\s+minmax\(76px,\s*0\.7fr\)\s+74px\s+minmax\(112px,\s*0\.9fr\)\s+82px\s+minmax\(96px,\s*0\.65fr\)\s+28px/);
-  assert.match(ledgerCss, /@media \(min-width:\s*601px\)[\s\S]*\.sales-history-ledger__sortbar\s*{[\s\S]*display:\s*none/);
-  assert.match(ledgerCss, /@media \(max-width:\s*600px\)[\s\S]*\.sales-history-ledger__head\s*{[\s\S]*display:\s*none/);
-  assert.match(ledgerCss, /"type-icon units type price actions"/);
+  assert.match(ledgerTemplate, /@change="changeSort"/);
+  assert.match(ledgerTemplate, /@click="setSort\(option.key\)"/);
+
 });
 
 test("SaleEditorModal presents RTYH as spot price and items won", () => {
@@ -255,7 +244,9 @@ test("SalesHistoryLedger sorts through one stateful ledger model", () => {
 
 test("SalesHistoryLedger presents compact unit type and price columns", () => {
   const t = (key: string) => ({
-    salesHistoryTypeSinglesLabel: "Singles",
+    salesHistoryTypeSinglesLabel: "Items",
+    salesHistoryTypeItemLabel: "Item",
+    salesHistoryTypeBoxLabel: "Box",
     salesHistoryTypeBoxesLabel: "Boxes",
     salesHistoryTypeRandomHitLabel: "Random hit",
     salesHistoryTypeWheelLabel: "Wheel",
@@ -273,7 +264,7 @@ test("SalesHistoryLedger presents compact unit type and price columns", () => {
   const rtyhSale = makeSale({ quantity: 10, packsCount: 32, type: "rtyh", price: 26 });
 
   assert.equal(SalesHistoryLedgerDefinition.methods!.saleUnitsLabel.call(vm as never, singlesSale), "14");
-  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeText.call(vm as never, singlesSale), "Singles");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeText.call(vm as never, singlesSale), "Items");
   assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeIcon.call(vm as never, singlesSale), "icon:pack");
   assert.equal(SalesHistoryLedgerDefinition.methods!.saleRevenueLabel.call(vm as never, singlesSale), "$7.00");
   assert.equal(SalesHistoryLedgerDefinition.methods!.saleUnitsLabel.call(vm as never, boxSale), "3");

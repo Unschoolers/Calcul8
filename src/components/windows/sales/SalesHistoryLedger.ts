@@ -145,6 +145,17 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     }
   },
   methods: {
+    changeSort(event: Event): void {
+      const [key, direction] = (event.target as HTMLSelectElement).value.split(":");
+      if (!this.sortOptions.some(option => option.key === key) || (direction !== "asc" && direction !== "desc")) return;
+      this.sortKey = key as SortKey;
+      this.sortDirection = direction;
+    },
+    salePriceBasis(sale: Sale): string {
+      return this.t(sale.priceIsTotal || sale.type === "wheel" ? "salesHistoryTotalLabel"
+        : sale.type === "box" ? "salesHistoryPerBoxLabel"
+        : sale.type === "rtyh" ? "salesHistoryPerSpotLabel" : "salesHistoryPerItemLabel");
+    },
     emitEdit(sale: Sale): void {
       this.$emit("edit", sale);
     },
@@ -184,10 +195,10 @@ export const SalesHistoryLedgerDefinition = defineComponent({
       return this.fmtUnits(soldItemCount);
     },
     saleTypeText(sale: Sale): string {
-      if (sale.type === "box") return this.t("salesHistoryTypeBoxesLabel");
+      if (sale.type === "box") return this.t(sale.quantity === 1 ? "salesHistoryTypeBoxLabel" : "salesHistoryTypeBoxesLabel");
       if (sale.type === "rtyh") return this.t("salesHistoryTypeRandomHitLabel");
       if (sale.type === "wheel") return this.t("salesHistoryTypeWheelLabel");
-      return this.t("salesHistoryTypeSinglesLabel");
+      return this.t(sale.quantity === 1 ? "salesHistoryTypeItemLabel" : "salesHistoryTypeSinglesLabel");
     },
     saleTypeIcon(sale: Sale): string {
       return this.getSaleIcon(sale.type);
@@ -218,8 +229,10 @@ export const SalesHistoryLedgerDefinition = defineComponent({
       const preview = this.saleProfitPreview(sale);
       const value = Number(preview?.value ?? this.calculateSaleProfit(sale)) || 0;
       const prefix = preview ? preview.sign : value >= 0 ? "+" : "-";
-      const basis = preview ? ` ${this.t("salesProfitVsLabel")} ${preview.basisLabel}` : "";
-      return `${prefix}$${this.fmtCurrency(Math.abs(value))}${basis}`;
+      const basis = preview && Number(preview.marketBasisValue) > 0
+        ? ` ${this.t("salesProfitVsLabel")} ${preview.basisLabel}` : "";
+      const label = basis ? "" : `${this.t("salesProfitLabel")} `;
+      return `${label}${prefix}$${this.fmtCurrency(Math.abs(value))}${basis}`;
     },
     saleSecondaryProfitLabel(sale: Sale): string {
       const preview = this.saleProfitPreview(sale);

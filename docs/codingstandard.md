@@ -1,6 +1,6 @@
 - Prefer root-cause, maintainable, additive fixes over workarounds or silent behavior changes that existing users depend on.
 - Reuse existing components, helpers, and types before creating new ones, and split logic by responsibility instead of stacking unrelated behavior together.
-- Prefer composable frontend logic in `src/app-core`, thin API handlers backed by `apps/api/src/lib`, and shared helpers for HTTP/response behavior rather than hand-rolled patterns.
+- Prefer composable frontend logic in `src/app-core`, thin API handlers backed by `apps/api/src/features` and `apps/api/src/lib`, and shared helpers for HTTP/response behavior rather than hand-rolled patterns.
 - Validate, normalize, and coerce external input at storage, network, and route boundaries, and keep runtime behavior aligned with the TypeScript types.
 - Keep frontend and backend `strict` TypeScript compatible, with explicit types for shared/public shapes.
 - Centralize storage keys, scope keys, entitlement ids, sync scope composition, and other cross-cutting identifiers in shared helpers.
@@ -17,4 +17,4 @@
 - Keep auth session-first and provider-neutral in shared code, require CSRF for unsafe cookie-authenticated API requests, and keep billing/access data separate from profile/identity data.
 - Read deploy-specific config through centralized config helpers, emit high-signal telemetry through shared telemetry helpers, and let Cosmos repositories own ids, partition keys, retries, and conflict translation.
 - Treat all committed data as public forever: never commit secrets or signing material, keep release/security workflows reproducible through the existing scripts, and run reviewed dry-runs for one-time migrations before production apply steps.
-- When changing behavior, update tests alongside the change, and keep MVP scope lean by deferring billing, admin layers, or extra complexity until the core flow is solid.
+- When changing behavior, update tests alongside the change, keep each increment focused, preserve established billing and access rules, and defer unrelated complexity.

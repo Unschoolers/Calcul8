@@ -1,46 +1,28 @@
-<div class="sales-history-ledger">
-  <div class="sales-history-ledger__sortbar" :aria-label="t('salesHistorySortLabel')">
-    <button
-      v-for="option in sortOptions"
-      :key="option.key"
-      type="button"
-      class="sales-history-ledger__sort"
-      :class="sortButtonClass(option.key)"
-      @click="setSort(option.key)"
-    >
-      <span>{{ option.label }}</span>
-      <v-icon size="13">{{ sortIcon(option.key) }}</v-icon>
-    </button>
+<div class="sales-history-ledger sales-history-ledger--compact">
+  <div class="sales-history-ledger__sortbar">
+    <label class="sales-history-ledger__sort-control">
+      <span>{{ t('salesHistorySortLabel') }}</span>
+      <select :value="`${sortKey}:${sortDirection}`" @change="changeSort">
+        <optgroup v-for="option in sortOptions" :key="option.key" :label="option.label">
+          <option :value="`${option.key}:desc`">{{ option.key === 'date' ? t('salesHistoryNewestLabel') : `${option.label} · ${t('salesHistoryDescendingLabel')}` }}</option>
+          <option :value="`${option.key}:asc`">{{ option.key === 'date' ? t('salesHistoryOldestLabel') : `${option.label} · ${t('salesHistoryAscendingLabel')}` }}</option>
+        </optgroup>
+      </select>
+    </label>
   </div>
 
   <div class="sales-history-ledger__table" role="table">
     <div class="sales-history-ledger__head" role="row">
-      <span></span>
-      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('units')" @click="setSort('units')">
-        <span>{{ t('salesHistoryColumnUnitsLabel') }}</span>
-        <v-icon size="13">{{ sortIcon('units') }}</v-icon>
-      </button>
-      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('type')" @click="setSort('type')">
-        <span>{{ t('salesHistoryColumnTypeLabel') }}</span>
-        <v-icon size="13">{{ sortIcon('type') }}</v-icon>
-      </button>
-      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('price')" @click="setSort('price')">
-        <span>{{ t('salesHistoryColumnPriceLabel') }}</span>
-        <v-icon size="13">{{ sortIcon('price') }}</v-icon>
-      </button>
-      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('profit')" @click="setSort('profit')">
-        <span>{{ t('salesHistoryColumnProfitLabel') }}</span>
-        <v-icon size="13">{{ sortIcon('profit') }}</v-icon>
-      </button>
-      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('date')" @click="setSort('date')">
-        <span>{{ t('salesHistoryColumnDateLabel') }}</span>
-        <v-icon size="13">{{ sortIcon('date') }}</v-icon>
-      </button>
-      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('customer')" @click="setSort('customer')">
-        <span>{{ t('salesHistoryColumnCustomerLabel') }}</span>
-        <v-icon size="13">{{ sortIcon('customer') }}</v-icon>
-      </button>
-      <span></span>
+      <div v-for="option in sortOptions.filter(option => option.key !== 'customer')" :key="option.key" role="columnheader"
+        :aria-sort="sortKey === option.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'">
+        <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass(option.key)" @click="setSort(option.key)">
+          {{ option.label }} <v-icon size="13">{{ sortIcon(option.key) }}</v-icon>
+        </button>
+        <button v-if="option.key === 'date'" type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('customer')" @click="setSort('customer')">
+          {{ t('salesHistoryColumnCustomerLabel') }} <v-icon size="13">{{ sortIcon('customer') }}</v-icon>
+        </button>
+      </div>
+      <span role="columnheader"><span class="sales-history-ledger__action-heading">{{ t('salesHistoryActionsLabel') }}</span></span>
     </div>
 
     <div
@@ -50,15 +32,9 @@
       role="row"
       tabindex="0"
       @click="emitEdit(sale)"
-      @keydown.enter.prevent="emitEdit(sale)"
-      @keydown.space.prevent="emitEdit(sale)"
+      @keydown.enter.self.prevent="emitEdit(sale)"
+      @keydown.space.self.prevent="emitEdit(sale)"
     >
-      <div class="sales-history-ledger__cell sales-history-ledger__type-icon" role="cell">
-        <v-avatar class="sales-history-type-token" size="28">
-          <v-icon size="16" :color="getSaleColor(sale.type)">{{ saleTypeIcon(sale) }}</v-icon>
-        </v-avatar>
-      </div>
-
       <div class="sales-history-ledger__cell sales-history-ledger__units" role="cell" :data-label="t('salesHistoryColumnUnitsLabel')">
         {{ saleUnitsLabel(sale) }}
       </div>
@@ -82,15 +58,14 @@
         </v-tooltip>
       </div>
 
-      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnPriceLabel')">
-        {{ saleRevenueLabel(sale) }}
+      <div class="sales-history-ledger__cell sales-history-ledger__price" role="cell" :data-label="t('salesHistoryColumnPriceLabel')">
+        {{ saleRevenueLabel(sale) }} <span class="sales-history-ledger__basis">{{ salePriceBasis(sale) }}</span>
       </div>
       <div class="sales-history-ledger__cell sales-history-ledger__profit" role="cell" :data-label="t('salesHistoryColumnProfitLabel')">
         <app-metric-value
           kind="money"
           :tone="saleProfitTone(sale)"
-          pill
-          value-class="sales-history-profit-pill sales-history-ledger__profit-value app-dense-metric__value"
+          value-class="sales-history-ledger__profit-value app-dense-metric__value"
         >
           {{ saleProfitLabel(sale) }}
         </app-metric-value>
@@ -98,42 +73,43 @@
           v-if="saleSecondaryProfitLabel(sale)"
           kind="money"
           :tone="saleProfitValue(sale) >= 0 ? 'positive' : 'negative'"
-          pill
-          value-class="sales-history-profit-pill sales-history-profit-pill--secondary sales-history-ledger__profit-value app-dense-metric__value"
+          value-class="sales-history-ledger__profit-value app-dense-metric__value"
         >
           {{ saleSecondaryProfitLabel(sale) }}
         </app-metric-value>
       </div>
-      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnDateLabel')">
-        {{ formatDate(sale.date) }}
+      <div class="sales-history-ledger__metadata" role="cell">
+        <div class="sales-history-ledger__date">
+          {{ formatDate(sale.date) }}
+        </div>
+        <div class="sales-history-ledger__customer app-dense-card-meta" :data-label="t('salesHistoryColumnCustomerLabel')">
+          <button
+            v-if="hasNamedCustomer(sale)"
+            type="button"
+            class="sales-history-ledger__customer-button"
+            :title="t('buyerQuickViewOpenLabel')"
+            :aria-label="t('buyerQuickViewOpenLabel')"
+            @click.stop="$emit('open-buyer', saleCustomerLabel(sale))"
+          >
+            <buyer-identity-label
+              :username="saleCustomerLabel(sale)"
+              :profile="saleBuyerProfile(sale)"
+            ></buyer-identity-label>
+          </button>
+
+        </div>
       </div>
-      <div class="sales-history-ledger__cell sales-history-ledger__customer app-dense-card-meta" role="cell" :data-label="t('salesHistoryColumnCustomerLabel')">
-        <button
-          v-if="hasNamedCustomer(sale)"
-          type="button"
-          class="sales-history-ledger__customer-button"
-          :title="t('buyerQuickViewOpenLabel')"
-          :aria-label="t('buyerQuickViewOpenLabel')"
-          @click.stop="$emit('open-buyer', saleCustomerLabel(sale))"
-        >
-          <buyer-identity-label
-            :username="saleCustomerLabel(sale)"
-            :profile="saleBuyerProfile(sale)"
-          ></buyer-identity-label>
-        </button>
-        <span v-else>{{ saleCustomerLabel(sale) }}</span>
-      </div>
-      <div class="sales-history-ledger__actions" role="cell">
-        <v-btn
-          icon="mdi-trash-can-outline"
-          variant="text"
-          color="error"
-          class="sales-history-action-btn"
-          size="small"
-          :title="t('salesHistoryDeleteSaleLabel')"
-          :aria-label="t('salesHistoryDeleteSaleLabel')"
-          @click.stop="$emit('delete', sale.id)"
-        ></v-btn>
+      <div class="sales-history-ledger__actions" role="cell" @click.stop @keydown.stop>
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn v-bind="props" icon="mdi-dots-horizontal" variant="text" size="44"
+              :aria-label="t('salesHistoryActionsLabel')"></v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-pencil-outline" :title="t('salesHistoryEditLabel')" @click="emitEdit(sale)"></v-list-item>
+            <v-list-item prepend-icon="mdi-trash-can-outline" :title="t('salesHistoryDeleteSaleLabel')" @click="$emit('delete', sale.id)"></v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
   </div>

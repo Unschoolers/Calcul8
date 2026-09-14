@@ -5,3 +5,5 @@ export default SalesHistoryLedgerDefinition;
 </script>
 
 <template src="./SalesHistoryLedger.html"></template>
+
+<style src="./SalesHistoryLedger.css"></style>

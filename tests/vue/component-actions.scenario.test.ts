@@ -11,7 +11,7 @@ const words: Record<string, string> = {
   salesHistorySortProfitLabel: "Profit", salesHistorySortDateLabel: "Date", salesHistorySortCustomerLabel: "Customer", salesHistoryColumnUnitsLabel: "Units",
   salesHistoryColumnTypeLabel: "Type", salesHistoryColumnPriceLabel: "Price", salesHistoryColumnProfitLabel: "Profit", salesHistoryColumnDateLabel: "Date",
   salesHistoryColumnCustomerLabel: "Customer", salesHistoryTypeSinglesLabel: "Pack", salesHistoryNoCustomerLabel: "No customer", buyerQuickViewOpenLabel: "Open buyer",
-  salesHistoryDeleteSaleLabel: "Delete sale", salesHistoryLoadMoreLabel: "Load", salesHistoryMoreLabel: "more", salesHistoryRemainingLabel: "remaining", salesProfitVsLabel: "vs"
+  salesHistoryActionsLabel: "Sale actions", salesHistoryDeleteSaleLabel: "Delete sale", salesHistoryLoadMoreLabel: "Load", salesHistoryMoreLabel: "more", salesHistoryRemainingLabel: "remaining", salesProfitVsLabel: "vs"
 };
 const t = (key: string) => words[key] ?? key;
 
@@ -47,7 +47,8 @@ describe("sales ledger scenarios", () => {
   });
   test("deletes the selected sale", async () => {
     const { onDelete } = renderLedger();
-    await fireEvent.click(screen.getAllByRole("button", { name: "Delete sale" })[0]!);
+    await fireEvent.click(screen.getAllByRole("button", { name: "Sale actions" })[0]!);
+    await fireEvent.click(await screen.findByText("Delete sale"));
     expect(onDelete).toHaveBeenCalledWith(2);
   });
   test("requests the next ledger page", async () => {
