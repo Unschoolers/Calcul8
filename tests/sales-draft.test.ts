@@ -223,3 +223,9 @@ test("resetSaleDraft closes modal and restores the baseline draft", () => {
   assert.equal((ctx.newSale as { customer?: string }).customer, "");
   assert.equal((ctx.newSale as { buyerShipping?: number }).buyerShipping, 8);
 });
+
+test("editing a wheel sale keeps its deducted pack count", () => {
+  const ctx = createContext({ currentLotType: "bulk" });
+  editSaleDraft(ctx as never, makeSale({ type: "wheel", quantity: 3, packsCount: 3 }));
+  assert.equal((ctx.newSale as { packsCount: number }).packsCount, 3);
+});

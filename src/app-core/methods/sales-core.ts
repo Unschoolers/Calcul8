@@ -263,7 +263,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     }
   }
 
-  const normalizedSaleType = isSinglesLot ? "pack" : params.newSale.type;
+  const normalizedSaleType = isSinglesLot && params.newSale.type !== "wheel" ? "pack" : params.newSale.type;
   let packsCount: number;
   if (normalizedSaleType === "pack") {
     packsCount = quantity;
@@ -279,6 +279,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
   const memo = typeof params.newSale.memo === "string" ? params.newSale.memo.trim() : "";
   const customer = typeof params.newSale.customer === "string" ? params.newSale.customer.trim() : "";
   const sale: Sale = {
+    ...params.editingSale,
     id: params.editingSale ? params.editingSale.id : Date.now(),
     type: normalizedSaleType,
     quantity,
@@ -286,12 +287,22 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     singlesPurchaseEntryId: isSinglesLot ? (selectedSinglesPurchaseEntryId ?? undefined) : undefined,
     singlesItems: isSinglesLot ? singlesItems : undefined,
     price,
-    priceIsTotal: isSinglesLot ? true : undefined,
+    priceIsTotal: isSinglesLot || normalizedSaleType === "wheel" ? true : params.editingSale?.priceIsTotal,
     customer: customer || undefined,
     memo: memo || undefined,
     buyerShipping,
     date: normalizedSaleDate
   };
+
+  const previous = params.editingSale;
+  if (previous && (
+    previous.price !== sale.price || previous.quantity !== sale.quantity
+    || previous.buyerShipping !== sale.buyerShipping || previous.type !== sale.type
+    || (previous.type !== "wheel" && Boolean(previous.priceIsTotal) !== Boolean(sale.priceIsTotal))
+  )) {
+    // Keep settled revenue for descriptive edits; recompute after financial changes.
+    delete sale.netRevenue;
+  }
 
   return {
     ok: true,

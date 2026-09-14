@@ -802,3 +802,16 @@ test("cacheAuthoritativeSales ignores storage failures", () => {
 
   assert.equal(setItem.mock.calls.length, 1);
 });
+
+test("normalizeSale preserves external transaction identity through API hydration", () => {
+  const identity = {
+    externalProvider: "whatnot", externalAccountId: "seller", externalSaleId: "sale-1",
+    externalOrderId: "order-1", externalOrderItemId: "item-1",
+    externalTransactionRefs: [{ provider: "whatnot", accountId: "seller", ledgerTransactionId: "tx-1", orderId: "order-1", orderItemId: "item-1" }]
+  };
+  const sale = normalizeSale({ id: 1, type: "pack", quantity: 1, price: 10, ...identity });
+  assert.ok(sale);
+  for (const [key, value] of Object.entries(identity)) {
+    assert.deepEqual(sale[key as keyof typeof sale], value);
+  }
+});

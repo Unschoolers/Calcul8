@@ -31,6 +31,7 @@ export function normalizeSale(value: unknown): Sale | null {
   const sale = normalizeSyncSaleDto(value);
   if (!sale) return null;
   return {
+    ...sale,
     id: sale.id,
     type: sale.type ?? "pack",
     quantity: sale.quantity ?? 0,

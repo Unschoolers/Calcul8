@@ -195,3 +195,41 @@ test("buildSaleSaveResult returns an error when the edited sale no longer exists
     message: "Could not find the sale to update. Please try again."
   });
 });
+
+test("memo edits preserve imported transaction links and wheel accounting metadata", () => {
+  const existing = makeSale({ type: "wheel", quantity: 2, packsCount: 2, linkedWheelId: 5,
+    winningTierId: "tier-1", costOfWinningTier: 3, netRevenue: 8,
+    externalProvider: "whatnot", externalAccountId: "seller", externalSaleId: "s1",
+    externalOrderId: "o1", externalOrderItemId: "i1",
+    externalTransactionRefs: [{ provider: "whatnot", accountId: "seller", ledgerTransactionId: "tx1", orderId: "o1", orderItemId: "i1" }] });
+  const result = buildSaleSaveResult({ canUsePaidActions: true, currentLotType: "bulk", sales: [existing], editingSale: existing,
+    newSale: makeDraft({ type: "wheel", quantity: 2, packsCount: 2, memo: "Corrected memo" }), packsPerBox: 8, singlesPurchases: [] });
+  assert.ok(result.ok);
+  for (const key of ["linkedWheelId", "winningTierId", "costOfWinningTier", "netRevenue", "externalProvider", "externalAccountId", "externalSaleId", "externalOrderId", "externalOrderItemId", "externalTransactionRefs"] as const) {
+    assert.deepEqual(result.sale[key], existing[key]);
+  }
+  assert.equal(result.sale.memo, "Corrected memo");
+  assert.equal(result.sale.packsCount, 2);
+  assert.equal(result.sale.priceIsTotal, true);
+});
+
+test("changing a wheel sale price invalidates stored revenue and keeps the spin price as a total", () => {
+  const existing = makeSale({ type: "wheel", quantity: 2, packsCount: 2, linkedWheelId: 5, netRevenue: 8 });
+  const result = buildSaleSaveResult({ canUsePaidActions: true, currentLotType: "bulk", sales: [existing], editingSale: existing,
+    newSale: makeDraft({ type: "wheel", quantity: 2, packsCount: 2, price: 15 }), packsPerBox: 8, singlesPurchases: [] });
+  assert.ok(result.ok);
+  assert.equal(result.sale.netRevenue, undefined);
+  assert.equal(result.sale.priceIsTotal, true);
+  assert.equal(result.sale.linkedWheelId, 5);
+});
+
+test("editing a singles wheel prize preserves its wheel type and inventory link", () => {
+  const existing = makeSale({ type: "wheel", singlesPurchaseEntryId: 101, linkedWheelId: 5, netRevenue: 8 });
+  const result = buildSaleSaveResult({ canUsePaidActions: true, currentLotType: "singles", sales: [existing], editingSale: existing,
+    newSale: makeDraft({ type: "wheel", packsCount: 1, singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 101, quantity: 1, price: 10 }] }),
+    packsPerBox: 8, singlesPurchases: [makeSinglesEntry()] });
+  assert.ok(result.ok);
+  assert.equal(result.sale.type, "wheel");
+  assert.equal(result.sale.singlesPurchaseEntryId, 101);
+  assert.equal(result.sale.netRevenue, 8);
+});

@@ -302,7 +302,7 @@ export function editSaleDraft(context: SalesDraftTarget, sale: Sale): void {
   context.newSale = {
     type: sale.type,
     quantity: sale.type === "rtyh" ? 1 : sale.quantity,
-    packsCount: sale.type === "rtyh" ? sale.packsCount : null,
+    packsCount: sale.type === "rtyh" || sale.type === "wheel" ? sale.packsCount : null,
     singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
     singlesItems,
     price: sale.price,
