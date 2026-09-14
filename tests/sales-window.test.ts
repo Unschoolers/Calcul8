@@ -21,25 +21,38 @@ function makeSale(overrides: Record<string, any> = {}): Sale {
 
 const read = (path: string) => readFileSync(path, "utf8");
 
-test("SalesWindow computed pagination helpers work from sortedSales and render count", () => {
+test("SalesWindow overview expands into paginated sales history", () => {
   const sales = Array.from({ length: 205 }, (_, idx) => makeSale({ id: idx + 1 }));
   const vm = {
     sortedSales: sales,
     salesHistoryRenderCount: 80,
-    salesHistoryExpanded: false
+    salesHistoryExpanded: false,
+    get visibleSortedSales(): Sale[] {
+      return SalesWindowDefinition.computed.visibleSortedSales.call(this as never);
+    }
   };
 
-  const visible = SalesWindowDefinition.computed.visibleSortedSales.call(vm as never);
-  const overview = SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never);
-  const hasMore = SalesWindowDefinition.computed.hasMoreSalesHistory.call(vm as never);
-  const remaining = SalesWindowDefinition.computed.remainingSalesHistoryCount.call(vm as never);
-  const nextBatch = SalesWindowDefinition.computed.nextSalesHistoryBatchCount.call(vm as never);
+  const assertHistory = (visibleCount: number, remaining: number, nextBatch: number) => {
+    assert.deepEqual(
+      SalesWindowDefinition.computed.salesHistoryOverviewSales.call(vm as never),
+      sales.slice(0, visibleCount)
+    );
+    assert.equal(SalesWindowDefinition.computed.hasMoreSalesHistory.call(vm as never), remaining > 0);
+    assert.equal(SalesWindowDefinition.computed.remainingSalesHistoryCount.call(vm as never), remaining);
+    assert.equal(SalesWindowDefinition.computed.nextSalesHistoryBatchCount.call(vm as never), nextBatch);
+  };
 
-  assert.equal(visible.length, 80);
-  assert.equal(overview.length, 5);
-  assert.equal(hasMore, true);
-  assert.equal(remaining, 125);
-  assert.equal(nextBatch, 80);
+  assertHistory(5, 200, 80);
+
+  SalesWindowDefinition.methods.showAllSalesHistory.call(vm as never);
+  assert.equal(vm.salesHistoryExpanded, true);
+  assertHistory(80, 125, 80);
+
+  SalesWindowDefinition.methods.loadMoreSalesHistory.call(vm as never);
+  assertHistory(160, 45, 45);
+
+  SalesWindowDefinition.methods.loadMoreSalesHistory.call(vm as never);
+  assertHistory(205, 0, 0);
 });
 
 test("SalesWindow pagination computed handles missing arrays and invalid limits", () => {
