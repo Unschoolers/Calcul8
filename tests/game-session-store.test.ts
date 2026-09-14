@@ -60,3 +60,8 @@ test("removes sessions and contains storage failures", () => {
     removeItem: () => { throw new Error("locked"); }
   }, "session"));
 });
+
+test("strict session writes surface storage failure before an external sale can be sent", () => {
+  assert.throws(() => writeGameSession({ setItem() { throw new Error("quota"); } },
+    "session", { id: "retry-identity" }, sessionCodec, { strict: true }), /quota/);
+});

@@ -240,6 +240,8 @@ export interface SyncGameGridRevealDto {
 }
 
 export interface SyncInventoryIssueDto {
+  pendingSale?: SyncSaleDto;
+  pendingSaleLotId?: number;
   slotName: string;
   slotColor: string;
   slotCost: number;

@@ -598,3 +598,27 @@ function createDeferred<T>() {
   });
   return { promise, resolve, reject };
 }
+
+test("wheel retry reconciles a lost response without inserting another sale", async () => {
+  const ctx = createContext();
+  const sale = { id: 777, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  const saved = { ...sale, version: 1, mutationId: "wheel-sale:777" };
+  saveAuthoritativeSaleMock.mockRejectedValueOnce(new Error("response lost"));
+  fetchAuthoritativeSalesMock.mockRejectedValueOnce(new Error("still offline"));
+  assert.equal(await salesMethods.addWheelSaleToLot.call(ctx as never, 1, sale), false);
+  saveAuthoritativeSaleMock.mockRejectedValueOnce(new SalesLiveApiError(409, "already exists"));
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce([saved]);
+  assert.equal(await salesMethods.addWheelSaleToLot.call(ctx as never, 1, sale), true);
+  assert.deepEqual(ctx.sales, [saved]);
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 2);
+  assert.equal(saveAuthoritativeSaleMock.mock.calls[0]?.[2].id, saveAuthoritativeSaleMock.mock.calls[1]?.[2].id);
+});
+
+test("wheel reconciliation does not accept another mutation with the same sale id", async () => {
+  const ctx = createContext();
+  const sale = { id: 777, type: "wheel" as const, quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  saveAuthoritativeSaleMock.mockRejectedValueOnce(new SalesLiveApiError(409, "conflict"));
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce([{ ...sale, mutationId: "seller-edit" }]);
+  assert.equal(await salesMethods.addWheelSaleToLot.call(ctx as never, 1, sale), false);
+  assert.deepEqual(ctx.sales, []);
+});

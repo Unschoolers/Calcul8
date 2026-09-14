@@ -25,6 +25,7 @@ import {
 } from "./sales-draft.ts";
 import {
     cacheAuthoritativeSales,
+    fetchAuthoritativeSales,
     saveAuthoritativeSale
 } from "./lot-sales-api.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
@@ -207,7 +208,18 @@ export const salesMethods = {
     const isCurrentScope = captureWorkspaceScopeGuard(this);
     try {
       if (canUseAuthoritativeSalesLiveApi()) {
-        const savedSale = await saveAuthoritativeSale(this, lotId, sale, 0);
+        let savedSale: Sale;
+        try {
+          savedSale = await saveAuthoritativeSale(this, lotId, sale, 0);
+        } catch (error) {
+          if (!isCurrentScope()) return false;
+          // A previous write may have succeeded while its response was lost.
+          const latest = await fetchAuthoritativeSales(this, lotId).catch(() => null);
+          if (!isCurrentScope()) return false;
+          const existing = latest?.find(entry => entry.id === sale.id && entry.mutationId === `wheel-sale:${sale.id}`);
+          if (!existing) throw error;
+          savedSale = existing;
+        }
         if (!isCurrentScope()) return false;
         const sales = upsertById(
           this.currentLotId === lotId ? this.sales : this.loadSalesForLotId(lotId), savedSale

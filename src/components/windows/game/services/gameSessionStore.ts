@@ -22,12 +22,14 @@ export function writeGameSession<T>(
   storage: Pick<GameSessionStorage, "setItem">,
   key: string,
   value: T,
-  codec: GameSessionCodec<T>
+  codec: GameSessionCodec<T>,
+  options: { strict?: boolean } = {}
 ): void {
   try {
     const encoded = JSON.stringify(codec.encode(value));
     if (encoded !== undefined) storage.setItem(key, encoded);
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     // Local play should continue when serialization or browser storage fails.
   }
 }

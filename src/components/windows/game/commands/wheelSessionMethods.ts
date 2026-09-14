@@ -348,7 +348,9 @@ export const wheelSessionMethods = {
     if (!config) return false;
     const tier = config.tiers.find((t) => t.id === tierId);
     if (!tier?.boundLotId || tier.deductionType === "none" || (tier.packsCount || 0) <= 0) return true;
-    if (tier.deductionType === "singles") {
+    const pendingRetry = this.wheelPendingInventoryIssues.some(entry => entry.pendingSale?.linkedWheelId === config.id
+      && entry.slotTier === tierId && entry.spinNumber === this.wheelTotalSpins);
+    if (!pendingRetry && tier.deductionType === "singles") {
       if (tier.boundSinglesId
         ? getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) <= 0
         : !hasAnyAvailableSinglesForWheelTier(this, tier)) {
@@ -473,16 +475,17 @@ export const wheelSessionMethods = {
         packsCount: entry.slotPacksCount, deductionType: entry.slotDeductionType,
         label: entry.slotName, lotId: entry.selectedLotId, lots: (this.lots || []) as Lot[],
         singlesEntryId: entry.slotSinglesId,
-        spinNumber: entry.spinNumber
+        spinNumber: entry.spinNumber, pendingIssue: entry
       }, this, getWheelController(this), isCurrent);
       if (!sale || !isCurrent()) return;
 
-      const entryIndex = pendingIssues.indexOf(entry);
-      if (entryIndex < 0) return;
-      pendingIssues.splice(entryIndex, 1);
-      assignWheelPendingInventoryIssues(this, pendingIssues);
+      const remaining = this.wheelPendingInventoryIssues.filter(issue => issue.pendingSale?.id !== sale.id);
+      assignWheelPendingInventoryIssues(this, remaining);
+      if (entry.slotTier === this.wheelChasePendingTierId && entry.spinNumber === this.wheelTotalSpins) {
+        clearWheelChaseDialogState(this);
+      }
 
-      if (!pendingIssues.length) {
+      if (!remaining.length) {
         this.wheelEndingSession = false;
       }
       this.wheelSessionUpdatedAt = Date.now();
@@ -494,6 +497,10 @@ export const wheelSessionMethods = {
   },
 
   getPendingWheelIssueLotItems(this: WheelSessionCommandContext, entry: PendingWheelInventoryIssue): Array<{ title: string; value: number; lotType?: string }> {
+    if (entry.pendingSaleLotId) {
+      const lot = this.lots.find(lot => lot.id === entry.pendingSaleLotId);
+      return lot ? [{ title: lot.name, value: lot.id, lotType: lot.lotType }] : [];
+    }
     const candidateIds = Array.isArray(entry.candidateLotIds) ? new Set(entry.candidateLotIds) : null;
     const lots = (this.lots || []) as Lot[];
     return lots
@@ -532,9 +539,12 @@ export const wheelSessionMethods = {
     this.wheelEndSessionReviewActive = false;
   },
 
-  saveWheelSession(this: WheelSessionCommandContext): void {
+  saveWheelSession(this: WheelSessionCommandContext, options: { strict?: boolean } = {}): void {
     const activeId = this.activeWheelConfigId as number | null;
-    if (activeId == null) return;
+    if (activeId == null) {
+      if (options.strict) throw new Error("Select a wheel before recording a sale.");
+      return;
+    }
     const controller = getWheelController(this);
     const session = createWheelSessionSnapshot(this, controller);
     const storageScope = getActiveStorageScope(this as {
@@ -545,13 +555,13 @@ export const wheelSessionMethods = {
       localStorage,
       getScopedWheelConfigSessionStorageKey(storageScope, activeId),
       session,
-      wheelConfigSessionCodec
+      wheelConfigSessionCodec, options
     );
     writeGameSession<StoredWheelRootSession>(
       localStorage,
       getScopedWheelSessionStorageKey(storageScope),
       { activeWheelConfigId: activeId, ...session },
-      wheelRootSessionCodec
+      wheelRootSessionCodec, options
     );
     if (
       String(this.gameSpectatorSessionId || "").trim()

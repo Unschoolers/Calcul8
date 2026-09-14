@@ -511,14 +511,12 @@ export const wheelSpinMethods = {
           config: config!, tierId: slot.tier, cost: slot.cost,
           packsCount: slot.packsCount, deductionType: slot.deductionType,
           label: slot.name, lotId: tier.boundLotId, lots,
-          singlesEntryId: tier.boundSinglesId
+          singlesEntryId: tier.boundSinglesId, slotIndex, slotColor: slot.color
         }, this, recordController, isCurrent);
         if (!isCurrent()) return;
         if (!sale) {
-          queuePendingInventoryIssue(this, {
-            slot, slotIndex, boundLotId: tier.boundLotId, boundSinglesId: tier.boundSinglesId,
-            warningText: "Sale could not be saved. Retry it from pending inventory."
-          });
+          recordController.wheelInventoryWarning = "Sale could not be confirmed. Retry it from pending inventory.";
+          this.saveWheelSession();
           return;
         }
       }

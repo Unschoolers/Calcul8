@@ -815,3 +815,15 @@ test("normalizeSale preserves external transaction identity through API hydratio
     assert.deepEqual(sale[key as keyof typeof sale], value);
   }
 });
+
+test("wheel creation retries send the same mutation identity", async () => {
+  const app = createApp();
+  const sale = { id: 777, type: "wheel" as const, quantity: 2, packsCount: 2, price: 12, buyerShipping: 0, date: "2026-09-14" };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ sale }), { status: 200 }));
+    await saveAuthoritativeSale(app, 7, sale, 0);
+  }
+  const requests = fetchAuthenticatedApiResponseMock.mock.calls.map(call => JSON.parse(String((call[2] as RequestInit).body)));
+  assert.deepEqual(requests.map(body => body.mutationId), ["wheel-sale:777", "wheel-sale:777"]);
+  assert.deepEqual(requests.map(body => body.baseVersion), [0, 0]);
+});

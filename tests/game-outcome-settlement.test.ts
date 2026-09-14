@@ -140,3 +140,42 @@ function createDeferred<T>() {
   });
   return { promise, resolve, reject };
 }
+
+test("a lost response retry after reload reuses the original sale and lot", async () => {
+  const { settleSessionGameOutcomeSale } = await import("../src/components/windows/game/services/gameOutcomeSettlement.ts");
+  const cloud = new Map<number, Sale>();
+  const attempts: Array<{ lotId: number; sale: Sale }> = [];
+  let stored = "";
+  const recorder = {
+    wheelTotalSpins: 1,
+    wheelPendingInventoryIssues: [] as import("../src/types/app.ts").PendingWheelInventoryIssue[],
+    saveWheelSession() { stored = JSON.stringify(this.wheelPendingInventoryIssues); },
+    async addWheelSaleToLot(lotId: number, sale: Sale) {
+      assert.ok(stored.includes(String(sale.id)), "persist identity before sending");
+      attempts.push({ lotId, sale });
+      cloud.set(sale.id, sale);
+      return attempts.length > 1; // First write succeeds but its response is lost.
+    }
+  };
+  const revenue = { wheelSessionNetRevenue: 0 };
+  assert.equal(await settleSessionGameOutcomeSale(input, recorder, revenue), null);
+  const restored = { ...recorder, wheelPendingInventoryIssues: JSON.parse(stored) };
+  const retryIssue = restored.wheelPendingInventoryIssues[0];
+  assert.ok(retryIssue);
+  const result = await settleSessionGameOutcomeSale({ ...input, lotId: 99, config: { ...config, spinPrice: 999 }, pendingIssue: retryIssue }, restored, revenue);
+  assert.ok(result);
+  assert.deepEqual(attempts[1], attempts[0]);
+  assert.equal(cloud.size, 1);
+  assert.equal(revenue.wheelSessionNetRevenue, attempts[0]!.sale.netRevenue);
+});
+
+test("a sale is not sent when its retry identity cannot be persisted", async () => {
+  const { settleSessionGameOutcomeSale } = await import("../src/components/windows/game/services/gameOutcomeSettlement.ts");
+  let writes = 0;
+  const recorder = {
+    saveWheelSession() { throw new Error("quota"); },
+    addWheelSaleToLot() { writes++; return Promise.resolve(true); }
+  };
+  assert.equal(await settleSessionGameOutcomeSale(input, recorder, { wheelSessionNetRevenue: 0 }), null);
+  assert.equal(writes, 0);
+});

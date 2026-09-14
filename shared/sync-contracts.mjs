@@ -570,6 +570,12 @@ function normalizeSyncInventoryIssueDto(value) {
     spinNumber: normalizeNonNegativeInteger(value.spinNumber) ?? 0,
     slotSinglesId: normalizeOptionalSyncId(value.slotSinglesId)
   };
+  const pendingSale = normalizeSyncSaleDto(value.pendingSale);
+  const pendingSaleLotId = normalizeOptionalSyncId(value.pendingSaleLotId);
+  if (pendingSale?.type === "wheel" && pendingSaleLotId) {
+    issue.pendingSale = pendingSale;
+    issue.pendingSaleLotId = pendingSaleLotId;
+  }
   const candidateLotIds = normalizeSyncIdArray(value.candidateLotIds);
   if (candidateLotIds && candidateLotIds.length > 0) {
     issue.candidateLotIds = candidateLotIds;

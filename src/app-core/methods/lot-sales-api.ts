@@ -209,7 +209,7 @@ export async function saveAuthoritativeSale(
         ...getScopeBody(app),
         sale,
         baseVersion,
-        mutationId: createMutationId("sale")
+        mutationId: sale.type === "wheel" && baseVersion === 0 ? `wheel-sale:${sale.id}` : createMutationId("sale")
       })
     },
     "Failed to save sale."

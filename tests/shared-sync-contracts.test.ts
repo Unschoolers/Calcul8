@@ -311,3 +311,16 @@ test("shared sync contracts preserve required multi-lot pending selections", () 
     requiresLotSelection: true
   }]);
 });
+
+test("game session round trips preserve the original pending sale identity in both codecs", async () => {
+  const { createRequire } = await import("node:module");
+  const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs");
+  const sale = { id: 777, type: "wheel", quantity: 2, packsCount: 2, price: 12,
+    buyerShipping: 0, date: "2026-09-14", linkedWheelId: 1, winningTierId: "t1", netRevenue: 10 };
+  for (const normalize of [normalizeSyncGameSessionDto, commonJs.normalizeSyncGameSessionDto]) {
+    const session = normalize({ wheelPendingInventoryIssues: [{ slotTier: "t1", selectedLotId: 7, pendingSaleLotId: 7, pendingSale: sale }] });
+    const restored = normalize(JSON.parse(JSON.stringify(session)));
+    assert.deepEqual(restored.wheelPendingInventoryIssues[0].pendingSale, sale);
+    assert.equal(restored.wheelPendingInventoryIssues[0].pendingSaleLotId, 7);
+  }
+});

@@ -130,6 +130,8 @@ export interface MysteryGridReveal {
 }
 
 export interface PendingWheelInventoryIssue {
+  pendingSale?: Sale;
+  pendingSaleLotId?: number;
   slotName: string;
   slotColor: string;
   slotCost: number;
