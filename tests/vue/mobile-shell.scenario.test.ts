@@ -109,13 +109,13 @@ describe("mobile lot switcher", () => {
     expect(screen.queryByRole("dialog", { name: "Choose inventory" })).not.toBeInTheDocument();
   });
 
-  test("moves focus into the search form and restores it to the trigger when closed", async () => {
+  test("does not focus search when opened and restores focus to the trigger when closed", async () => {
     renderSwitcher();
 
     const trigger = screen.getByRole("button", { name: "Current inventory: My Hero Academia" });
     await fireEvent.click(trigger);
 
-    expect(screen.getByRole("searchbox", { name: "Search inventory" })).toHaveFocus();
+    expect(screen.getByRole("searchbox", { name: "Search inventory" })).not.toHaveFocus();
 
     await fireEvent.click(screen.getByRole("button", { name: "commonClose" }));
 
