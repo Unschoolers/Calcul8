@@ -325,7 +325,7 @@ export const singlesCatalogSearchMethods = {
     this.singlesItemSearchText = String(nextValue || "");
     if (this.suppressNextSinglesItemSearchUpdate) {
       this.suppressNextSinglesItemSearchUpdate = false;
-      return;
+      if (!this.singlesItemSearchText) return;
     }
 
     const query = this.singlesItemSearchText.trim();

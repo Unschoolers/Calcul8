@@ -1065,6 +1065,28 @@ test("search update, cancel, and cards api resolution cover debounce and fallbac
   }
 });
 
+test("a non-empty search update clears stale suppression and fetches the full query", async () => {
+  vi.useFakeTimers();
+  try {
+    const fetchSinglesItemSuggestions = vi.fn();
+    const context = createContext({
+      showCatalogSuggestions: true,
+      suppressNextSinglesItemSearchUpdate: true,
+      fetchSinglesItemSuggestions
+    });
+
+    context.onSinglesItemSearchUpdate("Helloo");
+
+    assert.equal(context.singlesItemSearchText, "Helloo");
+    assert.equal(context.suppressNextSinglesItemSearchUpdate, false);
+    vi.advanceTimersByTime(400);
+    await vi.runAllTimersAsync();
+    assert.deepEqual(fetchSinglesItemSuggestions.mock.calls, [["Helloo"]]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("fetchSinglesItemSuggestions handles missing base, failed response, and aborted fetch", async () => {
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   const context = createContext({
