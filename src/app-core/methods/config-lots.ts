@@ -39,7 +39,10 @@ import {
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
-import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
+import {
+  queueCloudConfigSyncPush,
+  queueWorkspaceConfigSyncPush
+} from "./ui/workspace/workspace-config-sync.ts";
 type AuthoritativeLotHydrationContext = Pick<LotConfigurationContext, "getSalesCacheEntry"> & {
   activeScopeType?: string;
   activeWorkspaceId?: string | null;
@@ -95,6 +98,7 @@ export const configLotMethods = {
     Object.assign(lot, this.getCurrentSetup());
     this.saveLotsToStorage();
     queueWorkspaceConfigSyncPush(this);
+    queueCloudConfigSyncPush(this);
   },
 
   syncLivePricesFromDefaults(): void {

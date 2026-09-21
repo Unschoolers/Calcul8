@@ -203,6 +203,7 @@ export const singlesRowEditorMethods = {
       marketValue: 0,
       marketValueCurrency: nextMarketValueCurrency
     };
+    this.suppressNextSinglesItemSearchUpdate = false;
     this.singlesItemSearchText = "";
     this.singlesItemMenuOpen = false;
     this.singlesEditorPreviewLoading = false;

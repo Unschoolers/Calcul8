@@ -338,6 +338,16 @@ test("saveSinglesRowEditor validates and creates row with non-colliding id", () 
   }
 });
 
+test("resetting an Add Singles draft clears stale autocomplete suppression", () => {
+  const context = createContext({
+    suppressNextSinglesItemSearchUpdate: true
+  });
+
+  context.resetSinglesRowDraft();
+
+  assert.equal(context.suppressNextSinglesItemSearchUpdate, false);
+});
+
 test("saveSinglesRowEditor can save and keep adding with preserved context", () => {
   const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(6000);
   try {

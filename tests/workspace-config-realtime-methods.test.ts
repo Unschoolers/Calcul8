@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 
-const { queueWorkspaceConfigSyncPushMock } = vi.hoisted(() => ({
+const { queueCloudConfigSyncPushMock, queueWorkspaceConfigSyncPushMock } = vi.hoisted(() => ({
+  queueCloudConfigSyncPushMock: vi.fn(),
   queueWorkspaceConfigSyncPushMock: vi.fn()
 }));
 
 vi.mock("../src/app-core/methods/ui/workspace/workspace-config-sync.ts", () => ({
+  queueCloudConfigSyncPush: queueCloudConfigSyncPushMock,
   queueWorkspaceConfigSyncPush: queueWorkspaceConfigSyncPushMock
 }));
 
@@ -151,4 +153,34 @@ test("singles purchase grid changes queue the same shared workspace config sync 
   assert.equal((context.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal(queueWorkspaceConfigSyncPushMock.mock.calls.length, 1);
   assert.equal(queueWorkspaceConfigSyncPushMock.mock.calls[0]?.[0], context);
+});
+
+test("singles purchase grid changes queue cloud sync for a signed-in personal scope", () => {
+  const lot = makeSinglesLot();
+  const context = createContext({
+    ...lot,
+    lots: [lot],
+    currentLotId: lot.id,
+    currentLotType: "singles",
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    isGoogleSignedIn: true,
+    isOffline: false,
+    singlesPurchases: [
+      {
+        id: 1,
+        item: "Card A",
+        cardNumber: "001",
+        cost: 5,
+        currency: "CAD",
+        quantity: 2,
+        marketValue: 7
+      }
+    ]
+  });
+
+  configLotMethods.onSinglesPurchaseRowsChange.call(context as never);
+
+  assert.equal(queueCloudConfigSyncPushMock.mock.calls.length, 1);
+  assert.equal(queueCloudConfigSyncPushMock.mock.calls[0]?.[0], context);
 });
