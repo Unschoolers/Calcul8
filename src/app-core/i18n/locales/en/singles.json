@@ -1,5 +1,7 @@
 {
   "singlesCustomModeHelp": "Custom mode is best when you want to enter your own inventory names and values instead of importing from a catalog.",
+  "singlesCatalogFilterSetLabel": "Set",
+  "singlesCatalogFilterSeriesLabel": "Series",
   "singlesConditionPlaceholder": "Near Mint",
   "singlesDefaultPurchaseCurrencyLabel": "Default purchase currency",
   "singlesDeleteSelectedRowsAction": "Delete selected rows",

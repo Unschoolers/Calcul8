@@ -5,6 +5,12 @@ interface SearchCardsInput {
   game: string;
   query: string;
   limit: number;
+  filter?: string;
+}
+
+export interface CardCatalogFilterOption {
+  value: string;
+  label: string;
 }
 
 export interface CardCatalogSearchResult {
@@ -23,6 +29,12 @@ type CardCatalogSearchClause = {
   clause: string;
   parameters: Array<{ name: string; value: string }>;
 };
+
+function resolveCardCatalogFilterField(game: string): "setId" | "series" | null {
+  if (game === "pokemon") return "setId";
+  if (game === "ua") return "series";
+  return null;
+}
 
 export function buildCardCatalogSearchClause(query: unknown): CardCatalogSearchClause {
   const tokens = String(query || "")
@@ -71,7 +83,9 @@ export async function searchCardCatalog(
   const { cardCatalog } = getContainers(config);
   const safeGame = String(input.game || "").trim().toLowerCase();
   const safeLimit = Math.max(1, Math.min(25, Math.floor(Number(input.limit) || 25)));
+  const safeFilter = String(input.filter || "").trim();
   const searchClause = buildCardCatalogSearchClause(input.query);
+  const filterField = resolveCardCatalogFilterField(safeGame);
 
   if (!safeGame || !searchClause.clause) return [];
 
@@ -89,12 +103,14 @@ export async function searchCardCatalog(
       FROM c
       WHERE c.pk = @pk
       AND c.game = @game
-      AND ${searchClause.clause}
+      AND ${searchClause.clause}${safeFilter && filterField ? `
+      AND c.${filterField} = @filter` : ""}
       ORDER BY c.cardNo`,
     parameters: [
       { name: "@pk", value: safeGame },
       { name: "@game", value: safeGame },
-      ...searchClause.parameters
+      ...searchClause.parameters,
+      ...(safeFilter && filterField ? [{ name: "@filter", value: safeFilter }] : [])
     ]
   };
 
@@ -115,4 +131,42 @@ export async function searchCardCatalog(
     rarity: typeof row.rarity === "string" ? row.rarity : undefined,
     marketPrice: Number.isFinite(Number(row.marketPrice)) ? Number(row.marketPrice) : null
   }));
+}
+
+export async function listCardCatalogFilterOptions(
+  config: ApiConfig,
+  game: string
+): Promise<CardCatalogFilterOption[]> {
+  const { cardCatalog } = getContainers(config);
+  const safeGame = String(game || "").trim().toLowerCase();
+  const filterField = resolveCardCatalogFilterField(safeGame);
+  if (!safeGame || !filterField) return [];
+
+  const querySpec = {
+    query: `SELECT c.${filterField}, c.seriesName
+      FROM c
+      WHERE c.pk = @pk
+      AND c.game = @game
+      AND IS_DEFINED(c.${filterField})`,
+    parameters: [
+      { name: "@pk", value: safeGame },
+      { name: "@game", value: safeGame }
+    ]
+  };
+  const iterator = cardCatalog.items.query<Record<string, unknown>>(querySpec, {
+    partitionKey: safeGame
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  const uniqueOptions = new Map<string, CardCatalogFilterOption>();
+
+  for (const row of resources || []) {
+    const value = String(row[filterField] || "").trim();
+    if (!value || uniqueOptions.has(value)) continue;
+    const label = String(row.seriesName || "").trim() || value;
+    uniqueOptions.set(value, { value, label });
+  }
+
+  return [...uniqueOptions.values()].sort((left, right) => (
+    left.label.localeCompare(right.label) || left.value.localeCompare(right.value)
+  ));
 }

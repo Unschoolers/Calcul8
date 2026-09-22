@@ -155,6 +155,7 @@ export async function cardsSearch(
 
     const game = (getQueryParam(request, "game") ?? "").trim().toLowerCase();
     const q = (getQueryParam(request, "q") ?? "").trim();
+    const filter = (getQueryParam(request, "filter") ?? "").trim();
     const limit = parseLimit(getQueryParam(request, "limit"));
 
     if (!game) {
@@ -167,7 +168,8 @@ export async function cardsSearch(
     const items = await searchCardCatalog(config, {
       game,
       query: q,
-      limit
+      limit,
+      ...(filter ? { filter } : {})
     });
 
     return jsonResponse(request, config, 200, {

@@ -1,5 +1,7 @@
 {
   "singlesCustomModeHelp": "Le mode personnalise est ideal quand vous voulez entrer vos propres noms et valeurs d'inventaire au lieu d'importer depuis un catalogue.",
+  "singlesCatalogFilterSetLabel": "Ensemble",
+  "singlesCatalogFilterSeriesLabel": "Série",
   "singlesConditionPlaceholder": "Presque neuf",
   "singlesDefaultPurchaseCurrencyLabel": "Devise d'achat par defaut",
   "singlesDeleteSelectedRowsAction": "Supprimer les lignes sélectionnées",

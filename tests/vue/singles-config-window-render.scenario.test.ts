@@ -70,7 +70,12 @@ test("reproduces lowercase multi-star rarity typing in the mounted singles edito
     resolveSearch = resolve;
   });
   const searchResponse = vi.fn().mockReturnValue(pendingSearch);
-  vi.stubGlobal("fetch", searchResponse);
+  vi.stubGlobal("fetch", (url: string, init: RequestInit) => {
+    if (new URL(url).pathname.endsWith("/cards/filter-options")) {
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    }
+    return searchResponse(url, init);
+  });
   const source = {
     ...createInitialState(),
     currentLotId: 1,
@@ -114,11 +119,17 @@ test("reproduces lowercase multi-star rarity typing in the mounted singles edito
   await nextTick();
   const input = document.querySelector<HTMLInputElement>(".v-autocomplete input");
   expect(input).not.toBeNull();
-  for (const value of ["G", "Go", "Gon", "Gon ", "Gon s", "Gon sr", "Gon sr*", "Gon sr**"]) {
-    input!.value = value;
-    await fireEvent(input!, new InputEvent("input", { bubbles: true, data: value.at(-1) ?? "" }));
+  vi.useFakeTimers();
+  try {
+    for (const value of ["G", "Go", "Gon", "Gon ", "Gon s", "Gon sr", "Gon sr*", "Gon sr**"]) {
+      input!.value = value;
+      await fireEvent(input!, new InputEvent("input", { bubbles: true, data: value.at(-1) ?? "" }));
+    }
+    await vi.advanceTimersByTimeAsync(900);
+    expect(searchResponse).toHaveBeenCalledOnce();
+  } finally {
+    vi.useRealTimers();
   }
-  await vi.waitFor(() => expect(searchResponse).toHaveBeenCalledOnce(), { timeout: 1500 });
   const requestUrl = String(searchResponse.mock.calls[0]?.[0] || "");
   expect(requestUrl).toContain("q=Gon+sr**");
   expect(editor.value!.singlesItemMenuOpen).toBe(true);

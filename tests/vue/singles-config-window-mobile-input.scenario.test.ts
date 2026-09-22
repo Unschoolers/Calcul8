@@ -1,4 +1,4 @@
-import { fireEvent } from "@testing-library/vue";
+import { fireEvent, screen } from "@testing-library/vue";
 import { afterEach, expect, test, vi } from "vitest";
 import { defineComponent, nextTick, ref } from "vue";
 import { createInitialState } from "../../src/app-core/state.ts";
@@ -24,20 +24,31 @@ function cardSearchResponse(name: string): Response {
   }), { status: 200 });
 }
 
-async function mountSinglesEditor(searchResponse: ReturnType<typeof vi.fn>) {
+async function mountSinglesEditor(
+  searchResponse: ReturnType<typeof vi.fn>,
+  catalogSource: "ua" | "pokemon" = "ua",
+  filterOptions: Array<{ value: string; label: string }> = [],
+  filterOptionsRequest?: ReturnType<typeof vi.fn>
+) {
   const storage = new Map<string, string>([["whatfees_api_base_url", "https://api.example.test"]]);
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => storage.set(key, value),
     removeItem: (key: string) => storage.delete(key)
   });
-  vi.stubGlobal("fetch", searchResponse);
+  vi.stubGlobal("fetch", (url: string, init: RequestInit) => {
+    if (new URL(url).pathname.endsWith("/cards/filter-options")) {
+      filterOptionsRequest?.(url, init);
+      return new Response(JSON.stringify({ items: filterOptions }), { status: 200 });
+    }
+    return searchResponse(url, init);
+  });
 
   const source = {
     ...createInitialState(),
     currentLotId: 1,
-    lots: [{ id: 1, name: "Singles", lotType: "singles", singlesCatalogSource: "ua" }],
-    currentLotCatalogSource: "ua",
+    lots: [{ id: 1, name: "Singles", lotType: "singles", singlesCatalogSource: catalogSource }],
+    currentLotCatalogSource: catalogSource,
     singlesPurchases: [],
     singlesSoldCountByPurchaseId: {},
     sellingCurrency: "CAD",
@@ -93,6 +104,14 @@ async function typeNativeValue(input: HTMLInputElement, value: string): Promise<
 
 function requestedQuery(searchResponse: ReturnType<typeof vi.fn>, callIndex: number): string | null {
   return new URL(String(searchResponse.mock.calls[callIndex]?.[0] || "")).searchParams.get("q");
+}
+
+async function selectCatalogFilterOption(filter: HTMLElement, label: string): Promise<void> {
+  const filterInput = filter.querySelector<HTMLInputElement>("input[role='combobox']");
+  expect(filterInput).not.toBeNull();
+  await fireEvent.mouseDown(filterInput!);
+  await fireEvent.click(filterInput!);
+  await fireEvent.click(await screen.findByRole("option", { name: label }));
 }
 
 test("sends each later two-character-plus native input value to card search", async () => {
@@ -202,4 +221,90 @@ test("leaves the query visible but closes the menu when card search is rate limi
   expect(editor.value?.singlesItemSuggestions).toEqual([]);
   expect(editor.value?.singlesItemMenuOpen).toBe(false);
   expect(warn).toHaveBeenCalledWith("Failed to fetch card suggestions", expect.any(Error));
+}, 10_000);
+
+test("mobile Pokemon selector sends its selected Set and omits it after clearing", async () => {
+  vi.stubGlobal("innerWidth", 375);
+  vi.stubGlobal("innerHeight", 667);
+  window.dispatchEvent(new Event("resize"));
+  const searchResponse = vi.fn((url: string) => cardSearchResponse(
+    `Match for ${new URL(url).searchParams.get("q")}`
+  ));
+  const filterOptionsRequest = vi.fn();
+  const { editor, input } = await mountSinglesEditor(
+    searchResponse,
+    "pokemon",
+    [{ value: "sv8", label: "Surging Sparks" }],
+    filterOptionsRequest
+  );
+
+  await vi.waitFor(() => expect(document.querySelector(".singles-catalog-filter")).not.toBeNull());
+  expect(window.innerWidth).toBe(375);
+  expect(document.body).toHaveTextContent("singlesCatalogFilterSetLabel");
+  await vi.waitFor(() => expect(filterOptionsRequest).toHaveBeenCalledWith(
+    expect.stringContaining("/cards/filter-options?game=pokemon"),
+    expect.anything()
+  ));
+  await vi.waitFor(() => expect(editor.value?.currentSinglesCatalogFilterOptions).toEqual([
+    { value: "sv8", label: "Surging Sparks" }
+  ]));
+
+  const filter = document.querySelector<HTMLElement>(".singles-catalog-filter");
+  expect(filter).not.toBeNull();
+  await selectCatalogFilterOption(filter!, "Surging Sparks");
+  await fireEvent.focus(input);
+  await typeNativeValue(input, "Pi");
+  await vi.waitFor(() => expect(searchResponse).toHaveBeenCalledWith(
+    expect.stringContaining("/cards/search?game=pokemon&q=Pi&limit=25&filter=sv8"),
+    expect.anything()
+  ), { timeout: 1_500 });
+
+  const clear = filter!.querySelector<HTMLElement>(".v-field__clearable");
+  expect(clear).not.toBeNull();
+  const clearButton = clear!.querySelector<HTMLElement>("[role='button']");
+  expect(clearButton).not.toBeNull();
+  await fireEvent.click(clearButton!);
+  await vi.waitFor(() => expect(editor.value?.selectedSinglesCatalogFilter).toBe(""));
+  await typeNativeValue(input, "Pik");
+  await vi.waitFor(() => expect(searchResponse).toHaveBeenCalledWith(
+    expect.stringContaining("/cards/search?game=pokemon&q=Pik&limit=25"),
+    expect.anything()
+  ), { timeout: 1_500 });
+  const latestRequest = new URL(String(searchResponse.mock.calls.at(-1)?.[0] || ""));
+  expect(latestRequest.searchParams.get("filter")).toBeNull();
+
+  await selectCatalogFilterOption(filter!, "Surging Sparks");
+  await vi.waitFor(() => expect(editor.value?.selectedSinglesCatalogFilter).toBe("sv8"));
+  editor.value!.setCurrentSinglesCatalogSource("ua");
+  await vi.waitFor(() => expect(editor.value?.selectedSinglesCatalogFilter).toBe(""));
+}, 10_000);
+
+test("uses the Series selector for Union Arena, reuses options, and clears the filter when the editor resets", async () => {
+  const searchResponse = vi.fn((url: string) => cardSearchResponse(
+    `Match for ${new URL(url).searchParams.get("q")}`
+  ));
+  const filterOptionsRequest = vi.fn();
+  const { editor } = await mountSinglesEditor(
+    searchResponse,
+    "ua",
+    [{ value: "blc", label: "Black Clover" }],
+    filterOptionsRequest
+  );
+
+  await vi.waitFor(() => expect(editor.value?.currentSinglesCatalogFilterOptions).toEqual([
+    { value: "blc", label: "Black Clover" }
+  ]));
+  expect(document.body).toHaveTextContent("singlesCatalogFilterSeriesLabel");
+  const filter = document.querySelector<HTMLElement>(".singles-catalog-filter");
+  expect(filter).not.toBeNull();
+
+  editor.value!.closeSinglesRowEditor();
+  editor.value!.openSinglesRowEditor();
+  await nextTick();
+  expect(filterOptionsRequest).toHaveBeenCalledTimes(1);
+
+  await selectCatalogFilterOption(filter!, "Black Clover");
+  await vi.waitFor(() => expect(editor.value?.selectedSinglesCatalogFilter).toBe("blc"));
+  editor.value!.resetSinglesRowDraft();
+  expect(editor.value!.selectedSinglesCatalogFilter).toBe("");
 }, 10_000);

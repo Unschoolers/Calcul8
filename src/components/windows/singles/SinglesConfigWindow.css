@@ -861,6 +861,10 @@
     var(--app-shadow-lg);
 }
 
+.singles-catalog-filter {
+  min-width: 0;
+}
+
 .singles-editor-preview-card {
   display: flex;
   align-items: center;
@@ -1673,6 +1677,10 @@
     gap: 0.72rem;
     padding: 0.72rem;
     border-radius: var(--app-radius-media);
+  }
+
+  .singles-catalog-filter .v-field {
+    min-height: 44px;
   }
 
   .singles-editor-preview-card {

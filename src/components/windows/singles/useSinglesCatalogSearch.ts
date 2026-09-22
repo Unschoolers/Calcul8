@@ -10,6 +10,7 @@ import {
     resolveCardSearchBackendQuery,
     SINGLES_CARD_SEARCH_DEBOUNCE_MS,
     SINGLES_CARD_SEARCH_LIMIT,
+    type CardCatalogFilterOption,
     type CardSearchApiItem,
     type SinglesCardSuggestion
 } from "./singlesCatalogSearch.ts";
@@ -32,6 +33,7 @@ type SinglesCatalogSearchContext = {
   lots: Array<Record<string, unknown>>;
   currentLotCatalogSource?: SinglesCatalogSource;
   currentSinglesCatalogSource: SinglesCatalogSource;
+  showSinglesRowEditor: boolean;
   showCatalogSourceSheet: boolean;
   showSinglesImagePreview: boolean;
   singlesImagePreviewSrc: string;
@@ -47,6 +49,10 @@ type SinglesCatalogSearchContext = {
   singlesItemSearchTimerId: ReturnType<typeof setTimeout> | null;
   singlesItemSearchAbortController: AbortController | null;
   singlesItemSearchRequestSeq: number;
+  selectedSinglesCatalogFilter: string;
+  singlesCatalogFilterOptionsBySource: Record<string, CardCatalogFilterOption[]>;
+  singlesCatalogFilterOptionsLoadedSources: Record<string, boolean>;
+  singlesCatalogFilterLoadingSources: Record<string, boolean>;
   singlesEditorPreviewRequestSeq: number;
   showCatalogSuggestions: boolean;
   singlesEditorCatalogItems: SinglesCardSuggestion[];
@@ -61,6 +67,7 @@ type SinglesCatalogSearchContext = {
   cancelSinglesItemSearch(): void;
   fetchSinglesItemSuggestions(query: string): Promise<void>;
   requestSinglesCardSuggestions(query: string, signal?: AbortSignal): Promise<SinglesCardSuggestion[]>;
+  ensureSinglesCatalogFilterOptions(): Promise<void>;
 };
 
 function resolveSinglesLot(context: SinglesCatalogSearchContext): Record<string, unknown> | null {
@@ -106,7 +113,11 @@ export function createSinglesCatalogSearchState(): Record<string, unknown> {
     singlesItemSearchTimerId: null as ReturnType<typeof setTimeout> | null,
     singlesItemSearchAbortController: null as AbortController | null,
     singlesItemSearchRequestSeq: 0,
-    singlesEditorPreviewRequestSeq: 0
+    singlesEditorPreviewRequestSeq: 0,
+    selectedSinglesCatalogFilter: "",
+    singlesCatalogFilterOptionsBySource: {} as Record<string, CardCatalogFilterOption[]>,
+    singlesCatalogFilterOptionsLoadedSources: {} as Record<string, boolean>,
+    singlesCatalogFilterLoadingSources: {} as Record<string, boolean>
   };
 }
 
@@ -134,6 +145,18 @@ export const singlesCatalogSearchComputed = {
     if (source === "pokemon") return "Pokemon";
     if (source === "none") return "Custom";
     return "Union Arena";
+  },
+
+  currentSinglesCatalogFilterOptions(this: SinglesCatalogSearchContext): CardCatalogFilterOption[] {
+    const source = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
+    return Array.isArray(this.singlesCatalogFilterOptionsBySource?.[source])
+      ? this.singlesCatalogFilterOptionsBySource[source]
+      : [];
+  },
+
+  singlesCatalogFilterLoading(this: SinglesCatalogSearchContext): boolean {
+    const source = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
+    return Boolean(this.singlesCatalogFilterLoadingSources?.[source]);
   },
 
   singlesEditorCatalogItems(this: SinglesCatalogSearchContext): SinglesCardSuggestion[] {
@@ -304,6 +327,10 @@ export const singlesCatalogSearchMethods = {
     url.searchParams.set("game", catalogSource);
     url.searchParams.set("q", backendQuery);
     url.searchParams.set("limit", String(SINGLES_CARD_SEARCH_LIMIT));
+    const selectedFilter = String(this.selectedSinglesCatalogFilter || "").trim();
+    if (selectedFilter) {
+      url.searchParams.set("filter", selectedFilter);
+    }
 
     const response = await fetch(url.toString(), {
       method: "GET",
@@ -320,6 +347,52 @@ export const singlesCatalogSearchMethods = {
 
     this.cacheSinglesSuggestionImages(suggestions);
     return suggestions;
+  },
+
+  async ensureSinglesCatalogFilterOptions(this: SinglesCatalogSearchContext): Promise<void> {
+    const catalogSource = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
+    if (catalogSource === "none" || this.singlesCatalogFilterOptionsLoadedSources?.[catalogSource]) return;
+    if (this.singlesCatalogFilterLoadingSources?.[catalogSource]) return;
+
+    const apiBase = resolveApiBaseUrl();
+    if (!apiBase) return;
+
+    this.singlesCatalogFilterLoadingSources = {
+      ...(this.singlesCatalogFilterLoadingSources || {}),
+      [catalogSource]: true
+    };
+    try {
+      const url = new URL(`${apiBase}/cards/filter-options`);
+      url.searchParams.set("game", catalogSource);
+      const response = await fetch(url.toString(), { method: "GET" });
+      if (!response.ok) throw new Error(`Card filter options failed (${response.status})`);
+      const payload = await response.json() as { items?: CardCatalogFilterOption[] };
+      const options = (Array.isArray(payload.items) ? payload.items : [])
+        .map((item) => ({
+          value: String(item?.value || "").trim(),
+          label: String(item?.label || "").trim()
+        }))
+        .filter((item) => item.value && item.label);
+      this.singlesCatalogFilterOptionsBySource = {
+        ...(this.singlesCatalogFilterOptionsBySource || {}),
+        [catalogSource]: options
+      };
+      this.singlesCatalogFilterOptionsLoadedSources = {
+        ...(this.singlesCatalogFilterOptionsLoadedSources || {}),
+        [catalogSource]: true
+      };
+    } catch (error) {
+      console.warn("Failed to fetch card filter options", error);
+    } finally {
+      this.singlesCatalogFilterLoadingSources = {
+        ...(this.singlesCatalogFilterLoadingSources || {}),
+        [catalogSource]: false
+      };
+    }
+  },
+
+  clearSinglesCatalogFilter(this: SinglesCatalogSearchContext): void {
+    this.selectedSinglesCatalogFilter = "";
   },
 
   onSinglesItemSearchUpdate(this: SinglesCatalogSearchContext, nextValue: string): void {
@@ -413,12 +486,17 @@ export const singlesCatalogSearchMethods = {
     const hasExistingItems = Array.isArray(lot.singlesPurchases) && lot.singlesPurchases.length > 0;
 
     lot.singlesCatalogSource = normalized;
+    this.selectedSinglesCatalogFilter = "";
     this.saveLotsToStorage?.();
     this.cancelSinglesItemSearch();
     this.singlesItemSuggestions = [];
     this.singlesItemMenuOpen = false;
     this.singlesEditorPreviewLoading = false;
     this.singlesItemSearchLoading = false;
+
+    if (this.showSinglesRowEditor) {
+      void this.ensureSinglesCatalogFilterOptions();
+    }
 
     if (hasExistingItems) {
       this.notify(

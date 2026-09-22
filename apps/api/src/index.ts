@@ -14,6 +14,7 @@ import "./functions/wheelPublicSession";
 import "./functions/wheelFairness";
 import "./functions/whatnot";
 import "./functions/cardsSearch";
+import "./functions/cardsFilterOptions";
 import "./functions/auth";
 import "./functions/syncImportUser";
 import "./functions/billingCheckoutSession";

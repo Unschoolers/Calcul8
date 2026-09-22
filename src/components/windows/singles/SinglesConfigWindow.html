@@ -131,7 +131,7 @@
             <div class="singles-editor-section-title">{{ t('singlesEditorCoreSectionTitle') }}</div>
           </div>
           <v-row density="comfortable" class="singles-editor-core-row">
-            <v-col cols="12" md="8">
+            <v-col cols="12" :md="showCatalogSuggestions ? 5 : 8">
               <v-text-field
                 v-if="!showCatalogSuggestions"
                 v-model="editingSinglesRow.item"
@@ -218,6 +218,22 @@
                   </v-list-item>
                 </template>
               </v-autocomplete>
+            </v-col>
+            <v-col v-if="showCatalogSuggestions" cols="12" sm="6" md="3">
+              <v-select
+                v-model="selectedSinglesCatalogFilter"
+                class="singles-catalog-filter"
+                :items="currentSinglesCatalogFilterOptions"
+                item-title="label"
+                item-value="value"
+                :label="currentSinglesCatalogSource === 'pokemon' ? t('singlesCatalogFilterSetLabel') : t('singlesCatalogFilterSeriesLabel')"
+                variant="outlined"
+                density="comfortable"
+                :loading="singlesCatalogFilterLoading"
+                :clearable="Boolean(selectedSinglesCatalogFilter)"
+                hide-details
+                @click:clear="clearSinglesCatalogFilter"
+              ></v-select>
             </v-col>
             <v-col v-if="showCatalogSuggestions" cols="12" md="4">
               <div class="singles-editor-qty-card singles-editor-qty-card--hero">

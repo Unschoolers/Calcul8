@@ -32,6 +32,7 @@ type SinglesRowEditorContext = {
   singlesEditorPreviewLoading: boolean;
   singlesItemSuggestions: unknown[];
   singlesItemSearchLoading: boolean;
+  selectedSinglesCatalogFilter: string;
   suppressNextSinglesItemSearchUpdate: boolean;
   $refs?: Record<string, unknown>;
   t?: (key: string) => string;
@@ -43,6 +44,7 @@ type SinglesRowEditorContext = {
   onSinglesPurchaseRowsChange(): void;
   removeSinglesPurchaseRow(rowId: number): void;
   cancelSinglesItemSearch(): void;
+  ensureSinglesCatalogFilterOptions(): Promise<void>;
   preloadSinglesEditorPreview(): Promise<void>;
   resetSinglesRowDraft(options?: {
     currency?: "CAD" | "USD";
@@ -209,6 +211,7 @@ export const singlesRowEditorMethods = {
     this.singlesEditorPreviewLoading = false;
     this.singlesItemSuggestions = [];
     this.singlesItemSearchLoading = false;
+    this.selectedSinglesCatalogFilter = "";
     this.singlesImageUploadRequestSeq = Number(this.singlesImageUploadRequestSeq || 0) + 1;
     this.singlesImageUploadBusy = false;
     this.singlesImageUploadError = "";
@@ -251,6 +254,7 @@ export const singlesRowEditorMethods = {
     }
     this.showSinglesRowEditor = true;
     this.singlesItemMenuOpen = false;
+    void this.ensureSinglesCatalogFilterOptions();
     void this.preloadSinglesEditorPreview();
   },
 

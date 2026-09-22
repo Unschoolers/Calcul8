@@ -12,6 +12,11 @@ export type CardSearchApiItem = {
   marketPrice?: number | null;
 };
 
+export type CardCatalogFilterOption = {
+  value: string;
+  label: string;
+};
+
 export type SinglesCardSuggestion = {
   title: string;
   value: string;

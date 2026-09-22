@@ -61,6 +61,24 @@ test("cardsSearch returns results for valid query", async () => {
   assert.equal((response.jsonBody as { count: number }).count, 1);
 });
 
+test("cardsSearch forwards an optional catalog filter separately from the free-text query", async () => {
+  const request = createHttpRequest({
+    method: "GET",
+    query: "game=pokemon&q=pikachu%20sr**&filter=sv8"
+  });
+  const context = createInvocationContext();
+
+  const response = await cardsSearch(request as never, context as never);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(searchCardCatalogMock.mock.calls[0]?.[1], {
+    game: "pokemon",
+    query: "pikachu sr**",
+    limit: 25,
+    filter: "sv8"
+  });
+});
+
 test("cardsSearch defaults limit to 25 when omitted", async () => {
   const request = createHttpRequest({ method: "GET", query: "game=ua&q=asgu" });
   const context = createInvocationContext();
