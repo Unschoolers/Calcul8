@@ -20,10 +20,13 @@ export interface IncrementRateLimitCounterInput {
 
 function buildCounterIdentity(input: IncrementRateLimitCounterInput): { id: string; partitionKey: string } {
   const clientHash = createHash("sha256").update(input.clientKey).digest("hex");
-  const partitionKey = `rate_limit:${clientHash}`;
+  const counterPrefix = `rate_limit:${clientHash}`;
+  const id = `${counterPrefix}:${input.windowSeconds}:${input.windowStartMs}`;
   return {
-    partitionKey,
-    id: `${partitionKey}:${input.windowSeconds}:${input.windowStartMs}`
+    // The shared sessions container is partitioned by /id. The counter must be
+    // addressed with that same value for PATCH to find a document created here.
+    partitionKey: id,
+    id
   };
 }
 

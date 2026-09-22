@@ -42,6 +42,10 @@ test("increments an existing counter without first attempting a duplicate create
   const count = await incrementRateLimitCounter(config, input);
 
   assert.equal(count, 4);
+  assert.deepEqual(itemMock.mock.calls[0], [
+    "rate_limit:894d74f371dc31764df4c536a681322f12dab251c88732da62884fee5c9c0dff:10:1000",
+    "rate_limit:894d74f371dc31764df4c536a681322f12dab251c88732da62884fee5c9c0dff:10:1000"
+  ]);
   assert.equal(patchMock.mock.calls.length, 1);
   assert.equal(createMock.mock.calls.length, 0);
 });
