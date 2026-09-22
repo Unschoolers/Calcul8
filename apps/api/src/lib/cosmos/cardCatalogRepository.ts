@@ -58,22 +58,29 @@ export function buildCardCatalogSearchClause(query: unknown): CardCatalogSearchC
   }
 
   const parameters = [] as Array<{ name: string; value: string }>;
-  const clause = tokens
-    .map((token, index) => {
-      const paramName = `@token${index}`;
-      parameters.push({ name: paramName, value: token.value });
-      if (token.rarityOnly) {
-        return `(IS_DEFINED(c.rarity) AND STARTSWITH(c.rarity, ${paramName}, true))`;
-      }
-      return `(
+  const clauses = [] as string[];
+  const textQuery = tokens
+    .filter((token) => !token.rarityOnly)
+    .map((token) => token.value)
+    .join(" ");
+
+  if (textQuery) {
+    const paramName = `@token${parameters.length}`;
+    parameters.push({ name: paramName, value: textQuery });
+    clauses.push(`(
         STARTSWITH(c.name, ${paramName}, true)
         OR STARTSWITH(c.cardNo, ${paramName}, true)
         OR (IS_DEFINED(c.rarity) AND STARTSWITH(c.rarity, ${paramName}, true))
-      )`;
-    })
-    .join("\n      AND ");
+      )`);
+  }
 
-  return { clause, parameters };
+  for (const token of tokens.filter((token) => token.rarityOnly)) {
+    const paramName = `@token${parameters.length}`;
+    parameters.push({ name: paramName, value: token.value });
+    clauses.push(`(IS_DEFINED(c.rarity) AND STARTSWITH(c.rarity, ${paramName}, true))`);
+  }
+
+  return { clause: clauses.join("\n      AND "), parameters };
 }
 
 export async function searchCardCatalog(
