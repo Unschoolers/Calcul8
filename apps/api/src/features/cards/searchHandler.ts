@@ -133,6 +133,7 @@ export async function cardsSearch(
   return executeHttpHandler(request, context, {
     errorLogMessage: "GET /cards/search failed",
     fallbackErrorMessage: "Failed to search cards.",
+    skipGlobalRateLimit: true,
     operation: async ({ config }) => {
     const rateLimitDecision = await checkCardsSearchRateLimit(request, config);
     if (!rateLimitDecision.allowed) {

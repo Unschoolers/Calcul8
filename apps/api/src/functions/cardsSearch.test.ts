@@ -119,3 +119,23 @@ test("cardsSearch returns 429 when route-specific rate limit is exceeded in prod
   assert.equal(incrementRateLimitCounterMock.mock.calls.length, 2);
   assert.equal((response.jsonBody as { error: string }).error, "Too many card search requests. Please retry shortly.");
 });
+
+test("cardsSearch uses only its stricter card-search limit in production", async () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "development";
+  getConfigMock.mockReturnValue(createApiConfig({ apiEnv: "prod", cardCatalogContainerId: "card_catalog" }));
+  incrementRateLimitCounterMock.mockReset();
+  incrementRateLimitCounterMock.mockResolvedValue(1);
+
+  try {
+    const response = await cardsSearch(
+      createHttpRequest({ method: "GET", query: "game=ua&q=asgu&limit=10" }) as never,
+      createInvocationContext() as never
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(incrementRateLimitCounterMock.mock.calls.length, 2);
+  } finally {
+    process.env.NODE_ENV = originalNodeEnv;
+  }
+});

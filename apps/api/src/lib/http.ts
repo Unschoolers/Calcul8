@@ -76,10 +76,12 @@ export async function maybeHandleGlobalRateLimit(
 
 export async function maybeHandleHttpGuards(
   request: HttpRequest,
-  config: ApiConfig
+  config: ApiConfig,
+  options: { skipGlobalRateLimit?: boolean } = {}
 ): Promise<HttpResponseInit | null> {
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
+  if (options.skipGlobalRateLimit) return null;
 
   return await maybeHandleGlobalRateLimit(request, config);
 }
@@ -88,6 +90,8 @@ export interface HttpHandlerOptions {
   errorLogMessage: string;
   fallbackErrorMessage: string;
   operation: (input: { config: ApiConfig }) => Promise<HttpResponseInit>;
+  /** Use when the route applies its own stricter rate limit. */
+  skipGlobalRateLimit?: boolean;
   mapError?: (error: unknown) => unknown;
   handleError?: (error: unknown, input: { config: ApiConfig }) => HttpResponseInit;
   onError?: (error: unknown, input: { config: ApiConfig }) => void;
@@ -103,7 +107,9 @@ export async function executeHttpHandler(
   options: HttpHandlerOptions
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config, {
+    skipGlobalRateLimit: options.skipGlobalRateLimit
+  });
   if (guardResponse) return guardResponse;
 
   try {

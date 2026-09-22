@@ -46,15 +46,6 @@ export async function incrementRateLimitCounter(
 
   try {
     const { resource } = await withCosmosRetry(() =>
-      sessions.items.create<RateLimitCounterDocument>(document)
-    );
-    return Number(resource?.count ?? 1);
-  } catch (error) {
-    if (!isConflictError(error)) throw error;
-  }
-
-  try {
-    const { resource } = await withCosmosRetry(() =>
       sessions.item(id, partitionKey).patch<RateLimitCounterDocument>([
         { op: "incr", path: "/count", value: 1 }
       ])
@@ -63,13 +54,23 @@ export async function incrementRateLimitCounter(
     if (!Number.isFinite(count)) throw new Error("Rate-limit counter increment returned no count.");
     return count;
   } catch (error) {
-    // A TTL boundary can remove the document between conflict and patch.
-    if (isNotFoundError(error)) {
-      const { resource } = await withCosmosRetry(() =>
-        sessions.items.create<RateLimitCounterDocument>(document)
-      );
-      return Number(resource?.count ?? 1);
-    }
-    throw error;
+    if (!isNotFoundError(error)) throw error;
   }
+
+  try {
+    const { resource } = await withCosmosRetry(() => sessions.items.create<RateLimitCounterDocument>(document));
+    return Number(resource?.count ?? 1);
+  } catch (error) {
+    if (!isConflictError(error)) throw error;
+  }
+
+  // Another request created the counter after this request observed its absence.
+  const { resource } = await withCosmosRetry(() =>
+    sessions.item(id, partitionKey).patch<RateLimitCounterDocument>([
+      { op: "incr", path: "/count", value: 1 }
+    ])
+  );
+  const count = Number(resource?.count);
+  if (!Number.isFinite(count)) throw new Error("Rate-limit counter increment returned no count.");
+  return count;
 }
