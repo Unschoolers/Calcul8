@@ -1064,6 +1064,9 @@ test("search update, cancel, and cards api resolution cover debounce and fallbac
     assert.equal(context.singlesItemSearchLoading, false);
 
     context.onSinglesItemSearchUpdate("ab");
+    assert.deepEqual(context.singlesItemSuggestions, []);
+    assert.equal(context.singlesItemMenuOpen, true);
+    assert.equal(context.singlesItemSearchLoading, true);
     vi.advanceTimersByTime(400);
     await vi.runAllTimersAsync();
     assert.deepEqual((context.fetchSinglesItemSuggestions as ReturnType<typeof vi.fn>).mock.calls[0], ["ab"]);

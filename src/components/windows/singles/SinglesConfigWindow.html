@@ -159,7 +159,7 @@
                 :clearable="Boolean(editingSinglesRow.item || singlesItemSearchText)"
                 no-filter
                 hide-details
-                :no-data-text="t('singlesEditorNoDataText')"
+                :no-data-text="singlesItemSearchLoading ? t('singlesEditorSearchingText') : t('singlesEditorNoDataText')"
                 :placeholder="t('singlesEditorSearchPlaceholder')"
                 @click:clear="clearSinglesCatalogSelection"
                 @focus="maybeOpenSinglesItemSuggestions"

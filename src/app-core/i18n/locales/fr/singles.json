@@ -28,6 +28,7 @@
   "singlesEditorMarketLabel": "Marché",
   "singlesEditorMarketValueLabel": "Valeur de marché",
   "singlesEditorNoDataText": "Tapez 2+ caracteres pour chercher",
+  "singlesEditorSearchingText": "Recherche de cartes…",
   "singlesEditorNoImageLabel": "Aucune image disponible",
   "singlesEditorOptionalLabel": "Optionnel",
   "singlesEditorPreviewEyebrow": "Aperçu de l'item",
@@ -109,4 +110,3 @@
   "singlesCsvRequiredMappedLabel": "{{count}}/2 requis mappés",
   "singlesCsvSelectColumnLabel": "Choisir une colonne"
 }
-

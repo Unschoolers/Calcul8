@@ -247,6 +247,7 @@ export const singlesCatalogSearchMethods = {
   },
 
   cancelSinglesItemSearch(this: SinglesCatalogSearchContext): void {
+    this.singlesItemSearchRequestSeq = Number(this.singlesItemSearchRequestSeq || 0) + 1;
     if (this.singlesItemSearchTimerId) {
       clearTimeout(this.singlesItemSearchTimerId);
       this.singlesItemSearchTimerId = null;
@@ -349,6 +350,9 @@ export const singlesCatalogSearchMethods = {
       return;
     }
 
+    this.singlesItemSuggestions = [];
+    this.singlesItemMenuOpen = true;
+    this.singlesItemSearchLoading = true;
     this.singlesItemSearchTimerId = setTimeout(() => {
       this.singlesItemSearchTimerId = null;
       void this.fetchSinglesItemSuggestions(query);
@@ -368,6 +372,7 @@ export const singlesCatalogSearchMethods = {
     if (!apiBase) {
       this.singlesItemSuggestions = [];
       this.singlesItemMenuOpen = false;
+      this.singlesItemSearchLoading = false;
       return;
     }
 
