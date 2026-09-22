@@ -33,42 +33,30 @@ export function buildCardCatalogSearchClause(query: unknown): CardCatalogSearchC
     .filter((token) => token.length > 0)
     .map((token) => {
       const normalized = token.replace(/[★☆✩✭✮✯]/g, "*");
+      const rarityOnly = normalized.includes("*");
       return {
-        rarityOnly: normalized.includes("*"),
-        value: normalized.trim()
+        rarityOnly,
+        value: (rarityOnly ? normalized.replace(/\*/g, "★") : normalized).trim()
       };
     })
-    .filter((token) => token.value.replace(/\*/g, "").length > 0);
+    .filter((token) => token.value.replace(/[★☆✩✭✮✯]/g, "").length > 0);
 
   if (tokens.length === 0) {
     return { clause: "", parameters: [] };
   }
 
   const parameters = [] as Array<{ name: string; value: string }>;
-  const normalizedRarity = [
-    "REPLACE(",
-    "REPLACE(",
-    "REPLACE(",
-    "REPLACE(",
-    "REPLACE(",
-    "REPLACE(LOWER(c.rarity), '★', '*'),",
-    " '☆', '*'),",
-    " '✩', '*'),",
-    " '✭', '*'),",
-    " '✮', '*'),",
-    " '✯', '*')"
-  ].join("");
   const clause = tokens
     .map((token, index) => {
       const paramName = `@token${index}`;
       parameters.push({ name: paramName, value: token.value });
       if (token.rarityOnly) {
-        return `(IS_DEFINED(c.rarity) AND STARTSWITH(${normalizedRarity}, ${paramName}))`;
+        return `(IS_DEFINED(c.rarity) AND STARTSWITH(c.rarity, ${paramName}, true))`;
       }
       return `(
-        CONTAINS(LOWER(c.name), ${paramName})
-        OR CONTAINS(LOWER(c.cardNo), ${paramName})
-        OR (IS_DEFINED(c.rarity) AND CONTAINS(${normalizedRarity}, ${paramName}))
+        STARTSWITH(c.name, ${paramName}, true)
+        OR STARTSWITH(c.cardNo, ${paramName}, true)
+        OR (IS_DEFINED(c.rarity) AND STARTSWITH(c.rarity, ${paramName}, true))
       )`;
     })
     .join("\n      AND ");
