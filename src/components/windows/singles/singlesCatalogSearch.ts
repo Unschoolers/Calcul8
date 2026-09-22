@@ -1,7 +1,7 @@
 import type { SinglesCatalogSource } from "../../../types/app.ts";
 import { normalizeSinglesCatalogSource } from "../../../app-core/shared/singles-catalog-source.ts";
 
-export const SINGLES_CARD_SEARCH_DEBOUNCE_MS = 400;
+export const SINGLES_CARD_SEARCH_DEBOUNCE_MS = 900;
 export const SINGLES_CARD_SEARCH_LIMIT = 25;
 
 export type CardSearchApiItem = {
