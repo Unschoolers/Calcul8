@@ -446,6 +446,20 @@
   padding-inline: 0.7rem;
 }
 
+.account-menu-version {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  padding: 0.32rem 0.75rem 0.18rem;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+  font-size: 0.72rem;
+  font-weight: var(--app-font-weight-strong);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .v-theme--unionArenaLight .v-app-bar {
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.94)) !important;
@@ -500,6 +514,10 @@
   .account-menu-list .v-list-item--density-default.v-list-item--three-line,
   .account-menu-list .v-list-item--density-default.v-list-item--two-line {
     min-height: 44px;
+  }
+
+  .account-menu-version {
+    padding-inline: 0.68rem;
   }
 
   .app-bar-title-wrap {

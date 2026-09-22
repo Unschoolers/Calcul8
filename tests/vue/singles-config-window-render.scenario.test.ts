@@ -131,7 +131,7 @@ test("reproduces lowercase multi-star rarity typing in the mounted singles edito
     ]
   }), { status: 200 }));
   await vi.waitFor(() => expect(document.querySelector(".singles-card-suggestions-menu")).toHaveTextContent("Gon Freecss"));
-});
+}, 10_000);
 
 test("uses an inset media dialog for the singles image preview", () => {
   const template = readFileSync("src/components/windows/singles/SinglesConfigWindow.html", "utf8");

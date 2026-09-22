@@ -86,6 +86,8 @@ function walk(dir, results) {
       continue;
     }
 
+    if (entry.isSymbolicLink()) continue;
+
     if (entry.isDirectory()) {
       if (IGNORE_DIRS.has(entry.name)) continue;
       walk(fullPath, results);

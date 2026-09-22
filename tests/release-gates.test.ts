@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -220,6 +220,22 @@ test("security scan allows the tracked Digital Asset Links source file", async (
     await mkdir(assetLinksDirectory, { recursive: true });
     await writeFile(path.join(assetLinksDirectory, "assetlinks.json"), "[]");
     runGit(repositoryPath, ["add", "--force", "--", "public/.well-known/assetlinks.json"]);
+
+    const result = spawnSync(process.execPath, [securityScanPath], {
+      cwd: repositoryPath,
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  });
+});
+
+test("security scan ignores dependency-directory symlinks", async () => {
+  await withTemporaryGitRepository(async (repositoryPath) => {
+    await mkdir(path.join(repositoryPath, "shared-dependencies"));
+    await symlink("shared-dependencies", path.join(repositoryPath, "node_modules"), "dir");
+    await writeFile(path.join(repositoryPath, "README.md"), "safe source");
+    runGit(repositoryPath, ["add", "README.md"]);
 
     const result = spawnSync(process.execPath, [securityScanPath], {
       cwd: repositoryPath,

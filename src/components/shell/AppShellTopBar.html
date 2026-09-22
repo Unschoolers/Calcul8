@@ -310,6 +310,12 @@
           prepend-icon="mdi-logout"
           @click="logoutCurrentSession"
         ></v-list-item>
+
+        <v-divider class="my-1"></v-divider>
+
+        <div class="account-menu-version" role="note">
+          {{ t('accountMenuVersionLabel', { version: appVersion }) }}
+        </div>
       </v-list>
     </v-menu>
   </template>
