@@ -1,4 +1,6 @@
 import type { Chart as ChartJS } from "chart.js";
+import type { WhatnotMappedSaleType, WhatnotImportDecisionKind, WhatnotReviewImportAction } from "../../shared/whatnot-import-contracts";
+export type { WhatnotMappedSaleType, WhatnotImportDecisionKind, WhatnotReviewImportAction } from "../../shared/whatnot-import-contracts";
 import type {
   GameSpectatorBoardCell as SharedGameSpectatorBoardCell,
   GameSpectatorChaseBoardEntry as SharedGameSpectatorChaseBoardEntry,
@@ -46,10 +48,7 @@ export type WorkspaceRole = "owner" | "member";
 export type WhatnotConnectionStatus = "unconfigured" | "disconnected" | "connecting" | "connected" | "error";
 export type WhatnotSyncStatus = "idle" | "syncing" | "success" | "error";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
-export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotCsvImportSource = "csv";
-export type WhatnotImportDecisionKind = "new" | "whatnot_mapping" | "manual_candidate";
-export type WhatnotReviewImportAction = "create" | "update_existing" | "split_group" | "skip";
 export type UiColor =
   | "info"
   | "success"

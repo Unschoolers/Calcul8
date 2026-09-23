@@ -9,6 +9,7 @@ import {
   requireRequestBodyRecord
 } from "../../lib/httpRequest";
 import type { WhatnotImportDecisionKind, WhatnotMappedSaleType, WhatnotReviewImportAction } from "../../types";
+import { WHATNOT_CONFIRMATION_SALE_TYPES } from "../../shared/whatnot-import-contracts.cjs";
 import {
   confirmWhatnotImportBatchForActor,
   createWhatnotImportBatchFromRowsForActor,
@@ -108,17 +109,31 @@ function parseConfirmBody(rawBody: unknown): {
       if (!rowId) {
         throw new HttpError(400, "Each decision requires a 'rowId'.");
       }
+      for (const field of ["saleType", "targetKind", "selectedImportAction"] as const) {
+        if (decision[field] != null && typeof decision[field] !== "string") {
+          throw new HttpError(400, `Field '${field}' must be a string.`);
+        }
+      }
       const saleTypeRaw = String(decision.saleType ?? "").trim();
+      if (decision.saleType != null && (!saleTypeRaw || !WHATNOT_CONFIRMATION_SALE_TYPES.includes(saleTypeRaw))) {
+        throw new HttpError(400, "Field 'saleType' must be pack, box, or rtyh.");
+      }
       const saleType: WhatnotMappedSaleType | undefined =
         saleTypeRaw === "pack" || saleTypeRaw === "box" || saleTypeRaw === "rtyh"
           ? saleTypeRaw
           : undefined;
       const targetKindRaw = String(decision.targetKind ?? "").trim();
+      if (decision.targetKind != null && (!targetKindRaw || targetKindRaw !== "new" && targetKindRaw !== "whatnot_mapping" && targetKindRaw !== "manual_candidate")) {
+        throw new HttpError(400, "Field 'targetKind' is invalid.");
+      }
       const targetKind: WhatnotImportDecisionKind | undefined =
         targetKindRaw === "new" || targetKindRaw === "whatnot_mapping" || targetKindRaw === "manual_candidate"
           ? targetKindRaw
           : undefined;
       const selectedImportActionRaw = String(decision.selectedImportAction ?? "").trim();
+      if (decision.selectedImportAction != null && (!selectedImportActionRaw || selectedImportActionRaw !== "create" && selectedImportActionRaw !== "update_existing" && selectedImportActionRaw !== "split_group" && selectedImportActionRaw !== "skip")) {
+        throw new HttpError(400, "Field 'selectedImportAction' is invalid.");
+      }
       const selectedImportAction: WhatnotReviewImportAction | undefined =
         selectedImportActionRaw === "create"
           || selectedImportActionRaw === "update_existing"
@@ -173,13 +188,21 @@ function parseImportRowsBody(rawBody: unknown): {
   }>;
 } {
   const body = requireRequestBodyRecord(rawBody);
+  const requiredRowText = (row: Record<string, unknown>, field: string): string => {
+    const value = row[field];
+    if (value == null) return "";
+    if (typeof value !== "string") {
+      throw new HttpError(400, `Each import row requires '${field}' to be a string.`);
+    }
+    return value.trim();
+  };
   const rows = Array.isArray(body.rows)
     ? body.rows.map((rawRow) => {
       const row = requireRequestBodyRecord(rawRow, "Field 'rows' must contain objects.");
-      const externalOrderId = String(row.externalOrderId ?? "").trim();
-      const externalOrderItemId = String(row.externalOrderItemId ?? "").trim();
-      const title = String(row.title ?? "").trim();
-      const date = String(row.date ?? "").trim();
+      const externalOrderId = requiredRowText(row, "externalOrderId");
+      const externalOrderItemId = requiredRowText(row, "externalOrderItemId");
+      const title = requiredRowText(row, "title");
+      const date = requiredRowText(row, "date");
       if (!externalOrderId) {
         throw new HttpError(400, "Each import row requires 'externalOrderId'.");
       }

@@ -26,6 +26,12 @@ import type {
     SyncWheelTierDto as SharedSyncWheelTierDto
 } from "./shared/sync-contracts";
 import type {
+  WhatnotMappedSaleType as SharedWhatnotMappedSaleType,
+  WhatnotImportDecisionKind as SharedWhatnotImportDecisionKind,
+  WhatnotReviewImportAction as SharedWhatnotReviewImportAction,
+  WhatnotNormalizedImportRowInput as SharedWhatnotNormalizedImportRowInput
+} from "./shared/whatnot-import-contracts";
+import type {
     GamePublicSessionBoardCell as SharedGamePublicSessionBoardCell,
     GamePublicSessionChaseEntry as SharedGamePublicSessionChaseEntry,
     GamePublicSessionChaseHistoryEntry as SharedGamePublicSessionChaseHistoryEntry,
@@ -367,10 +373,10 @@ export type WhatnotConnectionStatus = "active" | "disconnected" | "error";
 export type WhatnotImportBatchStatus = "pending_review" | "processing" | "recoverable_error" | "completed" | "failed";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
-export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotImportBatchOrigin = "oauth_sync" | "csv_manual";
-export type WhatnotImportDecisionKind = "new" | "whatnot_mapping" | "manual_candidate";
-export type WhatnotReviewImportAction = "create" | "update_existing" | "split_group" | "skip";
+export type WhatnotMappedSaleType = SharedWhatnotMappedSaleType;
+export type WhatnotImportDecisionKind = SharedWhatnotImportDecisionKind;
+export type WhatnotReviewImportAction = SharedWhatnotReviewImportAction;
 
 export interface WhatnotConfirmationDecisionDocument {
   rowId: string;
@@ -511,28 +517,7 @@ export interface WhatnotImportRowDocument {
   requiresManualReview: boolean;
 }
 
-export interface WhatnotNormalizedImportRowInput {
-  externalSaleId?: string;
-  externalOrderId: string;
-  externalOrderItemId: string;
-  externalAccountId?: string;
-  title: string;
-  listingTitle?: string;
-  sku?: string;
-  productCategory?: string;
-  buyerName?: string;
-  quantity?: number;
-  price: number;
-  originalItemPrice?: number;
-  buyerShipping?: number;
-  date: string;
-  orderPlacedAt?: string;
-  orderPlacedAtRaw?: string;
-  orderStatus?: string;
-  listingId?: string;
-  productId?: string;
-  variantId?: string;
-}
+export type WhatnotNormalizedImportRowInput = SharedWhatnotNormalizedImportRowInput;
 
 export interface WhatnotImportBatchDocument {
   id: string;

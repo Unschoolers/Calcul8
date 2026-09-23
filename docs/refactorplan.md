@@ -26,17 +26,17 @@ Done when repeated Cosmos mechanics have one tested implementation, optimistic c
 
 ### 2. Share Whatnot Import Contracts And Pure Normalization
 
-The Whatnot workflow remains distributed across frontend CSV/review code and API OAuth, review, duplicate-detection, confirmation, and repository code. Equivalent unions such as `WhatnotMappedSaleType`, `WhatnotImportDecisionKind`, and `WhatnotReviewImportAction` are still declared separately in `src/types/app.ts` and `apps/api/src/types.ts`.
+The Whatnot workflow remains distributed across frontend CSV/review code and API OAuth, review, duplicate-detection, confirmation, and repository code. The normalized candidate, mapped sale type, import decision kind, and review action contracts now come from `shared/whatnot-import-contracts`; duplicate candidate and durable confirmation document shapes remain API-owned.
 
 Remaining work:
 
-1. Define shared runtime-validated contracts for normalized import candidates, external transaction identity, mapped sale types, duplicate candidates, review decisions, and confirmation request/response shapes.
-2. Make CSV and OAuth source adapters emit the same normalized candidate contract.
-3. Centralize pure normalization, sale-type inference, grouping keys, external-reference construction, and review-decision validation.
+1. Extend shared runtime-validated contracts to duplicate candidates and confirmation request/response shapes.
+2. Keep CSV-specific column/date parsing in the frontend and route both CSV and OAuth candidates through shared candidate validation before batch construction.
+3. Centralize remaining pure normalization, sale-type inference, grouping keys, and external-reference construction; candidate and review-decision normalization are shared.
 4. Keep CSV file parsing and column mapping in the frontend; keep OAuth credentials, provider calls, leases, Cosmos writes, and durable confirmation recovery in the API.
 5. Preserve seller-authored Notes and keep provider metadata in explicit external-reference fields.
 
-Done when frontend and API import paths share one validated candidate and decision model, duplicated contract declarations and normalization rules are removed, and scope isolation, memo preservation, duplicate detection, and recovery tests remain green.
+Done when frontend and API import paths share one validated candidate and decision model, remaining duplicated contract declarations and normalization rules are removed, and scope isolation, memo preservation, duplicate detection, and recovery tests remain green.
 
 ## Medium Priority
 

@@ -276,7 +276,7 @@ test("fetchWhatnotOrdersPage skips malformed edges and normalizes order item row
             node: {
               id: "order-1",
               status: "",
-              createdAt: "bad-date-value",
+              createdAt: "2026-03-01T00:30:00.000Z",
               shippingPrice: {
                 amount: 250
               },
@@ -314,7 +314,7 @@ test("fetchWhatnotOrdersPage skips malformed edges and normalizes order item row
   assert.equal(page.rows[0]?.price, 12);
   assert.equal(page.rows[0]?.originalItemPrice, 5);
   assert.equal(page.rows[0]?.buyerShipping, 2.5);
-  assert.equal(page.rows[0]?.date, "bad-date-v");
+  assert.equal(page.rows[0]?.date, toExpectedLocalDate("2026-03-01T00:30:00.000Z"));
   assert.equal(page.rows[0]?.orderStatus, "CREATED");
 
   const requestBody = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
@@ -413,6 +413,14 @@ test("buildWhatnotImportRowFromNormalizedInput rejects required field and money 
   assert.throws(
     () => buildWhatnotImportRowFromNormalizedInput({ ...validRow, buyerShipping: -1 }),
     /Whatnot import row has invalid 'buyerShipping'\./
+  );
+  assert.throws(
+    () => buildWhatnotImportRowFromNormalizedInput({ ...validRow, date: "not-a-date" }),
+    /Whatnot import row has invalid 'date'\./
+  );
+  assert.equal(
+    buildWhatnotImportRowFromNormalizedInput({ ...validRow, date: "3/25/2026" }).date,
+    "2026-03-25"
   );
 });
 

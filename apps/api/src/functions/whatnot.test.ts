@@ -259,6 +259,22 @@ test("whatnotImport rejects empty rows payloads", async () => {
   assert.equal(context.error.mock.calls.length, 1);
 });
 
+test("whatnotImport rejects object values for required row strings before creating a batch", async () => {
+  const validRow = { externalOrderId: "order-1", externalOrderItemId: "item-1", title: "Item", date: "2026-03-25", price: 1 };
+  for (const field of ["externalOrderId", "externalOrderItemId", "title", "date"] as const) {
+    const response = await whatnotImport(
+      createHttpRequest({
+        method: "POST",
+        body: { rows: [{ ...validRow, [field]: { malformed: true } }] },
+        headers: { authorization: "Bearer user-a" }
+      }) as never,
+      createInvocationContext() as never
+    );
+    assert.equal(response.status, 400, `${field} should be rejected`);
+  }
+  assert.equal(createWhatnotImportBatchFromRowsForActorMock.mock.calls.length, 0);
+});
+
 test("whatnotReviewGet reads lookup params from query string", async () => {
   const response = await whatnotReviewGet(
     createHttpRequest({
@@ -426,4 +442,62 @@ test("whatnotReviewConfirm rejects missing batchId", async () => {
   assert.equal(response.status, 400);
   assert.equal((response.jsonBody as { error: string }).error, "Field 'batchId' is required.");
   assert.equal(confirmWhatnotImportBatchForActorMock.mock.calls.length, 0);
+});
+
+test("whatnotReviewConfirm rejects invalid explicit confirmation decisions", async () => {
+  const response = await whatnotReviewConfirm(
+    createHttpRequest({
+      method: "POST",
+      body: { batchId: "batch-1", decisions: [{ rowId: "row-1", saleType: "wheel" }] },
+      headers: { authorization: "Bearer user-a" }
+    }) as never,
+    createInvocationContext() as never
+  );
+  assert.equal(response.status, 400);
+  assert.equal(confirmWhatnotImportBatchForActorMock.mock.calls.length, 0);
+});
+
+test("whatnotReviewConfirm rejects explicit blank enum values but accepts omitted and null values", async () => {
+  for (const field of ["saleType", "targetKind", "selectedImportAction"] as const) {
+    for (const value of ["", " \t"]) {
+      const response = await whatnotReviewConfirm(
+        createHttpRequest({
+          method: "POST",
+          body: { batchId: "batch-1", decisions: [{ rowId: "row-1", [field]: value }] },
+          headers: { authorization: "Bearer user-a" }
+        }) as never,
+        createInvocationContext() as never
+      );
+      assert.equal(response.status, 400, `${field} ${JSON.stringify(value)} should be rejected`);
+    }
+  }
+  for (const explicitValue of [undefined, null]) {
+    const response = await whatnotReviewConfirm(
+      createHttpRequest({
+        method: "POST",
+        body: { batchId: "batch-1", decisions: [{ rowId: "row-1", saleType: explicitValue, targetKind: explicitValue, selectedImportAction: explicitValue }] },
+        headers: { authorization: "Bearer user-a" }
+      }) as never,
+      createInvocationContext() as never
+    );
+    assert.equal(response.status, 200);
+  }
+});
+
+test("whatnotReviewConfirm rejects non-string explicit enum values", async () => {
+  for (const [field, value] of [
+    ["saleType", ["pack"]],
+    ["targetKind", ["manual_candidate"]],
+    ["selectedImportAction", ["skip"]]
+  ] as const) {
+    const response = await whatnotReviewConfirm(
+      createHttpRequest({
+        method: "POST",
+        body: { batchId: "batch-1", decisions: [{ rowId: "row-1", [field]: value }] },
+        headers: { authorization: "Bearer user-a" }
+      }) as never,
+      createInvocationContext() as never
+    );
+    assert.equal(response.status, 400, `${field} must be a string`);
+  }
 });

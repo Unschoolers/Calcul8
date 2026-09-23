@@ -5,6 +5,7 @@ import {
   buildWhatnotConfirmationOperationKey,
   normalizeWhatnotConfirmationDecisions
 } from "./confirmationRecovery";
+import { normalizeWhatnotImportDecision } from "../../shared/whatnot-import-contracts.cjs";
 
 test("Whatnot confirmation fingerprint is stable across decision order and harmless whitespace", () => {
   const left = normalizeWhatnotConfirmationDecisions([
@@ -29,6 +30,16 @@ test("Whatnot confirmation fingerprint changes when a meaningful decision change
   ]);
 
   assert.notEqual(buildWhatnotConfirmationFingerprint(original), buildWhatnotConfirmationFingerprint(changed));
+});
+
+test("shared Whatnot decision normalization preserves confirmation fields without inferring skip", () => {
+  assert.deepEqual(normalizeWhatnotImportDecision({
+    rowId: " row-1 ", lotId: 7, saleType: "box", packsCount: 2,
+    targetKind: "manual_candidate", targetSaleId: "sale-3", selectedImportAction: "skip"
+  }), {
+    rowId: "row-1", skip: false, lotId: 7, saleType: "box", packsCount: 2,
+    targetKind: "manual_candidate", targetSaleId: "sale-3", selectedImportAction: "skip"
+  });
 });
 
 test("Whatnot confirmation operation keys are stable for grouped row ids", () => {

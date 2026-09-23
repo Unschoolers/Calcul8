@@ -6,6 +6,7 @@ import type {
   WhatnotReviewImportAction
 } from "../../../../types/app.ts";
 import type { WhatnotReviewContext } from "../../../context/whatnot.ts";
+import { normalizeWhatnotImportDecision } from "../../../../../shared/whatnot-import-contracts.mjs";
 
 export interface WhatnotReviewDecision {
   rowId: string;
@@ -171,7 +172,7 @@ export function buildWhatnotReviewDecisions(rows: WhatnotImportReviewRow[]): Wha
         : null;
     const resolvedTargetSaleId = selectedImportAction === "split_group" ? "" : targetSaleId;
 
-    return {
+    const normalized = normalizeWhatnotImportDecision({
       rowId: row.rowId,
       lotId: row.selectedLotId,
       saleType: row.selectedSaleType,
@@ -180,6 +181,16 @@ export function buildWhatnotReviewDecisions(rows: WhatnotImportReviewRow[]): Wha
       selectedImportAction,
       targetKind,
       targetSaleId: resolvedTargetSaleId || undefined
+    });
+    return {
+      rowId: normalized?.rowId ?? row.rowId,
+      lotId: normalized?.lotId ?? null,
+      saleType: normalized?.saleType ?? null,
+      packsCount: normalized?.packsCount ?? null,
+      skip: normalized?.skip ?? false,
+      selectedImportAction: normalized?.selectedImportAction ?? selectedImportAction,
+      targetKind: normalized?.targetKind ?? null,
+      targetSaleId: normalized?.targetSaleId ?? undefined
     };
   });
 }

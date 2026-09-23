@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { HttpError } from "../../lib/auth";
+import { normalizeWhatnotImportDecision } from "../../shared/whatnot-import-contracts.cjs";
 import type {
   WhatnotConfirmationDecisionDocument,
   WhatnotImportRowDocument,
@@ -52,16 +53,19 @@ export function normalizeWhatnotConfirmationDecisions(
   decisions: readonly WhatnotConfirmationDecisionInput[]
 ): NormalizedWhatnotConfirmationDecision[] {
   return decisions
-    .map((decision) => ({
-      rowId: normalizeText(decision.rowId),
-      skip: decision.skip === true,
-      lotId: normalizePositiveInteger(decision.lotId),
-      saleType: normalizeSaleType(decision.saleType),
-      packsCount: normalizePositiveInteger(decision.packsCount),
-      targetKind: normalizeTargetKind(decision.targetKind),
-      targetSaleId: normalizeText(decision.targetSaleId) || null,
-      selectedImportAction: normalizeImportAction(decision.selectedImportAction)
-    }))
+    .map((decision) => {
+      const normalized = normalizeWhatnotImportDecision(decision);
+      return {
+        rowId: normalizeText(normalized?.rowId ?? decision.rowId),
+        skip: decision.skip === true,
+        lotId: normalizePositiveInteger(normalized?.lotId),
+        saleType: normalizeSaleType(normalized?.saleType),
+        packsCount: normalizePositiveInteger(normalized?.packsCount),
+        targetKind: normalizeTargetKind(normalized?.targetKind),
+        targetSaleId: normalizeText(normalized?.targetSaleId) || null,
+        selectedImportAction: normalizeImportAction(normalized?.selectedImportAction)
+      };
+    })
     .sort((left, right) => left.rowId.localeCompare(right.rowId));
 }
 

@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { HttpError } from "./auth";
+import { normalizeWhatnotImportCandidate } from "../shared/whatnot-import-contracts.cjs";
 import type {
   ApiConfig,
   WhatnotImportRowDocument,
@@ -461,8 +462,14 @@ export function isWhatnotRowLikelyRtyh(row: Pick<WhatnotImportRowDocument, "titl
 }
 
 export function buildWhatnotImportRowFromNormalizedInput(
-  row: WhatnotNormalizedImportRowInput & { externalAccountId: string }
+  input: WhatnotNormalizedImportRowInput & { externalAccountId: string }
 ): WhatnotImportRowDocument {
+  let row: WhatnotNormalizedImportRowInput & { externalSaleId: string; externalAccountId: string; quantity: number; buyerShipping: number; orderStatus: string };
+  try {
+    row = normalizeWhatnotImportCandidate(input) as typeof row;
+  } catch (error) {
+    throw new HttpError(400, error instanceof Error ? error.message : "Invalid Whatnot import row.");
+  }
   const externalOrderId = String(row.externalOrderId ?? "").trim();
   const externalOrderItemId = String(row.externalOrderItemId ?? "").trim();
   const externalAccountId = String(row.externalAccountId ?? "").trim();
@@ -482,16 +489,9 @@ export function buildWhatnotImportRowFromNormalizedInput(
     throw new HttpError(400, "Whatnot import row is missing 'title'.");
   }
 
-  const quantity = Math.max(1, Math.floor(Number(row.quantity) || 1));
-  const price = Number(row.price);
-  if (!Number.isFinite(price) || price < 0) {
-    throw new HttpError(400, "Whatnot import row has invalid 'price'.");
-  }
-
-  const buyerShipping = Number(row.buyerShipping) || 0;
-  if (!Number.isFinite(buyerShipping) || buyerShipping < 0) {
-    throw new HttpError(400, "Whatnot import row has invalid 'buyerShipping'.");
-  }
+  const quantity = row.quantity;
+  const price = row.price;
+  const buyerShipping = row.buyerShipping;
 
   const orderStatus = String(row.orderStatus ?? "COMPLETED").trim() || "COMPLETED";
   const externalSaleId = String(row.externalSaleId ?? `${externalOrderId}:${externalOrderItemId}`).trim();
@@ -569,31 +569,26 @@ export async function fetchWhatnotOrdersPage(
     const date = toDateOnly(order?.createdAt);
     const orderStatus = String(order?.status ?? "CREATED").trim() || "CREATED";
     const title = `Order item ${orderItemId.slice(-8)}`;
+    const candidate = normalizeWhatnotImportCandidate({
+      externalOrderId: orderId, externalOrderItemId: orderItemId, externalAccountId,
+      title, listingTitle: title, quantity, price,
+      originalItemPrice: toCurrencyAmountDollars(orderItem?.price?.amount ?? orderItem?.subtotal?.amount ?? 0),
+      buyerShipping, date, orderPlacedAt: String(order?.createdAt ?? "").trim(), orderStatus
+    });
     const payloadFingerprint = buildWhatnotImportFingerprint({
-      externalOrderId: orderId,
-      externalOrderItemId: orderItemId,
-      quantity,
-      price,
-      buyerShipping,
-      date,
-      orderStatus
+      externalOrderId: candidate.externalOrderId,
+      externalOrderItemId: candidate.externalOrderItemId,
+      quantity: candidate.quantity,
+      price: candidate.price,
+      buyerShipping: candidate.buyerShipping,
+      date: candidate.date,
+      orderStatus: candidate.orderStatus
     });
 
     rows.push({
-      rowId: orderItemId,
-      externalSaleId: `${orderId}:${orderItemId}`,
-      externalOrderId: orderId,
-      externalOrderItemId: orderItemId,
+      ...candidate,
+      rowId: candidate.externalOrderItemId,
       externalAccountId,
-      title,
-      listingTitle: title,
-      quantity,
-      price,
-      originalItemPrice: toCurrencyAmountDollars(orderItem?.price?.amount ?? orderItem?.subtotal?.amount ?? 0),
-      buyerShipping,
-      date,
-      orderPlacedAt: String(order?.createdAt ?? "").trim() || undefined,
-      orderStatus,
       payloadFingerprint,
       action: "create",
       matchSource: "none",
