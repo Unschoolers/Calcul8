@@ -7,9 +7,12 @@ export const AppShellTopBar = {
   name: "AppShellTopBar",
   components: { MobileLotSwitcher },
   setup() {
-    return {
-      ...useShellPorts(),
-      appVersion: APP_VERSION
-    };
+    const shellPorts = useShellPorts();
+    const exposedPorts = Object.defineProperties(
+      { appVersion: APP_VERSION },
+      Object.getOwnPropertyDescriptors(shellPorts)
+    );
+
+    return exposedPorts as typeof shellPorts & { appVersion: string };
   }
 };
