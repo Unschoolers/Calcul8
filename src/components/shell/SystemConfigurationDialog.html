@@ -123,39 +123,6 @@
               @update:model-value="setCurrentLotSystemPricingDefaultsMode($event === true)"
             ></v-switch>
 
-            <v-select
-              v-if="hasLotSelected"
-              :model-value="whatnotVertical"
-              :items="[
-                { title: t('configWhatnotVerticalUnclassified'), value: null },
-                { title: t('configWhatnotVerticalSports'), value: 'sports' },
-                { title: t('configWhatnotVerticalTcg'), value: 'tcg' },
-                { title: t('configWhatnotVerticalFashion'), value: 'fashion' },
-                { title: t('configWhatnotVerticalOtherCollectibles'), value: 'other_collectibles' },
-                { title: t('configWhatnotVerticalCoins'), value: 'coins' },
-                { title: t('configWhatnotVerticalOther'), value: 'other' }
-              ]"
-              :label="t('configWhatnotVerticalLabel')"
-              variant="outlined"
-              density="compact"
-              class="mb-2"
-              hide-details
-              @update:model-value="setCurrentLotWhatnotVertical"
-            ></v-select>
-            <v-alert v-if="hasLotSelected && whatnotVertical === null" type="warning" density="compact" variant="tonal" class="mb-2">
-              {{ t('configWhatnotVerticalLegacyHint') }}
-            </v-alert>
-            <section v-if="whatnotFeeStatus" class="whatnot-fee-status mb-3" :aria-label="t('configWhatnotFeeStatusTitle')">
-              <h4>{{ t('configWhatnotFeeStatusTitle') }}</h4>
-              <p>{{ t('configWhatnotFeeStatusRate', { rate: whatnotFeeStatus.rate, tier: whatnotFeeStatus.tier }) }}</p>
-              <p>{{ t('configWhatnotFeeStatusPreviousGross', { amount: whatnotFeeStatus.previousGross.toLocaleString(), start: whatnotFeeStatus.previousStart, end: whatnotFeeStatus.previousEnd }) }}</p>
-              <p v-if="whatnotFeeStatus.nextThreshold">{{ t('configWhatnotFeeStatusProgress', { amount: whatnotFeeStatus.currentGross.toLocaleString(), threshold: whatnotFeeStatus.nextThreshold.toLocaleString(), start: whatnotFeeStatus.periodStart, end: whatnotFeeStatus.periodEnd }) }}</p>
-              <p v-else>{{ t('configWhatnotFeeStatusMaxTier', { start: whatnotFeeStatus.periodStart, end: whatnotFeeStatus.periodEnd }) }}</p>
-              <v-progress-linear v-if="whatnotFeeStatus.nextThreshold" :model-value="whatnotFeeStatus.progress" color="secondary" rounded height="6" class="mb-2"></v-progress-linear>
-              <p class="mb-1">{{ t('configWhatnotFeeStatusEstimate') }}</p>
-              <p v-if="whatnotFeeStatus.incomplete" class="mb-0">{{ t('configWhatnotFeeStatusIncomplete') }}</p>
-            </section>
-
             <v-text-field
               v-model="externalSku"
               :label="t('configMarketplaceSkuLabel')"

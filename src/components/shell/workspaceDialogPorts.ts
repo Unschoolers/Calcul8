@@ -11,14 +11,13 @@ const workspaceDialogPortKeys = [
   "isCreatingWorkspaceJoinLink", "isWorkspaceMembersLoading", "workspaceMembers", "showLeaveWorkspaceModal",
   "isLeavingWorkspace", "leaveWorkspaceTransferMemberUserId", "leaveWorkspaceDeleteConfirmation", "showWorkspaceJoinDialog",
   "isAcceptingWorkspaceInvite", "showSystemConfigurationDialog", "systemPricingDefaults", "hasProAccess", "externalSku",
-  "sellingCurrency", "targetProfitPercent", "sellingTaxPercent", "sellingShippingPerOrder", "feeProfilePreset", "spotsPerBox", "whatnotVertical",
+  "sellingCurrency", "targetProfitPercent", "sellingTaxPercent", "sellingShippingPerOrder", "feeProfilePreset", "spotsPerBox",
   "platformFeePercent", "additionalFeePercent", "additionalFeeAppliesTo", "fixedFeePerOrder",
   "currentWorkspaceName", "isCurrentWorkspaceOwner", "pendingWorkspaceInviteTargetName", "currentLotType",
   "currentLotUsesSystemPricingDefaults", "hasLotSelected", "createWorkspace", "createWorkspaceJoinLink",
-  "whatnotFeeSummary",
   "openLeaveWorkspaceModal", "removeWorkspaceMember", "leaveCurrentWorkspace", "dismissPendingWorkspaceInvite",
   "acceptPendingWorkspaceInvite", "getWorkspaceMemberPresenceState", "getWorkspaceMemberPresenceLabel",
-  "onSystemPricingDefaultsChange", "setSystemFeeProfilePreset", "setCurrentLotSystemPricingDefaultsMode", "setCurrentLotWhatnotVertical",
+  "onSystemPricingDefaultsChange", "setSystemFeeProfilePreset", "setCurrentLotSystemPricingDefaultsMode",
   "onPurchaseConfigChange", "setFeeProfilePreset", "accessProFeature", "formatDate", "t"
 ] as const;
 

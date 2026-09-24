@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fireEvent } from "@testing-library/vue";
+import { fireEvent, screen } from "@testing-library/vue";
 import { defineComponent, nextTick, ref } from "vue";
 import { expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
@@ -56,6 +56,32 @@ test("singles window renders its purchasing view through injected ports", () => 
   });
 
   expect(view.container.querySelector(".singles-grid-card")).not.toBeNull();
+});
+
+test("singles lot setup displays its editable category and live fee status", async () => {
+  const state = createInitialState();
+  state.currentLotId = 1;
+  state.lots = [{ id: 1, name: "Singles", lotType: "singles", singlesCatalogSource: "pokemon", whatnotVertical: "tcg", feeProfilePreset: "whatnot" } as never];
+  state.whatnotVertical = "tcg";
+  const setVertical = vi.fn();
+  const source = {
+    ...state,
+    currentLotCatalogSource: "pokemon", singlesPurchases: [], singlesSoldCountByPurchaseId: {},
+    sellingCurrency: "CAD", exchangeRate: 1, preferredLanguage: "en", currency: "CAD", conversionInfo: "",
+    singlesPurchaseTotalCost: 0, singlesPurchaseTotalMarketValue: 0,
+    whatnotFeeSummary: { currentTier: 1, previousPeriodGrossCad: 22500, currentPeriodGrossCad: 4000, nextThresholdCad: 10000, isEstimate: true, missingLotIds: [2], periodStart: "2026-09-21", periodEndExclusive: "2026-10-19", previousPeriodStart: "2026-08-24", previousPeriodEndExclusive: "2026-09-21" },
+    setCurrentLotWhatnotVertical: setVertical,
+    saveLotsToStorage: vi.fn(), removeSinglesPurchaseRow: vi.fn(), onSinglesPurchaseRowsChange: vi.fn(),
+    importSinglesPurchasesCsv: vi.fn(), confirmSinglesPurchasesCsvImport: vi.fn(), cancelSinglesPurchasesCsvImport: vi.fn(),
+    formatCurrency: (value: number | null | undefined) => String(value ?? 0), t: (key: string) => key,
+    onPurchaseConfigChange: vi.fn(), notify: vi.fn(), askConfirmation: vi.fn()
+  };
+  renderWithApp(SinglesConfigWindow, {
+    global: { provide: { [singlesConfigPortsKey as symbol]: createSinglesConfigPorts(source as never) }, stubs: { AdminSyncImportCard: true, SinglesCsvImportDialog: true } }
+  });
+  expect(screen.getByText("configWhatnotFeeStatusTitle")).toBeVisible();
+  expect(screen.getByText("configWhatnotFeeStatusIncomplete")).toBeVisible();
+  expect(screen.getByRole("combobox", { name: "configWhatnotVerticalLabel" })).toBeVisible();
 });
 
 test("reproduces lowercase multi-star rarity typing in the mounted singles editor", async () => {

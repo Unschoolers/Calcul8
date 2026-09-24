@@ -11,6 +11,7 @@ export type ConfigWindowPorts = Pick<ConfigCapabilitySource, typeof configWindow
 
 const configWindowPortKeys = [
   "activeScopeType", "activeWorkspaceId", "adminImportSourceUserId", "adminImportSourceWorkspaceId",
+  "currentLotId", "hasLotSelected", "lots", "whatnotVertical", "feeProfilePreset", "platformFeePercent", "additionalFeePercent", "additionalFeeAppliesTo", "fixedFeePerOrder", "whatnotFeeSummary", "setCurrentLotWhatnotVertical",
   "boxesPurchased", "costInputMode", "currency", "hasProAccess", "includeTax", "isAdminImportInProgress",
   "packsPerBox", "purchaseDate", "purchaseShippingCost", "purchaseShippingCostCAD", "purchaseTaxPercent", "purchaseUiMode", "purchaseCostInputLabel",
   "sellingCurrency", "conversionInfo", "currentWorkspaceName", "purchaseCostInputValue", "totalCaseCost", "totalPacks",

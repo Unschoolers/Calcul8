@@ -2,12 +2,14 @@ import "./ConfigWindow.css";
 import AdminSyncImportCard from "./AdminSyncImportCard.vue";
 import AppFormLayout from "../../ui/AppFormLayout.vue";
 import { useConfigWindowPorts } from "./configWindowPorts.ts";
+import WhatnotLotSetupControl from "../WhatnotLotSetupControl.vue";
 
 export const ConfigWindow = {
   name: "ConfigWindow",
   components: {
     AdminSyncImportCard,
-    AppFormLayout
+    AppFormLayout,
+    WhatnotLotSetupControl
   },
   methods: {
     fmtCurrency(value: number | null | undefined, decimals = 2): string {

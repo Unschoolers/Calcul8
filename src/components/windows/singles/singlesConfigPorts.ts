@@ -6,7 +6,7 @@ import type { AppState } from "../../../types/app.ts";
 import type { SinglesWindowThis } from "./SinglesConfigWindow.definition.ts";
 
 export const singlesConfigPortKeys = [
-  "currentLotId", "lots", "currentLotCatalogSource", "singlesPurchases", "singlesSoldCountByPurchaseId",
+  "currentLotId", "lots", "currentLotCatalogSource", "whatnotVertical", "feeProfilePreset", "platformFeePercent", "additionalFeePercent", "additionalFeeAppliesTo", "fixedFeePerOrder", "whatnotFeeSummary", "setCurrentLotWhatnotVertical", "singlesPurchases", "singlesSoldCountByPurchaseId",
   "sellingCurrency", "exchangeRate", "preferredLanguage", "currency", "conversionInfo",
   "singlesPurchaseTotalCost", "singlesPurchaseTotalMarketValue",
   "showSinglesCsvMapperModal", "singlesCsvImportHeaders", "singlesCsvImportRows", "singlesCsvImportCurrency",

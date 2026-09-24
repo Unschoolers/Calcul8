@@ -38,7 +38,7 @@ test("choosing System Configuration from the account menu opens its dialog", asy
   expect(await screen.findByRole("dialog", { name: "configSystemConfigurationTitle" })).toBeVisible();
 });
 
-test("System Configuration explains the selected Whatnot lot's rate and period progress", async () => {
+test("System Configuration keeps Whatnot category editing in lot setup", async () => {
   const state = createShellState() as ReturnType<typeof createShellState> & Record<string, unknown>;
   Object.assign(state, {
     showSystemConfigurationDialog: true,
@@ -70,20 +70,7 @@ test("System Configuration explains the selected Whatnot lot's rate and period p
 
   renderWithApp(Harness);
 
-  expect(await screen.findByText("configWhatnotFeeStatusTitle")).toBeVisible();
-  expect(document.body.textContent).toContain("7.5");
-  expect(screen.getByText("configWhatnotFeeStatusPreviousGross", { exact: false })).toBeVisible();
-  expect(screen.getByText("configWhatnotFeeStatusProgress", { exact: false })).toBeVisible();
-  expect(screen.getByText("configWhatnotFeeStatusIncomplete", { exact: false })).toBeVisible();
-
-  (state.setCurrentLotWhatnotVertical as (vertical: string) => void)("fashion");
-  await nextTick();
-  expect(document.body.textContent).toContain("6.5");
-  expect(screen.getByRole("dialog", { name: "configSystemConfigurationTitle" })).toBeVisible();
-  state.feeProfilePreset = "none";
-  await nextTick();
+  expect(screen.queryByText("configWhatnotVerticalLabel")).toBeNull();
   expect(screen.queryByText("configWhatnotFeeStatusTitle")).toBeNull();
-  state.feeProfilePreset = "whatnot";
-  await nextTick();
-  expect(screen.getByText("configWhatnotFeeStatusTitle")).toBeVisible();
+  expect(screen.getByRole("dialog", { name: "configSystemConfigurationTitle" })).toBeVisible();
 });

@@ -7,6 +7,7 @@ import AutoCalculateModal from "../../src/components/modals/AutoCalculateModal.v
 import SaleEditorModal from "../../src/components/shell/SaleEditorModal.vue";
 import PortfolioReportModal from "../../src/components/shell/PortfolioReportModal.vue";
 import SystemConfigurationDialog from "../../src/components/shell/SystemConfigurationDialog.vue";
+import ConfigWindow from "../../src/components/windows/config/ConfigWindow.vue";
 import { createInitialState } from "../../src/app-core/state.ts";
 import { configLotMethods } from "../../src/app-core/methods/config-lots.ts";
 import WorkspaceModals from "../../src/components/shell/WorkspaceModals.vue";
@@ -15,6 +16,7 @@ import WhatnotCsvImportDialog from "../../src/components/windows/whatnot/Whatnot
 import { commerceDialogPortsKey } from "../../src/components/modals/commerceDialogPorts.ts";
 import { shellPortsKey } from "../../src/components/shell/shellPorts.ts";
 import { createWorkspaceDialogPorts, workspaceDialogPortsKey } from "../../src/components/shell/workspaceDialogPorts.ts";
+import { createConfigWindowPorts, configWindowPortsKey } from "../../src/components/windows/config/configWindowPorts.ts";
 import { whatnotDialogPortsKey } from "../../src/components/windows/whatnot/whatnotDialogPorts.ts";
 import { renderWithApp } from "./render.ts";
 import { makeLot } from "../helpers/fixtures.ts";
@@ -384,7 +386,7 @@ describe("workflow dialog scenarios", () => {
     expect(ctx.showSystemConfigurationDialog).toBe(false);
   });
 
-  test("reactively updates an inheriting legacy lot category and hint", async () => {
+  test("bulk lot setup reactively updates and persists an inheriting legacy category", async () => {
     const legacyLot = makeLot({ id: 81, usesSystemPricingDefaults: true, whatnotVertical: null });
     const state = reactive({
       ...createInitialState(),
@@ -397,8 +399,26 @@ describe("workflow dialog scenarios", () => {
       getCurrentSetup: configLotMethods.getCurrentSetup,
       autoSaveSetup: configLotMethods.autoSaveSetup,
       setCurrentLotWhatnotVertical: configLotMethods.setCurrentLotWhatnotVertical
+    }) as unknown as ReturnType<typeof createInitialState> & Record<string, any>;
+    state.whatnotFeeSummary = {
+      currentTier: 1, previousPeriodGrossCad: 22_500, currentPeriodGrossCad: 4_000,
+      nextThresholdCad: 10_000, isEstimate: true, missingLotIds: [81],
+      periodStart: "2026-09-21", periodEndExclusive: "2026-10-19",
+      previousPeriodStart: "2026-08-24", previousPeriodEndExclusive: "2026-09-21"
+    };
+    state.t = translate;
+    state.formatCurrency = (value: number | null | undefined) => String(value ?? 0);
+    state.formatDate = () => "2026-09-24";
+    state.currentWorkspaceName = "Personal";
+    state.onPurchaseConfigChange = vi.fn();
+    state.updatePurchaseCostInput = vi.fn();
+    state.requestPurchaseUiMode = vi.fn();
+    renderWithApp(ConfigWindow, {
+      global: {
+        provide: { [configWindowPortsKey as symbol]: createConfigWindowPorts(state as never) },
+        stubs: { AdminSyncImportCard: true }
+      }
     });
-    renderWithCapabilities(SystemConfigurationDialog, workspaceDialogPortsKey, createWorkspaceDialogPorts(state as never));
 
     expect(screen.getByText("Choose a category to estimate commission.")).toBeVisible();
     const category = screen.getByRole("combobox", { name: "Whatnot category" });
@@ -408,6 +428,8 @@ describe("workflow dialog scenarios", () => {
     expect(state.whatnotVertical).toBe("coins");
     expect(state.lots[0]?.whatnotVertical).toBe("coins");
     expect(screen.queryByText("Choose a category to estimate commission.")).toBeNull();
+    expect(screen.getByText("configWhatnotFeeStatusTitle")).toBeVisible();
+    expect(screen.getByText("configWhatnotFeeStatusProgress", { exact: false })).toBeVisible();
 
     await fireEvent.mouseDown(category);
     await fireEvent.click(await screen.findByText("Sports"));

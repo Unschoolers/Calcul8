@@ -1,3 +1,4 @@
+                <WhatnotLotSetupControl v-if="hasLotSelected" :vertical="whatnotVertical" :fee-profile-preset="feeProfilePreset" :summary="whatnotFeeSummary ?? null" :platform-fee-percent="platformFeePercent" :additional-fee-percent="additionalFeePercent" :additional-fee-applies-to="additionalFeeAppliesTo" :fixed-fee-per-order="fixedFeePerOrder" :t="t" @update:vertical="setCurrentLotWhatnotVertical" />
                 <v-card
                   id="guided-onboarding-bulk-summary"
                   data-driver-target="guided-onboarding-bulk-summary"

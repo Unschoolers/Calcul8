@@ -7,6 +7,7 @@ import AppStickyActionFooter from "../../ui/AppStickyActionFooter.vue";
 import SinglesCsvImportDialog from "./SinglesCsvImportDialog.vue";
 import SinglesPurchasingCard from "./SinglesPurchasingCard.vue";
 import AdminSyncImportCard from "../config/AdminSyncImportCard.vue";
+import WhatnotLotSetupControl from "../WhatnotLotSetupControl.vue";
 import { singlesConfigWindowDefinition } from "./SinglesConfigWindow.definition.ts";
 
 export const SinglesConfigWindow: any = {
@@ -18,6 +19,7 @@ export const SinglesConfigWindow: any = {
     AppStickyActionFooter,
     SinglesPurchasingCard,
     SinglesCsvImportDialog,
-    AdminSyncImportCard
+    AdminSyncImportCard,
+    WhatnotLotSetupControl
   }
 };
