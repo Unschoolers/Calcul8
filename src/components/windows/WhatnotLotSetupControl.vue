@@ -54,27 +54,52 @@ const status = computed(() => {
 
 
 <template>
-  <v-card v-if="showCategory !== false || status" variant="tonal" class="whatnot-lot-setup mb-3">
+  <v-card v-if="showCategory !== false || status" variant="outlined" elevation="1" class="whatnot-lot-setup mb-3">
     <v-card-text>
       <template v-if="showCategory !== false">
         <v-select :model-value="vertical" :items="verticalItems" :label="t('configWhatnotVerticalLabel')" variant="outlined" density="compact" hide-details @update:model-value="emit('update:vertical', $event)" />
         <v-alert v-if="vertical === null" type="warning" density="compact" variant="tonal" class="mt-2">{{ t('configWhatnotVerticalLegacyHint') }}</v-alert>
       </template>
-      <section v-if="status" class="whatnot-fee-status mt-3" :aria-label="t('configWhatnotFeeStatusTitle')">
-        <h4>{{ t('configWhatnotFeeStatusTitle') }}</h4>
-        <p>{{ t('configWhatnotFeeStatusRate', { rate: status.rate, tier: status.tier }) }}</p>
-        <p>{{ t('configWhatnotFeeStatusPreviousGross', { amount: status.previousGross.toLocaleString(), start: status.previousStart, end: status.previousEnd }) }}</p>
-        <p v-if="status.nextThreshold">{{ t('configWhatnotFeeStatusProgress', { amount: status.currentGross.toLocaleString(), threshold: status.nextThreshold.toLocaleString(), start: status.periodStart, end: status.periodEnd }) }}</p>
-        <p v-else>{{ t('configWhatnotFeeStatusMaxTier', { start: status.periodStart, end: status.periodEnd }) }}</p>
-        <v-progress-linear v-if="status.nextThreshold" :model-value="status.progress" color="secondary" rounded height="6" class="mb-2" />
-        <p class="mb-1">{{ t('configWhatnotFeeStatusEstimate') }}</p>
-        <p v-if="status.incomplete" class="mb-0">{{ t('configWhatnotFeeStatusIncomplete') }}</p>
+      <section v-if="status" class="whatnot-fee-summary" :class="{ 'mt-3': showCategory !== false }" :aria-label="t('configWhatnotFeeStatusTitle')">
+        <div class="whatnot-fee-summary__top">
+          <h4>{{ t('configWhatnotFeeStatusTitle') }}</h4>
+          <div class="whatnot-fee-summary__rate" :aria-label="t('configWhatnotFeeStatusRate', { rate: status.rate, tier: status.tier })">
+            <span>{{ status.rate }}%</span><span class="whatnot-fee-summary__tier">{{ status.tier }}</span>
+          </div>
+        </div>
+        <p v-if="status.nextThreshold" class="whatnot-fee-summary__progress-label">
+          {{ t('configWhatnotFeeStatusProgress', { amount: status.currentGross.toLocaleString(), threshold: status.nextThreshold.toLocaleString() }) }}
+        </p>
+        <p v-else class="whatnot-fee-summary__progress-label">{{ t('configWhatnotFeeStatusMaxTier') }}</p>
+        <v-progress-linear v-if="status.nextThreshold" :model-value="status.progress" color="secondary" rounded height="5" class="whatnot-fee-summary__bar" :aria-label="t('configWhatnotFeeStatusProgressBar', { percent: Math.round(status.progress) })" />
+        <p v-if="status.incomplete" class="whatnot-fee-summary__warning" role="status">{{ t('configWhatnotFeeStatusIncomplete') }}</p>
+        <details class="whatnot-fee-summary__details">
+          <summary>{{ t('configWhatnotFeeStatusDetails') }}</summary>
+          <p>{{ t('configWhatnotFeeStatusCurrentPeriod', { start: status.periodStart, end: status.periodEnd }) }}</p>
+          <p>{{ t('configWhatnotFeeStatusPreviousGross', { amount: status.previousGross.toLocaleString(), start: status.previousStart, end: status.previousEnd }) }}</p>
+          <p class="mb-0">{{ t('configWhatnotFeeStatusEstimate') }}</p>
+        </details>
       </section>
     </v-card-text>
   </v-card>
 </template>
 
 <style scoped>
-.whatnot-lot-setup { border-color: rgba(var(--v-theme-secondary), .28); }
-.whatnot-fee-status p { margin: 0 0 .35rem; }
+.whatnot-lot-setup { border-color: rgba(var(--v-theme-secondary), .36); border-top: 3px solid rgb(var(--v-theme-secondary)); background: rgb(var(--v-theme-surface)); }
+.whatnot-fee-summary { min-width: 0; }
+.whatnot-fee-summary__top { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.whatnot-fee-summary h4 { margin: 0; font-size: .875rem; font-weight: 600; }
+.whatnot-fee-summary__rate { display: flex; align-items: baseline; gap: .35rem; color: rgb(var(--v-theme-secondary)); font-size: 1.25rem; font-weight: 700; white-space: nowrap; }
+.whatnot-fee-summary__tier { color: rgb(var(--v-theme-on-surface)); font-size: .75rem; font-weight: 500; }
+.whatnot-fee-summary__progress-label { margin: .35rem 0 .2rem; font-size: .8rem; line-height: 1.35; }
+.whatnot-fee-summary__bar { margin-block: .25rem .45rem; }
+.whatnot-fee-summary__warning { margin: .35rem 0; color: rgb(var(--v-theme-warning)); font-size: .75rem; }
+.whatnot-fee-summary__details { margin-top: .3rem; font-size: .75rem; }
+.whatnot-fee-summary__details summary { color: rgb(var(--v-theme-secondary)); cursor: pointer; }
+.whatnot-fee-summary__details p { margin: .35rem 0; line-height: 1.4; }
+@media (max-width: 480px) {
+  .whatnot-fee-summary__top { align-items: center; flex-wrap: wrap; }
+  .whatnot-fee-summary h4 { flex: 1 1 auto; }
+  .whatnot-fee-summary__rate { font-size: 1.125rem; }
+}
 </style>

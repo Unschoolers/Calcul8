@@ -3,13 +3,14 @@ import { defineComponent, h, reactive } from "vue";
 import { expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
 import type { WhatnotVertical } from "../../src/types/app.ts";
+import type { WhatnotFeePeriodSummary } from "../../src/app-core/shared/whatnot-fee-summary.ts";
 import { createConfigWindowPorts, configWindowPortsKey } from "../../src/components/windows/config/configWindowPorts.ts";
 import ConfigWindow from "../../src/components/windows/config/ConfigWindow.vue";
 import { createSinglesConfigPorts, singlesConfigPortsKey } from "../../src/components/windows/singles/singlesConfigPorts.ts";
 import SinglesConfigWindow from "../../src/components/windows/singles/SinglesConfigWindow.vue";
 import { renderWithApp } from "./render.ts";
 
-const summary = {
+const summary: WhatnotFeePeriodSummary = {
   currentTier: 2, previousPeriodGrossCad: 22_500, currentPeriodGrossCad: 4_000,
   nextThresholdCad: 10_000, isEstimate: true, missingLotIds: [2],
   periodStart: "2026-09-21", periodEndExclusive: "2026-10-19",
@@ -69,8 +70,16 @@ test("bulk lot setup keeps live Whatnot fee status while category editing lives 
   expect(screen.queryByText("configWhatnotVerticalLegacyHint")).toBeNull();
   expect(screen.queryByText("configWhatnotFeeStatusTitle")).toBeNull();
   state.whatnotVertical = "tcg";
-  await vi.waitFor(() => expect(view.container.textContent).toContain("configWhatnotFeeStatusTitle"));
+  await vi.waitFor(() => expect(view.container.querySelector(".whatnot-fee-summary")).not.toBeNull());
+  expect(view.container.querySelector(".whatnot-fee-summary")?.classList.contains("mt-3")).toBe(false);
+  expect(view.container.textContent).toContain("configWhatnotFeeStatusTitle");
+  expect(view.container.textContent).toContain("7.5%");
   expect(view.container.textContent).toContain("configWhatnotFeeStatusProgress");
+  const details = view.container.querySelector("details");
+  expect(details?.open).toBe(false);
+  expect(details?.textContent).toContain("configWhatnotFeeStatusEstimate");
+  await fireEvent.click(details!.querySelector("summary")!);
+  expect(details?.open).toBe(true);
   expect(view.container.textContent).toContain("configWhatnotFeeStatusIncomplete");
 });
 
@@ -82,13 +91,17 @@ test("singles setup retains the live fee summary without exposing the category e
       stubs: { VSelect: SelectStub(), AdminSyncImportCard: true, SinglesCsvImportDialog: true }
     }
   });
-  expect(view.container.textContent).toContain("configWhatnotFeeStatusTitle");
+  expect(view.container.querySelector(".whatnot-fee-summary")).not.toBeNull();
   expect(view.container.textContent).toContain("7.5");
   expect(screen.queryByRole("button", { name: "configWhatnotVerticalLabel" })).toBeNull();
   state.whatnotVertical = "fashion";
   state.lots[0]!.whatnotVertical = "fashion";
   await vi.waitFor(() => expect(view.container.textContent).toContain("6.5"));
+  state.whatnotFeeSummary = { ...summary, currentPeriodGrossCad: 90_000, nextThresholdCad: null };
+  await vi.waitFor(() => expect(view.container.textContent).toContain("configWhatnotFeeStatusMaxTier"));
+  expect(view.container.querySelector(".whatnot-fee-summary__bar")).toBeNull();
+  expect(view.container.querySelector(".whatnot-fee-summary")?.classList.contains("mt-3")).toBe(false);
   state.feeProfilePreset = "none";
-  await vi.waitFor(() => expect(view.container.textContent).not.toContain("configWhatnotFeeStatusTitle"));
+  await vi.waitFor(() => expect(view.container.querySelector(".whatnot-fee-summary")).toBeNull());
   expect(screen.queryByRole("button", { name: "configWhatnotVerticalLabel" })).toBeNull();
 });
