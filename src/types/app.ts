@@ -687,6 +687,7 @@ export interface AppState extends LotSetup {
   lotHydrationRevision: number;
   newLotName: string;
   renameLotName: string;
+  renameLotWhatnotVertical: WhatnotVertical | null;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   newLotWhatnotVertical: WhatnotVertical | null;

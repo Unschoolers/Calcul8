@@ -479,6 +479,7 @@ export type LotConfigurationContext = Pick<
   | "purchaseTaxPercent"
   | "purchaseUiMode"
   | "renameLotName"
+  | "renameLotWhatnotVertical"
   | "sellingCurrency"
   | "sellingShippingPerOrder"
   | "sellingTaxPercent"

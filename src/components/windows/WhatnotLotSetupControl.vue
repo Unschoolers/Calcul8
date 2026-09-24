@@ -5,6 +5,7 @@ import type { AdditionalFeeAppliesTo, WhatnotVertical } from "../../types/app.ts
 
 const props = defineProps<{
   vertical: WhatnotVertical | null;
+  showCategory?: boolean;
   feeProfilePreset: string;
   summary: WhatnotFeePeriodSummary | null;
   platformFeePercent: number;
@@ -53,10 +54,12 @@ const status = computed(() => {
 
 
 <template>
-  <v-card variant="tonal" class="whatnot-lot-setup mb-3">
+  <v-card v-if="showCategory !== false || status" variant="tonal" class="whatnot-lot-setup mb-3">
     <v-card-text>
-      <v-select :model-value="vertical" :items="verticalItems" :label="t('configWhatnotVerticalLabel')" variant="outlined" density="compact" hide-details @update:model-value="emit('update:vertical', $event)" />
-      <v-alert v-if="vertical === null" type="warning" density="compact" variant="tonal" class="mt-2">{{ t('configWhatnotVerticalLegacyHint') }}</v-alert>
+      <template v-if="showCategory !== false">
+        <v-select :model-value="vertical" :items="verticalItems" :label="t('configWhatnotVerticalLabel')" variant="outlined" density="compact" hide-details @update:model-value="emit('update:vertical', $event)" />
+        <v-alert v-if="vertical === null" type="warning" density="compact" variant="tonal" class="mt-2">{{ t('configWhatnotVerticalLegacyHint') }}</v-alert>
+      </template>
       <section v-if="status" class="whatnot-fee-status mt-3" :aria-label="t('configWhatnotFeeStatusTitle')">
         <h4>{{ t('configWhatnotFeeStatusTitle') }}</h4>
         <p>{{ t('configWhatnotFeeStatusRate', { rate: status.rate, tier: status.tier }) }}</p>

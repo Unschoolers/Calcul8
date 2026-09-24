@@ -386,15 +386,15 @@ describe("workflow dialog scenarios", () => {
     expect(ctx.showSystemConfigurationDialog).toBe(false);
   });
 
-  test("bulk lot setup reactively updates and persists an inheriting legacy category", async () => {
-    const legacyLot = makeLot({ id: 81, usesSystemPricingDefaults: true, whatnotVertical: null });
+  test("bulk lot setup displays fee status without exposing the category editor", async () => {
+    const categorizedLot = makeLot({ id: 81, usesSystemPricingDefaults: true, whatnotVertical: "coins" });
     const state = reactive({
       ...createInitialState(),
       ...systemConfigurationContext(),
-      currentLotId: legacyLot.id,
-      lots: [legacyLot],
+      currentLotId: categorizedLot.id,
+      lots: [categorizedLot],
       currentLotUsesSystemPricingDefaults: true,
-      whatnotVertical: null,
+      whatnotVertical: "coins",
       saveLotsToStorage: vi.fn(),
       getCurrentSetup: configLotMethods.getCurrentSetup,
       autoSaveSetup: configLotMethods.autoSaveSetup,
@@ -420,22 +420,9 @@ describe("workflow dialog scenarios", () => {
       }
     });
 
-    expect(screen.getByText("Choose a category to estimate commission.")).toBeVisible();
-    const category = screen.getByRole("combobox", { name: "Whatnot category" });
-    await fireEvent.mouseDown(category);
-    await fireEvent.click(await screen.findByText("Coins"));
-
-    expect(state.whatnotVertical).toBe("coins");
-    expect(state.lots[0]?.whatnotVertical).toBe("coins");
-    expect(screen.queryByText("Choose a category to estimate commission.")).toBeNull();
     expect(screen.getByText("configWhatnotFeeStatusTitle")).toBeVisible();
     expect(screen.getByText("configWhatnotFeeStatusProgress", { exact: false })).toBeVisible();
-
-    await fireEvent.mouseDown(category);
-    await fireEvent.click(await screen.findByText("Sports"));
-
-    expect(state.whatnotVertical).toBe("sports");
-    expect(state.lots[0]?.whatnotVertical).toBe("sports");
+    expect(screen.queryByRole("combobox", { name: "Whatnot category" })).toBeNull();
   });
 
   test("closes and prints the portfolio report through its preserved actions", async () => {

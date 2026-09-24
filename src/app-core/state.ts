@@ -234,6 +234,7 @@ export function createInitialState(): AppState {
     lotHydrationRevision: 0,
     newLotName: "",
     renameLotName: "",
+    renameLotWhatnotVertical: null,
     newLotType: "bulk",
     newLotCatalogSource: resolveDefaultSinglesCatalogSourceFromEnv(),
     newLotWhatnotVertical: null,

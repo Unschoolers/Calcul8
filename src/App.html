@@ -229,6 +229,18 @@
           <app-form-layout>
               <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="renameCurrentLot"></v-text-field>
+              <v-select v-model="renameLotWhatnotVertical" :items="[
+                { title: t('configWhatnotVerticalUnclassified'), value: null },
+                { title: t('configWhatnotVerticalSports'), value: 'sports' },
+                { title: t('configWhatnotVerticalTcg'), value: 'tcg' },
+                { title: t('configWhatnotVerticalFashion'), value: 'fashion' },
+                { title: t('configWhatnotVerticalOtherCollectibles'), value: 'other_collectibles' },
+                { title: t('configWhatnotVerticalCoins'), value: 'coins' },
+                { title: t('configWhatnotVerticalOther'), value: 'other' }
+              ]" :label="t('configWhatnotVerticalLabel')" variant="outlined" />
+              <div v-if="renameLotWhatnotVertical === null" class="text-caption text-medium-emphasis mt-1">
+                {{ t('configWhatnotVerticalLegacyHint') }}
+              </div>
               <div v-if="currentLotType === 'singles'" class="mt-3">
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle :model-value="currentLotCatalogSource" mandatory divided density="compact"

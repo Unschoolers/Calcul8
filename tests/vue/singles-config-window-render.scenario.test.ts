@@ -58,7 +58,7 @@ test("singles window renders its purchasing view through injected ports", () => 
   expect(view.container.querySelector(".singles-grid-card")).not.toBeNull();
 });
 
-test("singles lot setup displays its editable category and live fee status", async () => {
+test("singles lot setup displays fee status while category editing stays in the lot dialog", async () => {
   const state = createInitialState();
   state.currentLotId = 1;
   state.lots = [{ id: 1, name: "Singles", lotType: "singles", singlesCatalogSource: "pokemon", whatnotVertical: "tcg", feeProfilePreset: "whatnot" } as never];
@@ -81,7 +81,7 @@ test("singles lot setup displays its editable category and live fee status", asy
   });
   expect(screen.getByText("configWhatnotFeeStatusTitle")).toBeVisible();
   expect(screen.getByText("configWhatnotFeeStatusIncomplete")).toBeVisible();
-  expect(screen.getByRole("combobox", { name: "configWhatnotVerticalLabel" })).toBeVisible();
+  expect(screen.queryByRole("combobox", { name: "configWhatnotVerticalLabel" })).toBeNull();
 });
 
 test("reproduces lowercase multi-star rarity typing in the mounted singles editor", async () => {

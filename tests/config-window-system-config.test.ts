@@ -54,7 +54,7 @@ test("SystemConfigurationDialog keeps random-hit spots scoped to bulk lots", () 
   assert.equal((template.match(/v-if="currentLotType !== 'singles'"/g) ?? []).length, 2);
 });
 
-test("Whatnot vertical is required for new lots and editable in both selected lot setup screens", () => {
+test("Whatnot vertical is required for new lots and edited through the lot dialog", () => {
   const appTemplate = readFileSync("src/App.html", "utf8");
   const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
   const bulkTemplate = readFileSync("src/components/windows/config/ConfigWindow.html", "utf8");
@@ -62,8 +62,9 @@ test("Whatnot vertical is required for new lots and editable in both selected lo
 
   assert.match(appTemplate, /v-model="newLotWhatnotVertical"[\s\S]*?configWhatnotVerticalLabel[\s\S]*?required/);
   assert.doesNotMatch(systemTemplate, /configWhatnotVerticalLabel|configWhatnotVerticalLegacyHint|setCurrentLotWhatnotVertical/);
-  assert.match(bulkTemplate, /WhatnotLotSetupControl[\s\S]*?setCurrentLotWhatnotVertical/);
-  assert.match(singlesTemplate, /WhatnotLotSetupControl[\s\S]*?setCurrentLotWhatnotVertical/);
+  assert.match(bulkTemplate, /WhatnotLotSetupControl[\s\S]*?:show-category="false"/);
+  assert.match(singlesTemplate, /WhatnotLotSetupControl[\s\S]*?:show-category="false"/);
+  assert.match(appTemplate, /v-model="renameLotWhatnotVertical"[\s\S]*?configWhatnotVerticalLabel/);
 
   const en = JSON.parse(readFileSync("src/app-core/i18n/locales/en/config.json", "utf8")) as Record<string, string>;
   const fr = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/config.json", "utf8")) as Record<string, string>;

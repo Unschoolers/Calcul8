@@ -153,6 +153,26 @@ test("add/remove/clear singles rows only mutate in singles mode", () => {
   assert.equal((bulkCtx.singlesPurchases as unknown[]).length, 1);
 });
 
+test("editing a lot stages its Whatnot category until save, and saves category-only edits", () => {
+  const lot = makeLot();
+  lot.whatnotVertical = "tcg";
+  const ctx = createContext({ lots: [lot], currentLotId: lot.id, whatnotVertical: "tcg" });
+
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  assert.equal(ctx.renameLotWhatnotVertical, "tcg");
+  ctx.renameLotWhatnotVertical = "sports";
+  ctx.showRenameLotModal = false;
+  assert.equal(lot.whatnotVertical, "tcg", "canceling the dialog must not persist its draft");
+
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  ctx.renameLotWhatnotVertical = "sports";
+  configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.whatnotVertical, "sports");
+  assert.equal(ctx.whatnotVertical, "sports");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(ctx.showRenameLotModal, false);
+});
+
 test("addSinglesPurchaseRow generates a non-colliding id when Date.now matches an existing row id", () => {
   const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(5000);
   try {

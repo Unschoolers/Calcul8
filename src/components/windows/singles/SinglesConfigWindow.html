@@ -1,5 +1,5 @@
 <v-row class="singles-config-layout">
-  <v-col v-if="currentLotId != null" cols="12" class="pb-0"><WhatnotLotSetupControl :vertical="whatnotVertical" :fee-profile-preset="feeProfilePreset" :summary="whatnotFeeSummary ?? null" :platform-fee-percent="platformFeePercent" :additional-fee-percent="additionalFeePercent" :additional-fee-applies-to="additionalFeeAppliesTo" :fixed-fee-per-order="fixedFeePerOrder" :t="t" @update:vertical="setCurrentLotWhatnotVertical" /></v-col>
+  <v-col v-if="currentLotId != null" cols="12" class="pb-0"><WhatnotLotSetupControl :vertical="whatnotVertical" :show-category="false" :fee-profile-preset="feeProfilePreset" :summary="whatnotFeeSummary ?? null" :platform-fee-percent="platformFeePercent" :additional-fee-percent="additionalFeePercent" :additional-fee-applies-to="additionalFeeAppliesTo" :fixed-fee-per-order="fixedFeePerOrder" :t="t" /></v-col>
   <singles-purchasing-card></singles-purchasing-card>
 
   <admin-sync-import-card></admin-sync-import-card>

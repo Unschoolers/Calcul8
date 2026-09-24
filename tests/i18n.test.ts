@@ -43,6 +43,16 @@ test("Whatnot lot category prompts and labels are localized in English and Frenc
   assert.equal(translateAppMessage("fr-CA", "configWhatnotVerticalCoins"), "Pièces de monnaie");
 });
 
+test("Whatnot fee status translations interpolate tier, rate, amounts, and dates", () => {
+  for (const language of ["en", "fr-CA"]) {
+    assert.equal(translateAppMessage(language, "configWhatnotFeeStatusTier", { tier: 3 }).includes("{tier}"), false);
+    assert.equal(translateAppMessage(language, "configWhatnotFeeStatusRate", { tier: "Tier 3", rate: 4.5 }).includes("{rate}"), false);
+    assert.equal(translateAppMessage(language, "configWhatnotFeeStatusPreviousGross", { amount: "1,250", start: "May 1", end: "May 31" }).includes("{amount}"), false);
+    assert.equal(translateAppMessage(language, "configWhatnotFeeStatusProgress", { amount: "1,250", threshold: "2,000", start: "Jun 1", end: "Jun 30" }).includes("{threshold}"), false);
+    assert.equal(translateAppMessage(language, "configWhatnotFeeStatusMaxTier", { start: "Jun 1", end: "Jun 30" }).includes("{start}"), false);
+  }
+});
+
 test("first-run onboarding uses seller-facing inventory language", () => {
   const englishOnboarding = [
     "onboardingIntroTitle",

@@ -57,7 +57,7 @@ function createState(lotType: "bulk" | "singles", vertical: WhatnotVertical | nu
   return state;
 }
 
-test("bulk lot setup shows the legacy category hint and live Whatnot fee status", async () => {
+test("bulk lot setup keeps live Whatnot fee status while category editing lives in the edit dialog", async () => {
   const state = createState("bulk", null);
   const view = renderWithApp(ConfigWindow, {
     global: {
@@ -65,7 +65,8 @@ test("bulk lot setup shows the legacy category hint and live Whatnot fee status"
       stubs: { VSelect: SelectStub(), AdminSyncImportCard: true }
     }
   });
-  expect(await screen.findByText("configWhatnotVerticalLegacyHint")).toBeVisible();
+  expect(screen.queryByText("configWhatnotVerticalLabel")).toBeNull();
+  expect(screen.queryByText("configWhatnotVerticalLegacyHint")).toBeNull();
   expect(screen.queryByText("configWhatnotFeeStatusTitle")).toBeNull();
   state.whatnotVertical = "tcg";
   await vi.waitFor(() => expect(view.container.textContent).toContain("configWhatnotFeeStatusTitle"));
@@ -73,7 +74,7 @@ test("bulk lot setup shows the legacy category hint and live Whatnot fee status"
   expect(view.container.textContent).toContain("configWhatnotFeeStatusIncomplete");
 });
 
-test("singles category selection persists through its port and updates live rate; none still allows editing", async () => {
+test("singles setup retains the live fee summary without exposing the category editor", async () => {
   const state = createState("singles");
   const view = renderWithApp(SinglesConfigWindow, {
     global: {
@@ -83,14 +84,11 @@ test("singles category selection persists through its port and updates live rate
   });
   expect(view.container.textContent).toContain("configWhatnotFeeStatusTitle");
   expect(view.container.textContent).toContain("7.5");
-  await fireEvent.click(screen.getByRole("button", { name: "configWhatnotVerticalLabel" }));
-  await vi.waitFor(() => expect(state.whatnotVertical).toBe("fashion"));
-  expect(state.lots[0]?.whatnotVertical).toBe("fashion");
+  expect(screen.queryByRole("button", { name: "configWhatnotVerticalLabel" })).toBeNull();
+  state.whatnotVertical = "fashion";
+  state.lots[0]!.whatnotVertical = "fashion";
   await vi.waitFor(() => expect(view.container.textContent).toContain("6.5"));
   state.feeProfilePreset = "none";
   await vi.waitFor(() => expect(view.container.textContent).not.toContain("configWhatnotFeeStatusTitle"));
-  expect(screen.getByRole("button", { name: "configWhatnotVerticalLabel" })).toBeVisible();
-  state.whatnotVertical = "tcg";
-  await fireEvent.click(screen.getByRole("button", { name: "configWhatnotVerticalLabel" }));
-  await vi.waitFor(() => expect(state.lots[0]?.whatnotVertical).toBe("fashion"));
+  expect(screen.queryByRole("button", { name: "configWhatnotVerticalLabel" })).toBeNull();
 });

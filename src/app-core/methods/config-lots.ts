@@ -313,6 +313,7 @@ export const configLotMethods = {
     const lot = this.lots.find((p) => p.id === this.currentLotId);
     if (!lot) return;
     this.renameLotName = lot.name;
+    this.renameLotWhatnotVertical = normalizeWhatnotVertical(lot.whatnotVertical);
     this.showRenameLotModal = true;
   },
 
@@ -331,22 +332,28 @@ export const configLotMethods = {
       return;
     }
 
-    if (!renameResult.changed) {
+    const nextVertical = normalizeWhatnotVertical(this.renameLotWhatnotVertical);
+    const categoryChanged = normalizeWhatnotVertical(lot.whatnotVertical) !== nextVertical;
+    if (!renameResult.changed && !categoryChanged) {
       this.showRenameLotModal = false;
       return;
     }
 
-    lot.name = renameResult.nextName;
+    if (renameResult.changed) lot.name = renameResult.nextName;
+    lot.whatnotVertical = nextVertical;
+    this.whatnotVertical = nextVertical;
     this.saveLotsToStorage();
     queueWorkspaceConfigSyncPush(this);
+    if (categoryChanged) queueCloudConfigSyncPush(this);
     this.showRenameLotModal = false;
     this.renameLotName = "";
+    this.renameLotWhatnotVertical = nextVertical;
 
     if (this.currentTab === "portfolio") {
       void this.$nextTick(() => this.initPortfolioChart());
     }
 
-    this.notify("Lot renamed", "success");
+    if (renameResult.changed) this.notify("Lot renamed", "success");
   },
 
   loadLot(): void {
