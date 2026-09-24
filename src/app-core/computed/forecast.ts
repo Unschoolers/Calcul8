@@ -25,6 +25,7 @@ import {
   pickBestForecastScenario,
   type ForecastScenario
 } from "./forecast-scenarios.ts";
+import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
 
 type LiveForecastScenario = ForecastScenario<"item" | "box" | "rtyh" | "singles-suggested">;
 
@@ -39,6 +40,8 @@ function buildLiveForecastScenario(
     additionalFeePercent: number;
     additionalFeeAppliesTo: "sale_only" | "sale_plus_shipping";
     fixedFeePerOrder: number;
+    whatnotVertical?: import("../../types/app.ts").WhatnotVertical | null;
+    whatnotFeeSummary?: { currentTier: 0 | 1 | 2 | 3 | 4 | 5 | 6; periodStart: string | null } | null;
   },
   payload: {
     id: LiveForecastScenario["id"];
@@ -58,7 +61,7 @@ function buildLiveForecastScenario(
     baseCost: Math.max(0, Number(context.totalCaseCost) || 0),
     sellingTaxPercent: context.sellingTaxPercent,
     shippingPerOrder: context.sellingShippingPerOrder,
-    feeProfileInput: context
+    feeProfileInput: resolveEffectiveWhatnotFeeInput(context, context.whatnotFeeSummary)
   });
 }
 
@@ -250,7 +253,7 @@ export const forecastComputed: Pick<
       this.remainingNetRevenueForTarget,
       this.sellingTaxPercent,
       this.sellingShippingPerOrder,
-      this
+      resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary)
     );
   },
 
@@ -262,7 +265,7 @@ export const forecastComputed: Pick<
       this.remainingNetRevenueForTarget,
       this.sellingTaxPercent,
       this.sellingShippingPerOrder,
-      this
+      resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary)
     );
   },
 
@@ -274,7 +277,7 @@ export const forecastComputed: Pick<
       this.remainingNetRevenueForTarget,
       this.sellingTaxPercent,
       this.sellingShippingPerOrder,
-      this
+      resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary)
     );
   },
 
@@ -397,4 +400,3 @@ export const forecastComputed: Pick<
     return calculateSparklineGradient(this.sales, this.totalCaseCost, this.sellingTaxPercent, this);
   }
 };
-

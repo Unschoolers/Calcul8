@@ -45,7 +45,7 @@ import { recordWheelSessionSpin } from "../services/wheelSessionState.ts";
 type WheelSpinCommandContext = GameSessionStateContext
   & Pick<GameCoordinatorContext,
     | "lots" | "addWheelSaleToLot" | "wheelConfigs" | "activeWheelConfigId"
-    | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess"
+    | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess" | "whatnotFeeSummary"
   >
   & Pick<GameHostState,
     | "wheelAutospinEnabled" | "wheelSoundEnabled" | "wheelCanvasSize" | "wheelChaseDialog"
@@ -511,7 +511,8 @@ export const wheelSpinMethods = {
           config: config!, tierId: slot.tier, cost: slot.cost,
           packsCount: slot.packsCount, deductionType: slot.deductionType,
           label: slot.name, lotId: tier.boundLotId, lots,
-          singlesEntryId: tier.boundSinglesId, slotIndex, slotColor: slot.color
+          singlesEntryId: tier.boundSinglesId, slotIndex, slotColor: slot.color,
+          whatnotFeeSummary: this.whatnotFeeSummary
         }, this, recordController, isCurrent);
         if (!isCurrent()) return;
         if (!sale) {
@@ -632,5 +633,3 @@ export const wheelSpinMethods = {
     void broadcastWheelSession(this);
   }
 };
-
-

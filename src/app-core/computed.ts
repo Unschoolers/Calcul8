@@ -11,6 +11,7 @@ import { runtimeComputed } from "./computed/runtime.ts";
 import { singlesComputed } from "./computed/singles.ts";
 import { forecastComputed } from "./computed/forecast.ts";
 import { portfolioComputed } from "./computed/portfolio.ts";
+import { whatnotFeesComputed } from "./computed/whatnot-fees.ts";
 import type {
   SyncStatus,
   WhatnotConnectionStatus,
@@ -432,6 +433,6 @@ export const appComputed: AppComputedComposition = {
   },
   ...singlesComputed,
   ...forecastComputed,
-  ...portfolioComputed
+  ...portfolioComputed,
+  ...whatnotFeesComputed
 };
-

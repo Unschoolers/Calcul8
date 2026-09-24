@@ -40,6 +40,8 @@ export type AppMountContext = WorkspaceRealtimeContext &
     | "whatnotCallbackMessage"
     | "whatnotCallbackStatus"
     | "windowFocusListener"
+    | "whatnotFeeDateTimeoutId"
+    | "whatnotFeeDateOnly"
   > &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
   Pick<AuthMethodState, "initGoogleAutoLogin" | "renderGoogleSignInButton"> &
@@ -78,6 +80,7 @@ export type AppUnmountContext = WorkspaceRealtimeContext &
     | "serviceWorkerUpdateIntervalId"
     | "syncStatusResetTimeoutId"
     | "windowFocusListener"
+    | "whatnotFeeDateTimeoutId"
   > &
   Pick<OnboardingMethodState, "stopGuidedOnboarding"> &
   Pick<RuntimeMethodState, "stopOfflineReconnectScheduler"> &

@@ -46,6 +46,11 @@ function normalizeSinglesCatalogSource(value) {
   return value === "ua" || value === "pokemon" || value === "none" ? value : undefined;
 }
 
+function normalizeWhatnotVertical(value) {
+  return value === "sports" || value === "tcg" || value === "fashion" || value === "other_collectibles"
+    || value === "coins" || value === "other" ? value : undefined;
+}
+
 function normalizeCostInputMode(value) {
   return value === "perBox" || value === "total" ? value : undefined;
 }
@@ -149,6 +154,8 @@ function normalizeSyncLotDto(value) {
   if (lotType) lot.lotType = lotType;
   const singlesCatalogSource = normalizeSinglesCatalogSource(value.singlesCatalogSource);
   if (singlesCatalogSource) lot.singlesCatalogSource = singlesCatalogSource;
+  const whatnotVertical = normalizeWhatnotVertical(value.whatnotVertical);
+  if (whatnotVertical) lot.whatnotVertical = whatnotVertical;
   const singlesPurchases = toSyncSinglesPurchaseDtos(value.singlesPurchases);
   if (singlesPurchases.length > 0) lot.singlesPurchases = singlesPurchases;
   for (const field of ["externalSku", "purchaseDate", "createdAt"]) {
@@ -265,6 +272,7 @@ function normalizeSyncSaleDto(value) {
   if (mutationId) sale.mutationId = mutationId;
   const externalProvider = cleanString(value.externalProvider);
   if (externalProvider) sale.externalProvider = externalProvider;
+  if (typeof value.wasWhatnotSale === "boolean") sale.wasWhatnotSale = value.wasWhatnotSale;
   const externalAccountId = cleanString(value.externalAccountId);
   if (externalAccountId) sale.externalAccountId = externalAccountId;
   const externalSaleId = cleanString(value.externalSaleId);

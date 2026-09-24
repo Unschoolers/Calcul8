@@ -19,6 +19,7 @@ test("createNewLotRecord builds singles lots with normalized defaults", () => {
     newLotName: "  New Singles  ",
     newLotType: "singles",
     newLotCatalogSource: "ua",
+    newLotWhatnotVertical: "tcg",
     purchaseUiMode: "simple",
     setup: makeLotSetup(),
     todayDate: "2026-03-22",
@@ -28,6 +29,7 @@ test("createNewLotRecord builds singles lots with normalized defaults", () => {
   assert.equal(result.lot.id, 999);
   assert.equal(result.lot.name, "New Singles");
   assert.equal(result.lot.lotType, "singles");
+  assert.equal(result.lot.whatnotVertical, "tcg");
   assert.equal(result.lot.singlesCatalogSource, "ua");
   assert.deepEqual(result.lot.singlesPurchases, []);
   assert.equal(result.lot.costInputMode, "total");
@@ -47,6 +49,7 @@ test("createNewLotRecord uses fallback selling tax when previous tax is invalid"
     newLotName: "Bulk Lot",
     newLotType: "bulk",
     newLotCatalogSource: "pokemon",
+    newLotWhatnotVertical: "coins",
     purchaseUiMode: "expert",
     setup: makeLotSetup({ sellingTaxPercent: 99 }),
     todayDate: "2026-03-22",
@@ -75,6 +78,7 @@ test("createNewLotRecord stamps system seller defaults onto new bulk and singles
       newLotName: `${lotType} Lot`,
       newLotType: lotType,
       newLotCatalogSource: "pokemon",
+      newLotWhatnotVertical: "sports",
       purchaseUiMode: "expert",
       setup: makeLotSetup({
         sellingCurrency: "CAD",
@@ -94,6 +98,7 @@ test("createNewLotRecord stamps system seller defaults onto new bulk and singles
     });
 
     assert.equal(result.lot.lotType, lotType);
+    assert.equal(result.lot.whatnotVertical, "sports");
     assert.equal(result.lot.usesSystemPricingDefaults, true);
     assert.equal(result.lot.sellingCurrency, "USD");
     assert.equal(result.lot.sellingTaxPercent, 8);
@@ -106,6 +111,24 @@ test("createNewLotRecord stamps system seller defaults onto new bulk and singles
     assert.equal(result.lot.additionalFeeAppliesTo, "sale_only");
     assert.equal(result.lot.fixedFeePerOrder, 0);
   }
+});
+
+test("createNewLotRecord requires one of the supported Whatnot verticals", () => {
+  const base = {
+    lots: [],
+    currentLotId: null,
+    newLotName: "New lot",
+    newLotType: "bulk" as const,
+    newLotCatalogSource: "none" as const,
+    purchaseUiMode: "simple" as const,
+    setup: makeLotSetup(),
+    todayDate: "2026-09-23",
+    generatedId: 202
+  };
+
+  assert.throws(() => createNewLotRecord({ ...base, newLotWhatnotVertical: null }), /Whatnot vertical/);
+  assert.throws(() => createNewLotRecord({ ...base, newLotWhatnotVertical: "bogus" as never }), /Whatnot vertical/);
+  assert.equal(createNewLotRecord({ ...base, newLotWhatnotVertical: "other" }).lot.whatnotVertical, "other");
 });
 
 test("validateRenameLotName enforces blank and duplicate checks", () => {

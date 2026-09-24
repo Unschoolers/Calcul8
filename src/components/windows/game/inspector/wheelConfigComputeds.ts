@@ -8,6 +8,7 @@ import {
 } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { AppState, Lot, WheelConfig } from "../../../../types/app.ts";
 import type { FeeProfileInput } from "../../../../domain/calculations.ts";
+import type { CommerceComputedState } from "../../../../app-core/context/commerce.ts";
 import { getWheelController } from "../services/gameSessionState.ts";
 import {
   getWheelDisplayConfig,
@@ -32,7 +33,8 @@ type InvalidLiveTier = { tierId: string; label: string; reason: string };
 type WheelConfigComputedContext = FeeProfileInput
   & WheelPackCostInput
   & GameSessionStateContext
-  & Pick<AppState, "lots" | "preferredLanguage" | "wheelConfigs" | "activeWheelConfigId">
+  & Pick<AppState, "lots" | "currentLotId" | "preferredLanguage" | "wheelConfigs" | "activeWheelConfigId">
+  & Pick<CommerceComputedState, "whatnotFeeSummary">
   & Pick<GameHostState, "appliedWheelConfigSnapshot" | "editingWheelConfig" | "wheelMode">
   & {
     activeWheelConfig: WheelConfig | null;
@@ -44,7 +46,13 @@ function getExpectedMargin(context: WheelConfigComputedContext): { config: Wheel
   const config = context.editingWheelConfig ?? null;
   return {
     config,
-    margin: config ? computeExpectedMargin(config, context, (context.lots || []) as Lot[]).margin : null
+    margin: config ? computeExpectedMargin(
+      config,
+      context,
+      (context.lots || []) as Lot[],
+      context.whatnotFeeSummary,
+      (context.lots || []).find((lot) => lot.id === context.currentLotId) as Lot | undefined
+    ).margin : null
   };
 }
 
@@ -280,4 +288,3 @@ export const wheelConfigComputeds = {
       }));
   }
 };
-

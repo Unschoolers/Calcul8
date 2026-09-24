@@ -1,4 +1,5 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import type { WhatnotFeePeriodSummary } from "../../../../app-core/shared/whatnot-fee-summary.ts";
 import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelController } from "./gameControllerState.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
@@ -176,7 +177,14 @@ export function getWheelSessionProfit(vm: Record<string, unknown>): number {
   const slots = getWheelDisplaySlots(vm);
   const spinCounts = getWheelDisplaySpinCounts(vm);
   const lots = ((source.lots || []) as Lot[]);
-  const netRevenue = calculateWheelSessionNetRevenue(config, slots, spinCounts, source, lots);
+  const netRevenue = calculateWheelSessionNetRevenue(
+    config,
+    slots,
+    spinCounts,
+    source,
+    lots,
+    source.whatnotFeeSummary as WhatnotFeePeriodSummary | null | undefined,
+    lots.find((lot) => lot.id === source.currentLotId)
+  );
   return netRevenue - getWheelSessionCost(vm);
 }
-

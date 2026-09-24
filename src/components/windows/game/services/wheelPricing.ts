@@ -2,6 +2,7 @@ import { getTierChancePercent, normalizeWheelTierChances } from "../../../../app
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { calculateNetFromGross, type FeeProfileInput } from "../../../../domain/calculations.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
+import { resolveEffectiveWhatnotFeeInput, type WhatnotFeePeriodSummary } from "../../../../app-core/shared/whatnot-fee-summary.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
 
@@ -33,14 +34,17 @@ function calculateAverageTierNetRevenue(
   config: WheelConfig,
   tier: WheelTier,
   lots: Lot[],
-  fallback?: FeeProfileInput
+  fallback?: FeeProfileInput,
+  summary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null,
+  fallbackLot?: Lot
 ): number {
   const lotIds = isWheelTierMultiLot(tier) ? getWheelTierSourceLotIds(tier) : [];
   if (!lotIds.length) {
     const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+    const unboundFallbackLot = tier.boundLotId == null ? fallbackLot : undefined;
     return calculateWheelNetFromGross(
       Number(config.spinPrice) || 0,
-      getResolvedLotFeeProfileInput(lot, fallback),
+      resolveWheelFeeInput(lot, unboundFallbackLot, summary, fallback),
       1,
       Number(lot?.sellingShippingPerOrder) || 0,
       Number(lot?.sellingTaxPercent) || 0
@@ -50,7 +54,7 @@ function calculateAverageTierNetRevenue(
     const lot = lots.find((entry) => entry.id === id);
     return sum + calculateWheelNetFromGross(
       Number(config.spinPrice) || 0,
-      getResolvedLotFeeProfileInput(lot, fallback),
+      resolveWheelFeeInput(lot, undefined, summary, fallback),
       1,
       Number(lot?.sellingShippingPerOrder) || 0,
       Number(lot?.sellingTaxPercent) || 0
@@ -59,18 +63,8 @@ function calculateAverageTierNetRevenue(
   return total / lotIds.length;
 }
 
-export function getLotFeeProfileInput(lot: Lot | undefined): FeeProfileInput | undefined {
-  if (!lot) return undefined;
-  return {
-    platformFeePercent: Number(lot.platformFeePercent) || 0,
-    additionalFeePercent: Number(lot.additionalFeePercent) || 0,
-    additionalFeeAppliesTo: lot.additionalFeeAppliesTo,
-    fixedFeePerOrder: Number(lot.fixedFeePerOrder) || 0
-  };
-}
-
 function getResolvedLotFeeProfileInput(
-  lot: Lot | undefined,
+  lot: FeeProfileInput | undefined,
   fallback?: FeeProfileInput
 ): FeeProfileInput | undefined {
   if (!lot) return fallback;
@@ -94,6 +88,19 @@ function getResolvedLotFeeProfileInput(
   };
 }
 
+function resolveWheelFeeInput(
+  lot: Lot | undefined,
+  fallbackLot: Lot | undefined,
+  summary: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null | undefined,
+  fallback: FeeProfileInput | undefined
+): FeeProfileInput | undefined {
+  const feeLot = lot ?? fallbackLot;
+  return getResolvedLotFeeProfileInput(
+    feeLot ? resolveEffectiveWhatnotFeeInput(feeLot, summary) : undefined,
+    fallback
+  );
+}
+
 function getNormalizedChanceTiers(config: WheelConfig): WheelTier[] {
   return normalizeWheelTierChances(config.tiers.map((tier) => ({ ...tier })));
 }
@@ -112,35 +119,44 @@ export function calculateWheelTierNetRevenuePerSpin(
   config: WheelConfig,
   tier: WheelTier,
   lots: Lot[] = [],
-  fallback?: FeeProfileInput
+  fallback?: FeeProfileInput,
+  summary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null,
+  fallbackLot?: Lot
 ): number {
   if (isWheelTierMultiLot(tier)) {
-    return calculateAverageTierNetRevenue(config, tier, lots, fallback);
+    return calculateAverageTierNetRevenue(config, tier, lots, fallback, summary, fallbackLot);
   }
   const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+  const unboundFallbackLot = tier.boundLotId == null ? fallbackLot : undefined;
   return calculateWheelNetFromGross(
     Number(config.spinPrice) || 0,
-    getResolvedLotFeeProfileInput(lot, fallback),
+    resolveWheelFeeInput(lot, unboundFallbackLot, summary, fallback),
     1,
     Number(lot?.sellingShippingPerOrder) || 0,
     Number(lot?.sellingTaxPercent) || 0
   );
 }
 
-export function calculateWheelSaleNetRevenue(config: WheelConfig, lot: Lot | undefined): number {
+export function calculateWheelSaleNetRevenue(
+  config: WheelConfig,
+  lot: Lot | undefined,
+  summary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null
+): number {
   return calculateNetFromGross(
     Number(config.spinPrice) || 0,
     Number(lot?.sellingTaxPercent) || 0,
     Number(lot?.sellingShippingPerOrder) || 0,
     1,
-    getLotFeeProfileInput(lot)
+    lot ? resolveEffectiveWhatnotFeeInput(lot, summary) : undefined
   );
 }
 
 export function computeExpectedMargin(
   config: WheelConfig,
   feeProfileInput?: FeeProfileInput,
-  lots: Lot[] = []
+  lots: Lot[] = [],
+  summary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null,
+  fallbackLot?: Lot
 ): { margin: number | null } {
   let totalCost = 0;
   let totalNetRevenue = 0;
@@ -149,7 +165,7 @@ export function computeExpectedMargin(
     const chance = getTierChancePercent(tier);
     if (chance <= 0) continue;
     totalCost += chance * Number(tier.costPerTier || 0);
-    totalNetRevenue += chance * calculateAverageTierNetRevenue(config, tier, lots, feeProfileInput);
+    totalNetRevenue += chance * calculateAverageTierNetRevenue(config, tier, lots, feeProfileInput, summary, fallbackLot);
     totalChance += chance;
   }
   if (!totalChance || !config.spinPrice) return { margin: null };
@@ -165,7 +181,9 @@ export function calculateWheelSessionNetRevenue(
   slots: WheelSlot[],
   spinCounts: number[],
   feeProfileInput?: FeeProfileInput,
-  lots: Lot[] = []
+  lots: Lot[] = [],
+  summary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null,
+  fallbackLot?: Lot
 ): number {
   if (!config) return 0;
 
@@ -180,13 +198,14 @@ export function calculateWheelSessionNetRevenue(
 
     const tier = tiersById.get(slot.tier);
     if (tier && isWheelTierMultiLot(tier)) {
-      return sum + (calculateAverageTierNetRevenue(config, tier, lots, feeProfileInput) * count);
+      return sum + (calculateAverageTierNetRevenue(config, tier, lots, feeProfileInput, summary, fallbackLot) * count);
     }
     const lot = tier?.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+    const unboundFallbackLot = tier?.boundLotId == null ? fallbackLot : undefined;
 
     return sum + calculateWheelNetFromGross(
       (Number(config.spinPrice) || 0) * count,
-      getResolvedLotFeeProfileInput(lot, feeProfileInput),
+      resolveWheelFeeInput(lot, unboundFallbackLot, summary, feeProfileInput),
       count,
       Number(lot?.sellingShippingPerOrder) || 0,
       Number(lot?.sellingTaxPercent) || 0

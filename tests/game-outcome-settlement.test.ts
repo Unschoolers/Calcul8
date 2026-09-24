@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { Lot, Sale, WheelConfig } from "../src/types/app.ts";
+import { summarizeWhatnotFeePeriod } from "../src/app-core/shared/whatnot-fee-summary.ts";
 import {
   settleGameOutcomeSale,
   type GameOutcomeSaleInput
@@ -50,16 +51,90 @@ test("records one deterministic game outcome sale", async () => {
     quantity: 2,
     packsCount: 2,
     price: 12,
+    priceIsTotal: true,
     buyerShipping: 2,
     date: "2026-07-21",
     memo: "Wheel spin: Prize",
     linkedWheelId: 5,
     winningTierId: "tier-1",
     costOfWinningTier: 3,
+    wasWhatnotSale: false,
     netRevenue: sale?.netRevenue
   });
   assert.deepEqual(recorded, [{ lotId: 7, sale }]);
   assert.ok(Number.isFinite(sale?.netRevenue));
+});
+
+test("new wheel sale snapshots the bound lot commission and preserves processing fields", async () => {
+  const classified = {
+    ...lot,
+    feeProfilePreset: "whatnot" as const,
+    whatnotVertical: "tcg" as const,
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping" as const,
+    fixedFeePerOrder: 0.3,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0
+  };
+  const sale = await settleGameOutcomeSale({
+    ...input,
+    config: { ...config, spinPrice: 100 },
+    lots: [classified],
+    whatnotFeeSummary: { currentTier: 2, periodStart: "2026-09-21" }
+  }, {
+    now: () => new Date(2026, 8, 22),
+    nextId: () => 1,
+    recordSale: () => undefined
+  });
+  assert.equal(sale?.netRevenue, 100 - (100 * (0.075 + 0.029)) - 0.3);
+});
+
+test("settled Whatnot wheel provenance counts toward a future tier after the lot changes profile", async () => {
+  const whatnotLot = {
+    ...lot,
+    feeProfilePreset: "whatnot" as const,
+    whatnotVertical: "tcg" as const,
+    platformFeePercent: 8,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only" as const,
+    fixedFeePerOrder: 0,
+    sellingCurrency: "CAD" as const,
+    exchangeRate: 1,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0
+  };
+  const settled = await settleGameOutcomeSale({
+    ...input,
+    config: { ...config, spinPrice: 5_000 },
+    lots: [whatnotLot],
+    whatnotFeeSummary: { currentTier: 2, periodStart: "2026-09-21" }
+  }, {
+    now: () => new Date(2026, 8, 22),
+    nextId: () => 99,
+    recordSale: () => undefined
+  });
+
+  assert.equal(settled?.wasWhatnotSale, true);
+  assert.equal(settled?.priceIsTotal, true);
+  const afterProfileChange = summarizeWhatnotFeePeriod({
+    lots: [{ ...whatnotLot, feeProfilePreset: "none" } as Lot],
+    salesByLotId: new Map([[whatnotLot.id, [settled!]]]),
+    dateOnly: "2026-10-19",
+    missingLotIds: []
+  });
+  assert.equal(afterProfileChange.previousPeriodGrossCad, 5_000);
+  assert.equal(afterProfileChange.currentTier, 0);
+
+  const noneSale = await settleGameOutcomeSale({
+    ...input,
+    lots: [{ ...whatnotLot, feeProfilePreset: "none" } as Lot]
+  }, {
+    now: () => new Date(2026, 8, 22),
+    nextId: () => 100,
+    recordSale: () => undefined
+  });
+  assert.equal(noneSale?.wasWhatnotSale, false);
 });
 
 test("uses the spin number for identity and memo while preserving singles linkage", async () => {

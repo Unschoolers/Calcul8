@@ -189,6 +189,24 @@
                 <v-btn class="app-touch-target" value="bulk" size="small">{{ t('commonBulk') }}</v-btn>
                 <v-btn class="app-touch-target" value="singles" size="small">{{ t('commonSingles') }}</v-btn>
               </v-btn-toggle>
+              <v-select
+                v-model="newLotWhatnotVertical"
+                :items="[
+                  { title: t('configWhatnotVerticalSports'), value: 'sports' },
+                  { title: t('configWhatnotVerticalTcg'), value: 'tcg' },
+                  { title: t('configWhatnotVerticalFashion'), value: 'fashion' },
+                  { title: t('configWhatnotVerticalOtherCollectibles'), value: 'other_collectibles' },
+                  { title: t('configWhatnotVerticalCoins'), value: 'coins' },
+                  { title: t('configWhatnotVerticalOther'), value: 'other' }
+                ]"
+                :label="t('configWhatnotVerticalLabel')"
+                :placeholder="t('configWhatnotVerticalRequired')"
+                variant="outlined"
+                density="compact"
+                class="mt-3"
+                hide-details
+                required
+              ></v-select>
               <div v-if="newLotType === 'singles'" class="mt-3">
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle v-model="newLotCatalogSource" mandatory divided density="compact" variant="outlined"

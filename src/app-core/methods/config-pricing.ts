@@ -14,17 +14,19 @@ import {
   pickSystemPricingFieldsForLot
 } from "../shared/system-pricing-defaults.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
+import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 
 export const configPricingMethods = {
   calculateProfit(units: number, pricePerUnit: number): number {
+    const feeInput = resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary);
     return calculateProfitForListing(
       units,
       pricePerUnit,
       this.totalCaseCost,
       this.sellingTaxPercent,
       this.sellingShippingPerOrder,
-      this
+      feeInput
     );
   },
 
@@ -37,7 +39,7 @@ export const configPricingMethods = {
       totalPacks: this.totalPacks,
       sellingTaxPercent: this.sellingTaxPercent,
       sellingShippingPerOrder: this.sellingShippingPerOrder,
-      feeProfileInput: this
+      feeProfileInput: resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary)
     });
     this.spotPrice = nextPrices.spotPrice;
     this.boxPriceSell = nextPrices.boxPriceSell;
@@ -164,6 +166,6 @@ export const configPricingMethods = {
   },
 
   calculatePriceForUnits(units: number, targetNetRevenue: number): number {
-    return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder, this);
+    return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder, resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary));
   }
 } satisfies ConfigPricingMethodImplementation;

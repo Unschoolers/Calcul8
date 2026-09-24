@@ -15,6 +15,7 @@ import { normalizeStoredLot } from "../shared/normalize-lot.ts";
 import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from "../shared/system-pricing-defaults.ts";
 import { getRootLotSales, replaceRootLotSales, resetRootSalesState } from "../shared/sales-root-state.ts";
 import { clearStorageReadFailure, markStorageReadFailure } from "../storage-health.ts";
+import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -134,7 +135,7 @@ export const configStorageMethods = {
   },
 
   netFromGross(grossRevenue: number, buyerShippingPerOrder = 0, orderCount = 1): number {
-    return calculateNetFromGross(grossRevenue, this.sellingTaxPercent, buyerShippingPerOrder, orderCount, this);
+    return calculateNetFromGross(grossRevenue, this.sellingTaxPercent, buyerShippingPerOrder, orderCount, resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary));
   },
 
   async getExchangeRate(): Promise<void> {

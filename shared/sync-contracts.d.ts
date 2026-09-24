@@ -2,6 +2,7 @@ export type SyncEntityRecord = Record<string, unknown>;
 export type SyncCurrencyCode = "CAD" | "USD";
 export type SyncLotType = "bulk" | "singles";
 export type SyncSinglesCatalogSource = "ua" | "pokemon" | "none";
+export type SyncWhatnotVertical = "sports" | "tcg" | "fashion" | "other_collectibles" | "coins" | "other";
 export type SyncCostInputMode = "perBox" | "total";
 export type SyncFeeProfilePreset = "whatnot" | "none";
 export type SyncAdditionalFeeAppliesTo = "sale_only" | "sale_plus_shipping";
@@ -39,6 +40,7 @@ export interface SyncLotDto {
   name?: string;
   lotType?: SyncLotType;
   singlesCatalogSource?: SyncSinglesCatalogSource;
+  whatnotVertical?: SyncWhatnotVertical;
   singlesPurchases?: SyncSinglesPurchaseDto[];
   externalSku?: string;
   purchaseDate?: string;
@@ -103,6 +105,7 @@ export interface SyncSaleDto {
   updatedBy?: string;
   mutationId?: string;
   externalProvider?: string;
+  wasWhatnotSale?: boolean;
   externalAccountId?: string;
   externalSaleId?: string;
   externalOrderId?: string;

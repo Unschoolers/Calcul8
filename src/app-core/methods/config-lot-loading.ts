@@ -1,14 +1,16 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Lot, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults } from "../../types/app.ts";
+import type { Lot, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults, WhatnotVertical } from "../../types/app.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { resolveStoredFeeProfile } from "../shared/fee-profile-presets.ts";
 import { getLotType } from "../shared/lot-types.ts";
 import { applySystemPricingDefaultsToLot, lotUsesSystemPricingDefaults } from "../shared/system-pricing-defaults.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
+import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import { normalizeSinglesPurchaseEntries, resetSinglesCsvImportState, type SinglesCsvImportStateTarget } from "./config-lots-state.ts";
 
 export type HydratedLotState = {
+  whatnotVertical: WhatnotVertical | null;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   boxPriceCost: number;
@@ -39,6 +41,7 @@ export type HydratedLotState = {
 };
 
 export type LotHydrationTarget = SinglesCsvImportStateTarget & {
+  whatnotVertical?: WhatnotVertical | null;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   boxPriceCost?: number;
@@ -89,6 +92,7 @@ export function buildHydratedLotState(
   const feeProfile = resolveStoredFeeProfile(pricingLot);
 
   return {
+    whatnotVertical: normalizeWhatnotVertical(lot.whatnotVertical),
     newLotType: normalizedLotType,
     newLotCatalogSource: normalizedLotCatalogSource,
     boxPriceCost: lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE,
@@ -134,6 +138,7 @@ export function buildHydratedLotState(
 
 export function applyHydratedLotState(target: LotHydrationTarget, state: HydratedLotState): void {
   resetSinglesCsvImportState(target, state.currency);
+  target.whatnotVertical = state.whatnotVertical;
   target.newLotType = state.newLotType;
   target.newLotCatalogSource = state.newLotCatalogSource;
   target.boxPriceCost = state.boxPriceCost;

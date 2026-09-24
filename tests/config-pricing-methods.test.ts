@@ -3,6 +3,7 @@ import { test, vi } from "vitest";
 import { configPricingMethods } from "../src/app-core/methods/config-pricing.ts";
 import type { FeeProfilePreset } from "../src/types/app.ts";
 import { makeLotSetup } from "./helpers/fixtures.ts";
+import { calculatePriceForUnits } from "../src/domain/calculations.ts";
 
 type PricingContext = Record<string, unknown>;
 
@@ -82,4 +83,27 @@ test("setFeeProfilePreset can restore the Whatnot preset fields", () => {
   assert.equal(context.additionalFeeAppliesTo, "sale_plus_shipping");
   assert.equal(context.fixedFeePerOrder, 0.3);
   assert.equal((context.recalculateDefaultPrices as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+test("current lot price and profit calculators use an effective Whatnot rate without changing stored fee fields", () => {
+  const context = createContext({
+    feeProfilePreset: "whatnot",
+    whatnotVertical: "coins",
+    platformFeePercent: 8,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0,
+    totalCaseCost: 0,
+    whatnotFeeSummary: { currentTier: 0, periodStart: "2026-09-21" }
+  });
+  const price = configPricingMethods.calculatePriceForUnits.call(context as never, 1, 100);
+  assert.equal(price, calculatePriceForUnits(1, 100, 0, 0, {
+    platformFeePercent: 4, additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0
+  }));
+  assert.equal(context.platformFeePercent, 8);
+  assert.equal(configPricingMethods.calculateProfit.call(context as never, 1, 100), 96);
+  assert.equal(context.platformFeePercent, 8);
 });

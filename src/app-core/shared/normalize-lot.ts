@@ -6,6 +6,7 @@ import { getLotType } from "./lot-types.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "./singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries } from "../methods/config-lots-state.ts";
+import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const lotType = getLotType(lot);
@@ -16,6 +17,7 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const feeProfile = resolveStoredFeeProfile(lot);
   return {
     ...lot,
+    whatnotVertical: normalizeWhatnotVertical(lot.whatnotVertical),
     isComplete: lot.isComplete === true,
     lotType,
     boxPriceCost: lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE,
@@ -65,4 +67,3 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     sellingTaxPercent: lot.sellingTaxPercent ?? DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT
   };
 }
-

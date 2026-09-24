@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
-import type { SyncGameSessionDto as CanonicalSyncGameSessionDto } from "../shared/sync-contracts";
-import type { SyncGameSessionDto as EsmSyncGameSessionDto } from "../shared/sync-contracts.mjs";
-import type { SyncGameSessionDto as CommonJsSyncGameSessionDto } from "../shared/sync-contracts.cjs";
-import type { SyncGameSessionDto as ApiSyncGameSessionDto } from "../apps/api/src/shared/sync-contracts";
+import type { SyncGameSessionDto as CanonicalSyncGameSessionDto, SyncLotDto as CanonicalSyncLotDto } from "../shared/sync-contracts";
+import type { SyncGameSessionDto as EsmSyncGameSessionDto, SyncLotDto as EsmSyncLotDto } from "../shared/sync-contracts.mjs";
+import type { SyncGameSessionDto as CommonJsSyncGameSessionDto, SyncLotDto as CommonJsSyncLotDto } from "../shared/sync-contracts.cjs";
+import type { SyncGameSessionDto as ApiSyncGameSessionDto, SyncLotDto as ApiSyncLotDto } from "../apps/api/src/shared/sync-contracts";
 import {
   normalizeSyncMetadataDto,
   normalizeSyncSaleDto,
@@ -22,7 +22,10 @@ type Expect<Value extends true> = Value;
 type SyncContractParity = [
   Expect<Equal<CanonicalSyncGameSessionDto, EsmSyncGameSessionDto>>,
   Expect<Equal<CanonicalSyncGameSessionDto, CommonJsSyncGameSessionDto>>,
-  Expect<Equal<CanonicalSyncGameSessionDto, ApiSyncGameSessionDto>>
+  Expect<Equal<CanonicalSyncGameSessionDto, ApiSyncGameSessionDto>>,
+  Expect<Equal<CanonicalSyncLotDto, EsmSyncLotDto>>,
+  Expect<Equal<CanonicalSyncLotDto, CommonJsSyncLotDto>>,
+  Expect<Equal<CanonicalSyncLotDto, ApiSyncLotDto>>
 ];
 
 void (0 as unknown as SyncContractParity);
@@ -155,6 +158,23 @@ test("shared sync contracts normalize lot DTOs with singles purchase rows", () =
       marketValueCurrency: "CAD"
     }]
   }]);
+});
+
+test("lot vertical round-trips through web and API sync DTOs and invalid values stay unclassified", async () => {
+  const input = [
+    { id: 21, whatnotVertical: "fashion" },
+    { id: 22, whatnotVertical: "future-category" },
+    { id: 23, whatnotVertical: null }
+  ];
+  const expected = [
+    { id: 21, whatnotVertical: "fashion" },
+    { id: 22 },
+    { id: 23 }
+  ];
+  assert.deepEqual(toSyncLotDtos(input), expected);
+  const { createRequire } = await import("node:module");
+  const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs");
+  assert.deepEqual(commonJs.toSyncLotDtos(input), expected);
 });
 
 test("shared sync contracts normalize sync metadata DTOs", () => {

@@ -7,6 +7,7 @@ import type {
 } from "../../types/app.ts";
 import type {
   CommerceMethodState,
+  CommerceComputedState,
   LotConfigurationContext,
   LotIoContext,
   LotStorageContext,
@@ -111,6 +112,7 @@ type PortfolioState = Pick<
 
 export type PortfolioContext = PortfolioState &
   PortfolioComputedState &
+  Pick<CommerceComputedState, "whatnotFeeSummary"> &
   Pick<CommerceMethodState, "getAllSalesByLotId" | "getSalesCacheEntry" | "getSalesStorageKey" | "loadSalesForLotId" | "initSalesChart"> &
   PortfolioMethodState &
   Pick<AppVueContext, "$nextTick"> &

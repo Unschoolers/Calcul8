@@ -1,4 +1,4 @@
-import type { AppTab, PortfolioDashboardPreset, PortfolioLotTypeFilter } from "../types/app.ts";
+import type { AppState, AppTab, PortfolioDashboardPreset, PortfolioLotTypeFilter } from "../types/app.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import type { LivePricingHydrationContext, SalesFreshnessContext } from "./context/commerce.ts";
 import type { AppLifecycleObject } from "./context/lifecycle.ts";
@@ -16,6 +16,7 @@ import {
 } from "./storageKeys.ts";
 import { cancelTabPrewarm, scheduleTabPrewarm } from "./tab-prewarm.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
+import { getTodayDate } from "./methods/config-shared.ts";
 
 function isAppTab(value: unknown): value is AppTab {
   return value === "config" || value === "live" || value === "sales" || value === "portfolio" || value === "wheel";
@@ -47,6 +48,27 @@ function canBindForegroundSalesListeners(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
+export function refreshWhatnotFeeDate(context: Pick<AppState, "whatnotFeeDateOnly">): void {
+  const dateOnly = getTodayDate();
+  if (context.whatnotFeeDateOnly !== dateOnly) context.whatnotFeeDateOnly = dateOnly;
+}
+
+export function scheduleWhatnotFeeDateRefresh(context: Pick<AppState, "whatnotFeeDateOnly" | "whatnotFeeDateTimeoutId">): void {
+  if (typeof window === "undefined") return;
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+  context.whatnotFeeDateTimeoutId = window.setTimeout(() => {
+    refreshWhatnotFeeDate(context);
+    scheduleWhatnotFeeDateRefresh(context);
+  }, Math.max(50, nextMidnight - now.getTime() + 50));
+}
+
+export function clearWhatnotFeeDateRefresh(context: Pick<AppState, "whatnotFeeDateTimeoutId">): void {
+  if (context.whatnotFeeDateTimeoutId == null || typeof window === "undefined") return;
+  window.clearTimeout(context.whatnotFeeDateTimeoutId);
+  context.whatnotFeeDateTimeoutId = null;
+}
+
 function hydrateForegroundLivePricing(context: LivePricingHydrationContext): void {
   const currentLotId = Number(context.currentLotId);
   if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
@@ -58,6 +80,8 @@ function hydrateForegroundLivePricing(context: LivePricingHydrationContext): voi
 
 export const appLifecycle: AppLifecycleObject = {
   mounted() {
+    refreshWhatnotFeeDate(this);
+    if (canBindForegroundSalesListeners()) scheduleWhatnotFeeDateRefresh(this);
     primeStoredAuthSecretsFromStorage();
     try {
       const inviteToken = new URLSearchParams(window.location.search).get("invite");
@@ -200,16 +224,22 @@ export const appLifecycle: AppLifecycleObject = {
     if (!isDevNoLoginRoute()) {
       refreshWorkspaceRealtime(this);
     }
-    if (canBindForegroundSalesListeners() && !isDevNoLoginRoute()) {
+    if (canBindForegroundSalesListeners()) {
       this.windowFocusListener = () => {
-        refreshForegroundLotSales(this);
-        void this.checkForAndroidAppUpdate();
+        refreshWhatnotFeeDate(this);
+        if (!isDevNoLoginRoute()) {
+          refreshForegroundLotSales(this);
+          void this.checkForAndroidAppUpdate();
+        }
       };
       window.addEventListener("focus", this.windowFocusListener);
       this.documentVisibilityListener = () => {
         if (document.visibilityState !== "visible") return;
-        refreshForegroundLotSales(this);
-        void this.checkForAndroidAppUpdate();
+        refreshWhatnotFeeDate(this);
+        if (!isDevNoLoginRoute()) {
+          refreshForegroundLotSales(this);
+          void this.checkForAndroidAppUpdate();
+        }
       };
       document.addEventListener("visibilitychange", this.documentVisibilityListener);
     }
@@ -223,6 +253,7 @@ export const appLifecycle: AppLifecycleObject = {
   },
 
   beforeUnmount() {
+    clearWhatnotFeeDateRefresh(this);
     cancelTabPrewarm(this);
     if (typeof this.stopGuidedOnboarding === "function") {
       this.stopGuidedOnboarding();

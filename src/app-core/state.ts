@@ -119,6 +119,7 @@ export function createInitialState(): AppState {
     offlineListener: null,
     windowFocusListener: null,
     documentVisibilityListener: null,
+    whatnotFeeDateTimeoutId: null,
     beforeInstallPromptListener: null,
     appInstalledListener: null,
     hasPwaUiHandlersBound: false,
@@ -154,6 +155,7 @@ export function createInitialState(): AppState {
     sellingTaxPercent: DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     sellingShippingPerOrder: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
     feeProfilePreset: defaultFeeProfile.feeProfilePreset,
+    whatnotVertical: null,
     platformFeePercent: defaultFeeProfile.platformFeePercent,
     additionalFeePercent: defaultFeeProfile.additionalFeePercent,
     additionalFeeAppliesTo: defaultFeeProfile.additionalFeeAppliesTo,
@@ -234,6 +236,7 @@ export function createInitialState(): AppState {
     renameLotName: "",
     newLotType: "bulk",
     newLotCatalogSource: resolveDefaultSinglesCatalogSourceFromEnv(),
+    newLotWhatnotVertical: null,
 
     // Exchange Rate Cache
     lastFetchTime: null,
@@ -244,6 +247,7 @@ export function createInitialState(): AppState {
     workspaceRealtimeStatus: "idle",
     offlineReconnectIntervalId: null,
     salesCacheEpoch: 0,
+    whatnotFeeDateOnly: todayDate,
     whatnotConnectionStatus: "unconfigured",
     whatnotSyncStatus: "idle",
     whatnotConnectionSummary: null,

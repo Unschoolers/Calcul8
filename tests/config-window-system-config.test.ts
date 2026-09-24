@@ -54,6 +54,33 @@ test("SystemConfigurationDialog keeps random-hit spots scoped to bulk lots", () 
   assert.equal((template.match(/v-if="currentLotType !== 'singles'"/g) ?? []).length, 2);
 });
 
+test("Whatnot vertical is required for new lots and editable for existing inheriting lots", () => {
+  const appTemplate = readFileSync("src/App.html", "utf8");
+  const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
+
+  assert.match(appTemplate, /v-model="newLotWhatnotVertical"[\s\S]*?configWhatnotVerticalLabel[\s\S]*?required/);
+  assert.match(systemTemplate, /v-if="hasLotSelected"[\s\S]*?configWhatnotVerticalLabel[\s\S]*?setCurrentLotWhatnotVertical/);
+  assert.match(systemTemplate, /configWhatnotVerticalLegacyHint/);
+
+  const en = JSON.parse(readFileSync("src/app-core/i18n/locales/en/config.json", "utf8")) as Record<string, string>;
+  const fr = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/config.json", "utf8")) as Record<string, string>;
+  for (const key of [
+    "configWhatnotVerticalLabel",
+    "configWhatnotVerticalRequired",
+    "configWhatnotVerticalLegacyHint",
+    "configWhatnotVerticalUnclassified",
+    "configWhatnotVerticalSports",
+    "configWhatnotVerticalTcg",
+    "configWhatnotVerticalFashion",
+    "configWhatnotVerticalOtherCollectibles",
+    "configWhatnotVerticalCoins",
+    "configWhatnotVerticalOther"
+  ]) {
+    assert.ok(en[key]?.trim(), `missing English copy for ${key}`);
+    assert.ok(fr[key]?.trim(), `missing French copy for ${key}`);
+  }
+});
+
 test("SystemConfigurationDialog owns its styling instead of importing ConfigWindow CSS", () => {
   const definition = readFileSync("src/components/shell/SystemConfigurationDialog.ts", "utf8");
   const configCss = readFileSync("src/components/windows/config/ConfigWindow.css", "utf8");

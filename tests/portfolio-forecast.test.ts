@@ -91,6 +91,50 @@ test("computeLotModeProjections for singles only returns item mode using target 
   assert.equal(projection.rtyh, null);
 });
 
+test("portfolio projections apply the scope tier separately for TCG and coin lots", () => {
+  const shared = {
+    lotType: "singles" as const,
+    boxesPurchased: 0,
+    packsPerBox: 0,
+    spotsPerBox: 0,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0,
+    feeProfilePreset: "whatnot" as const,
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_only" as const,
+    fixedFeePerOrder: 0.3,
+    packPrice: 0,
+    boxPriceSell: 0,
+    spotPrice: 0,
+    targetProfitPercent: 0
+  };
+  const project = (id: number, whatnotVertical: "tcg" | "coins", profile = "whatnot") => computeLotModeProjections({
+    lot: {
+      ...shared,
+      id,
+      feeProfilePreset: profile as "whatnot" | "none",
+      whatnotVertical,
+      ...(profile === "none" ? { platformFeePercent: 0, additionalFeePercent: 0, fixedFeePerOrder: 0 } : {})
+    },
+    summary: { soldPacks: 0, totalPacks: 1, totalCost: 100 },
+    isCurrentLot: false,
+    hasProAccess: true,
+    livePackPrice: 0,
+    liveBoxPriceSell: 0,
+    liveSpotPrice: 0,
+    whatnotFeeSummary: { currentTier: 2, periodStart: "2026-09-21" }
+  }).item!;
+
+  const tcg = project(1, "tcg");
+  const coins = project(2, "coins");
+  const none = project(3, "tcg", "none");
+  assert.ok(tcg.gross > coins.gross, "higher TCG commission requires more gross to net the same target");
+  assert.equal(none.gross, 100, "none keeps zero platform/processing fees");
+  assert.ok(tcg.estimatedNetRemaining >= 100 && tcg.estimatedNetRemaining < 101);
+  assert.ok(coins.estimatedNetRemaining >= 100 && coins.estimatedNetRemaining < 101);
+});
+
 test("buildScenarioFromProjection and summarizeForecastAverage derive forecast outputs", () => {
   const itemScenario = buildScenarioFromProjection({
     id: "item",

@@ -128,3 +128,21 @@
     padding: 0.78rem;
   }
 }
+.whatnot-fee-status {
+  padding: 0.75rem;
+  border: 1px solid rgba(var(--v-theme-secondary), 0.24);
+  border-radius: 0.75rem;
+  background: rgba(var(--v-theme-secondary), 0.06);
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.875rem;
+}
+
+.whatnot-fee-status h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.whatnot-fee-status p {
+  margin: 0 0 0.25rem;
+  line-height: 1.4;
+}

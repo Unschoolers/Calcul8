@@ -23,8 +23,10 @@ import type {
 } from "./runtime.ts";
 import type { ScopedApiContext } from "./api.ts";
 import type { SyncMethodState } from "./sync.ts";
+import type { WhatnotFeePeriodSummary } from "../shared/whatnot-fee-summary.ts";
 
 export interface CommerceComputedState {
+  whatnotFeeSummary: WhatnotFeePeriodSummary;
   liveProfitTargetBadgeVisible: boolean;
   liveProfitTargetBadgeLabel: string;
   hasVisibleContextActions: boolean;
@@ -169,6 +171,7 @@ export interface CommerceMethodState {
   createNewLot(): void;
   selectLot(lotId: number | null): void;
   setCurrentLotCatalogSource(source: SinglesCatalogSource): void;
+  setCurrentLotWhatnotVertical(value: AppState["whatnotVertical"]): void;
   openRenameLotModal(): void;
   renameCurrentLot(): void;
   loadLot(): void;
@@ -259,6 +262,8 @@ type CommerceState = Pick<
 export type CommerceContext = CommerceState &
   CommerceComputedState &
   Pick<CommerceMethodState, "calculatePriceForUnits"> &
+  Pick<AppState, "salesCacheEpoch" | "whatnotFeeDateOnly"> &
+  Pick<CommerceMethodState, "getAllSalesByLotId" | "getSalesCacheEntry"> &
   Pick<RuntimeMethodState, "formatCurrency">;
 
 type StandardCommerceComputedObject = {
@@ -356,8 +361,10 @@ export type LotStorageContext = Pick<
   | "additionalFeePercent"
   | "additionalFeeAppliesTo"
   | "fixedFeePerOrder"
+  | "feeProfilePreset"
   | "systemPricingDefaults"
 > &
+  Pick<CommerceComputedState, "whatnotFeeSummary"> &
   Pick<RuntimeMethodState, "notify"> &
   Pick<CommerceMethodState,
     | "getSalesStorageKey"
@@ -385,6 +392,8 @@ export type PricingWorkflowContext = Pick<
   | "purchaseTaxPercent"
   | "sellingShippingPerOrder"
   | "sellingTaxPercent"
+  | "whatnotVertical"
+  | "whatnotFeeDateOnly"
   | "showProfitCalculator"
   | "spotPrice"
   | "spotsPerBox"
@@ -398,6 +407,7 @@ export type PricingWorkflowContext = Pick<
     | "totalCaseCost"
     | "totalPacks"
     | "totalSpots"
+    | "whatnotFeeSummary"
   > &
   Pick<CommerceMethodState,
     | "applyLiveSinglesSuggestedPricing"
@@ -460,6 +470,7 @@ export type LotConfigurationContext = Pick<
   | "newLotCatalogSource"
   | "newLotName"
   | "newLotType"
+  | "newLotWhatnotVertical"
   | "packPrice"
   | "packsPerBox"
   | "platformFeePercent"
@@ -488,6 +499,7 @@ export type LotConfigurationContext = Pick<
   | "singlesPurchases"
   | "spotPrice"
   | "spotsPerBox"
+  | "whatnotVertical"
   | "systemPricingDefaults"
   | "targetProfitPercent"
 > &
@@ -512,6 +524,7 @@ export type LotConfigurationContext = Pick<
     | "askConfirmation"
     | "handleGuidedOnboardingLotCreated"
     | "notify"
+    | "t"
     | "syncGuidedOnboarding"
   > &
   Pick<SyncMethodState, "pushCloudSync"> &
@@ -648,6 +661,7 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "createNewLot"
     | "selectLot"
     | "setCurrentLotCatalogSource"
+    | "setCurrentLotWhatnotVertical"
     | "openRenameLotModal"
     | "renameCurrentLot"
     | "loadLot"

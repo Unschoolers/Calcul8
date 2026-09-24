@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { computed, reactive } from "vue";
 import { setStoredGoogleIdToken } from "../src/app-core/auth/index.ts";
 import { appComputed } from "../src/app-core/computed.ts";
 import {
@@ -32,6 +33,44 @@ const WHATNOT_FEES = {
   additionalFeeAppliesTo: "sale_plus_shipping" as const,
   fixedFeePerOrder: 0.3
 };
+
+test("Whatnot summary recomputes from scoped cache hydration and the current sale array", () => {
+  const lot1 = { id: 1, feeProfilePreset: "whatnot", sellingCurrency: "CAD", exchangeRate: 1 };
+  const lot2 = { id: 2, feeProfilePreset: "whatnot", sellingCurrency: "CAD", exchangeRate: 1 };
+  const context = reactive({
+    lots: [lot1, lot2],
+    sales: [] as Sale[],
+    currentLotId: 1,
+    salesCacheEpoch: 0,
+    whatnotFeeDateOnly: "2026-09-21",
+    getAllSalesByLotId: () => new Map([[1, context.sales], [2, []]]),
+    getSalesCacheEntry: (id: number) => ({ status: id === 1 || context.salesCacheEpoch > 0 ? "loaded" as const : "missing" as const, sales: [] })
+  });
+  const summary = computed(() => appComputed.whatnotFeeSummary.call(context as never));
+  assert.equal(summary.value.currentTier, 0);
+  assert.deepEqual(summary.value.missingLotIds, [2]);
+
+  context.sales = [{ id: 10, type: "pack", quantity: 1, packsCount: 1, price: 10000, buyerShipping: 0, date: "2026-08-25", wasWhatnotSale: true }];
+  context.salesCacheEpoch += 1;
+  assert.equal(summary.value.currentTier, 1);
+  assert.deepEqual(summary.value.missingLotIds, []);
+});
+
+test("current tier changes do not reprice legacy sale history or imported netRevenue", () => {
+  const sale: Sale = { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 100, buyerShipping: 0, date: "2026-08-25" };
+  const context = {
+    sales: [sale, { ...sale, id: 2, price: 100, netRevenue: 71 }],
+    sellingTaxPercent: 0,
+    feeProfilePreset: "whatnot",
+    platformFeePercent: 8,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0,
+    whatnotVertical: "coins",
+    whatnotFeeSummary: { currentTier: 6, periodStart: "2026-09-21" }
+  };
+  assert.equal(appComputed.totalRevenue.call(context as never), 163);
+});
 
 function withMockedLocalStorage(run: (storage: MockStorage, data: Map<string, string>) => void): void {
   const original = (globalThis as { localStorage?: MockStorage }).localStorage;

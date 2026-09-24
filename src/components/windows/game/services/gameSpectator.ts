@@ -30,11 +30,14 @@ import {
     getWheelLatestFairnessEntry
 } from "../coordinator/gameComputedShared.ts";
 import { calculateWheelTierNetRevenuePerSpin } from "./wheelPricing.ts";
+import type { WhatnotFeePeriodSummary } from "../../../../app-core/shared/whatnot-fee-summary.ts";
 import { buildMysteryGridCells, isMysteryGridConfig } from "../commands/mysteryGridMethods.ts";
 import { getAvailableSinglesQuantityForWheelTier, getRemainingPacksForWheelLot, hasAnyAvailableSinglesForWheelTier } from "./wheelSaleSupport.ts";
 
 type GameSpectatorVm = Record<string, unknown> & {
   lots?: Lot[];
+  currentLotId?: number | null;
+  whatnotFeeSummary?: WhatnotFeePeriodSummary;
 };
 
 export function normalizeGamePublicSessionId(value: unknown): string {
@@ -137,7 +140,14 @@ function buildTierHeatInput(
 ): GameHeatTierInput {
   const lots = Array.isArray(vm.lots) ? vm.lots : [];
   const chance = getTierChancePercent(tier);
-  const netRevenuePerSpin = calculateWheelTierNetRevenuePerSpin(config, tier, lots);
+  const netRevenuePerSpin = calculateWheelTierNetRevenuePerSpin(
+    config,
+    tier,
+    lots,
+    undefined,
+    vm.whatnotFeeSummary,
+    lots.find((lot) => lot.id === vm.currentLotId)
+  );
   const costPerTier = Number(tier.costPerTier) || 0;
   const profitPerSpin = netRevenuePerSpin - costPerTier;
   const hitCount = getTierHitCount(config, vm, tier.id);
@@ -370,4 +380,3 @@ export function buildGameSpectatorSnapshot(
     updatedAt: Date.now()
   };
 }
-

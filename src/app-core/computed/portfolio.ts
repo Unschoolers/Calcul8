@@ -172,7 +172,8 @@ export const portfolioComputed: PortfolioComputedObject = {
         hasProAccess: this.hasProAccess,
         livePackPrice: this.livePackPrice,
         liveBoxPriceSell: this.liveBoxPriceSell,
-        liveSpotPrice: this.liveSpotPrice
+        liveSpotPrice: this.liveSpotPrice,
+        whatnotFeeSummary: this.whatnotFeeSummary
       });
 
       if (projections.item) {
@@ -338,7 +339,8 @@ export const portfolioComputed: PortfolioComputedObject = {
           hasProAccess: this.hasProAccess,
           livePackPrice: this.livePackPrice,
           liveBoxPriceSell: this.liveBoxPriceSell,
-          liveSpotPrice: this.liveSpotPrice
+          liveSpotPrice: this.liveSpotPrice,
+          whatnotFeeSummary: this.whatnotFeeSummary
         });
         const forecastSummary = summarizeForecastAverage({
           projections: [projections.item, projections.box, projections.rtyh],
@@ -372,7 +374,6 @@ export const portfolioComputed: PortfolioComputedObject = {
     return this.allLotPerformance.length > 0;
   }
 };
-
 
 
 

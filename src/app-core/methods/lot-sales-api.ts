@@ -48,6 +48,13 @@ export function normalizeSale(value: unknown): Sale | null {
     updatedAt: sale.updatedAt,
     updatedBy: sale.updatedBy,
     mutationId: sale.mutationId,
+    ...(sale.externalProvider ? { externalProvider: sale.externalProvider } : {}),
+    ...(typeof sale.wasWhatnotSale === "boolean" ? { wasWhatnotSale: sale.wasWhatnotSale } : {}),
+    ...(sale.externalAccountId ? { externalAccountId: sale.externalAccountId } : {}),
+    ...(sale.externalSaleId ? { externalSaleId: sale.externalSaleId } : {}),
+    ...(sale.externalOrderId ? { externalOrderId: sale.externalOrderId } : {}),
+    ...(sale.externalOrderItemId ? { externalOrderItemId: sale.externalOrderItemId } : {}),
+    ...(sale.externalTransactionRefs ? { externalTransactionRefs: sale.externalTransactionRefs } : {}),
     linkedWheelId: sale.linkedWheelId,
     winningTierId: sale.winningTierId,
     costOfWinningTier: sale.costOfWinningTier,
@@ -75,6 +82,7 @@ function normalizeSalesByLot(value: unknown, requestedLotIds: number[] = []): Ma
   for (const [rawLotId, rawSales] of Object.entries(value as Record<string, unknown>)) {
     const lotId = Number(rawLotId);
     if (!Number.isFinite(lotId) || lotId <= 0) continue;
+    if (requestedLotIds.length > 0 && !requestedLotIds.includes(lotId)) continue;
     salesByLot.set(lotId, normalizeSales(rawSales));
   }
 
@@ -184,11 +192,45 @@ export async function fetchAuthoritativeAllSales(
   ) as AllSalesResponse | null;
 
   if (!isCurrentScope()) return null;
-  const salesByLot = normalizeSalesByLot(body?.salesByLot, normalizedLotIds);
-  for (const [lotId, sales] of salesByLot.entries()) {
+  if (!body || !isValidSalesByLotResponse(body.salesByLot, normalizedLotIds)) return null;
+  const salesByLot = normalizeSalesByLot(body.salesByLot, normalizedLotIds);
+  const lotIdsToPersist = normalizedLotIds.length > 0 ? normalizedLotIds : Array.from(salesByLot.keys());
+  for (const lotId of lotIdsToPersist) {
+    const sales = salesByLot.get(lotId)!;
     persistSalesCache(app, lotId, sales);
   }
   return salesByLot;
+}
+
+function isValidSalesByLotResponse(value: unknown, requestedLotIds: number[]): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const grouped = value as Record<string, unknown>;
+  if (requestedLotIds.length === 0) {
+    return Object.entries(grouped).every(([rawLotId, rawSales]) => {
+      const lotId = Number(rawLotId);
+      return Number.isFinite(lotId) && lotId > 0 && Array.isArray(rawSales) && rawSales.every(isCompleteSaleEntry);
+    });
+  }
+  return requestedLotIds.every((lotId) => {
+    const rawSales = grouped[String(lotId)];
+    return Object.prototype.hasOwnProperty.call(grouped, String(lotId))
+      && Array.isArray(rawSales)
+      && rawSales.every(isCompleteSaleEntry);
+  });
+}
+
+function isCompleteSaleEntry(rawSale: unknown): boolean {
+  if (!rawSale || typeof rawSale !== "object" || Array.isArray(rawSale)) return false;
+  const candidate = rawSale as Record<string, unknown>;
+  const price = typeof candidate.price === "number" ? candidate.price
+    : typeof candidate.price === "string" && candidate.price.trim() ? Number(candidate.price) : NaN;
+  const quantity = typeof candidate.quantity === "number" ? candidate.quantity
+    : typeof candidate.quantity === "string" && candidate.quantity.trim() ? Number(candidate.quantity) : NaN;
+  return Number.isFinite(price) && price >= 0
+    && Number.isInteger(quantity) && quantity > 0
+    && typeof candidate.date === "string"
+    && candidate.date.trim().length > 0
+    && normalizeSale(rawSale) !== null;
 }
 
 export async function saveAuthoritativeSale(

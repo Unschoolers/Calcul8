@@ -6,6 +6,7 @@ import { remapSpinCountsByTier } from "../src/components/windows/game/services/w
 import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
   calculateWheelSessionNetRevenue,
+  calculateWheelTierNetRevenuePerSpin,
   computeExpectedMargin
 } from "../src/components/windows/game/services/wheelPricing.ts";
 import type { WheelConfig } from "../src/types/app.ts";
@@ -129,3 +130,31 @@ test("game boundary modules keep expected and realized wheel revenue in pricing 
   assert.equal(calculateWheelSessionNetRevenue(config, buildSlotsFromConfig(config), [2], undefined, lots), 18);
 });
 
+test("multi-lot wheel projections use each source lot vertical and retain processing fees", () => {
+  const config = createSingleTierConfig({ spinPrice: 100, tiers: [{
+    id: "tier-a", label: "Mix", color: "#f00", slots: 1, costPerTier: 1,
+    packsCount: 1, deductionType: "packs", sets: [], boundLotId: 1,
+    boundLotIds: [1, 2]
+  }] });
+  const lots = [
+    makeLot({ id: 1, feeProfilePreset: "whatnot", whatnotVertical: "tcg", platformFeePercent: 8, additionalFeePercent: 2.9, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0.3 }),
+    makeLot({ id: 2, feeProfilePreset: "whatnot", whatnotVertical: "coins", platformFeePercent: 8, additionalFeePercent: 2.9, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0.3 })
+  ];
+  const summary = { currentTier: 2 as const, periodStart: "2026-09-21" };
+  const tcg = calculateWheelTierNetRevenuePerSpin(config, config.tiers[0]!, [lots[0]!], undefined, summary);
+  const mixed = calculateWheelTierNetRevenuePerSpin(config, config.tiers[0]!, lots, undefined, summary);
+  const coins = calculateWheelTierNetRevenuePerSpin(config, { ...config.tiers[0]!, boundLotIds: [2], boundLotId: 2 }, lots, undefined, summary);
+  assert.ok(coins > mixed && mixed > tcg, "the mixed tier averages TCG and coin commission independently");
+  assert.ok(tcg < 100 * (1 - 0.075) - 0.3, "configured processing percentage is retained in addition to commission");
+});
+
+test("unbound wheel tier keeps current-lot fallback fee input", () => {
+  const config = createSingleTierConfig({ spinPrice: 20, tiers: [{
+    id: "tier-a", label: "Unbound", color: "#f00", slots: 1, costPerTier: 1,
+    packsCount: 1, deductionType: "packs", sets: []
+  }] });
+  const fallback = { platformFeePercent: 5, additionalFeePercent: 2.9, additionalFeeAppliesTo: "sale_only" as const, fixedFeePerOrder: 0.3 };
+  const currentLot = makeLot({ id: 6, feeProfilePreset: "whatnot", whatnotVertical: "tcg", platformFeePercent: 8, additionalFeePercent: 2.9, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0.3 });
+  const projected = calculateWheelTierNetRevenuePerSpin(config, config.tiers[0]!, [currentLot], fallback, { currentTier: 6, periodStart: "2026-09-21" }, currentLot);
+  assert.equal(projected, 20 * (1 - 0.065 - 0.029) - 0.3);
+});

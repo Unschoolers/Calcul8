@@ -19,6 +19,7 @@ export type {
   SyncSalesByLotDto,
   SyncSaleType,
   SyncSinglesCatalogSource,
+  SyncWhatnotVertical,
   SyncSinglesPurchaseDto,
   SyncSnapshotDto,
   SyncSystemPricingDefaultsDto,

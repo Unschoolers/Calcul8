@@ -36,6 +36,13 @@ test("translateAppMessage returns the configured string and interpolates params"
   );
 });
 
+test("Whatnot lot category prompts and labels are localized in English and French", () => {
+  assert.equal(translateAppMessage("en", "configWhatnotVerticalRequired"), "Choose a Whatnot category");
+  assert.equal(translateAppMessage("fr-CA", "configWhatnotVerticalRequired"), "Choisissez une catégorie Whatnot");
+  assert.equal(translateAppMessage("en", "configWhatnotVerticalCoins"), "Coins");
+  assert.equal(translateAppMessage("fr-CA", "configWhatnotVerticalCoins"), "Pièces de monnaie");
+});
+
 test("first-run onboarding uses seller-facing inventory language", () => {
   const englishOnboarding = [
     "onboardingIntroTitle",

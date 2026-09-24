@@ -10,6 +10,7 @@ import {
     getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
 import type { SinglesComputedObject } from "../context/commerce.ts";
+import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType, isSinglesLot } from "../shared/lot-types.ts";
 import {
@@ -96,6 +97,8 @@ function getSaleEditorLineProfitPreviews(context: {
   additionalFeePercent: number;
   additionalFeeAppliesTo: "sale_only" | "sale_plus_shipping";
   fixedFeePerOrder: number;
+  whatnotVertical?: import("../../types/app.ts").WhatnotVertical | null;
+  whatnotFeeSummary?: { currentTier: 0 | 1 | 2 | 3 | 4 | 5 | 6; periodStart: string | null } | null;
   singlesPurchases: Array<{ id: number; marketValue: number; cost: number; currency?: string; marketValueCurrency?: string }>;
   currency: "CAD" | "USD";
   sellingCurrency: "CAD" | "USD";
@@ -106,7 +109,7 @@ function getSaleEditorLineProfitPreviews(context: {
   const normalizedLines = getSaleEditorNormalizedLines(context.newSale);
   const grossRevenue = normalizedLines.reduce((sum, line) => sum + line.price, 0);
   const buyerShipping = Math.max(0, Number(context.newSale?.buyerShipping) || 0);
-  const netRevenue = calculateNetFromGross(grossRevenue, context.sellingTaxPercent, buyerShipping, 1, context);
+  const netRevenue = calculateNetFromGross(grossRevenue, context.sellingTaxPercent, buyerShipping, 1, resolveEffectiveWhatnotFeeInput(context, context.whatnotFeeSummary));
 
   return normalizedLines.map((line): SaleEditorLineProfitPreview => {
     return calculateSinglesLineProfitPreview({
@@ -301,7 +304,8 @@ export const singlesComputed: SinglesComputedObject = {
           profitablePrice: calculateProfitableOrderPrice(
             remainingCostBasis,
             this.sellingTaxPercent,
-            buyerShippingPerOrder
+            buyerShippingPerOrder,
+            resolveEffectiveWhatnotFeeInput(this, this.whatnotFeeSummary)
           ),
           soldCount: soldCounts[entry.id] || 0
         };
@@ -353,9 +357,6 @@ export const singlesComputed: SinglesComputedObject = {
     };
   }
 };
-
-
-
 
 
 

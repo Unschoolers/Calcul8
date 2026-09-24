@@ -22,6 +22,7 @@ export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
 export type FeeProfilePreset = "whatnot" | "none";
+export type WhatnotVertical = "sports" | "tcg" | "fashion" | "other_collectibles" | "coins" | "other";
 export type AdditionalFeeAppliesTo = "sale_only" | "sale_plus_shipping";
 export type SinglesCsvImportMode = "merge" | "sync" | "append";
 export type SaleType = "pack" | "box" | "rtyh" | "wheel";
@@ -221,6 +222,7 @@ export interface Sale {
   updatedBy?: string;
   mutationId?: string;
   externalProvider?: "whatnot" | string;
+  wasWhatnotSale?: boolean;
   externalAccountId?: string;
   externalSaleId?: string;
   externalOrderId?: string;
@@ -290,6 +292,7 @@ export interface FeeProfileFields {
 }
 
 export interface LotSetup extends FeeProfileFields {
+  whatnotVertical?: WhatnotVertical | null;
   boxPriceCost: number;
   boxesPurchased: number;
   packsPerBox: number;
@@ -623,6 +626,7 @@ export interface AppState extends LotSetup {
   offlineListener: (() => void) | null;
   windowFocusListener: (() => void) | null;
   documentVisibilityListener: (() => void) | null;
+  whatnotFeeDateTimeoutId: number | null;
   beforeInstallPromptListener: ((event: Event) => void) | null;
   appInstalledListener: (() => void) | null;
   hasPwaUiHandlersBound: boolean;
@@ -685,6 +689,7 @@ export interface AppState extends LotSetup {
   renameLotName: string;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
+  newLotWhatnotVertical: WhatnotVertical | null;
   lastFetchTime: number | null;
   cloudSyncIntervalId: number | null;
   lastSyncedPayloadHash: string | null;
@@ -693,6 +698,7 @@ export interface AppState extends LotSetup {
   workspaceRealtimeStatus: WorkspaceRealtimeStatus;
   offlineReconnectIntervalId: number | null;
   salesCacheEpoch: number;
+  whatnotFeeDateOnly: string;
   whatnotConnectionStatus: WhatnotConnectionStatus;
   whatnotSyncStatus: WhatnotSyncStatus;
   whatnotConnectionSummary: WhatnotConnectionSummary | null;

@@ -1,4 +1,5 @@
-import type { LotSetup, SinglesCatalogSource } from "../../types/app.ts";
+import type { LotSetup, SinglesCatalogSource, WhatnotVertical } from "../../types/app.ts";
+import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import type {
   ConfigLotMethodImplementation,
   LotConfigurationContext
@@ -63,6 +64,7 @@ function shouldHydrateAuthoritativeSales(
 export const configLotMethods = {
   getCurrentSetup(): LotSetup {
     return {
+      whatnotVertical: this.whatnotVertical,
       boxPriceCost: this.boxPriceCost,
       boxesPurchased: this.boxesPurchased,
       packsPerBox: this.packsPerBox,
@@ -99,6 +101,11 @@ export const configLotMethods = {
     this.saveLotsToStorage();
     queueWorkspaceConfigSyncPush(this);
     queueCloudConfigSyncPush(this);
+  },
+
+  setCurrentLotWhatnotVertical(value: WhatnotVertical | null): void {
+    this.whatnotVertical = normalizeWhatnotVertical(value);
+    this.autoSaveSetup();
   },
 
   syncLivePricesFromDefaults(): void {
@@ -225,6 +232,9 @@ export const configLotMethods = {
     const name = (this.newLotName || "").trim();
     if (!name) return this.notify("Please enter a lot name", "warning");
     if (this.lots.some((p) => p.name === name)) return this.notify("A lot with this name already exists", "warning");
+    if (!normalizeWhatnotVertical(this.newLotWhatnotVertical)) {
+      return this.notify(this.t("configWhatnotVerticalRequired"), "warning");
+    }
 
     const { lot: newLot, nextLotType, nextLotCatalogSource } = createNewLotRecord({
       lots: this.lots,
@@ -232,6 +242,7 @@ export const configLotMethods = {
       newLotName: name,
       newLotType: normalizeLotType(this.newLotType),
       newLotCatalogSource: this.newLotCatalogSource,
+      newLotWhatnotVertical: this.newLotWhatnotVertical,
       purchaseUiMode: this.purchaseUiMode,
       setup: this.getCurrentSetup(),
       systemPricingDefaults: this.systemPricingDefaults,
@@ -246,6 +257,7 @@ export const configLotMethods = {
     this.newLotName = "";
     this.newLotType = nextLotType;
     this.newLotCatalogSource = nextLotCatalogSource;
+    this.newLotWhatnotVertical = null;
     this.showNewLotModal = false;
     if (typeof this.handleGuidedOnboardingLotCreated === "function") {
       this.handleGuidedOnboardingLotCreated(getLotType(newLot), newLot.id);

@@ -1313,6 +1313,19 @@ test("computed singlesSaleCardOptions computes remaining quantity from total and
   assert.equal(Math.abs((inStock?.profitablePrice ?? 0) - 9.32) < 0.01, true);
 });
 
+test("singles profitable price suggestion uses the current lot Whatnot commission", () => {
+  const options = appComputed.singlesSaleCardOptions.call({
+    currentLotType: "singles", newSale: { buyerShipping: 0 }, sellingTaxPercent: 0,
+    singlesSoldCountByPurchaseId: {},
+    singlesPurchases: [{ id: 40, item: "Coin", cost: 10, quantity: 1, marketValue: 10 }],
+    currency: "CAD", sellingCurrency: "CAD", exchangeRate: 1,
+    feeProfilePreset: "whatnot", whatnotVertical: "coins", platformFeePercent: 8,
+    additionalFeePercent: 0, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0,
+    whatnotFeeSummary: { currentTier: 0, periodStart: "2026-09-21" }
+  } as unknown as ThisParameterType<typeof appComputed.singlesSaleCardOptions>);
+  assert.equal(options[0]?.profitablePrice, 10 / 0.96);
+});
+
 test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same linked card", () => {
   const sameCard = appComputed.selectedSinglesSaleMaxQuantity.call({
     currentLotType: "singles",
@@ -1832,6 +1845,7 @@ test("createNewLot in simple mode resets purchase defaults for new lots", () => 
   const context = {
     purchaseUiMode: "simple",
     newLotName: "Simple lot",
+    newLotWhatnotVertical: "tcg",
     lots: [] as Lot[],
     currentLotId: null as number | null,
     showNewLotModal: true,
@@ -1891,6 +1905,7 @@ test("createNewLot in expert mode uses 15 selling tax for the first lot", () => 
   const context = {
     purchaseUiMode: "expert",
     newLotName: "Expert lot",
+    newLotWhatnotVertical: "sports",
     lots: [] as Lot[],
     currentLotId: null as number | null,
     showNewLotModal: true,
@@ -1966,6 +1981,7 @@ test("createNewLot uses previous lot selling tax for second+ lots", () => {
   const context = {
     purchaseUiMode: "expert",
     newLotName: "Second lot",
+    newLotWhatnotVertical: "other",
     lots: [existingLot] as Lot[],
     currentLotId: existingLot.id,
     showNewLotModal: true,
@@ -2292,6 +2308,92 @@ test("saveSale falls back to local today date when date input is invalid", () =>
 
   assert.equal(context.sales.length, 1);
   assert.equal(context.sales[0]?.date, todayDate);
+});
+
+test("manual Whatnot sale snapshot uses its sale-date period and survives descriptive edits", () => {
+  const lot = {
+    id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "none", usesSystemPricingDefaults: true, whatnotVertical: "coins",
+    sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 0,
+    additionalFeePercent: 0, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0
+  } as any;
+  const scopeSales = new Map<number, Sale[]>([
+    [1, [{ id: 10, type: "pack", quantity: 1, packsCount: 1, price: 85000, buyerShipping: 0, date: "2026-09-01", wasWhatnotSale: true }]],
+    [2, []]
+  ]);
+  const context: any = {
+    canUsePaidActions: true, currentLotType: "bulk", currentLotId: 1, currentTab: "sales", lots: [lot],
+    feeProfilePreset: "whatnot", platformFeePercent: 8, additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0, whatnotVertical: "coins",
+    sellingTaxPercent: 0, sellingCurrency: "CAD", exchangeRate: 1,
+    sales: [], editingSale: null, packsPerBox: 16, singlesPurchases: [], singlesSoldCountByPurchaseId: {},
+    newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
+    getAllSalesByLotId: () => scopeSales,
+    notify() {}, cancelSale() { this.editingSale = null; }, initSalesChart() {},
+  };
+
+  salesMethods.saveSale.call(context);
+  const saved = context.sales[0] as Sale;
+  assert.equal(saved.wasWhatnotSale, true);
+  assert.equal(saved.netRevenue, 965); // Coins tier 6 (3.5%) for the sale's September period.
+
+  context.editingSale = saved;
+  context.newSale = { ...context.newSale, memo: "note only" };
+  salesMethods.saveSale.call(context);
+  assert.equal(context.sales[0].netRevenue, 965);
+});
+
+test("manual Whatnot date edits exclude the old date and retain provenance after profile changes", () => {
+  const lot = {
+    id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "none", whatnotVertical: "coins",
+    sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 0,
+    additionalFeePercent: 0, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0
+  } as any;
+  const priorManualSale: Sale = { id: 2, type: "pack", quantity: 1, packsCount: 1, price: 85000, buyerShipping: 0, date: "2026-08-23", wasWhatnotSale: true, netRevenue: 81600 };
+  const scopeSales = new Map<number, Sale[]>([[1, [priorManualSale]], [2, []]]);
+  const context: any = {
+    canUsePaidActions: true, currentLotType: "bulk", currentLotId: 1, currentTab: "sales", lots: [lot],
+    sales: [priorManualSale], editingSale: priorManualSale, packsPerBox: 16, singlesPurchases: [], singlesSoldCountByPurchaseId: {},
+    newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
+    getAllSalesByLotId: () => scopeSales,
+    notify() {}, cancelSale() { this.editingSale = null; }, initSalesChart() {}
+  };
+  salesMethods.saveSale.call(context);
+  assert.equal(context.sales[0].date, "2026-09-22");
+  assert.equal(context.sales[0].wasWhatnotSale, true);
+  assert.equal(context.sales[0].netRevenue, 960); // Old-date sale is removed before deriving Standard (4%).
+});
+
+test("offline save defers a tier snapshot while scoped sales are missing and snapshots after history arrives", () => {
+  const lot = {
+    id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "whatnot", whatnotVertical: "coins",
+    sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 8,
+    additionalFeePercent: 0, additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0
+  } as any;
+  const otherLot = { ...lot, id: 2, name: "Other", feeProfilePreset: "none" };
+  const scopedSales = new Map<number, Sale[]>([[1, []], [2, []]]);
+  const cacheStatus = new Map([[1, "loaded"], [2, "missing"]]);
+  const warnings: string[] = [];
+  const context: any = {
+    canUsePaidActions: true, currentLotType: "bulk", currentLotId: 1, currentTab: "sales", lots: [lot, otherLot],
+    isOffline: true, sales: [], editingSale: null, packsPerBox: 16, singlesPurchases: [], singlesSoldCountByPurchaseId: {},
+    newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
+    getAllSalesByLotId: () => scopedSales,
+    getSalesCacheEntry: (lotId: number) => ({ status: cacheStatus.get(lotId), sales: scopedSales.get(lotId) || [] }),
+    notify(message: string) { warnings.push(message); }, cancelSale() { this.editingSale = null; }, initSalesChart() {}
+  };
+
+  salesMethods.saveSale.call(context);
+  const saved = context.sales[0] as Sale;
+  assert.equal(saved.wasWhatnotSale, true);
+  assert.equal(saved.netRevenue, undefined);
+  assert.match(warnings.at(-1) || "", /history is incomplete/i);
+
+  scopedSales.set(2, [{ id: 20, type: "pack", quantity: 1, packsCount: 1, price: 85000, buyerShipping: 0, date: "2026-09-01", wasWhatnotSale: true }]);
+  cacheStatus.set(2, "loaded");
+  context.editingSale = saved;
+  context.newSale = { ...context.newSale, price: 1100 };
+  salesMethods.saveSale.call(context);
+  assert.equal(context.sales[0].netRevenue, 1061.5);
 });
 
 test("saveSale validates negative buyer shipping", () => {
@@ -3469,4 +3571,3 @@ test("allLotPerformance applies portfolio preset filter", () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.lotId, presetA.id);
 });
-

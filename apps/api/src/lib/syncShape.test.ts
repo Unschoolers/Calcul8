@@ -13,6 +13,21 @@ test("parseSyncLotsShape accepts lot payload", () => {
   assert.deepEqual(result.salesByLot, { "2": [{ id: 22 }] });
 });
 
+test("parseSyncLotsShape preserves valid vertical and drops invalid vertical", () => {
+  const result = parseSyncLotsShape({
+    lots: [
+      { id: 2, whatnotVertical: "other_collectibles" },
+      { id: 3, whatnotVertical: "unrecognized" }
+    ],
+    salesByLot: {}
+  });
+
+  assert.deepEqual(result.lots, [
+    { id: 2, whatnotVertical: "other_collectibles" },
+    { id: 3 }
+  ]);
+});
+
 test("parseSyncLotsShape defaults missing salesByLot to empty object", () => {
   const result = parseSyncLotsShape({
     lots: [{ id: 2 }]
@@ -84,6 +99,7 @@ test("parseSyncLotsShape normalizes sale entity fields and drops unknown data", 
           updatedBy: "user-1",
           mutationId: "sale:1",
           externalProvider: "whatnot",
+          wasWhatnotSale: true,
           externalAccountId: " seller-1 ",
           externalSaleId: " ledger-1 ",
           externalOrderId: " order-1 ",
@@ -143,6 +159,7 @@ test("parseSyncLotsShape normalizes sale entity fields and drops unknown data", 
         updatedBy: "user-1",
         mutationId: "sale:1",
         externalProvider: "whatnot",
+        wasWhatnotSale: true,
         externalAccountId: "seller-1",
         externalSaleId: "ledger-1",
         externalOrderId: "order-1",

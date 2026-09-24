@@ -12,7 +12,7 @@ const gameCoordinatorPortKeys = [
   "wheelPreviewGridLayoutSeed", "wheelGridReveals", "wheelPreviewGridReveals", "wheelPreviewSpinCounts",
   "wheelPreviewTotalSpins", "wheelPreviewFairnessHistory", "wheelPreviewChaseTallyHistory", "wheelLastResultColor",
   "wheelSpinHash", "wheelSpinSeed", "wheelSpinClientSeed", "wheelSpinVerificationUrl", "wheelSpinAlgorithm", "singlesSoldCountByPurchaseId",
-  "getSalesCacheEntry", "loadSalesForLotId",
+  "getSalesCacheEntry", "loadSalesForLotId", "whatnotFeeSummary",
   "addWheelSaleToLot"
 ] as const satisfies readonly (keyof GameCoordinatorContext)[];
 

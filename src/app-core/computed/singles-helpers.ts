@@ -51,11 +51,12 @@ export function getTrackedSinglesSoldCount(
 export function calculateProfitableOrderPrice(
   targetNetRevenue: number,
   sellingTaxPercent: number,
-  buyerShippingPerOrder: number
+  buyerShippingPerOrder: number,
+  feeProfileInput?: Parameters<typeof calculateExactPriceForUnits>[4]
 ): number {
   const targetNet = Math.max(0, Number(targetNetRevenue) || 0);
   if (targetNet <= 0) return 0;
-  return calculateExactPriceForUnits(1, targetNet, sellingTaxPercent, buyerShippingPerOrder);
+  return calculateExactPriceForUnits(1, targetNet, sellingTaxPercent, buyerShippingPerOrder, feeProfileInput);
 }
 
 export function getSinglesEntryUnitCostInSellingCurrency(

@@ -1,5 +1,6 @@
 import { captureWorkspaceScopeGuard, type ScopeState } from "../../../../app-core/workspace-scope.ts";
 import type { Lot, Sale, WheelConfig, PendingWheelInventoryIssue } from "../../../../types/app.ts";
+import type { WhatnotFeePeriodSummary } from "../../../../app-core/shared/whatnot-fee-summary.ts";
 import { calculateWheelSaleNetRevenue } from "./wheelPricing.ts";
 
 export type GameOutcomeSaleInput = {
@@ -16,6 +17,7 @@ export type GameOutcomeSaleInput = {
   pendingIssue?: PendingWheelInventoryIssue;
   slotIndex?: number;
   slotColor?: string;
+  whatnotFeeSummary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null;
 };
 
 export type GameOutcomeSettlementPorts = {
@@ -37,13 +39,15 @@ export async function settleGameOutcomeSale(
     quantity: input.deductionType === "singles" ? 1 : (input.packsCount || 1),
     packsCount: input.packsCount,
     price: input.config.spinPrice,
+    priceIsTotal: true,
     buyerShipping: lot?.sellingShippingPerOrder ?? 0,
     date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
     memo: input.spinNumber ? `Wheel spin #${input.spinNumber}: ${input.label}` : `Wheel spin: ${input.label}`,
     linkedWheelId: input.config.id,
     winningTierId: input.tierId,
     costOfWinningTier: input.cost,
-    netRevenue: calculateWheelSaleNetRevenue(input.config, lot),
+    netRevenue: calculateWheelSaleNetRevenue(input.config, lot, input.whatnotFeeSummary),
+    wasWhatnotSale: lot?.feeProfilePreset === "whatnot",
     ...(input.singlesEntryId != null ? { singlesPurchaseEntryId: input.singlesEntryId } : {})
   };
   try {

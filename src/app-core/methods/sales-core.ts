@@ -20,6 +20,7 @@ export interface SaleSaveParams {
   singlesPurchases: SinglesPurchaseEntry[];
   singlesSoldCountByPurchaseId?: Record<number, number>;
   todayDate?: string;
+  isWhatnotLot?: boolean;
 }
 
 export type SaleSaveResult =
@@ -291,15 +292,19 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     customer: customer || undefined,
     memo: memo || undefined,
     buyerShipping,
-    date: normalizedSaleDate
+    date: normalizedSaleDate,
+    wasWhatnotSale: params.editingSale ? params.editingSale.wasWhatnotSale : Boolean(params.isWhatnotLot)
   };
 
   const previous = params.editingSale;
+  const isImportedSale = Boolean(previous?.externalProvider || previous?.externalSaleId || previous?.externalOrderId
+    || previous?.externalTransactionRefs?.length);
   if (previous && (
     previous.price !== sale.price || previous.quantity !== sale.quantity
     || previous.buyerShipping !== sale.buyerShipping || previous.type !== sale.type
+    || previous.date !== sale.date
     || (previous.type !== "wheel" && Boolean(previous.priceIsTotal) !== Boolean(sale.priceIsTotal))
-  )) {
+  ) && !isImportedSale) {
     // Keep settled revenue for descriptive edits; recompute after financial changes.
     delete sale.netRevenue;
   }

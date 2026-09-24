@@ -29,6 +29,8 @@ import type {
 } from "./workspace.ts";
 
 export type ScopeWatchContext = WorkspaceRealtimeContext &
+  Pick<AppState, "salesCacheEpoch" | "googleAuthEpoch" | "hasProAccess"> &
+  Pick<CommerceMethodState, "getSalesCacheEntry"> &
   WhatnotTransientStateContext &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
   Pick<BuyerMethodState, "hydrateBuyerProfiles"> &
@@ -64,6 +66,7 @@ export type CommerceConfigWatchContext = Pick<
 > & Pick<CommerceMethodState, "onPurchaseConfigChange">;
 
 export type AuthWatchContext = WorkspaceRealtimeContext &
+  Pick<AppState, "salesCacheEpoch"> &
   SalesFreshnessContext &
   LivePricingHydrationContext &
   WhatnotTransientStateContext &
@@ -117,6 +120,7 @@ export type GameWatchContext = Pick<
 > & Pick<GameMethodState, "saveWheelConfigsToStorage">;
 
 export interface AppWatchObject {
+  isOffline(this: ScopeWatchContext): void;
   activeScopeType(this: ScopeWatchContext, newValue: WorkspaceScopeType): void;
   activeWorkspaceId(this: ScopeWatchContext, newValue: string | null): void;
   preferredLanguage(this: LanguageWatchContext, newValue: string): void;
@@ -132,5 +136,6 @@ export interface AppWatchObject {
   portfolioDashboardPreset(this: PortfolioWatchContext, newValue: PortfolioDashboardPreset): void;
   portfolioLotFilterIds: { handler(this: PortfolioWatchContext): void; deep: true };
   sales: { handler(this: SalesWatchContext): void; deep: true };
+  lots: { handler(this: ScopeWatchContext): void; deep: true };
   wheelConfigs: { handler(this: GameWatchContext): void; deep: true };
 }

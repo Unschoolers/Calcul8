@@ -1,19 +1,23 @@
 import { fireEvent, screen } from "@testing-library/vue";
 import { readFileSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
+import { reactive } from "vue";
 import AuthGateCard from "../../src/components/shell/AuthGateCard.vue";
 import AutoCalculateModal from "../../src/components/modals/AutoCalculateModal.vue";
 import SaleEditorModal from "../../src/components/shell/SaleEditorModal.vue";
 import PortfolioReportModal from "../../src/components/shell/PortfolioReportModal.vue";
 import SystemConfigurationDialog from "../../src/components/shell/SystemConfigurationDialog.vue";
+import { createInitialState } from "../../src/app-core/state.ts";
+import { configLotMethods } from "../../src/app-core/methods/config-lots.ts";
 import WorkspaceModals from "../../src/components/shell/WorkspaceModals.vue";
 import WheelCreateGameDialog from "../../src/components/windows/game/dialogs/WheelCreateGameDialog.vue";
 import WhatnotCsvImportDialog from "../../src/components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import { commerceDialogPortsKey } from "../../src/components/modals/commerceDialogPorts.ts";
 import { shellPortsKey } from "../../src/components/shell/shellPorts.ts";
-import { workspaceDialogPortsKey } from "../../src/components/shell/workspaceDialogPorts.ts";
+import { createWorkspaceDialogPorts, workspaceDialogPortsKey } from "../../src/components/shell/workspaceDialogPorts.ts";
 import { whatnotDialogPortsKey } from "../../src/components/windows/whatnot/whatnotDialogPorts.ts";
 import { renderWithApp } from "./render.ts";
+import { makeLot } from "../helpers/fixtures.ts";
 
 function renderWithCapabilities(
   component: Parameters<typeof renderWithApp>[0],
@@ -60,6 +64,15 @@ function translate(key: string): string {
     configLotOverridesTitle: "Lot overrides",
     configLotOverridesHelp: "Override defaults for this lot.",
     configUseSystemPricingDefaultsLabel: "Use system pricing defaults",
+    configWhatnotVerticalLabel: "Whatnot category",
+    configWhatnotVerticalLegacyHint: "Choose a category to estimate commission.",
+    configWhatnotVerticalUnclassified: "Unclassified",
+    configWhatnotVerticalSports: "Sports",
+    configWhatnotVerticalTcg: "Trading card games",
+    configWhatnotVerticalFashion: "Fashion",
+    configWhatnotVerticalOtherCollectibles: "Other collectibles",
+    configWhatnotVerticalCoins: "Coins",
+    configWhatnotVerticalOther: "Other",
     configMarketplaceSkuLabel: "Importer depuis l’identifiant utilisateur",
     configMarketplaceSkuPlaceholder: "External SKU",
     commonClose: "Close",
@@ -371,6 +384,38 @@ describe("workflow dialog scenarios", () => {
     expect(ctx.showSystemConfigurationDialog).toBe(false);
   });
 
+  test("reactively updates an inheriting legacy lot category and hint", async () => {
+    const legacyLot = makeLot({ id: 81, usesSystemPricingDefaults: true, whatnotVertical: null });
+    const state = reactive({
+      ...createInitialState(),
+      ...systemConfigurationContext(),
+      currentLotId: legacyLot.id,
+      lots: [legacyLot],
+      currentLotUsesSystemPricingDefaults: true,
+      whatnotVertical: null,
+      saveLotsToStorage: vi.fn(),
+      getCurrentSetup: configLotMethods.getCurrentSetup,
+      autoSaveSetup: configLotMethods.autoSaveSetup,
+      setCurrentLotWhatnotVertical: configLotMethods.setCurrentLotWhatnotVertical
+    });
+    renderWithCapabilities(SystemConfigurationDialog, workspaceDialogPortsKey, createWorkspaceDialogPorts(state as never));
+
+    expect(screen.getByText("Choose a category to estimate commission.")).toBeVisible();
+    const category = screen.getByRole("combobox", { name: "Whatnot category" });
+    await fireEvent.mouseDown(category);
+    await fireEvent.click(await screen.findByText("Coins"));
+
+    expect(state.whatnotVertical).toBe("coins");
+    expect(state.lots[0]?.whatnotVertical).toBe("coins");
+    expect(screen.queryByText("Choose a category to estimate commission.")).toBeNull();
+
+    await fireEvent.mouseDown(category);
+    await fireEvent.click(await screen.findByText("Sports"));
+
+    expect(state.whatnotVertical).toBe("sports");
+    expect(state.lots[0]?.whatnotVertical).toBe("sports");
+  });
+
   test("closes and prints the portfolio report through its preserved actions", async () => {
     const closeContext = portfolioReportContext();
     const closeRender = renderWithCapabilities(PortfolioReportModal, commerceDialogPortsKey, closeContext);
@@ -431,11 +476,13 @@ function systemConfigurationContext() {
     feeProfilePreset: "whatnot",
     spotsPerBox: 10,
     currentLotType: "singles",
+    whatnotVertical: null,
     currentLotUsesSystemPricingDefaults: false,
     hasLotSelected: true,
     onSystemPricingDefaultsChange: vi.fn(),
     setSystemFeeProfilePreset: vi.fn(),
     setCurrentLotSystemPricingDefaultsMode: vi.fn(),
+    setCurrentLotWhatnotVertical: vi.fn(),
     onPurchaseConfigChange: vi.fn(),
     setFeeProfilePreset: vi.fn(),
     accessProFeature: vi.fn()

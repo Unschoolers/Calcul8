@@ -61,6 +61,9 @@ function createContext(overrides: Ctx = {}): Ctx {
     newLotName: "",
     newLotType: "bulk",
     newLotCatalogSource: "ua",
+    newLotWhatnotVertical: "tcg",
+    whatnotVertical: lot.whatnotVertical ?? null,
+    t: (key: string) => key,
     renameLotName: "",
     showRenameLotModal: false,
     purchaseUiMode: "expert",
@@ -646,6 +649,7 @@ test("createNewLot uses selected catalog source for new singles lots", () => {
     newLotName: "Pokemon Singles",
     newLotType: "singles",
     newLotCatalogSource: "pokemon",
+    newLotWhatnotVertical: "fashion",
     showNewLotModal: true,
     getCurrentSetup: vi.fn(() => configLotMethods.getCurrentSetup.call(ctx as never)),
     loadLot: vi.fn(() => {
@@ -657,8 +661,45 @@ test("createNewLot uses selected catalog source for new singles lots", () => {
 
   const createdLot = (ctx.lots as Lot[]).find((lot) => lot.name === "Pokemon Singles");
   assert.equal(createdLot?.lotType, "singles");
+  assert.equal(createdLot?.whatnotVertical, "fashion");
   assert.equal(createdLot?.singlesCatalogSource, "pokemon");
   assert.equal(ctx.showNewLotModal, false);
+});
+
+test("createNewLot leaves the modal open and warns when no category is selected", () => {
+  const ctx = createContext({
+    lots: [makeLot({ id: 1 })],
+    currentLotId: 1,
+    newLotName: "Unclassified",
+    newLotWhatnotVertical: null,
+    showNewLotModal: true
+  });
+
+  configLotMethods.createNewLot.call(ctx as never);
+
+  assert.equal((ctx.lots as Lot[]).length, 1);
+  assert.equal(ctx.showNewLotModal, true);
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), ["configWhatnotVerticalRequired", "warning"]);
+});
+
+test("setCurrentLotWhatnotVertical saves classifications for an inheriting legacy lot", () => {
+  const lot = makeLot({ usesSystemPricingDefaults: true, whatnotVertical: undefined });
+  const ctx = createContext({
+    ...lot,
+    lots: [lot],
+    currentLotId: lot.id,
+    currentLotUsesSystemPricingDefaults: true,
+    whatnotVertical: null,
+    saveLotsToStorage: vi.fn(),
+    getCurrentSetup: () => configLotMethods.getCurrentSetup.call(ctx as never),
+    autoSaveSetup: () => configLotMethods.autoSaveSetup.call(ctx as never)
+  });
+
+  configLotMethods.setCurrentLotWhatnotVertical.call(ctx as never, "coins");
+
+  assert.equal(ctx.whatnotVertical, "coins");
+  assert.equal(lot.whatnotVertical, "coins");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("selectLot saves the current lot before switching to the next one", () => {
@@ -980,5 +1021,3 @@ test("deleteCurrentLot allows empty cloud overwrite when deleting the final lot"
   assert.equal((ctx.lots as Array<{ id: number }>).length, 0);
   assert.deepEqual((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls[0], [true, { allowEmptyOverwrite: true }]);
 });
-
-

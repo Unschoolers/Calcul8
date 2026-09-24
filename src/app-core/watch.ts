@@ -6,6 +6,7 @@ import type { AppWatchObject, TabSalesFreshnessContext } from "./context/watch.t
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
 import { hydrateAuthoritativeLivePricingForLot } from "./methods/config-live-pricing.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
+import { hydrateMissingWhatnotScopeSales } from "./methods/whatnot-fee-hydration.ts";
 import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
 import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot/whatnot.ts";
@@ -68,6 +69,15 @@ function queueCurrentLotSalesFreshnessCheckAfterTabSettle(
 }
 
 export const appWatch: AppWatchObject = {
+  isOffline() {
+    if (!this.isOffline) hydrateMissingWhatnotScopeSales(this);
+  },
+  lots: {
+    handler() {
+      hydrateMissingWhatnotScopeSales(this);
+    },
+    deep: true
+  },
   activeScopeType() {
     if (isDevNoLoginRoute()) return;
     void this.hydrateBuyerProfiles();
@@ -112,6 +122,7 @@ export const appWatch: AppWatchObject = {
   },
 
   currentTab(newTab) {
+    hydrateMissingWhatnotScopeSales(this);
     try {
       localStorage.setItem(STORAGE_KEYS.LAST_TAB, newTab);
     } catch {
@@ -227,6 +238,7 @@ export const appWatch: AppWatchObject = {
     void this.retryPendingBuyerProfiles();
     refreshWorkspaceRealtime(this);
     queueCurrentLotSalesFreshnessCheck(this);
+    hydrateMissingWhatnotScopeSales(this);
     hydrateCurrentLotLivePricing(this);
     void this.refreshWorkspaces();
     void this.refreshWhatnotStatus().then(() => {

@@ -90,6 +90,68 @@ test("buildSaleSaveResult builds a bulk RTYH sale and normalizes invalid date", 
   assert.equal(result.sale.date, "2026-02-22");
 });
 
+test("new manual Whatnot sales record provenance and edits preserve it", () => {
+  const created = buildSaleSaveResult({
+    canUsePaidActions: true, currentLotType: "bulk", sales: [], editingSale: null,
+    newSale: makeDraft({}), packsPerBox: 16, singlesPurchases: [], todayDate: "2026-02-22",
+    isWhatnotLot: true
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) throw new Error("expected save result");
+  assert.equal(created.sale.wasWhatnotSale, true);
+  const edited = buildSaleSaveResult({
+    canUsePaidActions: true, currentLotType: "bulk", sales: [created.sale], editingSale: created.sale,
+    newSale: makeDraft({}), packsPerBox: 16, singlesPurchases: [], todayDate: "2026-02-22",
+    isWhatnotLot: false
+  });
+  assert.equal(edited.ok, true);
+  if (!edited.ok) throw new Error("expected edit result");
+  assert.equal(edited.sale.wasWhatnotSale, true);
+});
+
+test("manual sale date edits invalidate revenue snapshots while descriptive edits preserve them", () => {
+  const original = makeSale({ wasWhatnotSale: true, netRevenue: 8, date: "2026-02-21" });
+  const base = {
+    canUsePaidActions: true, currentLotType: "bulk" as const, sales: [original], editingSale: original,
+    packsPerBox: 16, singlesPurchases: [], todayDate: "2026-02-22", isWhatnotLot: true
+  };
+  const movedDate = buildSaleSaveResult({ ...base, newSale: makeDraft({ date: "2026-03-21" }) });
+  assert.equal(movedDate.ok, true);
+  if (!movedDate.ok) throw new Error("expected date edit result");
+  assert.equal(movedDate.sale.netRevenue, undefined);
+
+  const descriptive = buildSaleSaveResult({ ...base, newSale: makeDraft({ memo: "updated note" }) });
+  assert.equal(descriptive.ok, true);
+  if (!descriptive.ok) throw new Error("expected descriptive edit result");
+  assert.equal(descriptive.sale.netRevenue, 8);
+});
+
+test("editing an imported sale preserves its authoritative netRevenue", () => {
+  const imported = makeSale({ externalProvider: "whatnot", netRevenue: 7.25, price: 10 });
+  const result = buildSaleSaveResult({
+    canUsePaidActions: true, currentLotType: "bulk", sales: [imported], editingSale: imported,
+    newSale: makeDraft({ price: 20 }), packsPerBox: 16, singlesPurchases: [], todayDate: "2026-02-22",
+    isWhatnotLot: true
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error("expected edit result");
+  assert.equal(result.sale.netRevenue, 7.25);
+});
+
+test("editing a sale with imported transaction references preserves authoritative netRevenue", () => {
+  const imported = makeSale({ netRevenue: 7.25, externalTransactionRefs: [{
+    provider: "whatnot", ledgerTransactionId: "ledger", orderId: "order", orderItemId: "line"
+  }] });
+  const result = buildSaleSaveResult({
+    canUsePaidActions: true, currentLotType: "bulk", sales: [imported], editingSale: imported,
+    newSale: makeDraft({ price: 20 }), packsPerBox: 16, singlesPurchases: [], todayDate: "2026-02-22",
+    isWhatnotLot: true
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error("expected edit result");
+  assert.equal(result.sale.netRevenue, 7.25);
+});
+
 test("buildSaleSaveResult trims and persists customer notes separately from memo", () => {
   const result = buildSaleSaveResult({
     canUsePaidActions: true,

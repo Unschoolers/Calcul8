@@ -35,6 +35,7 @@ test("buildHydratedLotState applies singles normalization, tax defaults, and fre
   });
 
   assert.equal(result.newLotType, "singles");
+  assert.equal(result.whatnotVertical, null);
   assert.equal(result.newLotCatalogSource, "ua");
   assert.equal(result.purchaseDate, "2024-01-01");
   assert.equal(result.purchaseTaxPercent, 15);
@@ -50,6 +51,28 @@ test("buildHydratedLotState applies singles normalization, tax defaults, and fre
   assert.equal(result.singlesPurchases[0]?.externalSku, "CARD-X-13");
   assert.equal(result.singlesPurchases[0]?.quantity, 2);
   assert.equal(result.singlesPurchases[0]?.marketValueCurrency, "USD");
+});
+
+test("buildHydratedLotState keeps legacy lots unclassified and validates stored verticals", () => {
+  const legacy = makeLot({ whatnotVertical: undefined });
+  const invalid = makeLot({ whatnotVertical: "future-category" as never });
+  const classified = makeLot({ whatnotVertical: "coins" });
+
+  assert.equal(buildHydratedLotState(legacy, {
+    hasProAccess: true,
+    todayDate: "2026-09-23",
+    currentNewLotCatalogSource: "none"
+  }).whatnotVertical, null);
+  assert.equal(buildHydratedLotState(invalid, {
+    hasProAccess: true,
+    todayDate: "2026-09-23",
+    currentNewLotCatalogSource: "none"
+  }).whatnotVertical, null);
+  assert.equal(buildHydratedLotState(classified, {
+    hasProAccess: true,
+    todayDate: "2026-09-23",
+    currentNewLotCatalogSource: "none"
+  }).whatnotVertical, "coins");
 });
 
 test("buildHydratedLotState preserves non-singles catalog source target and defaults invalid pro target to 15", () => {

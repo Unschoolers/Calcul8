@@ -47,7 +47,7 @@ const LEGACY_PENDING_ISSUES_KEY = ["wheel", "Skipped", "Deductions"].join("");
 
 type WheelSessionCommandContext = WheelSessionContext
   & GameBroadcastContext
-  & Pick<GameCoordinatorContext, "currentLotId" | "addWheelSaleToLot">
+  & Pick<GameCoordinatorContext, "currentLotId" | "addWheelSaleToLot" | "whatnotFeeSummary">
   & Pick<GameHostState,
     | "wheelMode" | "wheelConfirmAction" | "wheelConfirmDialog" | "wheelPresentationMode"
   >
@@ -365,7 +365,8 @@ export const wheelSessionMethods = {
         config, tierId: tier.id, cost: tier.costPerTier,
         packsCount: tier.packsCount, deductionType: tier.deductionType,
         label: tier.label, lotId: tier.boundLotId, lots: (this.lots || []) as Lot[],
-        singlesEntryId: tier.boundSinglesId
+        singlesEntryId: tier.boundSinglesId,
+        whatnotFeeSummary: this.whatnotFeeSummary
       }, this, getWheelController(this), isCurrent);
       return sale != null;
     } finally {
@@ -475,7 +476,8 @@ export const wheelSessionMethods = {
         packsCount: entry.slotPacksCount, deductionType: entry.slotDeductionType,
         label: entry.slotName, lotId: entry.selectedLotId, lots: (this.lots || []) as Lot[],
         singlesEntryId: entry.slotSinglesId,
-        spinNumber: entry.spinNumber, pendingIssue: entry
+        spinNumber: entry.spinNumber, pendingIssue: entry,
+        whatnotFeeSummary: this.whatnotFeeSummary
       }, this, getWheelController(this), isCurrent);
       if (!sale || !isCurrent()) return;
 
@@ -700,5 +702,3 @@ export const wheelSessionMethods = {
     }
   }
 };
-
-

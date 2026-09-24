@@ -20,6 +20,7 @@ vi.mock("../src/app-core/storageKeys.ts", async () => {
 
 import { configStorageMethods } from "../src/app-core/methods/config-storage.ts";
 import { getScopedPresetsStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
+import { calculateNetFromGross } from "../src/domain/calculations.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -337,7 +338,13 @@ test("loadLotsFromStorage normalizes lot type and date fields", () => {
       {
         id: 1704067200001,
         name: "Current Bulk",
-        createdAt: "2026-02-20T10:00:00Z"
+        createdAt: "2026-02-20T10:00:00Z",
+        whatnotVertical: "coins"
+      },
+      {
+        id: 1704067200002,
+        name: "Invalid Vertical",
+        whatnotVertical: "future-category"
       }
     ]));
     const context = createContext({
@@ -351,14 +358,17 @@ test("loadLotsFromStorage normalizes lot type and date fields", () => {
       lotType: string;
       purchaseDate: string;
       createdAt: string;
+      whatnotVertical: string | null;
     }>;
-    assert.equal(lots.length, 2);
+    assert.equal(lots.length, 3);
     assert.equal(lots[0]?.lotType, "singles");
     assert.equal(lots[0]?.purchaseDate, "2026-02-23");
     assert.match(lots[0]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
     assert.equal(lots[1]?.lotType, "bulk");
     assert.match(lots[1]?.purchaseDate || "", /^\d{4}-\d{2}-\d{2}$/);
     assert.match(lots[1]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(lots[1]?.whatnotVertical, "coins");
+    assert.equal(lots[2]?.whatnotVertical, null);
   });
 });
 
@@ -503,11 +513,12 @@ test("loadLotsFromStorage marks parse failures for cloud recovery", () => {
 test("saveLotsToStorage writes JSON and notifies on storage failure", async () => {
   await withMockedLocalStorage(async (data, controls) => {
     const context = createContext({
-      lots: [{ id: 1, name: "A" }],
+      lots: [{ id: 1, name: "A", whatnotVertical: "tcg" }],
       notify: vi.fn()
     });
     configStorageMethods.saveLotsToStorage.call(context as never);
     assert.equal(typeof data.get(STORAGE_KEYS.PRESETS), "string");
+    assert.equal((JSON.parse(data.get(STORAGE_KEYS.PRESETS)!) as Array<{ whatnotVertical?: string }>)[0]?.whatnotVertical, "tcg");
 
     controls.throwOnSet = true;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -537,4 +548,23 @@ test("saveLotsToStorage writes to workspace-scoped presets for shared workspaces
     );
     assert.equal(data.has(STORAGE_KEYS.PRESETS), false);
   });
+});
+
+test("netFromGross uses the effective current Whatnot rate and keeps stored fields untouched", () => {
+  const context = createContext({
+    feeProfilePreset: "whatnot",
+    whatnotVertical: "coins",
+    platformFeePercent: 8,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0,
+    whatnotFeeSummary: { currentTier: 0, periodStart: "2026-09-21" }
+  });
+  const actual = configStorageMethods.netFromGross.call(context as never, 100);
+  const expected = calculateNetFromGross(100, 15, 0, 1, {
+    platformFeePercent: 4, additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0
+  });
+  assert.equal(actual, expected);
+  assert.equal(context.platformFeePercent, 8);
 });

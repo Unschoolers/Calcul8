@@ -1,5 +1,6 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Lot, LotSetup, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults } from "../../types/app.ts";
+import type { Lot, LotSetup, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults, WhatnotVertical } from "../../types/app.ts";
+import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import { isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
 import { pickSystemPricingFieldsForLot } from "../shared/system-pricing-defaults.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
@@ -10,6 +11,7 @@ export type CreateNewLotOptions = {
   newLotName: string;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
+  newLotWhatnotVertical: WhatnotVertical | null;
   purchaseUiMode: "simple" | "expert";
   setup: LotSetup;
   systemPricingDefaults?: SystemPricingDefaults | null;
@@ -27,6 +29,7 @@ export function createNewLotRecord({
   newLotName,
   newLotType,
   newLotCatalogSource,
+  newLotWhatnotVertical,
   purchaseUiMode,
   setup,
   systemPricingDefaults,
@@ -37,6 +40,8 @@ export function createNewLotRecord({
   nextLotType: LotType;
   nextLotCatalogSource: SinglesCatalogSource;
 } {
+  const whatnotVertical = normalizeWhatnotVertical(newLotWhatnotVertical);
+  if (!whatnotVertical) throw new Error("Select a valid Whatnot vertical before creating a lot");
   const selectedLot = currentLotId ? lots.find((lot) => lot.id === currentLotId) : null;
   const selectedLotCatalogSource = normalizeSinglesCatalogSource(
     isSinglesLot(selectedLot) ? selectedLot.singlesCatalogSource : undefined
@@ -94,7 +99,8 @@ export function createNewLotRecord({
       usesSystemPricingDefaults: systemPricingFields ? true : undefined,
       singlesCatalogSource: nextLotType === "singles" ? nextLotCatalogSource : undefined,
       singlesPurchases: nextLotType === "singles" ? [] as SinglesPurchaseEntry[] : undefined,
-      ...nextSetup
+      ...nextSetup,
+      whatnotVertical
     },
     nextLotType,
     nextLotCatalogSource

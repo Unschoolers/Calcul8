@@ -6,6 +6,8 @@ import {
   calculateTotalSpots
 } from "../../domain/calculations.ts";
 import type { Lot } from "../../types/app.ts";
+import type { WhatnotFeePeriodSummary } from "../shared/whatnot-fee-summary.ts";
+import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
 import { getLotType } from "../shared/lot-types.ts";
 import {
   createForecastScenario,
@@ -41,6 +43,7 @@ type PortfolioForecastLotInput = Pick<
   "spotPrice" |
   "targetProfitPercent" |
   "feeProfilePreset" |
+  "whatnotVertical" |
   "platformFeePercent" |
   "additionalFeePercent" |
   "additionalFeeAppliesTo" |
@@ -59,6 +62,7 @@ export function computeLotModeProjections(payload: {
   livePackPrice: number;
   liveBoxPriceSell: number;
   liveSpotPrice: number;
+  whatnotFeeSummary?: Pick<WhatnotFeePeriodSummary, "currentTier" | "periodStart"> | null;
 }): PortfolioModeProjections {
   const totalPacks = Math.max(0, Number(payload.summary.totalPacks) || 0);
   const soldPacks = Math.max(0, Number(payload.summary.soldPacks) || 0);
@@ -70,6 +74,7 @@ export function computeLotModeProjections(payload: {
   const lotTaxPercent = Math.max(0, Number(payload.lot.sellingTaxPercent) || 0);
   const lotShipping = Math.max(0, Number(payload.lot.sellingShippingPerOrder) || 0);
   const lotType = getLotType(payload.lot);
+  const feeProfileInput = resolveEffectiveWhatnotFeeInput(payload.lot, payload.whatnotFeeSummary);
 
   let itemUnitPrice = 0;
   if (lotType === "singles") {
@@ -80,7 +85,7 @@ export function computeLotModeProjections(payload: {
       ? Math.max(0, Number(payload.lot.targetProfitPercent) || 0)
       : 0;
     const targetNetPerItem = avgBasis * (1 + (lotTargetProfitPercent / 100));
-    itemUnitPrice = Math.max(0, calculateUnitPrice(1, targetNetPerItem, lotTaxPercent, lotShipping, payload.lot));
+    itemUnitPrice = Math.max(0, calculateUnitPrice(1, targetNetPerItem, lotTaxPercent, lotShipping, feeProfileInput));
   } else {
     itemUnitPrice = Math.max(
       0,
@@ -93,7 +98,7 @@ export function computeLotModeProjections(payload: {
     unitPrice: itemUnitPrice,
     sellingTaxPercent: lotTaxPercent,
     shippingPerOrder: lotShipping,
-    feeProfileInput: payload.lot
+    feeProfileInput
   });
 
   if (lotType === "singles") {
@@ -113,7 +118,7 @@ export function computeLotModeProjections(payload: {
       unitPrice: boxUnitPrice,
       sellingTaxPercent: lotTaxPercent,
       shippingPerOrder: lotShipping,
-      feeProfileInput: payload.lot
+      feeProfileInput
     });
   }
 
@@ -134,7 +139,7 @@ export function computeLotModeProjections(payload: {
         unitPrice: spotUnitPrice,
         sellingTaxPercent: lotTaxPercent,
         shippingPerOrder: lotShipping,
-        feeProfileInput: payload.lot
+        feeProfileInput
       });
     }
   }

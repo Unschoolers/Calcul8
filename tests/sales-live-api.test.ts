@@ -816,6 +816,107 @@ test("normalizeSale preserves external transaction identity through API hydratio
   }
 });
 
+test("normalizeSale preserves Whatnot manual provenance", () => {
+  const sale = normalizeSale({ id: 2, type: "pack", quantity: 1, price: 3, wasWhatnotSale: true });
+  assert.equal(sale?.wasWhatnotSale, true);
+});
+
+test("fetchAuthoritativeAllSales rejects malformed or incomplete grouped responses without caching empty lots", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: { "42": [] }
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const app = createApp();
+  const result = await fetchAuthoritativeAllSales(app, [42, 43]);
+  assert.equal(result, null);
+  assert.equal(app.salesByLotId.has(42), false);
+  assert.equal(localStorage.getItem("sales:42"), null);
+});
+
+test("fetchAuthoritativeAllSales rejects malformed sale entries but accepts explicitly empty arrays", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: { "42": [null], "43": [] }
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const app = createApp();
+  const result = await fetchAuthoritativeAllSales(app, [42, 43]);
+  assert.equal(result, null);
+  assert.equal(app.salesByLotId.has(42), false);
+  assert.equal(app.salesByLotId.has(43), false);
+  assert.equal(localStorage.getItem("sales:42"), null);
+});
+
+test("fetchAuthoritativeAllSales does not normalize or overwrite unrequested lot caches", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: {
+      "42": [],
+      "43": [null]
+    }
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const existing = [{ id: 43, price: 77 }];
+  const app = createApp({ salesByLotId: new Map([[43, existing]]) });
+  localStorage.setItem("sales:43", JSON.stringify(existing));
+  const result = await fetchAuthoritativeAllSales(app, [42]);
+
+  assert.deepEqual(result?.get(42), []);
+  assert.equal(result?.has(43), false);
+  assert.deepEqual(app.salesByLotId.get(43), existing);
+  assert.equal(localStorage.getItem("sales:43"), JSON.stringify(existing));
+});
+
+test("fetchAuthoritativeAllSales rejects sale objects missing required financial and date fields", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: { "42": [{ id: 7 }] }
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const existing = [{ id: 42, price: 77 }];
+  const app = createApp({ salesByLotId: new Map([[42, existing]]) });
+  localStorage.setItem("sales:42", JSON.stringify(existing));
+  const result = await fetchAuthoritativeAllSales(app, [42]);
+
+  assert.equal(result, null);
+  assert.deepEqual(app.salesByLotId.get(42), existing);
+  assert.equal(localStorage.getItem("sales:42"), JSON.stringify(existing));
+});
+
+test("fetchAuthoritativeAllSales requires valid sale quantity and nonnegative price", async () => {
+  for (const sale of [
+    { id: 7, price: 12, date: "2026-09-22" },
+    { id: 8, quantity: 1, price: -2, date: "2026-09-22" },
+    { id: 9, quantity: 0.5, price: 10000, date: "2026-09-22" },
+    { id: 10, quantity: 1.5, price: 10000, date: "2026-09-22" }
+  ]) {
+    fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      salesByLot: { "42": [sale] }
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const app = createApp();
+    assert.equal(await fetchAuthoritativeAllSales(app, [42]), null);
+    assert.equal(app.salesByLotId.has(42), false);
+    assert.equal(localStorage.getItem("sales:42"), null);
+  }
+});
+
+test("fetchAuthoritativeAllSales without lot IDs caches validated grouped lots and accepts zero price", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: { "42": [{ id: 7, quantity: 1, price: 0, date: "2026-09-22" }], "43": [] }
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const app = createApp();
+  const result = await fetchAuthoritativeAllSales(app);
+  assert.deepEqual(result?.get(42)?.map(({ price, quantity }) => ({ price, quantity })), [{ price: 0, quantity: 1 }]);
+  assert.deepEqual(app.salesByLotId.get(42), result?.get(42));
+  assert.deepEqual(app.salesByLotId.get(43), []);
+  assert.equal(localStorage.getItem("sales:42"), JSON.stringify(result?.get(42)));
+  assert.equal(localStorage.getItem("sales:43"), JSON.stringify([]));
+});
+
+test("fetchAuthoritativeAllSales rejects malformed returned groups when unfiltered", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: { "42": [{ id: 7, price: 5, quantity: 1, date: "2026-09-22" }], "43": [{ id: 8 }] }
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const app = createApp();
+  assert.equal(await fetchAuthoritativeAllSales(app, []), null);
+  assert.equal(app.salesByLotId.has(42), false);
+  assert.equal(app.salesByLotId.has(43), false);
+  assert.equal(localStorage.getItem("sales:42"), null);
+});
+
 test("wheel creation retries send the same mutation identity", async () => {
   const app = createApp();
   const sale = { id: 777, type: "wheel" as const, quantity: 2, packsCount: 2, price: 12, buyerShipping: 0, date: "2026-09-14" };
