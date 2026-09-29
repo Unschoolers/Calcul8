@@ -10,6 +10,7 @@ import { createShopifyAdminClient } from "./adminClient";
 import { getShopifyAccessToken } from "./tokenProvider";
 import { ensureShopifyOrderWebhooks } from "./webhookSubscription";
 import { reconcileBoxListing, type InventorySale } from "./listingService";
+import { projectShopifyBoxSale } from "./saleProjection";
 
 export function normalizeBoxSales(raw: readonly unknown[]): InventorySale[] {
   return raw.map((input) => {
@@ -41,12 +42,16 @@ async function reconcileWork(config: ApiConfig, scopeKey: string, onlyLotId?: nu
     if (onlyLotId != null && lotId !== onlyLotId) continue;
     const lot = snapshot.lots.find((candidate) => candidate.id === lotId) ??
       { id: lotId, name: `Lot ${lotId}`, shopifyEnabled: false, boxesPurchased: 0, packsPerBox: 1 };
+    const allOrders = (await listShopifyOrderLines(config, scopeKey, lotId, true)).filter((order) => order.shop === connection.shop);
+    for (const order of allOrders) await projectShopifyBoxSale(config, order);
     const sales = lot.shopifyEnabled !== true ? [] : meta?.salesMode === "entity"
       ? (await listSalesForLot(config, scopeKey, String(lotId))).map((document) => document.sale)
       : (snapshot.salesByLot[String(lotId)] ?? []);
-    const orders = lot.shopifyEnabled === true ? await listShopifyOrderLines(config, scopeKey, lotId) : [];
+    const orders = lot.shopifyEnabled === true ?
+      (await listShopifyOrderLines(config, scopeKey, lotId)).filter((order) => order.shop === connection.shop) : [];
     await reconcileBoxListing({ scopeKey, shop: connection.shop, lot,
-      sales: [...normalizeBoxSales(sales), ...orders.map((order) => ({ type: "box", quantity: order.quantity, packsCount: 0 }))], store, client });
+      sales: [...normalizeBoxSales(sales.filter((sale) => !(sale && typeof sale === "object" && (sale as { externalProvider?: string }).externalProvider === "shopify"))),
+        ...orders.map((order) => ({ type: "box", quantity: order.quantity, packsCount: 0 }))], store, client });
   }
 }
 

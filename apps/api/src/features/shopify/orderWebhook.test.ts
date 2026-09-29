@@ -15,7 +15,7 @@ test("parses numeric order and variant identities without trusting payload scope
   const order = parseShopifyOrder({ id: 91, processed_at: "2026-09-29T12:00:00Z", scopeKey: "attacker",
     line_items: [{ id: 14, variant_id: 22, quantity: 2, sku: "attacker" },
       { id: 15, variant_id: null, quantity: 1 }] });
-  assert.deepEqual(order.lines, [{ id: "14", variantId: "gid://shopify/ProductVariant/22", quantity: 2 }]);
+  assert.deepEqual(order.lines, [{ id: "14", variantId: "gid://shopify/ProductVariant/22", quantity: 2, unitPrice: 0 }]);
   assert.equal(order.paidAt, "2026-09-29T12:00:00.000Z");
   assert.throws(() => parseShopifyOrder({ id: 91, line_items: [{ id: 14, variant_id: 22, quantity: -2 }] }));
 });

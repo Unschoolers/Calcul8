@@ -3,8 +3,9 @@ import type { ApiConfig } from "../../types";
 import { isShopifyDomain } from "../../lib/shopify";
 import { listShopifyConnectionsForShop } from "../../lib/cosmos/shopifyRepository";
 import { createShopifyListingStore } from "../../lib/cosmos/shopifyListingRepository";
-import { cancelShopifyOrderLine, recordShopifyPaidLine } from "../../lib/cosmos/shopifyOrderRepository";
+import { cancelShopifyOrderLine, getShopifyOrderLine, recordShopifyPaidLine } from "../../lib/cosmos/shopifyOrderRepository";
 import { reconcileShopifyScope } from "./reconcileService";
+import { projectShopifyBoxSale } from "./saleProjection";
 
 export function verifyShopifyWebhook(body: Buffer, signature: string | null, secret: string): boolean {
   if (!signature || !/^[A-Za-z0-9+/]{43}=$/.test(signature)) return false;
@@ -13,7 +14,7 @@ export function verifyShopifyWebhook(body: Buffer, signature: string | null, sec
   return provided.length === expected.length && timingSafeEqual(provided, expected);
 }
 
-type OrderLine = { id: string; variantId: string; quantity: number };
+type OrderLine = { id: string; variantId: string; quantity: number; unitPrice: number };
 export function parseShopifyOrder(body: unknown): { orderId: string; paidAt: string; lines: OrderLine[] } {
   if (!body || typeof body !== "object") throw new Error("Invalid Shopify order");
   const value = body as Record<string, unknown>;
@@ -26,10 +27,16 @@ export function parseShopifyOrder(body: unknown): { orderId: string; paidAt: str
     const id = String(line?.id ?? "");
     const variant = String(line?.variant_id ?? "");
     const quantity = line?.quantity;
+    const price = Number(line?.price ?? 0);
+    const discount = Number(line?.total_discount ?? 0);
     if (!/^\d+$/.test(id) || !Number.isSafeInteger(quantity) || Number(quantity) < 0) {
       throw new Error("Invalid Shopify order line");
     }
-    return /^\d+$/.test(variant) ? [{ id, variantId: `gid://shopify/ProductVariant/${variant}`, quantity: Number(quantity) }] : [];
+    if (!Number.isFinite(price) || price < 0 || !Number.isFinite(discount) || discount < 0 || discount > price * Number(quantity)) {
+      throw new Error("Invalid Shopify order line price");
+    }
+    const unitPrice = quantity ? Math.round((price - discount / Number(quantity)) * 100) / 100 : 0;
+    return /^\d+$/.test(variant) ? [{ id, variantId: `gid://shopify/ProductVariant/${variant}`, quantity: Number(quantity), unitPrice }] : [];
   });
   return { orderId, paidAt, lines };
 }
@@ -51,14 +58,19 @@ export async function processShopifyOrderWebhook(config: ApiConfig, shop: string
       if (topic === "orders/paid") {
         changed = await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
           lotId: listing.lotId, orderId: order.orderId, lineId: line.id, variantId: line.variantId,
-          quantity: line.quantity, cancelled: false, paidAt: order.paidAt });
+          quantity: line.quantity, cancelled: false, paidAt: order.paidAt, unitPrice: line.unitPrice });
       } else {
         // A cancellation arriving before a paid event leaves a tombstone, so a late paid retry cannot resell it.
         const tombstone = await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
           lotId: listing.lotId, orderId: order.orderId, lineId: line.id, variantId: line.variantId,
-          quantity: line.quantity, cancelled: true, paidAt: order.paidAt });
+          quantity: line.quantity, cancelled: true, paidAt: order.paidAt, unitPrice: line.unitPrice });
         changed = tombstone || await cancelShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
       }
+      const persisted = await getShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
+      if (!persisted) throw new Error("Shopify order line was not persisted");
+      await projectShopifyBoxSale(config, persisted);
+      const latest = await getShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
+      if (latest && latest.cancelled !== persisted.cancelled) await projectShopifyBoxSale(config, latest);
       if (changed) {
         const lots = affected.get(connection.scopeKey) ?? new Set<number>();
         lots.add(listing.lotId);
