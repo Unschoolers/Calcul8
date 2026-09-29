@@ -21,6 +21,7 @@ export type ShopifyOAuthState = {
   scopeType: Scope["scopeType"];
   scopeId: string;
   appReturnUrl: string;
+  generation: number;
   expiresAt: string;
 };
 
@@ -42,7 +43,8 @@ export type ShopifyConnectionStore = {
   /** Must claim a state at most once, including concurrent callbacks. */
   consumeState: (state: string) => Promise<ShopifyOAuthState | null>;
   getConnection: (scopeKey: string) => Promise<ShopifyConnection | null>;
-  putConnection: (connection: ShopifyConnection) => Promise<void>;
+  getGeneration: (scopeKey: string) => Promise<number>;
+  putConnection: (connection: ShopifyConnection, expectedGeneration: number) => Promise<void>;
 };
 
 function settings(config: ShopifyConfig): { clientId: string; clientSecret: string; redirectUri: string; encryptionSecret: string } {
@@ -72,8 +74,9 @@ export async function beginShopifyConnection(
   const appReturnUrl = validatedReturnUrl(config, input.appReturnUrl);
   const scope = await resolveScope(input.actorUserId, input.workspaceId, true);
   const state = randomBytes(24).toString("hex");
+  const generation = await store.getGeneration(scope.partitionKey);
   await store.createState({ state, shop, actorUserId: input.actorUserId, scopeKey: scope.partitionKey,
-    scopeType: scope.scopeType, scopeId: scope.scopeId, appReturnUrl, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() });
+    scopeType: scope.scopeType, scopeId: scope.scopeId, appReturnUrl, generation, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() });
   return buildShopifyAuthorizeUrl({ shop, clientId, redirectUri, state });
 }
 
@@ -107,6 +110,6 @@ const token = await exchangeShopifyCode({ shop, clientId, clientSecret, code }, 
     shop, accessTokenCiphertext: encryptShopifyToken(encryptionSecret, token.access_token),
     refreshTokenCiphertext: token.refresh_token ? encryptShopifyToken(encryptionSecret, token.refresh_token) : undefined,
     tokenExpiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : undefined,
-    scopes: token.scope.split(",").filter(Boolean), connectedByUserId: state.actorUserId, updatedAt: new Date().toISOString() });
+    scopes: token.scope.split(",").filter(Boolean), connectedByUserId: state.actorUserId, updatedAt: new Date().toISOString() }, state.generation);
   return { redirectUrl: validatedReturnUrl(config, state.appReturnUrl) };
 }

@@ -15,6 +15,7 @@ test("connect stores a scoped, single-use state; callback stores only encrypted 
   const store: ShopifyConnectionStore = {
     createState: async state => { states.set(state.state, state); },
     consumeState: async state => { const found = states.get(state) ?? null; states.delete(state); return found; },
+    getGeneration: async () => 0,
     getConnection: async () => null,
     putConnection
   };
@@ -27,6 +28,7 @@ test("connect stores a scoped, single-use state; callback stores only encrypted 
   const result = await completeShopifyConnection(config, store, resolveScope, callback("mine.myshopify.com", state, "secret"), fetcher);
   assert.equal(result.redirectUrl, "https://app.example.com/config");
   assert.equal(putConnection.mock.calls.length, 1);
+  assert.equal(putConnection.mock.calls[0]![1], 0);
   const stored = putConnection.mock.calls[0]![0];
   assert.equal(stored.shop, "mine.myshopify.com");
   assert.equal(stored.scopeKey, "user:42");
@@ -36,8 +38,8 @@ test("connect stores a scoped, single-use state; callback stores only encrypted 
 });
 
 test("callback rejects a changed shop and bad HMAC before token exchange", async () => {
-  const storedState = { state: "one-use", shop: "mine.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", appReturnUrl: "https://app.example.com/", expiresAt: new Date(Date.now() + 60_000).toISOString() };
-  const store: ShopifyConnectionStore = { createState: async () => {}, consumeState: async () => storedState, getConnection: async () => null, putConnection: async () => {} };
+const storedState = { state: "one-use", shop: "mine.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", generation: 0, appReturnUrl: "https://app.example.com/", expiresAt: new Date(Date.now() + 60_000).toISOString() };
+const store: ShopifyConnectionStore = { createState: async () => {}, consumeState: async () => storedState, getGeneration: async () => 0, getConnection: async () => null, putConnection: async () => {} };
   const config = { shopifyClientId: "id", shopifyClientSecret: "secret", shopifyRedirectUri: "https://api.example.com/callback", shopifyTokenEncryptionSecret: "encryption", allowedOrigins: ["https://app.example.com"] };
   const resolveScope = vi.fn(async () => ({ partitionKey: "user:42", scopeType: "user" as const, scopeId: "42" }));
   const fetcher = vi.fn();
@@ -49,8 +51,8 @@ test("callback rejects a changed shop and bad HMAC before token exchange", async
 });
 
 test("a merchant cancellation returns to the trusted app without exchanging a token", async () => {
-  const storedState = { state: "one-use", shop: "mine.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", appReturnUrl: "https://app.example.com/config", expiresAt: new Date(Date.now() + 60_000).toISOString() };
-  const store: ShopifyConnectionStore = { createState: async () => {}, consumeState: async () => storedState, getConnection: async () => null, putConnection: async () => { throw new Error("should not store"); } };
+  const storedState = { state: "one-use", shop: "mine.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", generation: 0, appReturnUrl: "https://app.example.com/config", expiresAt: new Date(Date.now() + 60_000).toISOString() };
+  const store: ShopifyConnectionStore = { createState: async () => {}, consumeState: async () => storedState, getGeneration: async () => 0, getConnection: async () => null, putConnection: async () => { throw new Error("should not store"); } };
   const config = { shopifyClientId: "id", shopifyClientSecret: "secret", shopifyRedirectUri: "https://api.example.com/callback", shopifyTokenEncryptionSecret: "encryption", allowedOrigins: ["https://app.example.com"] };
   const resolveScope = vi.fn(async () => ({ partitionKey: "user:42", scopeType: "user" as const, scopeId: "42" }));
   const params = callback("mine.myshopify.com", "one-use", "secret");
@@ -63,10 +65,10 @@ test("a merchant cancellation returns to the trusted app without exchanging a to
 });
 
 test("callback refuses a different store already connected to the same scope before token exchange", async () => {
-  const storedState = { state: "one-use", shop: "other.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", appReturnUrl: "https://app.example.com/", expiresAt: new Date(Date.now() + 60_000).toISOString() };
+  const storedState = { state: "one-use", shop: "other.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", generation: 0, appReturnUrl: "https://app.example.com/", expiresAt: new Date(Date.now() + 60_000).toISOString() };
   const putConnection = vi.fn();
   const store: ShopifyConnectionStore = {
-    createState: async () => {}, consumeState: async () => storedState,
+    createState: async () => {}, consumeState: async () => storedState, getGeneration: async () => 0,
     getConnection: async () => ({ scopeKey: "user:42", scopeType: "user", scopeId: "42", shop: "mine.myshopify.com", accessTokenCiphertext: "ciphertext", scopes: [], connectedByUserId: "42", updatedAt: "2026-09-28T00:00:00Z" }),
     putConnection
   };
