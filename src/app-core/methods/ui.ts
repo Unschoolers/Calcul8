@@ -5,6 +5,7 @@ import { uiEntitlementMethods } from "./ui/entitlements/entitlements.ts";
 import { uiOnboardingMethods } from "./ui/common/onboarding.ts";
 import { uiSyncMethods } from "./ui/sync/sync.ts";
 import { uiWhatnotMethods } from "./ui/whatnot/whatnot.ts";
+import { uiShopifyMethods } from "./ui/shopify/shopify.ts";
 import { uiWorkspaceMethods } from "./ui/workspace/workspaces.ts";
 import { uiBuyerProfileMethods } from "./ui/buyers/buyer-profiles.ts";
 
@@ -15,8 +16,8 @@ export const uiMethods = {
   ...uiAccountMethods,
   ...uiEntitlementMethods,
   ...uiWhatnotMethods,
+  ...uiShopifyMethods,
   ...uiSyncMethods,
   ...uiWorkspaceMethods,
   ...uiBuyerProfileMethods
 };
-

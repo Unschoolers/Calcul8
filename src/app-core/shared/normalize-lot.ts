@@ -37,6 +37,7 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     fixedFeePerOrder: feeProfile.fixedFeePerOrder,
     includeTax: lot.includeTax ?? true,
     externalSku: typeof lot.externalSku === "string" ? lot.externalSku.trim() : "",
+    shopifyEnabled: lot.shopifyEnabled === true,
     spotPrice: lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE,
     boxPriceSell: lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL,
     packPrice: lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE,

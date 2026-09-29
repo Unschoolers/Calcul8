@@ -207,6 +207,8 @@ function normalizeSyncLotDto(value) {
   if (usesSystemPricingDefaults != null) lot.usesSystemPricingDefaults = usesSystemPricingDefaults;
   const isComplete = normalizeBoolean(value.isComplete);
   if (isComplete != null) lot.isComplete = isComplete;
+  const shopifyEnabled = normalizeBoolean(value.shopifyEnabled);
+  if (shopifyEnabled != null) lot.shopifyEnabled = shopifyEnabled;
   return lot;
 }
 
@@ -290,6 +292,8 @@ function normalizeSyncSaleDto(value) {
   if (buyerShipping != null) sale.buyerShipping = buyerShipping;
   const date = cleanString(value.date);
   if (date) sale.date = date;
+  const createdAt = cleanString(value.createdAt);
+  if (createdAt) sale.createdAt = createdAt;
   const version = normalizeNonNegativeInteger(value.version);
   if (version != null) sale.version = version;
   const updatedAt = cleanString(value.updatedAt);

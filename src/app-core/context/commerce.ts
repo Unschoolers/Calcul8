@@ -152,6 +152,7 @@ export interface CommerceMethodState {
   saveSystemPricingDefaultsToStorage(): void;
   getCurrentSetup(): LotSetup;
   autoSaveSetup(): void;
+  setCurrentLotShopifyEnabled(enabled: boolean): void;
   syncLivePricesFromDefaults(): void;
   resetLivePrices(): void;
   applyLivePricesToDefaults(): void;
@@ -454,6 +455,7 @@ export type LotConfigurationContext = Pick<
   | "currentTab"
   | "exchangeRate"
   | "externalSku"
+  | "shopifyEnabled"
   | "feeProfilePreset"
   | "fixedFeePerOrder"
   | "hasProAccess"
@@ -661,7 +663,8 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "cancelSinglesPurchasesCsvImport"
     | "createNewLot"
     | "selectLot"
-    | "setCurrentLotCatalogSource"
+  | "setCurrentLotCatalogSource"
+  | "setCurrentLotShopifyEnabled"
     | "setCurrentLotWhatnotVertical"
     | "openRenameLotModal"
     | "renameCurrentLot"

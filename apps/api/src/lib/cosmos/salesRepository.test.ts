@@ -170,6 +170,7 @@ test("upsertSaleDocument replaces existing rows with an If-Match ETag", async ()
     saleId: "sale-1",
     sale: { id: 1 },
     version: 3,
+    createdAt: "2026-03-17T00:00:00.000Z",
     updatedAt: "2026-03-18T00:00:00.000Z",
     updatedBy: "user-1",
     mutationId: "m-1",
@@ -197,6 +198,7 @@ test("upsertSaleDocument replaces existing rows with an If-Match ETag", async ()
   });
 
   assert.equal(result.version, 4);
+  assert.equal(result.createdAt, existingSale.createdAt);
   assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
   assert.equal(replace.mock.calls.length, 1);
   assert.deepEqual(replace.mock.calls[0]?.[1], {

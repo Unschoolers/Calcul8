@@ -85,6 +85,7 @@ export const configLotMethods = {
       fixedFeePerOrder: this.fixedFeePerOrder,
       includeTax: this.includeTax,
       externalSku: typeof this.externalSku === "string" ? this.externalSku.trim() : "",
+      shopifyEnabled: this.shopifyEnabled === true,
       spotPrice: this.spotPrice,
       boxPriceSell: this.boxPriceSell,
       packPrice: this.packPrice,
@@ -105,6 +106,10 @@ export const configLotMethods = {
 
   setCurrentLotWhatnotVertical(value: WhatnotVertical | null): void {
     this.whatnotVertical = normalizeWhatnotVertical(value);
+    this.autoSaveSetup();
+  },
+  setCurrentLotShopifyEnabled(enabled: boolean): void {
+    this.shopifyEnabled = enabled === true;
     this.autoSaveSetup();
   },
 

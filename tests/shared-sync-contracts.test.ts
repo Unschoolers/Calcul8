@@ -177,6 +177,20 @@ test("lot vertical round-trips through web and API sync DTOs and invalid values 
   assert.deepEqual(commonJs.toSyncLotDtos(input), expected);
 });
 
+test("Shopify lot opt-in preserves both boolean values across sync runtimes", async () => {
+  const input = [
+    { id: 21, shopifyEnabled: true },
+    { id: 22, shopifyEnabled: false },
+    { id: 23, shopifyEnabled: "true" }
+  ];
+  const expected = [{ id: 21, shopifyEnabled: true }, { id: 22, shopifyEnabled: false }, { id: 23 }];
+  assert.deepEqual(toSyncLotDtos(input), expected);
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  assert.deepEqual(require("../shared/sync-contracts.cjs").toSyncLotDtos(input), expected);
+  assert.deepEqual(require("../apps/api/src/shared/sync-contracts.cjs").toSyncLotDtos(input), expected);
+});
+
 test("shared sync contracts normalize sync metadata DTOs", () => {
   assert.deepEqual(normalizeSyncMetadataDto({
     version: "7",

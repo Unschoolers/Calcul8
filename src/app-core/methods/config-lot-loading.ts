@@ -33,6 +33,7 @@ export type HydratedLotState = {
   fixedFeePerOrder: number;
   includeTax: boolean;
   externalSku: string;
+  shopifyEnabled: boolean;
   spotPrice: number;
   boxPriceSell: number;
   packPrice: number;
@@ -64,6 +65,7 @@ export type LotHydrationTarget = SinglesCsvImportStateTarget & {
   fixedFeePerOrder?: number;
   includeTax?: boolean;
   externalSku?: string;
+  shopifyEnabled?: boolean;
   spotPrice?: number;
   boxPriceSell?: number;
   packPrice?: number;
@@ -120,6 +122,7 @@ export function buildHydratedLotState(
     fixedFeePerOrder: feeProfile.fixedFeePerOrder,
     includeTax: lot.includeTax ?? true,
     externalSku: typeof lot.externalSku === "string" ? lot.externalSku.trim() : "",
+    shopifyEnabled: lot.shopifyEnabled === true,
     spotPrice: lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE,
     boxPriceSell: lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL,
     packPrice: lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE,
@@ -161,6 +164,7 @@ export function applyHydratedLotState(target: LotHydrationTarget, state: Hydrate
   target.fixedFeePerOrder = state.fixedFeePerOrder;
   target.includeTax = state.includeTax;
   target.externalSku = state.externalSku;
+  target.shopifyEnabled = state.shopifyEnabled;
   target.spotPrice = state.spotPrice;
   target.boxPriceSell = state.boxPriceSell;
   target.packPrice = state.packPrice;

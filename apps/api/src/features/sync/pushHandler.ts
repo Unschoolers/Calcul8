@@ -7,6 +7,7 @@ import {
 } from "../../lib/cosmos/syncSnapshotRepository";
 import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
+import { reconcileShopifyScope } from "../shopify/reconcileService";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { parseSyncLotsShape, parseSyncWheelConfigs } from "../../lib/syncShape";
 import { assertSafeSyncPush } from "../../lib/syncSafety";
@@ -170,7 +171,7 @@ export async function syncPush(
       throw error;
     }
 
-    if (!syncResult.changed) {
+  if (!syncResult.changed) {
       return jsonResponse(request, config, 200, {
         ok: true,
         userId,
@@ -178,7 +179,12 @@ export async function syncPush(
         updatedAt: existingSnapshot?.updatedAt ?? null,
         changed: false
       });
-    }
+  }
+
+  if (config.shopifyClientId) {
+    try { await reconcileShopifyScope(config, syncScope.partitionKey); }
+    catch (error) { context.warn("Shopify reconciliation will retry", error); }
+  }
 
     if (workspaceId && payload.activeLotId != null) {
       publishWorkspaceLotRealtimeEventBestEffort(config, {

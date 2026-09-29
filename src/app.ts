@@ -22,6 +22,7 @@ import SinglesConfigWindow from "./components/windows/singles/SinglesConfigWindo
 import GameWindow from "./components/windows/game/GameWindow.vue";
 import WhatnotCsvImportDialog from "./components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import WhatnotReviewDialog from "./components/windows/whatnot/WhatnotReviewDialog.vue";
+import ShopifyConnectDialog from "./components/windows/shopify/ShopifyConnectDialog.vue";
 import {
   buyerProfilePortsKey,
   createBuyerProfilePorts,
@@ -100,7 +101,8 @@ export const appOptions = {
     PortfolioWindow,
     GameWindow,
     WhatnotCsvImportDialog,
-    WhatnotReviewDialog
+    WhatnotReviewDialog,
+    ShopifyConnectDialog
   },
   data: createInitialState,
   provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds">) {

@@ -293,6 +293,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     memo: memo || undefined,
     buyerShipping,
     date: normalizedSaleDate,
+    createdAt: params.editingSale?.createdAt ?? new Date().toISOString(),
     wasWhatnotSale: params.editingSale ? params.editingSale.wasWhatnotSale : Boolean(params.isWhatnotLot)
   };
 

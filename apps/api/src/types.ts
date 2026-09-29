@@ -56,6 +56,10 @@ export interface ApiConfig {
   whatnotOauthTokenUrl?: string;
   whatnotApiBaseUrl?: string;
   whatnotTokenEncryptionSecret?: string;
+  shopifyClientId?: string;
+  shopifyClientSecret?: string;
+  shopifyRedirectUri?: string;
+  shopifyTokenEncryptionSecret?: string;
   realtimePublishUrl?: string;
   realtimeInternalApiKey?: string;
   realtimeTokenSecret?: string;
@@ -589,6 +593,7 @@ export interface SaleDocument {
   saleId: string;
   sale: unknown;
   version: number;
+  createdAt?: string;
   updatedAt: string;
   updatedBy: string;
   mutationId: string;

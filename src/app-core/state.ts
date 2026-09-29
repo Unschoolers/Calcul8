@@ -162,6 +162,7 @@ export function createInitialState(): AppState {
     fixedFeePerOrder: defaultFeeProfile.fixedFeePerOrder,
     includeTax: true,
     externalSku: "",
+    shopifyEnabled: false,
 
     // Default Selling Prices
     spotPrice: DEFAULT_VALUES.SPOT_PRICE,
@@ -250,6 +251,12 @@ export function createInitialState(): AppState {
     salesCacheEpoch: 0,
     whatnotFeeDateOnly: todayDate,
     whatnotConnectionStatus: "unconfigured",
+    shopifyConnectionStatus: "unconfigured",
+    shopifyConnectionShop: null,
+    shopifyLastSyncedAt: null,
+    shopifySyncError: null,
+    shopifyShopDraft: "",
+    showShopifyConnectDialog: false,
     whatnotSyncStatus: "idle",
     whatnotConnectionSummary: null,
     showWhatnotReviewDialog: false,

@@ -217,6 +217,7 @@ export interface Sale {
   memo?: string;
   buyerShipping: number;
   date: string;
+  createdAt?: string;
   version?: number;
   updatedAt?: string;
   updatedBy?: string;
@@ -308,6 +309,7 @@ export interface LotSetup extends FeeProfileFields {
   sellingShippingPerOrder: number;
   includeTax: boolean;
   externalSku?: string;
+  shopifyEnabled?: boolean;
   spotPrice: number;
   boxPriceSell: number;
   packPrice: number;
@@ -701,6 +703,12 @@ export interface AppState extends LotSetup {
   salesCacheEpoch: number;
   whatnotFeeDateOnly: string;
   whatnotConnectionStatus: WhatnotConnectionStatus;
+  shopifyConnectionStatus: WhatnotConnectionStatus;
+  shopifyConnectionShop: string | null;
+  shopifyLastSyncedAt: string | null;
+  shopifySyncError: string | null;
+  shopifyShopDraft: string;
+  showShopifyConnectDialog: boolean;
   whatnotSyncStatus: WhatnotSyncStatus;
   whatnotConnectionSummary: WhatnotConnectionSummary | null;
   showWhatnotReviewDialog: boolean;

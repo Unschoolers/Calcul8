@@ -19,6 +19,7 @@ import type { PortfolioMethodState, PortfolioSalesHydrationContext } from "./por
 import type { AppVueContext, RuntimeMethodState } from "./runtime.ts";
 import type { OnboardingMethodState } from "./shell.ts";
 import type { SyncMethodState } from "./sync.ts";
+import type { ShopifyMethodState } from "./shopify.ts";
 import type {
     WhatnotMethodState,
     WhatnotTransientStateContext
@@ -34,7 +35,8 @@ export type ScopeWatchContext = WorkspaceRealtimeContext &
   WhatnotTransientStateContext &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
   Pick<BuyerMethodState, "hydrateBuyerProfiles"> &
-  Pick<WhatnotMethodState, "refreshWhatnotStatus">;
+  Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
+  Pick<ShopifyMethodState, "refreshShopifyStatus">;
 
 export type LanguageWatchContext = Pick<AppState, "currentTab" | "preferredLanguage"> &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
@@ -88,6 +90,8 @@ export type AuthWatchContext = WorkspaceRealtimeContext &
   Pick<SyncMethodState, "startCloudSyncScheduler" | "stopCloudSyncScheduler"> &
   Pick<WorkspaceMethodState, "previewPendingWorkspaceInvite" | "refreshWorkspaces"> &
   Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
+  Pick<ShopifyMethodState, "refreshShopifyStatus"> &
+  Pick<AppState, "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyShopDraft" | "showShopifyConnectDialog" | "shopifyLastSyncedAt" | "shopifySyncError"> &
   Pick<AppVueContext, "$nextTick">;
 
 export type CurrentLotWatchContext = WorkspaceRealtimeContext &

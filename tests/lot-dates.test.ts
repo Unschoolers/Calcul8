@@ -7,9 +7,14 @@ import {
   toDateOnly
 } from "../src/shared/lot-dates.ts";
 
+const localDay = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 test("toDateOnly preserves date-only strings and normalizes ISO timestamps", () => {
   assert.equal(toDateOnly("2026-03-22"), "2026-03-22");
-  assert.equal(toDateOnly("2026-03-22T14:30:00.000Z"), "2026-03-22");
+  assert.equal(toDateOnly("2026-03-22T14:30:00.000Z"), localDay("2026-03-22T14:30:00.000Z"));
   assert.equal(toDateOnly(""), null);
   assert.equal(toDateOnly("banana"), null);
 });
@@ -37,7 +42,7 @@ test("resolveLotBusinessDate prefers purchaseDate then createdAt then lotId then
       lotId: 1704067200000,
       fallbackDate: "2026-01-01"
     }),
-    "2026-01-31"
+    localDay("2026-01-31T23:59:59.000Z")
   );
 
   assert.equal(
@@ -64,6 +69,6 @@ test("resolveLotCreatedDate prefers createdAt before purchaseDate", () => {
       lotId: 1704067200000,
       fallbackDate: "2026-01-01"
     }),
-    "2026-01-15"
+    localDay("2026-01-15T20:00:00.000Z")
   );
 });

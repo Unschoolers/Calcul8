@@ -6,6 +6,7 @@ import type { EntitlementMethodState } from "../../app-core/context/entitlements
 import type { RuntimeComputedState, RuntimeMethodState } from "../../app-core/context/runtime.ts";
 import type { SyncComputedState } from "../../app-core/context/sync.ts";
 import type { WhatnotComputedState, WhatnotMethodState } from "../../app-core/context/whatnot.ts";
+import type { ShopifyMethodState } from "../../app-core/context/shopify.ts";
 import type { WorkspaceComputedState, WorkspaceMethodState } from "../../app-core/context/workspace.ts";
 import type { AppState } from "../../types/app.ts";
 import { resolveLotSelectorDisplayItem } from "./lotSelectorDisplay.ts";
@@ -14,6 +15,7 @@ const shellPortKeys = [
   "activeScopeType", "activeWorkspaceId", "availableWorkspaces", "googleAvatarLoadFailed", "hasProAccess",
   "preferredLanguage", "showCreateWorkspaceModal", "showInstallPrompt", "showSystemConfigurationDialog",
   "whatnotConnectionStatus", "whatnotConnectionSummary", "whatnotReviewBatchId", "whatnotSyncStatus",
+  "shopifyConnectionStatus", "shopifyConnectionShop", "shopifyLastSyncedAt", "shopifySyncError", "shopifyShopDraft", "showShopifyConnectDialog",
   "currentTab", "currentLotId", "guidedOnboardingStatus", "showNewLotModal", "showGoogleSignInFallback",
   "showNativeGoogleSignInAction",
   "googleProfileName", "googleProfileEmail", "googleProfilePicture", "isDark", "accountSyncBadgeVisible",
@@ -27,13 +29,14 @@ const shellPortKeys = [
   "askConfirmation", "startGuidedOnboarding", "dismissGuidedOnboarding", "promptInstall", "debugLogEntitlement",
   "switchToPersonalWorkspace", "switchToWorkspace", "openWorkspaceMembersModal", "recoverWorkspaceRealtimeNow",
   "getWorkspaceMemberPresenceState", "getWorkspaceMemberPresenceLabel", "connectWhatnot", "disconnectWhatnot",
+  "openShopifyConnectDialog", "connectShopify", "disconnectShopify",
   "syncWhatnotSales", "openWhatnotCsvImportDialog", "openWhatnotReviewDialog", "clearPersonalAccountData",
   "logoutCurrentSession", "promptGoogleSignIn", "selectLot", "openRenameLotModal"
 ] as const;
 
 type ShellCapabilitySource = AppState & AuthComputedState & AuthMethodState & CommerceComputedState & CommerceMethodState
   & EntitlementMethodState & RuntimeComputedState & RuntimeMethodState & SyncComputedState & WhatnotComputedState
-  & WhatnotMethodState & WorkspaceComputedState & WorkspaceMethodState;
+  & WhatnotMethodState & ShopifyMethodState & WorkspaceComputedState & WorkspaceMethodState;
 export type ShellPortSource = Pick<ShellCapabilitySource, typeof shellPortKeys[number]>;
 export type ShellPorts = ShellPortSource & { resolveLotSelectorDisplayItem: typeof resolveLotSelectorDisplayItem };
 export const shellPortsKey: InjectionKey<ShellPorts> = Symbol("shellPorts");

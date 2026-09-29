@@ -10,6 +10,7 @@ import { hydrateMissingWhatnotScopeSales } from "./methods/whatnot-fee-hydration
 import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
 import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot/whatnot.ts";
+import { resetShopifySignedOutState } from "./methods/ui/shopify/shopify-state.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace/workspace-realtime.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { scheduleTabPrewarm } from "./tab-prewarm.ts";
@@ -85,6 +86,7 @@ export const appWatch: AppWatchObject = {
     resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
+      void this.refreshShopifyStatus();
     }
   },
 
@@ -95,6 +97,7 @@ export const appWatch: AppWatchObject = {
     resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
+      void this.refreshShopifyStatus();
     }
   },
 
@@ -220,7 +223,8 @@ export const appWatch: AppWatchObject = {
       this.buyerProfilesLoadStatus = "idle";
       this.buyerProfileSaveStates = {};
       this.showWorkspaceMembersModal = false;
-      resetWhatnotSignedOutState(this);
+    resetWhatnotSignedOutState(this);
+    resetShopifySignedOutState(this);
       this.$nextTick(() => this.renderGoogleSignInButton());
       return;
     }
@@ -241,6 +245,7 @@ export const appWatch: AppWatchObject = {
     hydrateMissingWhatnotScopeSales(this);
     hydrateCurrentLotLivePricing(this);
     void this.refreshWorkspaces();
+    void this.refreshShopifyStatus();
     void this.refreshWhatnotStatus().then(() => {
       if (!this.whatnotCallbackStatus) return;
       const message = this.whatnotCallbackMessage
