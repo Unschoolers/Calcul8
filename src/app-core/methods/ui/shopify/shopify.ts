@@ -10,20 +10,26 @@ function scopeBody(context: { activeScopeType: string; activeWorkspaceId: string
 export const uiShopifyMethods = {
   async refreshShopifyStatus(): Promise<void> {
     const requestedScope = JSON.stringify(scopeBody(this));
-    this.shopifyConnectionShop = null;
+  this.shopifyConnectionShop = null;
+  this.shopifyLastSyncedAt = null;
+  this.shopifySyncError = null;
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/status", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: requestedScope
       }, { expireAuthOn401: false });
       if (!response.ok) throw new Error("Shopify status unavailable");
-      const status = await response.json() as { configured?: boolean; connected?: boolean; shop?: string | null };
+    const status = await response.json() as { configured?: boolean; connected?: boolean; shop?: string | null; lastSyncedAt?: string | null; syncError?: string | null };
       if (requestedScope !== JSON.stringify(scopeBody(this))) return;
       this.shopifyConnectionStatus = !status.configured ? "unconfigured" : status.connected ? "connected" : "disconnected";
-      this.shopifyConnectionShop = status.connected ? status.shop ?? null : null;
+    this.shopifyConnectionShop = status.connected ? status.shop ?? null : null;
+    this.shopifyLastSyncedAt = status.connected ? status.lastSyncedAt ?? null : null;
+    this.shopifySyncError = status.connected ? status.syncError ?? null : null;
     } catch {
       if (requestedScope !== JSON.stringify(scopeBody(this))) return;
       this.shopifyConnectionStatus = "error";
-      this.shopifyConnectionShop = null;
+    this.shopifyConnectionShop = null;
+    this.shopifyLastSyncedAt = null;
+    this.shopifySyncError = null;
     }
   },
 
@@ -58,7 +64,9 @@ export const uiShopifyMethods = {
       });
       if (!response.ok) throw new Error("Shopify disconnect failed");
       this.shopifyConnectionStatus = "disconnected";
-      this.shopifyConnectionShop = null;
+    this.shopifyConnectionShop = null;
+    this.shopifyLastSyncedAt = null;
+    this.shopifySyncError = null;
       this.showShopifyConnectDialog = false;
     } catch { this.shopifyConnectionStatus = "error"; }
   }

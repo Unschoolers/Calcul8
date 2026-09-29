@@ -376,6 +376,7 @@ export async function upsertSaleDocument(
     saleId,
     sale: input.sale,
     version: nextVersion,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     updatedBy: normalizeId(input.updatedBy),
     mutationId: normalizeId(input.mutationId),

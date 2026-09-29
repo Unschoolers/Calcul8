@@ -15,7 +15,7 @@ const shellPortKeys = [
   "activeScopeType", "activeWorkspaceId", "availableWorkspaces", "googleAvatarLoadFailed", "hasProAccess",
   "preferredLanguage", "showCreateWorkspaceModal", "showInstallPrompt", "showSystemConfigurationDialog",
   "whatnotConnectionStatus", "whatnotConnectionSummary", "whatnotReviewBatchId", "whatnotSyncStatus",
-  "shopifyConnectionStatus", "shopifyConnectionShop", "shopifyShopDraft", "showShopifyConnectDialog",
+  "shopifyConnectionStatus", "shopifyConnectionShop", "shopifyLastSyncedAt", "shopifySyncError", "shopifyShopDraft", "showShopifyConnectDialog",
   "currentTab", "currentLotId", "guidedOnboardingStatus", "showNewLotModal", "showGoogleSignInFallback",
   "showNativeGoogleSignInAction",
   "googleProfileName", "googleProfileEmail", "googleProfilePicture", "isDark", "accountSyncBadgeVisible",

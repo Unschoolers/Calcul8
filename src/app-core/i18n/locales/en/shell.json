@@ -44,6 +44,8 @@
   "shellInstallAppAction": "Install app",
   "shellIntegrationsSectionLabel": "Integrations",
   "shellShopifyTitle": "Shopify",
+  "shellShopifySyncNeedsAttention": "Inventory sync needs attention",
+  "shellShopifyLastSynced": "Inventory last synced",
   "shellShopifyUnavailable": "Shopify setup is not available yet",
   "shellShopifyDisconnected": "Store not connected",
   "shellConnectShopify": "Connect Shopify",

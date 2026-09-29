@@ -78,6 +78,25 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
         }`, { id: productId, input: [{ publicationId: onlineStore.id }] });
       checkErrors(published.publishablePublish);
     },
+    async pauseProduct(productId) {
+      const data = await graphql<{ productUpdate?: { userErrors?: { message: string }[] } }>(
+        `mutation PauseBox($product: ProductUpdateInput!) { productUpdate(product: $product) { userErrors { message } } }`,
+        { product: { id: productId, status: "DRAFT" } });
+      checkErrors(data.productUpdate);
+    },
+    async ensureOrderWebhooks(callbackUrl) {
+      const existing = await graphql<{ webhookSubscriptions?: { nodes?: { topic: string; uri: string }[] } }>(
+        `query OrderWebhooks($uri: String!) { webhookSubscriptions(first: 50, uri: $uri) { nodes { topic uri } } }`,
+        { uri: callbackUrl });
+      for (const topic of ["ORDERS_PAID", "ORDERS_CANCELLED"] as const) {
+        if (existing.webhookSubscriptions?.nodes?.some((item) => item.topic === topic && item.uri === callbackUrl)) continue;
+        const result = await graphql<{ webhookSubscriptionCreate?: { userErrors?: { message: string }[] } }>(
+          `mutation SubscribeOrders($topic: WebhookSubscriptionTopic!, $input: WebhookSubscriptionInput!) {
+            webhookSubscriptionCreate(topic: $topic, webhookSubscription: $input) { userErrors { message } }
+          }`, { topic, input: { uri: callbackUrl, format: "JSON" } });
+        checkErrors(result.webhookSubscriptionCreate);
+      }
+    },
     async setAvailable({ inventoryItemId, locationId, quantity, previousQuantity }) {
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const stock = await graphql<{ inventoryItem?: { inventoryLevel?: { quantities?: { quantity: number }[] } } }>(
@@ -97,7 +116,7 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
             quantities: [{ inventoryItemId, locationId, quantity, compareQuantity: actual }] } });
         const errors = data.inventorySetQuantities?.userErrors;
         if (!errors?.length) return;
-        if (!errors.every((error) => error.code === "CHANGE_FROM_QUANTITY_STALE") || attempt === 2) {
+        if (!errors.every((error) => error.code === "CHANGE_FROM_QUANTITY_STALE" || error.code === "COMPARE_QUANTITY_STALE") || attempt === 2) {
           checkErrors(data.inventorySetQuantities);
         }
       }

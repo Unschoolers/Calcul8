@@ -25,6 +25,7 @@ function buildRealtimeTokenExpiryEpochSeconds(ttlSeconds = 60): number {
 export function toSaleResponse(document: {
   sale: unknown;
   version: number;
+  createdAt?: string;
   updatedAt: string;
   updatedBy: string;
   mutationId: string;
@@ -32,6 +33,7 @@ export function toSaleResponse(document: {
   if (typeof document.sale !== "object" || document.sale === null || Array.isArray(document.sale)) {
     return {
       version: document.version,
+      ...(document.createdAt ? { createdAt: document.createdAt } : {}),
       updatedAt: document.updatedAt,
       updatedBy: document.updatedBy,
       mutationId: document.mutationId
@@ -41,6 +43,7 @@ export function toSaleResponse(document: {
   return {
     ...(document.sale as Record<string, unknown>),
     version: document.version,
+    ...(document.createdAt ? { createdAt: document.createdAt } : {}),
     updatedAt: document.updatedAt,
     updatedBy: document.updatedBy,
     mutationId: document.mutationId

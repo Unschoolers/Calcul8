@@ -253,6 +253,8 @@ export function createInitialState(): AppState {
     whatnotConnectionStatus: "unconfigured",
     shopifyConnectionStatus: "unconfigured",
     shopifyConnectionShop: null,
+    shopifyLastSyncedAt: null,
+    shopifySyncError: null,
     shopifyShopDraft: "",
     showShopifyConnectDialog: false,
     whatnotSyncStatus: "idle",

@@ -376,7 +376,27 @@ describe("workflow dialog scenarios", () => {
     expect(ctx.saveSale).toHaveBeenCalledOnce();
   });
 
-  test("closes system configuration without changing its labeled inputs", async () => {
+test("Shopify lot settings show sealed stock and the sale that opened a box", () => {
+  const lot = makeLot({ id: 42, lotType: "bulk", boxesPurchased: 3, packsPerBox: 10, shopifyEnabled: true });
+  const labels: Record<string, string> = {
+    configShopifyPublishLabel: "List sealed boxes on Shopify",
+    configShopifySealedAvailable: "sealed boxes available",
+    configShopifyOpeningHistory: "Opened by sales",
+    configShopifyBoxesOpened: "box(es) opened"
+  };
+  const state = reactive({ ...createInitialState(), ...systemConfigurationContext(),
+    currentLotId: lot.id, currentLotType: "bulk", lots: [lot], shopifyEnabled: true,
+    boxesPurchased: 3, packsPerBox: 10,
+    sales: [{ id: 1, type: "pack", quantity: 1, packsCount: 1, date: "2026-09-29", createdAt: "2026-09-29T12:00:00.000Z" }],
+    t: (key: string) => labels[key] ?? key,
+    setCurrentLotShopifyEnabled: vi.fn()
+  });
+  renderWithCapabilities(SystemConfigurationDialog, workspaceDialogPortsKey, createWorkspaceDialogPorts(state as never));
+  expect(screen.getByText(/2 sealed boxes available/)).toBeVisible();
+  expect(screen.getByText(/1 box\(es\) opened/)).toBeInTheDocument();
+});
+
+test("closes system configuration without changing its labeled inputs", async () => {
     const ctx = systemConfigurationContext();
     renderWithCapabilities(SystemConfigurationDialog, workspaceDialogPortsKey, ctx);
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calculateSealedBoxInventory } from "../src/domain/box-inventory.ts";
+import assert from "node:assert/strict";
+import { calculateSealedBoxInventory, deriveBoxOpeningEvents } from "../src/domain/box-inventory.ts";
 import type { Sale } from "../src/types/app.ts";
 
 type InventorySale = Pick<Sale, "type" | "quantity" | "packsCount">;
@@ -40,4 +41,29 @@ describe("sealed box inventory", () => {
     expect(calculateSealedBoxInventory(lot, [box(2), pack(11)])).toMatchObject({ valid: false, error: "oversold" });
     expect(calculateSealedBoxInventory(lot, [{ type: "pack", quantity: 1, packsCount: 0.5 }])).toMatchObject({ valid: false, error: "invalid_sale" });
   });
+});
+
+it("automatically records the sale that opened each box at its immutable creation time", () => {
+  const result = deriveBoxOpeningEvents({ boxesPurchased: 3, packsPerBox: 10 }, [
+    { id: 1, type: "pack", quantity: 3, packsCount: 3, createdAt: "2026-09-29T10:00:00.000Z" },
+    { id: 2, type: "box", quantity: 1, packsCount: 10, createdAt: "2026-09-29T10:02:00.000Z" },
+    { id: 3, type: "rtyh", quantity: 1, packsCount: 8, createdAt: "2026-09-29T10:05:00.000Z" }
+  ]);
+  assert.deepEqual(result, { valid: true, events: [
+    { saleId: 1, boxesOpened: 1, openedAt: "2026-09-29T10:00:00.000Z", precision: "instant" },
+    { saleId: 3, boxesOpened: 1, openedAt: "2026-09-29T10:05:00.000Z", precision: "instant" }
+  ] });
+});
+
+it("legacy dates are marked date-only, and editing a sale recomputes opening history", () => {
+  const lot = { boxesPurchased: 2, packsPerBox: 10 };
+  const original = [
+    { id: 1, type: "pack", quantity: 5, packsCount: 5, date: "2026-09-29" },
+    { id: 2, type: "wheel", quantity: 1, packsCount: 7, createdAt: "2026-09-30T10:00:00.000Z" }
+  ];
+  const result = deriveBoxOpeningEvents(lot, original);
+  assert.equal(result.events[0]?.precision, "date");
+  assert.equal(result.events[1]?.saleId, 2);
+  const edited = deriveBoxOpeningEvents(lot, [{ ...original[0], packsCount: 0 }, original[1]]);
+  assert.deepEqual(edited.events.map((event) => event.saleId), [2]);
 });

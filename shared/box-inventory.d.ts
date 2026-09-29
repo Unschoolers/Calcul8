@@ -8,3 +8,6 @@ export type SealedBoxInventory = {
   error?: "invalid_lot" | "invalid_sale" | "oversold";
 };
 export declare function calculateSealedBoxInventory(lot: BoxLot, sales: readonly InventorySale[]): SealedBoxInventory;
+export type BoxOpeningEvent = { saleId: number | null; boxesOpened: number; openedAt: string | null; precision: "instant" | "date" | "unknown" };
+export declare function deriveBoxOpeningEvents(lot: BoxLot, sales: readonly (InventorySale & { id?: number; date?: string; createdAt?: string })[]):
+  { valid: true; events: BoxOpeningEvent[] } | { valid: false; events: []; error: "invalid_lot" | "invalid_sale" | "oversold" };

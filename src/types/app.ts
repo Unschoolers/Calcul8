@@ -217,6 +217,7 @@ export interface Sale {
   memo?: string;
   buyerShipping: number;
   date: string;
+  createdAt?: string;
   version?: number;
   updatedAt?: string;
   updatedBy?: string;
@@ -704,6 +705,8 @@ export interface AppState extends LotSetup {
   whatnotConnectionStatus: WhatnotConnectionStatus;
   shopifyConnectionStatus: WhatnotConnectionStatus;
   shopifyConnectionShop: string | null;
+  shopifyLastSyncedAt: string | null;
+  shopifySyncError: string | null;
   shopifyShopDraft: string;
   showShopifyConnectDialog: boolean;
   whatnotSyncStatus: WhatnotSyncStatus;

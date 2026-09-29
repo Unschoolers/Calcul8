@@ -41,6 +41,7 @@ export type ShopifyConnectionStore = {
   createState: (state: ShopifyOAuthState) => Promise<void>;
   /** Must claim a state at most once, including concurrent callbacks. */
   consumeState: (state: string) => Promise<ShopifyOAuthState | null>;
+  getConnection: (scopeKey: string) => Promise<ShopifyConnection | null>;
   putConnection: (connection: ShopifyConnection) => Promise<void>;
 };
 
@@ -98,8 +99,10 @@ export async function completeShopifyConnection(
   }
   if (!code) throw new HttpError(400, "Incomplete Shopify callback");
   const scope = await resolveScope(state.actorUserId, state.scopeType === "workspace" ? state.scopeId : undefined, true);
-  if (scope.partitionKey !== state.scopeKey) throw new HttpError(403, "Shopify connection scope changed");
-  const token = await exchangeShopifyCode({ shop, clientId, clientSecret, code }, fetcher);
+if (scope.partitionKey !== state.scopeKey) throw new HttpError(403, "Shopify connection scope changed");
+const current = await store.getConnection(state.scopeKey);
+if (current && current.shop !== shop) throw new HttpError(409, "Disconnect the current Shopify store before connecting another store.");
+const token = await exchangeShopifyCode({ shop, clientId, clientSecret, code }, fetcher);
   await store.putConnection({ scopeKey: state.scopeKey, scopeType: state.scopeType, scopeId: state.scopeId,
     shop, accessTokenCiphertext: encryptShopifyToken(encryptionSecret, token.access_token),
     refreshTokenCiphertext: token.refresh_token ? encryptShopifyToken(encryptionSecret, token.refresh_token) : undefined,

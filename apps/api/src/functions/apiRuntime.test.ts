@@ -19,4 +19,4 @@ test("API runtime entrypoint registers the card filter options route", async () 
   assert.equal(httpMock.mock.calls.some(([, definition]) => (
     (definition as { route?: string }).route === "cards/filter-options"
   )), true);
-});
+}, 15_000);

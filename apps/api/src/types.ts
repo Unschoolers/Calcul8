@@ -593,6 +593,7 @@ export interface SaleDocument {
   saleId: string;
   sale: unknown;
   version: number;
+  createdAt?: string;
   updatedAt: string;
   updatedBy: string;
   mutationId: string;

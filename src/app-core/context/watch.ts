@@ -91,7 +91,7 @@ export type AuthWatchContext = WorkspaceRealtimeContext &
   Pick<WorkspaceMethodState, "previewPendingWorkspaceInvite" | "refreshWorkspaces"> &
   Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
   Pick<ShopifyMethodState, "refreshShopifyStatus"> &
-  Pick<AppState, "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyShopDraft" | "showShopifyConnectDialog"> &
+  Pick<AppState, "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyShopDraft" | "showShopifyConnectDialog" | "shopifyLastSyncedAt" | "shopifySyncError"> &
   Pick<AppVueContext, "$nextTick">;
 
 export type CurrentLotWatchContext = WorkspaceRealtimeContext &

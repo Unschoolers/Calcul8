@@ -11,6 +11,8 @@ function harness() {
   const client: ShopifyListingClient = {
     upsertBoxProduct: vi.fn(async () => ({ productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4" })),
     activateProduct: vi.fn(async () => {}),
+    pauseProduct: vi.fn(async () => {}),
+    ensureOrderWebhooks: vi.fn(async () => {}),
     setAvailable: vi.fn(async () => {})
   };
   return { store, client, mapping: () => mapping };

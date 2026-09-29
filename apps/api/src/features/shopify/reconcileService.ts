@@ -3,10 +3,12 @@ import type { SyncSaleDto } from "../../../../../shared/sync-contracts";
 import { getEffectiveSyncSnapshot } from "../../lib/cosmos/syncSnapshotRepository";
 import { getSyncMetaWithModes, listSalesForLot } from "../../lib/cosmos/salesRepository";
 import { getShopifyConnection } from "../../lib/cosmos/shopifyRepository";
+import { getShopifySyncStatus, recordShopifySyncStatus } from "../../lib/cosmos/shopifySyncStatusRepository";
 import { createShopifyListingStore } from "../../lib/cosmos/shopifyListingRepository";
 import { listShopifyOrderLines } from "../../lib/cosmos/shopifyOrderRepository";
 import { createShopifyAdminClient } from "./adminClient";
 import { getShopifyAccessToken } from "./tokenProvider";
+import { ensureShopifyOrderWebhooks } from "./webhookSubscription";
 import { reconcileBoxListing, type InventorySale } from "./listingService";
 
 export function normalizeBoxSales(raw: readonly unknown[]): InventorySale[] {
@@ -23,7 +25,7 @@ export function normalizeBoxSales(raw: readonly unknown[]): InventorySale[] {
 }
 
 /** Rebuilds desired stock from cloud records; callers never pass browser-computed quantities. */
-export async function reconcileShopifyScope(config: ApiConfig, scopeKey: string, onlyLotId?: number): Promise<void> {
+async function reconcileWork(config: ApiConfig, scopeKey: string, onlyLotId?: number): Promise<void> {
   const connection = await getShopifyConnection(config, scopeKey);
   if (!connection) return;
   const snapshot = await getEffectiveSyncSnapshot(config, scopeKey);
@@ -32,6 +34,7 @@ export async function reconcileShopifyScope(config: ApiConfig, scopeKey: string,
   const listings = await store.list(scopeKey);
   const lotIds = new Set(snapshot.lots.filter((lot) => lot.shopifyEnabled === true).map((lot) => lot.id));
   for (const listing of listings) lotIds.add(listing.lotId);
+  if (lotIds.size) await ensureShopifyOrderWebhooks(config, scopeKey);
   const meta = await getSyncMetaWithModes(config, scopeKey);
   const client = createShopifyAdminClient(connection.shop, () => getShopifyAccessToken(config, scopeKey, connection.shop));
   for (const lotId of lotIds) {
@@ -44,5 +47,23 @@ export async function reconcileShopifyScope(config: ApiConfig, scopeKey: string,
     const orders = lot.shopifyEnabled === true ? await listShopifyOrderLines(config, scopeKey, lotId) : [];
     await reconcileBoxListing({ scopeKey, shop: connection.shop, lot,
       sales: [...normalizeBoxSales(sales), ...orders.map((order) => ({ type: "box", quantity: order.quantity, packsCount: 0 }))], store, client });
+  }
+}
+
+export async function reconcileShopifyScope(config: ApiConfig, scopeKey: string, onlyLotId?: number): Promise<void> {
+  const connection = await getShopifyConnection(config, scopeKey);
+  if (!connection) return;
+  try {
+    await reconcileWork(config, scopeKey, onlyLotId);
+    const now = new Date().toISOString();
+    await recordShopifySyncStatus(config, { scopeKey, shop: connection.shop, lastAttemptAt: now, lastSyncedAt: now, lastError: null });
+  } catch (error) {
+    try {
+      const previous = await getShopifySyncStatus(config, scopeKey);
+      await recordShopifySyncStatus(config, { scopeKey, shop: connection.shop, lastAttemptAt: new Date().toISOString(),
+        lastSyncedAt: previous?.shop === connection.shop ? previous.lastSyncedAt : null,
+        lastError: error instanceof Error ? error.message.slice(0, 240) : "Shopify inventory sync failed" });
+    } catch { /* The original reconciliation error remains the actionable failure. */ }
+    throw error;
   }
 }

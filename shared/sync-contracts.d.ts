@@ -101,6 +101,7 @@ export interface SyncSaleDto {
   memo?: string;
   buyerShipping?: number;
   date?: string;
+  createdAt?: string;
   version?: number;
   updatedAt?: string;
   updatedBy?: string;

@@ -23,6 +23,8 @@ export type ShopifyListingClient = {
     price: string; active: boolean; locationId?: string;
   }): Promise<{ productId: string; variantId: string; inventoryItemId: string; locationId: string }>;
   activateProduct(productId: string): Promise<void>;
+  pauseProduct(productId: string): Promise<void>;
+  ensureOrderWebhooks(callbackUrl: string): Promise<void>;
   setAvailable(input: { inventoryItemId: string; locationId: string; quantity: number; previousQuantity: number }): Promise<void>;
 };
 export type InventorySale = { type: string; quantity: number; packsCount: number };
@@ -36,8 +38,9 @@ export async function reconcileBoxListing(input: {
   store: ShopifyListingStore; client: ShopifyListingClient;
 }): Promise<{ status: "skipped" | "published" | "paused"; sealedBoxes: number }> {
   const { scopeKey, shop, lot, sales, store, client } = input;
-  const existing = await store.get(scopeKey, lot.id);
-  if (existing && existing.shop !== shop) throw new Error("This lot is linked to another Shopify store; reconnect the original store to retire its listing");
+  const previousMapping = await store.get(scopeKey, lot.id);
+  // A different shop can only be connected after the previous products were drafted on disconnect.
+  const existing = previousMapping?.shop === shop ? previousMapping : null;
   const enabled = lot.shopifyEnabled === true && lot.lotType !== "singles";
   if (!enabled && !existing) return { status: "skipped", sealedBoxes: 0 };
   const inventory = calculateSealedBoxInventory({ boxesPurchased: lot.boxesPurchased ?? NaN, packsPerBox: lot.packsPerBox ?? NaN }, sales);

@@ -144,6 +144,20 @@
               class="mb-3"
               @update:model-value="setCurrentLotShopifyEnabled($event === true)"
             ></v-switch>
+            <div v-if="hasLotSelected && currentLotType !== 'singles' && shopifyEnabled" class="text-body-2 mb-4">
+              <div v-if="sealedInventory.valid" class="font-weight-medium">
+                {{ sealedInventory.sealedBoxes }} {{ t('configShopifySealedAvailable') }}
+              </div>
+              <div v-else class="text-error">{{ t('configShopifyInventoryInvalid') }}</div>
+              <details v-if="boxOpeningEvents.valid && boxOpeningEvents.events.length" class="mt-2">
+                <summary>{{ t('configShopifyOpeningHistory') }} ({{ boxOpeningEvents.events.length }})</summary>
+                <ul class="mt-2 ps-5">
+                  <li v-for="(event, index) in boxOpeningEvents.events" :key="index">
+                    {{ event.boxesOpened }} {{ t('configShopifyBoxesOpened') }} · {{ formatBoxOpeningAt(event) }}
+                  </li>
+                </ul>
+              </details>
+            </div>
 
             <v-alert
               v-if="currentLotUsesSystemPricingDefaults"

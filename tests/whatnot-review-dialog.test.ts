@@ -16,7 +16,7 @@ test("whatnotReviewGroups groups rows without relying on a callable computed hel
         buyerName: "Alice",
         listingTitle: "One Piece Box",
         title: "One Piece Box",
-        orderPlacedAt: "2026-04-10T14:12:00Z",
+        orderPlacedAt: "2026-04-10",
         date: "2026-04-10",
         externalOrderId: "order-2"
       },
@@ -25,7 +25,7 @@ test("whatnotReviewGroups groups rows without relying on a callable computed hel
         buyerName: "Alice",
         listingTitle: "One Piece Box",
         title: "One Piece Box",
-        orderPlacedAt: "2026-04-10T09:01:00Z",
+        orderPlacedAt: "2026-04-10",
         date: "2026-04-10",
         externalOrderId: "order-1"
       },

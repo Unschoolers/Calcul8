@@ -11,7 +11,7 @@ export interface ShopifyMethodState {
 }
 
 export type ShopifyMethodContext = ScopedApiContext &
-  Pick<AppState, "activeScopeType" | "activeWorkspaceId" | "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyShopDraft" | "showShopifyConnectDialog"> &
+  Pick<AppState, "activeScopeType" | "activeWorkspaceId" | "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyLastSyncedAt" | "shopifySyncError" | "shopifyShopDraft" | "showShopifyConnectDialog"> &
   Pick<WorkspaceComputedState, "isCurrentWorkspaceOwner"> &
   Pick<RuntimeMethodState, "notify">;
 

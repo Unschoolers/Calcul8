@@ -1,13 +1,14 @@
 import type { ApiConfig } from "../../types";
 import type { ShopifyConnection, ShopifyConnectionStore, ShopifyOAuthState } from "../../features/shopify/connectionService";
-import { getContainers, isNotFoundError, isPreconditionFailedError, withCosmosRetry } from "./core";
+import { HttpError } from "../auth";
+import { getContainers, isConflictError, isNotFoundError, isPreconditionFailedError, withCosmosRetry } from "./core";
 
 const OAUTH_PARTITION = "oauth:shopify";
 const connectionId = (scopeKey: string) => `shopify_connection:${scopeKey}`;
 const stateId = (state: string) => `shopify_oauth_state:${state}`;
 
 type StateDocument = ShopifyOAuthState & { id: string; userId: string; docType: "shopify_oauth_state"; _etag?: string };
-type ConnectionDocument = ShopifyConnection & { id: string; userId: string; docType: "shopify_connection" };
+type ConnectionDocument = ShopifyConnection & { id: string; userId: string; docType: "shopify_connection"; _etag?: string };
 
 export function createShopifyStore(config: ApiConfig): ShopifyConnectionStore {
   return {
@@ -32,10 +33,24 @@ export function createShopifyStore(config: ApiConfig): ShopifyConnectionStore {
       const { id: _id, userId: _userId, docType: _docType, _etag, ...payload } = resource;
       return payload;
     },
+    getConnection(scopeKey) { return getShopifyConnection(config, scopeKey); },
     async putConnection(connection) {
       const { entitlements } = getContainers(config);
       const document: ConnectionDocument = { ...connection, id: connectionId(connection.scopeKey), userId: connection.scopeKey, docType: "shopify_connection" };
-      await withCosmosRetry(() => entitlements.items.upsert(document));
+      const item = entitlements.item(document.id, connection.scopeKey);
+      let current: ConnectionDocument | undefined;
+      try { ({ resource: current } = await withCosmosRetry(() => item.read<ConnectionDocument>())); }
+      catch (error) { if (!isNotFoundError(error)) throw error; }
+      if (!current) {
+        try { await withCosmosRetry(() => entitlements.items.create(document)); }
+        catch (error) { if (isConflictError(error)) throw new HttpError(409, "Shopify connection changed; retry connecting."); throw error; }
+        return;
+      }
+      if (current.docType !== "shopify_connection" || current.scopeKey !== connection.scopeKey || current.shop !== connection.shop || !current._etag) {
+        throw new HttpError(409, "Shopify connection changed; disconnect the current store before connecting another store.");
+      }
+      try { await withCosmosRetry(() => item.replace(document, { accessCondition: { type: "IfMatch", condition: current._etag! } })); }
+      catch (error) { if (isPreconditionFailedError(error)) throw new HttpError(409, "Shopify connection changed; retry connecting."); throw error; }
     }
   };
 }
@@ -45,7 +60,7 @@ export async function getShopifyConnection(config: ApiConfig, scopeKey: string):
   try {
     const { resource } = await withCosmosRetry(() => entitlements.item(connectionId(scopeKey), scopeKey).read<ConnectionDocument>());
     if (!resource || resource.docType !== "shopify_connection" || resource.scopeKey !== scopeKey) return null;
-    const { id: _id, userId: _userId, docType: _docType, ...connection } = resource;
+    const { id: _id, userId: _userId, docType: _docType, _etag, ...connection } = resource;
     return connection;
   } catch (error) { if (isNotFoundError(error)) return null; throw error; }
 }
@@ -58,6 +73,19 @@ export async function listShopifyConnectionScopes(config: ApiConfig): Promise<st
   });
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
   return (resources ?? []).map((connection) => connection.scopeKey).filter((value): value is string => typeof value === "string");
+}
+
+export async function listShopifyConnectionsForShop(config: ApiConfig, shop: string): Promise<ShopifyConnection[]> {
+  const { entitlements } = getContainers(config);
+  const iterator = entitlements.items.query<ConnectionDocument>({
+    query: "SELECT * FROM c WHERE c.docType = @type AND c.shop = @shop",
+    parameters: [{ name: "@type", value: "shopify_connection" }, { name: "@shop", value: shop }]
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return (resources ?? []).filter((connection) => connection.shop === shop).map((resource) => {
+    const { id: _id, userId: _userId, docType: _docType, ...connection } = resource;
+    return connection;
+  });
 }
 
 /** Conditional token rotation avoids overwriting a newer refresh token. */

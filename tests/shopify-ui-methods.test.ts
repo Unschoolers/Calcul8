@@ -10,6 +10,7 @@ function context() {
   return {
     activeScopeType: "personal", activeWorkspaceId: null, isCurrentWorkspaceOwner: false,
     shopifyConnectionStatus: "unconfigured", shopifyConnectionShop: null,
+    shopifyLastSyncedAt: null as string | null, shopifySyncError: null as string | null,
     shopifyShopDraft: "mine.myshopify.com", showShopifyConnectDialog: true,
     notify: vi.fn()
   };
@@ -19,10 +20,12 @@ beforeEach(() => fetchAuthenticatedApiResponse.mockReset());
 
 it("shows connected shop status without keeping an access token in UI state", async () => {
   const app = context();
-  fetchAuthenticatedApiResponse.mockResolvedValue(new Response(JSON.stringify({ configured: true, connected: true, shop: "mine.myshopify.com" }), { status: 200 }));
+  fetchAuthenticatedApiResponse.mockResolvedValue(new Response(JSON.stringify({ configured: true, connected: true, shop: "mine.myshopify.com", lastSyncedAt: "2026-09-29T12:00:00Z", syncError: null }), { status: 200 }));
   await uiShopifyMethods.refreshShopifyStatus.call(app as never);
   expect(app.shopifyConnectionStatus).toBe("connected");
   expect(app.shopifyConnectionShop).toBe("mine.myshopify.com");
+  expect(app.shopifyLastSyncedAt).toBe("2026-09-29T12:00:00Z");
+  expect(app.shopifySyncError).toBeNull();
   expect(JSON.stringify(app)).not.toContain("access_token");
 });
 
@@ -43,8 +46,12 @@ it("clears the previous account's shop on sign-out", () => {
   const app = context();
   app.shopifyConnectionStatus = "connected";
   app.shopifyConnectionShop = "previous.myshopify.com";
+  app.shopifyLastSyncedAt = "2026-09-28T12:00:00Z";
+  app.shopifySyncError = "Failed to sync";
   resetShopifySignedOutState(app as never);
   expect(app.shopifyConnectionShop).toBeNull();
+  expect(app.shopifyLastSyncedAt).toBeNull();
+  expect(app.shopifySyncError).toBeNull();
   expect(app.shopifyShopDraft).toBe("");
   expect(app.showShopifyConnectDialog).toBe(false);
 });
@@ -53,12 +60,14 @@ it("ignores an old personal-scope response after switching to a workspace", asyn
   const app = context() as ReturnType<typeof context> & { activeWorkspaceId: string | null };
   let finishFirst!: (value: Response) => void;
   fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishFirst = resolve; }));
-  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ configured: true, connected: true, shop: "workspace.myshopify.com" }), { status: 200 }));
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ configured: true, connected: true, shop: "workspace.myshopify.com", lastSyncedAt: "2026-09-29T12:00:00Z", syncError: null }), { status: 200 }));
   const first = uiShopifyMethods.refreshShopifyStatus.call(app as never);
   app.activeScopeType = "workspace";
   app.activeWorkspaceId = "team";
   await uiShopifyMethods.refreshShopifyStatus.call(app as never);
-  finishFirst(new Response(JSON.stringify({ configured: true, connected: true, shop: "personal.myshopify.com" }), { status: 200 }));
+  finishFirst(new Response(JSON.stringify({ configured: true, connected: true, shop: "personal.myshopify.com", lastSyncedAt: null, syncError: "Old error" }), { status: 200 }));
   await first;
   expect(app.shopifyConnectionShop).toBe("workspace.myshopify.com");
+  expect(app.shopifyLastSyncedAt).toBe("2026-09-29T12:00:00Z");
+  expect(app.shopifySyncError).toBeNull();
 });

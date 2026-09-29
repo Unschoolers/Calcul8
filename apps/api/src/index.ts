@@ -15,6 +15,7 @@ import "./functions/wheelFairness";
 import "./functions/whatnot";
 import "./functions/shopify";
 import "./functions/shopifyReconcile";
+import "./functions/shopifyWebhook";
 import "./functions/cardsSearch";
 import "./functions/cardsFilterOptions";
 import "./functions/auth";
