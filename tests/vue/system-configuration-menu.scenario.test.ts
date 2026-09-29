@@ -32,6 +32,8 @@ test("choosing System Configuration from the account menu opens its dialog", asy
 
   renderWithApp(Harness);
   await fireEvent.click(screen.getByRole("button", { name: "accountMenuLabel" }));
+  expect(await screen.findByText("shellIntegrationsSectionLabel")).toBeVisible();
+  expect(await screen.findByText("shellShopifyTitle")).toBeVisible();
   await fireEvent.click(await screen.findByText("configSystemConfigurationAction"));
 
   expect(state.showSystemConfigurationDialog).toBe(true);
