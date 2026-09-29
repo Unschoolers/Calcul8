@@ -8,7 +8,7 @@ import { resetShopifySignedOutState } from "../src/app-core/methods/ui/shopify/s
 
 function context() {
   return {
-    activeScopeType: "personal", activeWorkspaceId: null, isCurrentWorkspaceOwner: false,
+    activeScopeType: "personal", activeWorkspaceId: null, googleAuthEpoch: 0, isCurrentWorkspaceOwner: false,
     shopifyConnectionStatus: "unconfigured", shopifyConnectionShop: null,
     shopifyLastSyncedAt: null as string | null, shopifySyncError: null as string | null,
     shopifyShopDraft: "mine.myshopify.com", showShopifyConnectDialog: true,
@@ -70,4 +70,54 @@ it("ignores an old personal-scope response after switching to a workspace", asyn
   expect(app.shopifyConnectionShop).toBe("workspace.myshopify.com");
   expect(app.shopifyLastSyncedAt).toBe("2026-09-29T12:00:00Z");
   expect(app.shopifySyncError).toBeNull();
+});
+
+it("ignores a status response from a previous signed-in account", async () => {
+  const app = context();
+  let finish!: (value: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>((resolve) => { finish = resolve; }));
+  const pending = uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  app.googleAuthEpoch += 1;
+  app.shopifyConnectionStatus = "disconnected";
+  finish(new Response(JSON.stringify({ configured: true, connected: true, shop: "previous.myshopify.com" }), { status: 200 }));
+  await pending;
+  expect(app.shopifyConnectionStatus).toBe("disconnected");
+  expect(app.shopifyConnectionShop).toBeNull();
+});
+
+it("ignores a disconnect response after the signed-in account changes", async () => {
+  const app = context();
+  let finish!: (value: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve; }));
+  const pending = uiShopifyMethods.disconnectShopify.call(app as never);
+  app.googleAuthEpoch++;
+  app.shopifyConnectionStatus = "connected";
+  app.shopifyConnectionShop = "new.myshopify.com";
+  app.showShopifyConnectDialog = true;
+  finish(new Response(null, { status: 200 }));
+  await pending;
+  expect(app.shopifyConnectionStatus).toBe("connected");
+  expect(app.shopifyConnectionShop).toBe("new.myshopify.com");
+  expect(app.showShopifyConnectDialog).toBe(true);
+});
+
+it("does not redirect for a connect response after the signed-in account changes", async () => {
+  const app = context();
+  app.shopifyShopDraft = "mine.myshopify.com";
+  const assign = vi.fn();
+  const original = globalThis.window;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { origin: "https://app.example.com", href: "https://app.example.com/config", assign } } });
+  try {
+    let finish!: (value: Response) => void;
+    fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve; }));
+    const pending = uiShopifyMethods.connectShopify.call(app as never);
+    app.googleAuthEpoch++;
+    app.shopifyConnectionStatus = "connected";
+    finish(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize" }), { status: 200 }));
+    await pending;
+    expect(assign).not.toHaveBeenCalled();
+    expect(app.shopifyConnectionStatus).toBe("connected");
+  } finally {
+    Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+  }
 });

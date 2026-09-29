@@ -79,6 +79,16 @@ test("replayed paid delivery repairs a sale missing after the order line was rec
   assert.equal([...mocks.sales.values()][0]?.sale.externalOrderItemId, "14");
 });
 
+test("replayed paid delivery retries reconciliation after an earlier failure", async () => {
+  mocks.records.clear(); mocks.sales.clear(); mocks.reconcile.mockClear();
+  mocks.reconcile.mockRejectedValueOnce(new Error("temporary inventory failure"));
+  await assert.rejects(() => processShopifyOrderWebhook({} as never, "example.myshopify.com", "orders/paid", order), /temporary inventory failure/);
+  assert.equal(mocks.records.size, 1);
+  assert.equal(mocks.sales.size, 1);
+  await processShopifyOrderWebhook({} as never, "example.myshopify.com", "orders/paid", order);
+  assert.equal(mocks.reconcile.mock.calls.length, 2);
+});
+
 test("a cancellation received before payment keeps the order line and sale cancelled", async () => {
   mocks.records.clear(); mocks.sales.clear(); mocks.reconcile.mockClear();
   await processShopifyOrderWebhook({} as never, "example.myshopify.com", "orders/cancelled", order);

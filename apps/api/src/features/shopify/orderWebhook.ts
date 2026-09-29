@@ -54,9 +54,8 @@ export async function processShopifyOrderWebhook(config: ApiConfig, shop: string
     for (const line of order.lines) {
       const listing = byVariant.get(line.variantId);
       if (!listing || (topic === "orders/paid" && line.quantity === 0)) continue;
-      let changed = false;
       if (topic === "orders/paid") {
-        changed = await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
+        await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
           lotId: listing.lotId, orderId: order.orderId, lineId: line.id, variantId: line.variantId,
           quantity: line.quantity, cancelled: false, paidAt: order.paidAt, unitPrice: line.unitPrice });
       } else {
@@ -64,18 +63,16 @@ export async function processShopifyOrderWebhook(config: ApiConfig, shop: string
         const tombstone = await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
           lotId: listing.lotId, orderId: order.orderId, lineId: line.id, variantId: line.variantId,
           quantity: line.quantity, cancelled: true, paidAt: order.paidAt, unitPrice: line.unitPrice });
-        changed = tombstone || await cancelShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
+        if (!tombstone) await cancelShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
       }
       const persisted = await getShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
       if (!persisted) throw new Error("Shopify order line was not persisted");
       await projectShopifyBoxSale(config, persisted);
       const latest = await getShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
       if (latest && latest.cancelled !== persisted.cancelled) await projectShopifyBoxSale(config, latest);
-      if (changed) {
-        const lots = affected.get(connection.scopeKey) ?? new Set<number>();
-        lots.add(listing.lotId);
-        affected.set(connection.scopeKey, lots);
-      }
+      const lots = affected.get(connection.scopeKey) ?? new Set<number>();
+      lots.add(listing.lotId);
+      affected.set(connection.scopeKey, lots);
     }
   }
   for (const [scopeKey, lots] of affected) {
