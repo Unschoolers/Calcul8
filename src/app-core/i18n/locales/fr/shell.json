@@ -43,6 +43,16 @@
   "shellImportWhatnotCsvSubtitle": "Chargez un export CSV quand vous voulez revoir les imports avant l'enregistrement.",
   "shellInstallAppAction": "Installer l'application",
   "shellIntegrationsSectionLabel": "Intégrations",
+  "shellShopifyTitle": "Shopify",
+  "shellShopifyUnavailable": "La configuration Shopify n'est pas encore disponible",
+  "shellShopifyDisconnected": "Boutique non connectée",
+  "shellConnectShopify": "Connecter Shopify",
+  "shellDisconnectShopify": "Déconnecter Shopify",
+  "shellShopifyConnectHint": "Entrez l'adresse de votre boutique. Shopify vous demandera d'autoriser la connexion.",
+  "shellShopifyDomainLabel": "Adresse de la boutique",
+  "shellShopifyDomainInvalid": "Utilisez une adresse comme votre-boutique.myshopify.com",
+  "shellShopifyError": "Connexion indisponible. Réessayez.",
+  "shellShopifyCancel": "Annuler",
   "shellLanguageLabel": "Langue de l'application",
   "shellLanguageSectionLabel": "Langue",
   "shellLotLabel": "Inventaire actuel",
@@ -143,4 +153,3 @@
   "workspaceCreateMismatchNotice": "Cette demande de création a changé après son démarrage. Fermez la fenêtre et recommencez.",
   "workspaceCreateRecoveryConflictNotice": "La création de l’espace de travail n’a pas pu reprendre en toute sécurité. Gardez cette fenêtre ouverte et réessayez."
 }
-

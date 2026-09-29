@@ -250,10 +250,11 @@
           </template>
         </v-list-item>
 
-        <template v-if="whatnotConnectionStatus !== 'unconfigured'">
+        <template>
           <v-divider class="my-1"></v-divider>
 
           <v-list-subheader>{{ t('shellIntegrationsSectionLabel') }}</v-list-subheader>
+          <template v-if="whatnotConnectionStatus !== 'unconfigured'">
           <v-list-item
             :title="whatnotConnectionTitle"
             :subtitle="whatnotConnectionSubtitle"
@@ -287,6 +288,15 @@
             prepend-icon="mdi-link-off"
             @click="disconnectWhatnot"
           ></v-list-item>
+          </template>
+
+          <v-list-item :title="t('shellShopifyTitle')"
+            :subtitle="shopifyConnectionStatus === 'connected' ? shopifyConnectionShop : shopifyConnectionStatus === 'unconfigured' ? t('shellShopifyUnavailable') : shopifyConnectionStatus === 'error' ? t('shellShopifyError') : t('shellShopifyDisconnected')"
+            prepend-icon="mdi-shopping-outline"></v-list-item>
+          <v-list-item v-if="shopifyConnectionStatus !== 'unconfigured' && shopifyConnectionStatus !== 'connected' && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
+            :title="t('shellConnectShopify')" prepend-icon="mdi-connection" @click="openShopifyConnectDialog"></v-list-item>
+          <v-list-item v-if="shopifyConnectionStatus === 'connected' && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
+            :title="t('shellDisconnectShopify')" prepend-icon="mdi-link-off" @click="disconnectShopify"></v-list-item>
 
           <v-divider class="my-1"></v-divider>
         </template>

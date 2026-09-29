@@ -17,8 +17,9 @@ describe("frontend UI method domain layout", () => {
       "auth",
       "buyers",
       "common",
-      "entitlements",
-      "spectator",
+    "entitlements",
+    "shopify",
+    "spectator",
       "sync",
       "whatnot",
       "workspace"

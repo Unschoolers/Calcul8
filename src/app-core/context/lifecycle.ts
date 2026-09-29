@@ -16,6 +16,7 @@ import type { AppVueContext, RuntimeMethodState } from "./runtime.ts";
 import type { OnboardingMethodState, PwaMethodState } from "./shell.ts";
 import type { SyncMethodState } from "./sync.ts";
 import type { WhatnotMethodState } from "./whatnot.ts";
+import type { ShopifyMethodState } from "./shopify.ts";
 import type { WorkspaceRealtimeContext } from "./workspace.ts";
 
 export type ForegroundSalesContext = SalesFreshnessContext;
@@ -60,6 +61,7 @@ export type AppMountContext = WorkspaceRealtimeContext &
   PwaMethodState &
   Pick<SyncMethodState, "startCloudSyncScheduler"> &
   Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
+  Pick<ShopifyMethodState, "refreshShopifyStatus"> &
   Pick<AppVueContext, "$nextTick" | "$vuetify">;
 
 export type AppUnmountContext = WorkspaceRealtimeContext &

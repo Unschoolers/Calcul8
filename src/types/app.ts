@@ -701,6 +701,10 @@ export interface AppState extends LotSetup {
   salesCacheEpoch: number;
   whatnotFeeDateOnly: string;
   whatnotConnectionStatus: WhatnotConnectionStatus;
+  shopifyConnectionStatus: WhatnotConnectionStatus;
+  shopifyConnectionShop: string | null;
+  shopifyShopDraft: string;
+  showShopifyConnectDialog: boolean;
   whatnotSyncStatus: WhatnotSyncStatus;
   whatnotConnectionSummary: WhatnotConnectionSummary | null;
   showWhatnotReviewDialog: boolean;
