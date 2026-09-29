@@ -38,6 +38,24 @@ test("choosing System Configuration from the account menu opens its dialog", asy
   expect(await screen.findByRole("dialog", { name: "configSystemConfigurationTitle" })).toBeVisible();
 });
 
+test("the account menu shows Shopify when integrations are unconfigured", async () => {
+  const state = createShellState();
+  state.whatnotConnectionStatus = "unconfigured";
+  state.shopifyConnectionStatus = "unconfigured";
+  const Harness = defineComponent({
+    setup() {
+      provide(shellPortsKey, createShellPorts(state as never));
+      return () => h(AppShellTopBar);
+    }
+  });
+
+  renderWithApp(Harness);
+  await fireEvent.click(screen.getByRole("button", { name: "accountMenuLabel" }));
+  expect(await screen.findByText("shellIntegrationsSectionLabel")).toBeInTheDocument();
+  expect(await screen.findByText("shellShopifyTitle")).toBeInTheDocument();
+  expect(await screen.findByText("shellShopifyUnavailable")).toBeInTheDocument();
+});
+
 test("System Configuration keeps Whatnot category editing in lot setup", async () => {
   const state = createShellState() as ReturnType<typeof createShellState> & Record<string, unknown>;
   Object.assign(state, {
