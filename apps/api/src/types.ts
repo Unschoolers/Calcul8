@@ -56,6 +56,10 @@ export interface ApiConfig {
   whatnotOauthTokenUrl?: string;
   whatnotApiBaseUrl?: string;
   whatnotTokenEncryptionSecret?: string;
+  shopifyClientId?: string;
+  shopifyClientSecret?: string;
+  shopifyRedirectUri?: string;
+  shopifyTokenEncryptionSecret?: string;
   realtimePublishUrl?: string;
   realtimeInternalApiKey?: string;
   realtimeTokenSecret?: string;
