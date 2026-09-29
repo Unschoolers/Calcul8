@@ -133,6 +133,17 @@
               :placeholder="t('configMarketplaceSkuPlaceholder')"
               @input="onPurchaseConfigChange"
             ></v-text-field>
+            <v-switch
+              v-if="hasLotSelected && currentLotType !== 'singles'"
+              :model-value="shopifyEnabled"
+              :label="t('configShopifyPublishLabel')"
+              :hint="t('configShopifyPublishHint')"
+              persistent-hint
+              color="primary"
+              density="compact"
+              class="mb-3"
+              @update:model-value="setCurrentLotShopifyEnabled($event === true)"
+            ></v-switch>
 
             <v-alert
               v-if="currentLotUsesSystemPricingDefaults"

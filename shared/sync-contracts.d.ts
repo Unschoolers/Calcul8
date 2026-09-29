@@ -69,6 +69,7 @@ export interface SyncLotDto {
   includeTax?: boolean;
   usesSystemPricingDefaults?: boolean;
   isComplete?: boolean;
+  shopifyEnabled?: boolean;
 }
 export type SyncSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type SyncTierDeductionType = "packs" | "singles" | "none";

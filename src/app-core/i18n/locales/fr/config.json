@@ -18,6 +18,8 @@
   "configItemsPerBoxLabel": "Items par boîte",
   "configMarketplaceFeeHelp": "Ce profil explique les frais que l'application utilise pour calculer vos revenus nets et vos prix cibles.",
   "configMarketplaceSkuLabel": "SKU de la plateforme",
+  "configShopifyPublishLabel": "Mettre en vente les boîtes scellées sur Shopify",
+  "configShopifyPublishHint": "Connectez Shopify dans Intégrations. Seules les boîtes non ouvertes sont proposées ; les ventes qui ouvrent une boîte réduisent automatiquement la quantité disponible.",
   "configMarketplaceSkuPlaceholder": "SKU ou référence d'annonce facultatif",
   "configNotSet": "Non défini",
   "configOpenPriceCalculatorAction": "Ouvrir le calculateur de prix",

@@ -199,6 +199,8 @@ function normalizeSyncLotDto(value) {
   if (usesSystemPricingDefaults != null) lot.usesSystemPricingDefaults = usesSystemPricingDefaults;
   const isComplete = normalizeBoolean(value.isComplete);
   if (isComplete != null) lot.isComplete = isComplete;
+  const shopifyEnabled = normalizeBoolean(value.shopifyEnabled);
+  if (shopifyEnabled != null) lot.shopifyEnabled = shopifyEnabled;
   return lot;
 }
 

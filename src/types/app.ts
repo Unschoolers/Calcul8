@@ -308,6 +308,7 @@ export interface LotSetup extends FeeProfileFields {
   sellingShippingPerOrder: number;
   includeTax: boolean;
   externalSku?: string;
+  shopifyEnabled?: boolean;
   spotPrice: number;
   boxPriceSell: number;
   packPrice: number;

@@ -33,6 +33,7 @@ function createContext(overrides: Ctx = {}): Ctx {
     sellingTaxPercent: lot.sellingTaxPercent,
     sellingShippingPerOrder: lot.sellingShippingPerOrder,
     includeTax: lot.includeTax,
+    shopifyEnabled: lot.shopifyEnabled ?? false,
     spotPrice: lot.spotPrice,
     boxPriceSell: lot.boxPriceSell,
     packPrice: lot.packPrice,
@@ -700,6 +701,25 @@ test("createNewLot leaves the modal open and warns when no category is selected"
   assert.equal((ctx.lots as Lot[]).length, 1);
   assert.equal(ctx.showNewLotModal, true);
   assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), ["configWhatnotVerticalRequired", "warning"]);
+});
+
+test("setCurrentLotShopifyEnabled saves the selected lot and defaults older lots to off", () => {
+  const lot = makeLot({ shopifyEnabled: undefined });
+  const ctx = createContext({
+    ...lot,
+    lots: [lot],
+    currentLotId: lot.id,
+    shopifyEnabled: false,
+    saveLotsToStorage: vi.fn(),
+    getCurrentSetup: () => configLotMethods.getCurrentSetup.call(ctx as never),
+    autoSaveSetup: () => configLotMethods.autoSaveSetup.call(ctx as never)
+  });
+
+  configLotMethods.setCurrentLotShopifyEnabled.call(ctx as never, true);
+
+  assert.equal(ctx.shopifyEnabled, true);
+  assert.equal(lot.shopifyEnabled, true);
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("setCurrentLotWhatnotVertical saves classifications for an inheriting legacy lot", () => {

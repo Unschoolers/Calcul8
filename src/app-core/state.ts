@@ -162,6 +162,7 @@ export function createInitialState(): AppState {
     fixedFeePerOrder: defaultFeeProfile.fixedFeePerOrder,
     includeTax: true,
     externalSku: "",
+    shopifyEnabled: false,
 
     // Default Selling Prices
     spotPrice: DEFAULT_VALUES.SPOT_PRICE,
