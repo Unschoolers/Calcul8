@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 
-const { httpMock } = vi.hoisted(() => ({
-  httpMock: vi.fn()
+const { httpMock, timerMock } = vi.hoisted(() => ({
+  httpMock: vi.fn(),
+  timerMock: vi.fn()
 }));
 
 vi.mock("@azure/functions", () => ({
   app: {
-    http: httpMock
+    http: httpMock,
+    timer: timerMock
   }
 }));
 

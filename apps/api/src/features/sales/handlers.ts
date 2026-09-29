@@ -9,6 +9,7 @@ import { errorResponse, executeHttpHandler, jsonResponse } from "../../lib/http"
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
 import { parseOptionalWorkspaceId, parseRequiredWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
+import { reconcileShopifyScope } from "../shopify/reconcileService";
 import { readRequestJsonOrThrow, requireRequestBodyRecord, requireRouteParam } from "../../lib/httpRequest";
 import { handleApiFunctionError } from "../../lib/httpErrors";
 import {
@@ -309,7 +310,7 @@ export async function lotSalesUpsert(
     const body = parseSaleUpsertBody(await readRequestJsonOrThrow(request));
     workspaceId = body.workspaceId;
     const lotId = requireRouteParam(request, "lotId");
-    const result = await upsertLotSaleForActor(config, actorUserId, {
+  const result = await upsertLotSaleForActor(config, actorUserId, {
       workspaceId: body.workspaceId,
       lotId,
       sale: body.sale,
@@ -317,7 +318,11 @@ export async function lotSalesUpsert(
       mutationId: body.mutationId
     });
 
-    publishWorkspaceLotRealtimeEventBestEffort(config, {
+      if (config.shopifyClientId) {
+    try { await reconcileShopifyScope(config, resolveSyncScope(actorUserId, body.workspaceId).partitionKey, Number(lotId)); }
+    catch (error) { context.warn("Shopify reconciliation will retry", error); }
+  }
+publishWorkspaceLotRealtimeEventBestEffort(config, {
       workspaceId: body.workspaceId,
       lotId,
       eventType: "sale.upserted",
@@ -358,7 +363,7 @@ export async function lotSalesDelete(
     workspaceId = body.workspaceId;
     const lotId = requireRouteParam(request, "lotId");
     const saleId = requireRouteParam(request, "saleId");
-    const result = await deleteLotSaleForActor(config, actorUserId, {
+  const result = await deleteLotSaleForActor(config, actorUserId, {
       workspaceId: body.workspaceId,
       lotId,
       saleId,
@@ -366,7 +371,11 @@ export async function lotSalesDelete(
       mutationId: body.mutationId
     });
 
-    publishWorkspaceLotRealtimeEventBestEffort(config, {
+      if (config.shopifyClientId) {
+    try { await reconcileShopifyScope(config, resolveSyncScope(actorUserId, body.workspaceId).partitionKey, Number(lotId)); }
+    catch (error) { context.warn("Shopify reconciliation will retry", error); }
+  }
+publishWorkspaceLotRealtimeEventBestEffort(config, {
       workspaceId: body.workspaceId,
       lotId,
       eventType: "sale.deleted",

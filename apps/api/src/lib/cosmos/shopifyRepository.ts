@@ -50,6 +50,37 @@ export async function getShopifyConnection(config: ApiConfig, scopeKey: string):
   } catch (error) { if (isNotFoundError(error)) return null; throw error; }
 }
 
+export async function listShopifyConnectionScopes(config: ApiConfig): Promise<string[]> {
+  const { entitlements } = getContainers(config);
+  const iterator = entitlements.items.query<ConnectionDocument>({
+    query: "SELECT c.scopeKey FROM c WHERE c.docType = @docType",
+    parameters: [{ name: "@docType", value: "shopify_connection" }]
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return (resources ?? []).map((connection) => connection.scopeKey).filter((value): value is string => typeof value === "string");
+}
+
+/** Conditional token rotation avoids overwriting a newer refresh token. */
+export async function replaceShopifyConnectionIfCurrent(
+  config: ApiConfig, current: ShopifyConnection, next: ShopifyConnection
+): Promise<boolean> {
+  const { entitlements } = getContainers(config);
+  const item = entitlements.item(connectionId(current.scopeKey), current.scopeKey);
+  try {
+    const { resource } = await withCosmosRetry(() => item.read<ConnectionDocument & { _etag?: string }>());
+    if (!resource?._etag || resource.accessTokenCiphertext !== current.accessTokenCiphertext ||
+      resource.refreshTokenCiphertext !== current.refreshTokenCiphertext || resource.shop !== current.shop) return false;
+    await withCosmosRetry(() => item.replace(
+      { ...next, id: connectionId(next.scopeKey), userId: next.scopeKey, docType: "shopify_connection" },
+      { accessCondition: { type: "IfMatch", condition: resource._etag } }
+    ));
+    return true;
+  } catch (error) {
+    if (isNotFoundError(error) || isPreconditionFailedError(error)) return false;
+    throw error;
+  }
+}
+
 export async function deleteShopifyConnection(config: ApiConfig, scopeKey: string): Promise<void> {
   const { entitlements } = getContainers(config);
   try { await withCosmosRetry(() => entitlements.item(connectionId(scopeKey), scopeKey).delete()); }
