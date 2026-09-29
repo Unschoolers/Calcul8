@@ -9,10 +9,12 @@ type Fetcher = typeof fetch;
 
 export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient {
   if (!isShopifyDomain(shop)) throw new Error("Invalid Shopify shop domain");
-  const graphql = async <T>(query: string, variables: Record<string, unknown>): Promise<T> => {
+  const graphql = async <T>(query: string, variables: Record<string, unknown>, beforeMutation?: () => Promise<void>): Promise<T> => {
+    const token = await getToken();
+    await beforeMutation?.();
     const response = await fetcher(`https://${shop}/admin/api/${API_VERSION}/graphql.json`, {
-      method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": await getToken() },
-      body: JSON.stringify({ query, variables })
+      method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+      body: JSON.stringify({ query, variables }), signal: AbortSignal.timeout(30_000)
     });
     if (!response.ok) throw new Error(`Shopify Admin API returned ${response.status}`);
     const body = await response.json() as GraphqlResponse;
@@ -48,12 +50,12 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
           product { id variants(first: 2) { nodes { id inventoryItem { id } } } }
           userErrors { message }
         }
-      }`, {
+  }`, {
         identifier: input.id ? { id: input.id } : { handle: input.handle },
         input: { title: input.title, handle: input.handle, status: input.active ? "ACTIVE" : "DRAFT",
           productType: "Sealed box", vendor: "Calcul8",
           productOptions: [{ name: "Format", position: 1, values: [{ name: "Sealed box" }] }], variants: [variant] }
-      });
+  }, input.beforeMutation);
       checkErrors(data.productSet);
       const product = data.productSet?.product;
       const onlyVariant = product?.variants?.nodes;
@@ -63,10 +65,10 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
       return { productId: product.id, variantId: onlyVariant[0].id,
         inventoryItemId: onlyVariant[0].inventoryItem.id, locationId };
     },
-    async activateProduct(productId) {
+async activateProduct(productId, beforeMutation) {
       const data = await graphql<{ productUpdate?: { userErrors?: { message: string }[] } }>(
         `mutation ActivateBox($product: ProductUpdateInput!) { productUpdate(product: $product) { userErrors { message } } }`,
-        { product: { id: productId, status: "ACTIVE" } });
+    { product: { id: productId, status: "ACTIVE" } }, beforeMutation);
       checkErrors(data.productUpdate);
       const publications = await graphql<{ publications?: { nodes?: { id: string; name: string }[] } }>(
         `query { publications(first: 50) { nodes { id name } } }`, {});
@@ -75,13 +77,13 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
       const published = await graphql<{ publishablePublish?: { userErrors?: { message: string }[] } }>(
         `mutation PublishBox($id: ID!, $input: [PublicationInput!]!) {
           publishablePublish(id: $id, input: $input) { userErrors { message } }
-        }`, { id: productId, input: [{ publicationId: onlineStore.id }] });
+    }`, { id: productId, input: [{ publicationId: onlineStore.id }] }, beforeMutation);
       checkErrors(published.publishablePublish);
     },
-    async pauseProduct(productId) {
+async pauseProduct(productId, beforeMutation) {
       const data = await graphql<{ productUpdate?: { userErrors?: { message: string }[] } }>(
         `mutation PauseBox($product: ProductUpdateInput!) { productUpdate(product: $product) { userErrors { message } } }`,
-        { product: { id: productId, status: "DRAFT" } });
+    { product: { id: productId, status: "DRAFT" } }, beforeMutation);
       checkErrors(data.productUpdate);
     },
     async ensureOrderWebhooks(callbackUrl) {
@@ -97,7 +99,7 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
         checkErrors(result.webhookSubscriptionCreate);
       }
     },
-    async setAvailable({ inventoryItemId, locationId, quantity, previousQuantity }) {
+    async setAvailable({ inventoryItemId, locationId, quantity, previousQuantity, beforeMutation }) {
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const stock = await graphql<{ inventoryItem?: { inventoryLevel?: { quantities?: { quantity: number }[] } } }>(
           `query BoxStock($id: ID!, $locationId: ID!) {
@@ -113,9 +115,14 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
             inventorySetQuantities(input: $input) @idempotent(key: $key) { userErrors { code message } }
           }`, { key: randomUUID(), input: { name: "available", reason: "correction",
             referenceDocumentUri: `calcul8://shopify/inventory/${encodeURIComponent(inventoryItemId)}`,
-            quantities: [{ inventoryItemId, locationId, quantity, compareQuantity: actual }] } });
+            quantities: [{ inventoryItemId, locationId, quantity, compareQuantity: actual }] } }, beforeMutation);
         const errors = data.inventorySetQuantities?.userErrors;
         if (!errors?.length) return;
+        // A different writer won the compare-quantity race. Rebuild desired stock from current source data;
+        // retrying this caller's old target could raise inventory over a newer sale.
+        if (errors.every((error) => error.code === "CHANGE_FROM_QUANTITY_STALE" || error.code === "COMPARE_QUANTITY_STALE")) {
+          throw new Error("Shopify inventory changed; retry reconciliation from current sales");
+        }
         if (!errors.every((error) => error.code === "CHANGE_FROM_QUANTITY_STALE" || error.code === "COMPARE_QUANTITY_STALE") || attempt === 2) {
           checkErrors(data.inventorySetQuantities);
         }

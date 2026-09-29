@@ -32,3 +32,29 @@ test("inventory CAS does not raise Shopify stock over an unimported order", asyn
   await assert.rejects(() => client.setAvailable({ inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4", quantity: 2, previousQuantity: 2 }), /unimported sale/);
   assert.equal(requests.length, 1);
 });
+
+test("an older inventory target cannot retry over a newer lower target", async () => {
+  let available = 0;
+  let releaseOld!: () => void;
+  let oldMutationStarted!: () => void;
+  const oldMutation = new Promise<void>((resolve) => { releaseOld = resolve; });
+  const started = new Promise<void>((resolve) => { oldMutationStarted = resolve; });
+  const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    if (body.query.includes("query BoxStock")) return response({ inventoryItem: { inventoryLevel: { quantities: [{ quantity: available }] } } });
+    const entry = body.variables.input.quantities[0];
+    if (entry.quantity === 5 && entry.compareQuantity === 0) { oldMutationStarted(); await oldMutation; }
+    if (entry.compareQuantity !== available) return response({ inventorySetQuantities: { userErrors: [{ code: "COMPARE_QUANTITY_STALE", message: "stale" }] } });
+    available = entry.quantity;
+    return response({ inventorySetQuantities: { userErrors: [] } });
+  };
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", fetcher as typeof fetch);
+  const ids = { inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4", previousQuantity: 0 };
+  const older = client.setAvailable({ ...ids, quantity: 5 }).catch(() => {});
+  await started;
+  await client.setAvailable({ ...ids, quantity: 3 });
+  assert.equal(available, 3);
+  releaseOld();
+  await older;
+  assert.equal(available, 3);
+});

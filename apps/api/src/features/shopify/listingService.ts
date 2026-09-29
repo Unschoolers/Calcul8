@@ -12,20 +12,21 @@ export type ShopifyListing = {
   locationId: string;
   lastQuantity: number;
   updatedAt: string;
+  version?: string;
 };
 export type ShopifyListingStore = {
   get(scopeKey: string, lotId: number): Promise<ShopifyListing | null>;
-  put(listing: ShopifyListing): Promise<void>;
+  put(listing: ShopifyListing): Promise<ShopifyListing>;
 };
 export type ShopifyListingClient = {
   upsertBoxProduct(input: {
     id?: string; variantId?: string; handle: string; title: string; sku: string;
-    price: string; active: boolean; locationId?: string;
+    price: string; active: boolean; locationId?: string; beforeMutation?: () => Promise<void>;
   }): Promise<{ productId: string; variantId: string; inventoryItemId: string; locationId: string }>;
-  activateProduct(productId: string): Promise<void>;
-  pauseProduct(productId: string): Promise<void>;
+  activateProduct(productId: string, beforeMutation?: () => Promise<void>): Promise<void>;
+  pauseProduct(productId: string, beforeMutation?: () => Promise<void>): Promise<void>;
   ensureOrderWebhooks(callbackUrl: string): Promise<void>;
-  setAvailable(input: { inventoryItemId: string; locationId: string; quantity: number; previousQuantity: number }): Promise<void>;
+  setAvailable(input: { inventoryItemId: string; locationId: string; quantity: number; previousQuantity: number; beforeMutation?: () => Promise<void> }): Promise<void>;
 };
 export type InventorySale = { type: string; quantity: number; packsCount: number };
 
@@ -36,6 +37,7 @@ export function shopifyBoxHandle(scopeKey: string, lotId: number): string {
 export async function reconcileBoxListing(input: {
   scopeKey: string; shop: string; lot: SyncLotDto; sales: readonly InventorySale[];
   store: ShopifyListingStore; client: ShopifyListingClient;
+  beforeMutation?: () => Promise<void>;
 }): Promise<{ status: "skipped" | "published" | "paused"; sealedBoxes: number }> {
   const { scopeKey, shop, lot, sales, store, client } = input;
   const previousMapping = await store.get(scopeKey, lot.id);
@@ -58,11 +60,14 @@ export async function reconcileBoxListing(input: {
   const listing: ShopifyListing = {
     scopeKey, lotId: lot.id, shop, productId: ids.productId, variantId: ids.variantId,
     inventoryItemId: ids.inventoryItemId, locationId: ids.locationId,
-    lastQuantity: existing?.lastQuantity ?? 0, updatedAt: existing?.updatedAt ?? new Date(0).toISOString()
+    lastQuantity: existing?.lastQuantity ?? 0, updatedAt: existing?.updatedAt ?? new Date(0).toISOString(),
+    version: previousMapping?.version
   };
-  await store.put(listing);
+  await input.beforeMutation?.();
+  const stored = await store.put(listing);
   await client.setAvailable({ inventoryItemId: listing.inventoryItemId, locationId: listing.locationId, quantity, previousQuantity: existing?.lastQuantity ?? 0 });
   if (enabled) await client.activateProduct(listing.productId);
-  await store.put({ ...listing, lastQuantity: quantity, updatedAt: new Date().toISOString() });
+  await input.beforeMutation?.();
+  await store.put({ ...stored, lastQuantity: quantity, updatedAt: new Date().toISOString() });
   return { status: enabled ? "published" : "paused", sealedBoxes: quantity };
 }

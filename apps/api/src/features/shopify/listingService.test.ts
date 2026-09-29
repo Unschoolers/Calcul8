@@ -6,7 +6,7 @@ function harness() {
   let mapping: ShopifyListing | null = null;
   const store = {
     get: vi.fn(async () => mapping),
-    put: vi.fn(async (next: ShopifyListing) => { mapping = next; })
+    put: vi.fn(async (next: ShopifyListing) => { mapping = { ...next, version: String(Number(mapping?.version ?? 0) + 1) }; return mapping; })
   };
   const client: ShopifyListingClient = {
     upsertBoxProduct: vi.fn(async () => ({ productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4" })),
