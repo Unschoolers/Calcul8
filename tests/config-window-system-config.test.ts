@@ -115,3 +115,13 @@ test("ConfigWindow provides system defaults and lot override copy in both locale
 
   assert.match(fr.configSystemConfigurationTitle, /Configuration système/);
 });
+
+test("Shopify linking and marketplace SKU are edited with the lot, not system assumptions", () => {
+  const appTemplate = readFileSync("src/App.html", "utf8");
+  const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
+  assert.match(appTemplate, /v-model="renameLotExternalSku"/);
+  assert.match(appTemplate, /configShopifyLinkTitle/);
+  assert.match(appTemplate, /searchShopifyEditProducts/);
+  assert.match(appTemplate, /renameLotShopifyEnabled/);
+  assert.doesNotMatch(systemTemplate, /configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);
+});

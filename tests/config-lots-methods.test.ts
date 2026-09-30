@@ -66,6 +66,23 @@ function createContext(overrides: Ctx = {}): Ctx {
     whatnotVertical: lot.whatnotVertical ?? null,
     t: (key: string) => key,
     renameLotName: "",
+    renameLotExternalSku: "",
+    renameLotShopifyEnabled: false,
+    shopifyEditListing: null,
+    shopifyEditSearchQuery: "",
+    shopifyEditSearchResults: [],
+    shopifyEditSearchCursor: null,
+    shopifyEditSearchHasMore: false,
+    shopifyEditSelectedVariantId: null,
+    shopifyEditSelectedLocationId: null,
+    shopifyEditLoading: false,
+    shopifyEditSaving: false,
+    shopifyEditError: null,
+    shopifyEditRequestRevision: 0,
+    shopifyEditListingStatus: "idle" as const,
+    shopifyEditSessionAuthEpoch: null,
+    shopifyEditSessionScope: "",
+    shopifyEditSessionLotId: null,
     showRenameLotModal: false,
     purchaseUiMode: "expert",
     saveLotsToStorage: vi.fn(),
@@ -172,6 +189,39 @@ test("editing a lot stages its Whatnot category until save, and saves category-o
   assert.equal(ctx.whatnotVertical, "sports");
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal(ctx.showRenameLotModal, false);
+});
+
+test("Edit Lot stages SKU until Save and keeps cancel isolated", () => {
+  const lot = makeLot({ externalSku: "OLD-SKU" });
+  const ctx = createContext({ lots: [lot], currentLotId: lot.id, renameLotExternalSku: "" });
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  assert.equal(ctx.renameLotExternalSku, "OLD-SKU");
+  ctx.renameLotExternalSku = "CANCELLED";
+  ctx.showRenameLotModal = false;
+  assert.equal(lot.externalSku, "OLD-SKU");
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  ctx.renameLotExternalSku = "NEW-SKU";
+  configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.externalSku, "NEW-SKU");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+
+test("stale Edit Lot session cannot save into a newly selected lot", async () => {
+  const first = makeLot({ id: 101, name: "Original", externalSku: "OLD" });
+  const second = makeLot({ id: 202, name: "Other", externalSku: "KEEP" });
+  const ctx = createContext({
+    lots: [first, second], currentLotId: first.id, activeScopeType: "personal", activeWorkspaceId: null,
+    googleAuthEpoch: 7, shopifyConnectionStatus: "disconnected", renameLotName: "Changed", renameLotExternalSku: "NEW"
+  });
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  ctx.currentLotId = second.id;
+  await configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(first.name, "Original");
+  assert.equal(second.name, "Other");
+  assert.equal(second.externalSku, "KEEP");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal(ctx.shopifyEditError, "configShopifyStaleLotError");
 });
 
 test("addSinglesPurchaseRow generates a non-colliding id when Date.now matches an existing row id", () => {

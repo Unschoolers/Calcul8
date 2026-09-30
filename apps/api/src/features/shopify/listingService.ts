@@ -5,6 +5,11 @@ import { calculateSealedBoxInventory } from "../../shared/box-inventory.cjs";
 export type ShopifyListing = {
   scopeKey: string;
   lotId: number;
+  /** Missing means an existing WhatFees-managed listing. Linked products remain Shopify-owned. */
+  mode?: "managed" | "linked";
+  productTitle?: string;
+  variantTitle?: string;
+  sku?: string;
   shop: string;
   productId: string;
   variantId: string;
@@ -38,11 +43,14 @@ export async function reconcileBoxListing(input: {
   scopeKey: string; shop: string; lot: SyncLotDto; sales: readonly InventorySale[];
   store: ShopifyListingStore; client: ShopifyListingClient;
   beforeMutation?: () => Promise<void>;
-}): Promise<{ status: "skipped" | "published" | "paused"; sealedBoxes: number }> {
+}): Promise<{ status: "skipped" | "published" | "paused" | "linked"; sealedBoxes: number }> {
   const { scopeKey, shop, lot, sales, store, client } = input;
   const previousMapping = await store.get(scopeKey, lot.id);
   // A different shop can only be connected after the previous products were drafted on disconnect.
   const existing = previousMapping?.shop === shop ? previousMapping : null;
+  if (previousMapping?.mode === "linked") return existing
+    ? { status: "linked", sealedBoxes: existing.lastQuantity }
+    : { status: "skipped", sealedBoxes: 0 };
   const enabled = lot.shopifyEnabled === true && lot.lotType !== "singles";
   if (!enabled && !existing) return { status: "skipped", sealedBoxes: 0 };
   const inventory = calculateSealedBoxInventory({ boxesPurchased: lot.boxesPurchased ?? NaN, packsPerBox: lot.packsPerBox ?? NaN }, sales);

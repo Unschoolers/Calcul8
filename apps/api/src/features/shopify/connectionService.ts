@@ -26,6 +26,8 @@ export type ShopifyOAuthState = {
 };
 
 export type ShopifyConnection = {
+  /** Changes on disconnect; token rotation retains this identity. */
+  generation?: number;
   scopeKey: string;
   scopeType: Scope["scopeType"];
   scopeId: string;

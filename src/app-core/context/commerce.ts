@@ -174,7 +174,13 @@ export interface CommerceMethodState {
   setCurrentLotCatalogSource(source: SinglesCatalogSource): void;
   setCurrentLotWhatnotVertical(value: AppState["whatnotVertical"]): void;
   openRenameLotModal(): void;
-  renameCurrentLot(): void;
+  renameCurrentLot(): Promise<void>;
+  closeRenameLotModal(): void;
+  refreshShopifyEditListing(): Promise<void>;
+  searchShopifyEditProducts(loadMore?: boolean): Promise<void>;
+  onShopifyEditQueryChange(value: string): void;
+  selectShopifyEditVariant(variantId: string): void;
+  selectShopifyEditLocation(locationId: string): void;
   loadLot(): void;
   deleteCurrentLot(): void;
   canUseAdminLotSyncTools(): boolean;
@@ -443,6 +449,8 @@ export type LotConfigurationContext = Pick<
   AppState,
   | "activeScopeType"
   | "activeWorkspaceId"
+  | "googleAuthEpoch"
+  | "shopifyConnectionStatus"
   | "additionalFeeAppliesTo"
   | "additionalFeePercent"
   | "boxesPurchased"
@@ -482,6 +490,24 @@ export type LotConfigurationContext = Pick<
   | "purchaseUiMode"
   | "renameLotName"
   | "renameLotWhatnotVertical"
+  | "renameLotExternalSku"
+  | "renameLotShopifyEnabled"
+  | "shopifyEditListing"
+  | "shopifyEditSearchQuery"
+  | "shopifyEditSearchResults"
+  | "shopifyEditSearchCursor"
+  | "shopifyEditSearchHasMore"
+  | "shopifyEditSearchCompleted"
+  | "shopifyEditSelectedVariantId"
+  | "shopifyEditSelectedLocationId"
+  | "shopifyEditLoading"
+  | "shopifyEditSaving"
+  | "shopifyEditError"
+  | "shopifyEditRequestRevision"
+  | "shopifyEditListingStatus"
+  | "shopifyEditSessionAuthEpoch"
+  | "shopifyEditSessionScope"
+  | "shopifyEditSessionLotId"
   | "sellingCurrency"
   | "sellingShippingPerOrder"
   | "sellingTaxPercent"
@@ -514,6 +540,7 @@ export type LotConfigurationContext = Pick<
     | "getSalesStorageKey"
     | "initSalesChart"
     | "loadLot"
+    | "refreshShopifyEditListing"
     | "loadSalesForLotId"
     | "loadSalesFromStorage"
     | "onSinglesPurchaseRowsChange"
@@ -668,6 +695,12 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "setCurrentLotWhatnotVertical"
     | "openRenameLotModal"
     | "renameCurrentLot"
+    | "closeRenameLotModal"
+    | "refreshShopifyEditListing"
+    | "searchShopifyEditProducts"
+    | "onShopifyEditQueryChange"
+    | "selectShopifyEditVariant"
+    | "selectShopifyEditLocation"
     | "loadLot"
     | "deleteCurrentLot"
   >

@@ -76,3 +76,31 @@ test("an older inventory target cannot retry over a newer lower target", async (
   await older;
   assert.equal(available, 3);
 });
+
+test("searches variants read-only with pagination and active tracked inventory locations", async () => {
+  const requests: { query: string; variables: Record<string, unknown> }[] = [];
+  const variant = { id: "gid://shopify/ProductVariant/2", title: "Box", sku: "BL", price: "100.00",
+    product: { id: "gid://shopify/Product/1", title: "Bleach" },
+    inventoryItem: { id: "gid://shopify/InventoryItem/3", tracked: true, inventoryLevels: { nodes: [
+      { location: { id: "gid://shopify/Location/4", name: "Store", isActive: true }, quantities: [{ name: "available", quantity: 17 }] },
+      { location: { id: "gid://shopify/Location/5", name: "Old", isActive: false }, quantities: [{ name: "available", quantity: 0 }] }
+    ] } } };
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return response({ productVariants: { nodes: [variant, { ...variant, inventoryItem: { ...variant.inventoryItem, tracked: false } }], pageInfo: { hasNextPage: true, endCursor: "next" } } });
+  }) as typeof fetch);
+  const result = await client.searchVariants("Bleach", "cursor");
+  assert.equal(result.variants.length, 1);
+  assert.deepEqual(result.variants[0]?.locations, [{ id: "gid://shopify/Location/4", name: "Store", available: 17 }]);
+  assert.deepEqual(result.pageInfo, { hasNextPage: true, endCursor: "next" });
+  assert.equal(requests[0]?.variables.after, "cursor");
+  assert.ok(!requests[0]?.query.includes("mutation"));
+});
+
+test("resolves a selected variant using the connected shop and refuses malformed IDs", async () => {
+  let calls = 0;
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async () => { calls++; return response({ productVariant: null }); }) as typeof fetch);
+  await assert.rejects(() => client.getVariant("https://another-store.com/2"), /variant ID/i);
+  assert.equal(calls, 0);
+  assert.equal(await client.getVariant("gid://shopify/ProductVariant/2"), null);
+});

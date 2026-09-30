@@ -21,6 +21,7 @@ import {
   validateRenameLotName
 } from "./config-lot-crud.ts";
 import { deleteCurrentLotWithPersistence } from "./config-lot-delete.ts";
+import { configLotEditMethods } from "./config-lot-edit.ts";
 import { applyHydratedLotState, buildHydratedLotState } from "./config-lot-loading.ts";
 import {
   appendBlankSinglesPurchaseRow,
@@ -310,57 +311,7 @@ export const configLotMethods = {
     }
   },
 
-  openRenameLotModal(): void {
-    if (!this.currentLotId) {
-      this.notify("Select a lot first", "warning");
-      return;
-    }
-    const lot = this.lots.find((p) => p.id === this.currentLotId);
-    if (!lot) return;
-    this.renameLotName = lot.name;
-    this.renameLotWhatnotVertical = normalizeWhatnotVertical(lot.whatnotVertical);
-    this.showRenameLotModal = true;
-  },
-
-  renameCurrentLot(): void {
-    if (!this.currentLotId) {
-      this.notify("Select a lot first", "warning");
-      return;
-    }
-
-    const lot = this.lots.find((p) => p.id === this.currentLotId);
-    if (!lot) return;
-
-    const renameResult = validateRenameLotName(this.lots, lot, this.renameLotName);
-    if (!renameResult.ok) {
-      this.notify(renameResult.message, "warning");
-      return;
-    }
-
-    const nextVertical = normalizeWhatnotVertical(this.renameLotWhatnotVertical);
-    const categoryChanged = normalizeWhatnotVertical(lot.whatnotVertical) !== nextVertical;
-    if (!renameResult.changed && !categoryChanged) {
-      this.showRenameLotModal = false;
-      return;
-    }
-
-    if (renameResult.changed) lot.name = renameResult.nextName;
-    lot.whatnotVertical = nextVertical;
-    this.whatnotVertical = nextVertical;
-    this.saveLotsToStorage();
-    queueWorkspaceConfigSyncPush(this);
-    if (categoryChanged) queueCloudConfigSyncPush(this);
-    this.showRenameLotModal = false;
-    this.renameLotName = "";
-    this.renameLotWhatnotVertical = nextVertical;
-
-    if (this.currentTab === "portfolio") {
-      void this.$nextTick(() => this.initPortfolioChart());
-    }
-
-    if (renameResult.changed) this.notify("Lot renamed", "success");
-  },
-
+  ...configLotEditMethods,
   loadLot(): void {
     if (!this.currentLotId) return;
 

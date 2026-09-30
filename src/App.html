@@ -225,11 +225,43 @@
         </app-dialog-shell>
 
         <!-- Edit Lot Modal -->
-        <app-dialog-shell v-model="showRenameLotModal" :title="t('editLotTitle')" :max-width="400">
+        <app-dialog-shell :model-value="showRenameLotModal" :title="t('editLotTitle')" :max-width="560" :persistent="shopifyEditSaving" @update:model-value="(value) => { if (!value) closeRenameLotModal(); }">
           <app-form-layout>
-              <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined"
+              <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined" :disabled="shopifyEditSaving"
                 @keyup.enter="renameCurrentLot"></v-text-field>
-              <v-select v-model="renameLotWhatnotVertical" :items="[
+              <v-text-field v-model="renameLotExternalSku" :label="t('configMarketplaceSkuLabel')" :placeholder="t('configMarketplaceSkuPlaceholder')" variant="outlined" :disabled="shopifyEditSaving" />
+              <v-switch v-if="currentLotType !== 'singles' && shopifyEditListing?.mode === 'managed'" v-model="renameLotShopifyEnabled" :label="t('configShopifyPublishLabel')" :disabled="shopifyEditSaving" color="primary" density="compact" hide-details></v-switch>
+              <div v-if="shopifyEditListing?.mode === 'linked'" class="text-caption text-medium-emphasis mb-3">{{ t('configShopifyLinkedHint') }}</div>
+              <div v-else-if="shopifyEditListing?.mode === 'managed'" class="text-caption text-medium-emphasis mb-3">{{ t('configShopifyManagedHint') }}</div>
+              <div v-if="shopifyEditListingStatus === 'loading'" class="text-caption text-medium-emphasis mb-3">{{ t('configShopifyListingLoading') }}</div>
+              <div v-else-if="shopifyEditListingStatus === 'error'" class="text-caption text-medium-emphasis mb-3">
+                {{ shopifyEditError }}
+                <v-btn class="app-touch-target" size="small" variant="text" @click="refreshShopifyEditListing">{{ t('configShopifyRetry') }}</v-btn>
+              </div>
+              <section v-else-if="shopifyEditListingStatus === 'loaded' && !shopifyEditListing && shopifyConnectionStatus === 'connected' && currentLotType !== 'singles'" class="mt-3">
+                <div class="text-subtitle-2 mb-2">{{ t('configShopifyLinkTitle') }}</div>
+                <p class="text-caption text-medium-emphasis">{{ t('configShopifyLinkHint') }}</p>
+                <v-text-field :model-value="shopifyEditSearchQuery" :label="t('configShopifySearchLabel')" variant="outlined" density="compact" @update:model-value="onShopifyEditQueryChange" @keyup.enter="searchShopifyEditProducts(false)">
+                    <template #append-inner><v-btn class="app-touch-target" size="small" variant="text" :loading="shopifyEditLoading" :disabled="shopifyEditLoading || shopifyEditSearchQuery.trim().length < 2" @click="searchShopifyEditProducts(false)">{{ t('configShopifySearchAction') }}</v-btn></template>
+                </v-text-field>
+                <div v-if="shopifyEditSearchCompleted && !shopifyEditSearchResults.length" class="text-caption text-medium-emphasis">{{ t('configShopifyNoResults') }}</div>
+                <v-radio-group v-if="shopifyEditSearchResults.length" :model-value="shopifyEditSelectedVariantId" @update:model-value="selectShopifyEditVariant(String($event))">
+                  <v-radio v-for="result in shopifyEditSearchResults" :key="result.variantId" :value="result.variantId" :disabled="shopifyEditSaving">
+                    <template #label><span class="app-text-wrap">{{ result.title }}<template v-if="result.variantTitle && result.variantTitle !== 'Default Title'"> · {{ result.variantTitle }}</template> · {{ result.sku || t('configShopifyNoSku') }} · {{ result.price }}</span></template>
+                  </v-radio>
+                </v-radio-group>
+                <v-select v-if="shopifyEditSelectedVariantId && (shopifyEditSearchResults.find((result) => result.variantId === shopifyEditSelectedVariantId)?.locations.length ?? 0) > 1"
+                  :model-value="shopifyEditSelectedLocationId"
+                  :items="shopifyEditSearchResults.find((result) => result.variantId === shopifyEditSelectedVariantId)?.locations.map((location) => ({ title: location.name + ' · ' + (location.available ?? '—'), value: location.id })) ?? []"
+                  :label="t('configShopifyLocationLabel')" variant="outlined" density="compact" :disabled="shopifyEditSaving" @update:model-value="selectShopifyEditLocation(String($event))"></v-select>
+                <div v-if="shopifyEditSelectedVariantId" class="text-caption text-medium-emphasis">{{ t('configShopifyLinkSelectionHint') }}</div>
+                <v-btn v-if="shopifyEditSearchHasMore" class="app-touch-target" size="small" variant="text" :loading="shopifyEditLoading" :disabled="shopifyEditLoading" @click="searchShopifyEditProducts(true)">{{ t('configShopifyLoadMore') }}</v-btn>
+              </section>
+              <div v-if="shopifyEditListing?.mode === 'linked'" class="text-body-2 mb-3">
+                <strong>{{ shopifyEditListing.productTitle }}</strong><span v-if="shopifyEditListing.variantTitle"> · {{ shopifyEditListing.variantTitle }}</span><span v-if="shopifyEditListing.sku"> · {{ shopifyEditListing.sku }}</span>
+              </div>
+              <v-alert v-if="shopifyEditError && shopifyEditListingStatus !== 'error'" type="error" density="compact" variant="tonal" class="mt-2">{{ shopifyEditError }}</v-alert>
+              <v-select v-model="renameLotWhatnotVertical" :disabled="shopifyEditSaving" :items="[
                 { title: t('configWhatnotVerticalUnclassified'), value: null },
                 { title: t('configWhatnotVerticalSports'), value: 'sports' },
                 { title: t('configWhatnotVerticalTcg'), value: 'tcg' },
@@ -258,13 +290,13 @@
                 </div>
               </div>
             <template #actions>
-              <v-btn class="app-touch-target" variant="text" color="error" :disabled="!currentLotId"
-                @click="showRenameLotModal = false; deleteCurrentLot()">
+              <v-btn class="app-touch-target" variant="text" color="error" :disabled="!currentLotId || shopifyEditSaving"
+                @click="closeRenameLotModal(); deleteCurrentLot()">
                 {{ t('commonDelete') }}
               </v-btn>
               <v-spacer></v-spacer>
-              <v-btn class="app-touch-target" variant="text" @click="showRenameLotModal = false">{{ t('commonCancel') }}</v-btn>
-              <v-btn class="app-touch-target" color="primary" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
+              <v-btn class="app-touch-target" variant="text" @click="closeRenameLotModal">{{ t('commonCancel') }}</v-btn>
+              <v-btn class="app-touch-target" color="primary" :loading="shopifyEditSaving" :disabled="shopifyEditSaving || shopifyEditLoading" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
             </template>
           </app-form-layout>
         </app-dialog-shell>

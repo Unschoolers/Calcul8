@@ -48,3 +48,25 @@ test("invalid inventory cannot be published", async () => {
     sales: [{ type: "box", quantity: 2, packsCount: 20 }] }), /Invalid sealed-box inventory/);
   assert.equal(vi.mocked(client.upsertBoxProduct).mock.calls.length, 0);
 });
+
+test("linked existing products never receive mutations, even on SKU edit or opt-out", async () => {
+  const { store, client } = harness();
+  await store.put({ scopeKey: "u", lotId: 1, shop: "example.myshopify.com", mode: "linked",
+    productId: "p", variantId: "v", inventoryItemId: "i", locationId: "l", lastQuantity: 17, updatedAt: "now" } as ShopifyListing);
+  for (const enabled of [true, false]) {
+    const result = await reconcileBoxListing({ scopeKey: "u", shop: "example.myshopify.com", store, client,
+      lot: { id: 1, shopifyEnabled: enabled, externalSku: "NEW-SKU" }, sales: [] });
+    assert.equal(result.status, "linked");
+  }
+  for (const mutation of [client.upsertBoxProduct, client.activateProduct, client.pauseProduct, client.setAvailable]) {
+    assert.equal(vi.mocked(mutation).mock.calls.length, 0);
+  }
+});
+
+test("a linked mapping from a previous shop cannot create a product in a different shop", async () => {
+  const { store, client } = harness();
+  await store.put({ scopeKey: "u", lotId: 1, shop: "old.myshopify.com", mode: "linked", productId: "p", variantId: "v", inventoryItemId: "i", locationId: "l", lastQuantity: 17, updatedAt: "now" });
+  await reconcileBoxListing({ scopeKey: "u", shop: "new.myshopify.com", store, client,
+    lot: { id: 1, shopifyEnabled: true, boxesPurchased: 3, packsPerBox: 10, boxPriceSell: 100 }, sales: [] });
+  assert.equal(vi.mocked(client.upsertBoxProduct).mock.calls.length, 0);
+});

@@ -69,7 +69,7 @@ export async function getShopifyConnection(config: ApiConfig, scopeKey: string):
   try {
     const { resource } = await withCosmosRetry(() => entitlements.item(connectionId(scopeKey), scopeKey).read<ConnectionDocument>());
     if (!resource || resource.docType !== "shopify_connection" || resource.scopeKey !== scopeKey || !resource.accessTokenCiphertext || resource.disconnectedAt) return null;
-    const { id: _id, userId: _userId, docType: _docType, _etag, generation: _generation, disconnectedAt: _disconnectedAt, ...connection } = resource;
+    const { id: _id, userId: _userId, docType: _docType, _etag, disconnectedAt: _disconnectedAt, ...connection } = resource;
     return connection;
   } catch (error) { if (isNotFoundError(error)) return null; throw error; }
 }
@@ -92,7 +92,7 @@ export async function listShopifyConnectionsForShop(config: ApiConfig, shop: str
   });
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
   return (resources ?? []).filter((connection) => connection.shop === shop && Boolean(connection.accessTokenCiphertext) && !connection.disconnectedAt).map((resource) => {
-    const { id: _id, userId: _userId, docType: _docType, _etag, generation: _generation, disconnectedAt: _disconnectedAt, ...connection } = resource;
+    const { id: _id, userId: _userId, docType: _docType, _etag, disconnectedAt: _disconnectedAt, ...connection } = resource;
     return connection;
   });
 }

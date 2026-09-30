@@ -11,6 +11,6 @@ export async function pauseShopifyScope(config: ApiConfig, scopeKey: string): Pr
   const listings = await createShopifyListingStore(config).list(scopeKey);
   const client = createShopifyAdminClient(connection.shop, () => getShopifyAccessToken(config, scopeKey, connection.shop));
   for (const listing of listings) {
-    if (listing.shop === connection.shop) await client.pauseProduct(listing.productId);
+    if (listing.shop === connection.shop && listing.mode !== "linked") await client.pauseProduct(listing.productId);
   }
 }

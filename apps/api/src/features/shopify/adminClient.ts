@@ -1,3 +1,5 @@
+import type { ShopifyCatalogClient } from "./catalogService";
+import { normalizeShopifyVariant, variantFields, type ShopifyVariantNode } from "./catalogTypes";
 import { randomUUID } from "node:crypto";
 import type { ShopifyListingClient } from "./listingService";
 import { isShopifyDomain } from "../../lib/shopify";
@@ -7,7 +9,7 @@ const API_VERSION = "2026-07";
 type GraphqlResponse = { data?: Record<string, unknown>; errors?: { message: string }[] };
 type Fetcher = typeof fetch;
 
-export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient {
+export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient & ShopifyCatalogClient {
   if (!isShopifyDomain(shop)) throw new Error("Invalid Shopify shop domain");
   const graphql = async <T>(query: string, variables: Record<string, unknown>, beforeMutation?: () => Promise<void>): Promise<T> => {
     const token = await getToken();
@@ -27,6 +29,23 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
     if (payload.userErrors?.length) throw new Error(payload.userErrors.map((error) => error.message).join("; "));
   };
   return {
+    async searchVariants(query, after) {
+      // Treat text as search terms, never as caller-supplied Shopify filter syntax.
+      const search = query.trim().split(/\s+/).map(term => term.replace(/[\\:()"*]/g, " ").trim()).filter(Boolean).map(term => `"${term}"*`).join(" ");
+      const data = await graphql<{ productVariants?: { nodes: ShopifyVariantNode[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } }>(
+        `query SearchVariants($query: String!, $after: String) {
+          productVariants(first: 20, query: $query, after: $after) { nodes { ${variantFields(10)} } pageInfo { hasNextPage endCursor } }
+        }`, { query: search, after: after ?? null });
+      if (!data.productVariants) throw new Error("Shopify returned no variant search results");
+      return { variants: data.productVariants.nodes.flatMap(node => { const variant = normalizeShopifyVariant(node); return variant ? [variant] : []; }),
+        pageInfo: data.productVariants.pageInfo };
+    },
+    async getVariant(variantId) {
+      if (!/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variantId)) throw new Error("Invalid Shopify variant ID");
+      const data = await graphql<{ productVariant?: ShopifyVariantNode | null }>(
+        `query LinkedVariant($id: ID!) { productVariant(id: $id) { ${variantFields()} } }`, { id: variantId });
+      return normalizeShopifyVariant(data.productVariant);
+    },
     async upsertBoxProduct(input) {
       let locationId = input.locationId;
       if (!locationId) {

@@ -2058,6 +2058,9 @@ test("renameCurrentLot rejects duplicates and renames unique names", () => {
       { id: 2, name: "Beta" }
     ],
     renameLotName: " alpha ",
+    renameLotExternalSku: "",
+    renameLotShopifyEnabled: false,
+    shopifyEditSessionLotId: null,
     showRenameLotModal: true,
     saveLotsToStorage() {
       savedCount += 1;

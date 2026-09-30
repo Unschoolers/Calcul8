@@ -3,32 +3,10 @@ import { HttpError, resolveUserId } from "../../lib/auth";
 import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { createShopifyStore, deleteShopifyConnection, getShopifyConnection } from "../../lib/cosmos/shopifyRepository";
 import { getShopifySyncStatus } from "../../lib/cosmos/shopifySyncStatusRepository";
-import { resolveWhatnotScope } from "../whatnot/serviceCore";
+import { resolveShopifyScope, parseBody, workspaceIdFrom } from "./requestHelpers";
 import { beginShopifyConnection, completeShopifyConnection } from "./connectionService";
+import { withShopifyLotLease } from "./lotLease";
 import { pauseShopifyScope } from "./pauseService";
-import type { ApiConfig } from "../../types";
-
-async function resolveShopifyScope(config: ApiConfig, actor: string, workspaceId?: string, owner = false) {
-  try { return await resolveWhatnotScope(config, actor, workspaceId, owner); }
-  catch (error) {
-    if (error instanceof HttpError && error.status === 403 && error.message.includes("Whatnot integration")) {
-      throw new HttpError(403, "Only a workspace owner can manage the Shopify integration");
-    }
-    throw error;
-  }
-}
-
-async function parseBody(request: HttpRequest): Promise<Record<string, unknown>> {
-  let body: unknown;
-  try { body = await request.json(); }
-  catch { throw new HttpError(400, "Invalid Shopify JSON request"); }
-  if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Invalid Shopify request");
-  return body as Record<string, unknown>;
-}
-
-function workspaceIdFrom(body: Record<string, unknown>): string | undefined {
-  return typeof body.workspaceId === "string" && body.workspaceId.trim() ? body.workspaceId.trim() : undefined;
-}
 
 export async function shopifyConnectStart(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   return executeHttpHandler(request, context, { errorLogMessage: "Shopify connect start failed", fallbackErrorMessage: "Could not connect Shopify",
@@ -82,8 +60,12 @@ export async function shopifyDisconnect(request: HttpRequest, context: Invocatio
       const actorUserId = await resolveUserId(request, config);
       const body = await parseBody(request);
       const scope = await resolveShopifyScope(config, actorUserId, workspaceIdFrom(body), true);
-      await pauseShopifyScope(config, scope.partitionKey);
-      await deleteShopifyConnection(config, scope.partitionKey);
+      const processed = await withShopifyLotLease(config, scope.partitionKey, 0, async assertCurrent => {
+        await pauseShopifyScope(config, scope.partitionKey);
+        await assertCurrent();
+        await deleteShopifyConnection(config, scope.partitionKey);
+      });
+      if (!processed) throw new HttpError(409, "A Shopify link is being saved; retry disconnect shortly");
       return jsonResponse(request, config, 200, { connected: false });
     }
   });
