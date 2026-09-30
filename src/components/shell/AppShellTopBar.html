@@ -293,7 +293,11 @@
             :subtitle="shopifyConnectionStatus === 'connected' ? shopifyConnectionShop : shopifyConnectionStatus === 'unconfigured' ? t('shellShopifyUnavailable') : shopifyConnectionStatus === 'error' ? t('shellShopifyError') : t('shellShopifyDisconnected')"
   prepend-icon="mdi-shopping-outline"
   :link="shopifyConnectionStatus !== 'unconfigured' && shopifyConnectionStatus !== 'connected' && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
-  @click="openShopifyConnectDialog"></v-list-item>
+  @click="openShopifyConnectDialog">
+  <template v-if="shopifyConnectionStatus === 'connected'" #append>
+    <v-icon icon="mdi-check-circle" color="success" role="img" aria-hidden="false" :aria-label="t('shellShopifyConnected')"></v-icon>
+  </template>
+</v-list-item>
 <v-list-item v-if="shopifyConnectionStatus === 'connected' && shopifySyncError"
   :title="t('shellShopifySyncNeedsAttention')" :subtitle="shopifySyncError" prepend-icon="mdi-alert-circle-outline"></v-list-item>
 <v-list-item v-else-if="shopifyConnectionStatus === 'connected' && shopifyLastSyncedAt"
