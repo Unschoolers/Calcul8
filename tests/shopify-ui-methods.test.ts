@@ -32,13 +32,16 @@ it("shows connected shop status without keeping an access token in UI state", as
 it("connects through a full-page Shopify authorization redirect", async () => {
   const app = context();
   fetchAuthenticatedApiResponse.mockResolvedValue(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize?state=abc" }), { status: 200 }));
-  const assign = vi.fn();
+  let statusAtRedirect: string | undefined;
+  const assign = vi.fn(() => { statusAtRedirect = app.shopifyConnectionStatus; });
   const original = globalThis.window;
   Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { origin: "https://app.example.com", href: "https://app.example.com/config", assign } } });
   try {
     await uiShopifyMethods.connectShopify.call(app as never);
     expect(assign).toHaveBeenCalledWith("https://mine.myshopify.com/admin/oauth/authorize?state=abc");
     expect(fetchAuthenticatedApiResponse.mock.calls[0]?.[1]).toBe("/integrations/shopify/connect/start");
+    expect(statusAtRedirect).toBe("disconnected");
+    expect(app.shopifyConnectionStatus).toBe("disconnected");
   } finally { Object.defineProperty(globalThis, "window", { configurable: true, value: original }); }
 });
 

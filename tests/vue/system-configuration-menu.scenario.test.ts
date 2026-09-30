@@ -4,6 +4,8 @@ import { expect, test } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
 import AppShellTopBar from "../../src/components/shell/AppShellTopBar.vue";
 import SystemConfigurationDialog from "../../src/components/shell/SystemConfigurationDialog.vue";
+import ShopifyConnectDialog from "../../src/components/windows/shopify/ShopifyConnectDialog.vue";
+import { uiShopifyMethods } from "../../src/app-core/methods/ui/shopify/shopify.ts";
 import { createShellPorts, shellPortsKey } from "../../src/components/shell/shellPorts.ts";
 import { createWorkspaceDialogPorts, workspaceDialogPortsKey } from "../../src/components/shell/workspaceDialogPorts.ts";
 import { renderWithApp } from "./render.ts";
@@ -75,4 +77,24 @@ test("System Configuration keeps Whatnot category editing in lot setup", async (
   expect(screen.queryByText("configWhatnotVerticalLabel")).toBeNull();
   expect(screen.queryByText("configWhatnotFeeStatusTitle")).toBeNull();
   expect(screen.getByRole("dialog", { name: "configSystemConfigurationTitle" })).toBeVisible();
+});
+
+test.each(["shellShopifyTitle", "shellConnectShopify"])("choosing %s opens the Shopify setup dialog", async (label) => {
+  const state = Object.assign(createShellState(), {
+    shopifyConnectionStatus: "disconnected" as const,
+    openShopifyConnectDialog: uiShopifyMethods.openShopifyConnectDialog
+  });
+  const Harness = defineComponent({
+    setup() {
+      provide(shellPortsKey, createShellPorts(state as never));
+      return () => h(Fragment, [h(AppShellTopBar), h(ShopifyConnectDialog)]);
+    }
+  });
+
+  renderWithApp(Harness);
+  await fireEvent.click(screen.getByRole("button", { name: "accountMenuLabel" }));
+  await fireEvent.click(await screen.findByText(label));
+  expect(state.showShopifyConnectDialog).toBe(true);
+  expect(await screen.findByRole("dialog", { name: "shellConnectShopify" })).toBeVisible();
+  expect(screen.getByLabelText("shellShopifyDomainLabel")).toBeVisible();
 });

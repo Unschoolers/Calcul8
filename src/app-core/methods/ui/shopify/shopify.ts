@@ -34,7 +34,11 @@ export const uiShopifyMethods = {
     }
   },
 
-  openShopifyConnectDialog(): void { this.showShopifyConnectDialog = true; },
+  openShopifyConnectDialog(): void {
+    if (this.shopifyConnectionStatus === "unconfigured" || this.shopifyConnectionStatus === "connected") return;
+    if (this.activeScopeType !== "personal" && !this.isCurrentWorkspaceOwner) return;
+    this.showShopifyConnectDialog = true;
+  },
 
   async connectShopify(): Promise<void> {
     if (this.activeScopeType === "workspace" && !this.isCurrentWorkspaceOwner) return;
@@ -55,6 +59,7 @@ export const uiShopifyMethods = {
       if (url.protocol !== "https:" || !/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(url.hostname)) throw new Error("Invalid Shopify authorization URL");
       if (!isCurrent()) return;
       this.shopifyShopDraft = "";
+      this.shopifyConnectionStatus = "disconnected";
       window.location.assign(url.toString());
     } catch {
       if (isCurrent()) this.shopifyConnectionStatus = "error";
