@@ -1102,6 +1102,9 @@ test("a non-empty search update clears stale suppression and fetches the full qu
 
 test("fetchSinglesItemSuggestions handles missing base, failed response, and aborted fetch", async () => {
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const failedFetch = vi.fn(async () => ({ ok: false, status: 500 }));
+  vi.stubGlobal("fetch", failedFetch);
+  vi.stubEnv("VITE_API_BASE_URL", "");
   const context = createContext({
     currentSinglesCatalogSource: "pokemon",
     singlesItemSuggestions: [{ title: "keep" }]
@@ -1109,9 +1112,8 @@ test("fetchSinglesItemSuggestions handles missing base, failed response, and abo
 
   await context.fetchSinglesItemSuggestions("query");
   assert.deepEqual(context.singlesItemSuggestions, []);
+  assert.equal(failedFetch.mock.calls.length, 0);
 
-  const failedFetch = vi.fn(async () => ({ ok: false, status: 500 }));
-  vi.stubGlobal("fetch", failedFetch);
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
   await context.fetchSinglesItemSuggestions("query");
   assert.equal(context.singlesItemSearchLoading, false);
