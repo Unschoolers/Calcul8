@@ -70,6 +70,11 @@ function queueCurrentLotSalesFreshnessCheckAfterTabSettle(
 }
 
 export const appWatch: AppWatchObject = {
+  isAuthSessionResolving(resolving: boolean) {
+    if (resolving || !this.isGoogleSignedIn || isDevNoLoginRoute()) return;
+    void this.refreshWhatnotStatus();
+    void this.refreshShopifyStatus();
+  },
   isOffline() {
     if (!this.isOffline) hydrateMissingWhatnotScopeSales(this);
   },

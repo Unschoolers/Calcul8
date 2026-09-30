@@ -132,6 +132,7 @@ export interface AppWatchObject {
   purchaseUiMode(this: CommerceConfigWatchContext, newMode: "simple" | "expert"): void;
   boxesPurchased(this: CommerceConfigWatchContext, newValue: number, oldValue: number): void;
   googleAuthEpoch(this: AuthWatchContext): void;
+  isAuthSessionResolving(this: AuthWatchContext, resolving: boolean): void;
   currentLotId(this: CurrentLotWatchContext, newVal: number | null): void;
   chartView(this: SalesChartRefreshContext): void;
   portfolioChartView(this: PortfolioWatchContext): void;

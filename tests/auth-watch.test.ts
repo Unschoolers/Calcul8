@@ -48,6 +48,27 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+test("restoring a cached session refreshes integration status without an auth epoch change", () => {
+  const context = createSignedInContext(false);
+  appWatch.isAuthSessionResolving.call(context as never, false);
+  assert.equal(context.refreshWhatnotStatus.mock.calls.length, 1);
+  assert.equal(context.refreshShopifyStatus.mock.calls.length, 1);
+});
+
+test("integration status waits until session restoration finishes", () => {
+  const context = createSignedInContext(true);
+  appWatch.isAuthSessionResolving.call(context as never, true);
+  assert.equal(context.refreshWhatnotStatus.mock.calls.length, 0);
+  assert.equal(context.refreshShopifyStatus.mock.calls.length, 0);
+});
+
+test("session restoration does not refresh integrations for a signed-out user", () => {
+  const context = { ...createSignedInContext(false), isGoogleSignedIn: false };
+  appWatch.isAuthSessionResolving.call(context as never, false);
+  assert.equal(context.refreshShopifyStatus.mock.calls.length, 0);
+  assert.equal(context.refreshWhatnotStatus.mock.calls.length, 0);
+});
+
 test("auth watcher waits for session bootstrap before starting signed-in services", () => {
   const context = createSignedInContext(true);
 

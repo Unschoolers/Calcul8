@@ -216,8 +216,6 @@ export const appLifecycle: AppLifecycleObject = {
     })();
     if (this.isGoogleSignedIn && !isDevNoLoginRoute()) {
       this.startCloudSyncScheduler();
-      void this.refreshWhatnotStatus();
-      void this.refreshShopifyStatus();
     }
     if (isDevNoLoginRoute()) {
       scheduleTabPrewarm(this);
