@@ -94,7 +94,8 @@ export async function completeShopifyConnection(
   const code = params.get("code");
   if (!stateToken || !shop) throw new HttpError(400, "Incomplete Shopify callback");
   const state = await store.consumeState(stateToken);
-  if (!state || state.shop !== shop || Date.parse(state.expiresAt) <= Date.now()) throw new HttpError(400, "Shopify connection expired");
+  if (!state || Date.parse(state.expiresAt) <= Date.now()) throw new HttpError(400, "Shopify connection expired");
+  // Shopify signs the original shop domain, which can differ from the entered alias.
   if (params.get("error")) {
     const redirectUrl = new URL(validatedReturnUrl(config, state.appReturnUrl));
     redirectUrl.searchParams.set("shopify", "cancelled");

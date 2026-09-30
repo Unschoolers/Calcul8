@@ -9,7 +9,8 @@ function callback(shop: string, state: string, secret: string): URLSearchParams 
   return params;
 }
 
-test("connect stores a scoped, single-use state; callback stores only encrypted credentials", async () => {
+test.each(["mine.myshopify.com", "julesarena.myshopify.com"])("connect accepts %s and stores encrypted credentials for Shopify's canonical domain", async (requestedShop) => {
+  const canonicalShop = requestedShop === "julesarena.myshopify.com" ? "uhpe0b-9f.myshopify.com" : requestedShop;
   const states = new Map<string, Awaited<ReturnType<ShopifyConnectionStore["consumeState"]>> >();
   const putConnection = vi.fn();
   const store: ShopifyConnectionStore = {
@@ -21,29 +22,32 @@ test("connect stores a scoped, single-use state; callback stores only encrypted 
   };
   const config = { shopifyClientId: "id", shopifyClientSecret: "secret", shopifyRedirectUri: "https://api.example.com/callback", shopifyTokenEncryptionSecret: "encryption", allowedOrigins: ["https://app.example.com"] };
   const resolveScope = vi.fn(async () => ({ partitionKey: "user:42", scopeType: "user" as const, scopeId: "42" }));
-  const url = await beginShopifyConnection(config, store, resolveScope, { actorUserId: "42", shop: "mine.myshopify.com", appReturnUrl: "https://app.example.com/config" });
+  const url = await beginShopifyConnection(config, store, resolveScope, { actorUserId: "42", shop: requestedShop, appReturnUrl: "https://app.example.com/config" });
   const state = new URL(url).searchParams.get("state")!;
   assert.ok(state);
-  const fetcher = vi.fn(async () => new Response(JSON.stringify({ access_token: "top-secret", scope: "write_products,write_inventory" }), { status: 200 }));
-  const result = await completeShopifyConnection(config, store, resolveScope, callback("mine.myshopify.com", state, "secret"), fetcher);
+  const fetcher = vi.fn(async (_input: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]) => new Response(JSON.stringify({ access_token: "top-secret", scope: "write_products,write_inventory" }), { status: 200 }));
+  const result = await completeShopifyConnection(config, store, resolveScope, callback(canonicalShop, state, "secret"), fetcher);
+  assert.equal(fetcher.mock.calls[0]![0], `https://${canonicalShop}/admin/oauth/access_token`);
   assert.equal(result.redirectUrl, "https://app.example.com/config");
   assert.equal(putConnection.mock.calls.length, 1);
   assert.equal(putConnection.mock.calls[0]![1], 0);
   const stored = putConnection.mock.calls[0]![0];
-  assert.equal(stored.shop, "mine.myshopify.com");
+  assert.equal(stored.shop, canonicalShop);
   assert.equal(stored.scopeKey, "user:42");
   assert.ok(!JSON.stringify(stored).includes("top-secret"));
-  await assert.rejects(() => completeShopifyConnection(config, store, resolveScope, callback("mine.myshopify.com", state, "secret"), fetcher));
+  await assert.rejects(() => completeShopifyConnection(config, store, resolveScope, callback(canonicalShop, state, "secret"), fetcher));
   assert.equal(fetcher.mock.calls.length, 1);
 });
 
-test("callback rejects a changed shop and bad HMAC before token exchange", async () => {
+test("callback rejects tampered shop and code before token exchange", async () => {
 const storedState = { state: "one-use", shop: "mine.myshopify.com", actorUserId: "42", scopeKey: "user:42", scopeType: "user" as const, scopeId: "42", generation: 0, appReturnUrl: "https://app.example.com/", expiresAt: new Date(Date.now() + 60_000).toISOString() };
 const store: ShopifyConnectionStore = { createState: async () => {}, consumeState: async () => storedState, getGeneration: async () => 0, getConnection: async () => null, putConnection: async () => {} };
   const config = { shopifyClientId: "id", shopifyClientSecret: "secret", shopifyRedirectUri: "https://api.example.com/callback", shopifyTokenEncryptionSecret: "encryption", allowedOrigins: ["https://app.example.com"] };
   const resolveScope = vi.fn(async () => ({ partitionKey: "user:42", scopeType: "user" as const, scopeId: "42" }));
   const fetcher = vi.fn();
-  await assert.rejects(() => completeShopifyConnection(config, store, resolveScope, callback("other.myshopify.com", "one-use", "secret"), fetcher));
+  const changedShop = callback("mine.myshopify.com", "one-use", "secret");
+  changedShop.set("shop", "other.myshopify.com");
+  await assert.rejects(() => completeShopifyConnection(config, store, resolveScope, changedShop, fetcher));
   const tampered = callback("mine.myshopify.com", "one-use", "secret");
   tampered.set("code", "different");
   await assert.rejects(() => completeShopifyConnection(config, store, resolveScope, tampered, fetcher));
