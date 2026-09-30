@@ -5,7 +5,10 @@ export type ShopifyVariant = {
   productId: string; variantId: string; title: string; variantTitle: string; sku: string; price: string;
   inventoryItemId: string; locations: { id: string; name: string; available: number }[];
 };
-export type ShopifyVariantPage = { variants: ShopifyVariant[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+export type ShopifyVariantPage = {
+  variants: ShopifyVariant[]; matchedVariantCount: number; excludedVariantCount: number;
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+};
 export type ShopifyCatalogClient = {
   searchVariants(query: string, after?: string): Promise<ShopifyVariantPage>;
   getVariant(variantId: string): Promise<ShopifyVariant | null>;

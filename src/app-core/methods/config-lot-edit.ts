@@ -6,16 +6,30 @@ import { validateRenameLotName } from "./config-lot-crud.ts";
 import { fetchAuthenticatedApiResponse } from "./ui/common/api-client.ts";
 import { queueCloudConfigSyncPush, queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 
+const shopifyEditSearchTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
+
+function shopifyVariantLabel(result: ShopifyVariantSearchResult, noSku: string): string {
+  return `${result.title}${result.variantTitle && result.variantTitle !== "Default Title" ? ` · ${result.variantTitle}` : ""} · ${result.sku || noSku} · ${result.price}`;
+}
+function cancelShopifyEditSearchTimer(context: object): void {
+  const timer = shopifyEditSearchTimers.get(context);
+  if (timer) clearTimeout(timer);
+  shopifyEditSearchTimers.delete(context);
+}
+
 type ShopifyEditApiScope = { activeScopeType: string; activeWorkspaceId: string | null };
 function shopifyEditScopeBody(context: ShopifyEditApiScope): { workspaceId?: string } {
   return context.activeScopeType === "workspace" && context.activeWorkspaceId ? { workspaceId: context.activeWorkspaceId } : {};
 }
-type ShopifyEditRequestContext = { googleAuthEpoch: number; activeScopeType: string; activeWorkspaceId: string | null; currentLotId: number | null; showRenameLotModal: boolean; shopifyEditRequestRevision: number; shopifyEditSessionAuthEpoch: number | null; shopifyEditSessionScope: string; shopifyEditSessionLotId: number | null };
-function shopifyEditRequestIsCurrent(context: ShopifyEditRequestContext, captured: { auth: number; scope: string; lotId: number | null; revision: number }): boolean {
+type ShopifyEditRequestContext = { googleAuthEpoch: number; activeScopeType: string; activeWorkspaceId: string | null; currentLotId: number | null; showRenameLotModal: boolean; shopifyEditRequestRevision: number; shopifyEditSessionAuthEpoch: number | null; shopifyEditSessionScope: string; shopifyEditSessionLotId: number | null; shopifyConnectionStatus: string; shopifyConnectionShop: string | null };
+function shopifyEditRequestIsOwned(context: ShopifyEditRequestContext, captured: { auth: number; scope: string; lotId: number | null; revision: number }): boolean {
   return context.showRenameLotModal && context.googleAuthEpoch === captured.auth &&
     JSON.stringify(shopifyEditScopeBody(context)) === captured.scope && context.currentLotId === captured.lotId &&
     context.shopifyEditRequestRevision === captured.revision && context.shopifyEditSessionAuthEpoch === captured.auth &&
     context.shopifyEditSessionScope === captured.scope && context.shopifyEditSessionLotId === captured.lotId;
+}
+function shopifyEditRequestIsCurrent(context: ShopifyEditRequestContext, captured: { auth: number; scope: string; lotId: number | null; revision: number; shop: string | null }): boolean {
+  return shopifyEditRequestIsOwned(context, captured) && context.shopifyConnectionStatus === "connected" && context.shopifyConnectionShop === captured.shop;
 }
 function shopifyEditSessionIsCurrent(context: ShopifyEditRequestContext): boolean {
   return context.shopifyEditSessionAuthEpoch === context.googleAuthEpoch &&
@@ -49,6 +63,7 @@ async function shopifyResponseError(response: Response, conflict: string, fallba
 
 export const configLotEditMethods = {
   openRenameLotModal(): void {
+    cancelShopifyEditSearchTimer(this);
     if (!this.currentLotId) {
       this.notify("Select a lot first", "warning");
       return;
@@ -85,7 +100,7 @@ export const configLotEditMethods = {
     this.shopifyEditListingStatus = "loading";
     this.shopifyEditError = null;
     this.shopifyEditRequestRevision += 1;
-    const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision };
+    const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/listing", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -102,15 +117,24 @@ export const configLotEditMethods = {
         this.shopifyEditListingStatus = "error";
         this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifyListingLoadError"));
       }
+    } finally {
+      if (shopifyEditRequestIsOwned(this, captured) && !shopifyEditRequestIsCurrent(this, captured)) {
+        this.shopifyEditListingStatus = "error";
+        this.shopifyEditError = this.t("configShopifyListingLoadError");
+      }
     }
   },
 
   closeRenameLotModal(): void {
+    cancelShopifyEditSearchTimer(this);
     closeShopifyEditState(this);
   },
 
   onShopifyEditQueryChange(value: string): void {
+    if (this.shopifyEditSearchResults.some((result) => value === shopifyVariantLabel(result, this.t("configShopifyNoSku")))) return;
+    cancelShopifyEditSearchTimer(this);
     this.shopifyEditSearchQuery = value;
+    this.shopifyEditError = null;
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditLoading = false;
     this.shopifyEditSearchResults = [];
@@ -119,9 +143,31 @@ export const configLotEditMethods = {
     this.shopifyEditSearchCompleted = false;
     this.shopifyEditSelectedVariantId = null;
     this.shopifyEditSelectedLocationId = null;
+    if (value.trim().length >= 2) {
+      const scheduledRevision = this.shopifyEditRequestRevision;
+      shopifyEditSearchTimers.set(this, setTimeout(() => {
+        shopifyEditSearchTimers.delete(this);
+        if (this.showRenameLotModal && this.shopifyEditRequestRevision === scheduledRevision) {
+          void configLotEditMethods.searchShopifyEditProducts.call(this, false);
+        }
+      }, 300));
+    }
   },
 
   selectShopifyEditVariant(variantId: string): void {
+    if (!variantId) {
+      this.shopifyEditSelectedVariantId = null;
+      this.shopifyEditSelectedLocationId = null;
+      cancelShopifyEditSearchTimer(this);
+      this.shopifyEditSearchQuery = "";
+      this.shopifyEditSearchResults = [];
+      this.shopifyEditSearchCursor = null;
+      this.shopifyEditSearchHasMore = false;
+      this.shopifyEditSearchCompleted = false;
+      this.shopifyEditRequestRevision += 1;
+      this.shopifyEditLoading = false;
+      return;
+    }
     const selected = this.shopifyEditSearchResults.find((result) => result.variantId === variantId);
     this.shopifyEditSelectedVariantId = selected?.variantId ?? null;
     this.shopifyEditSelectedLocationId = selected?.locations.length === 1 ? selected.locations[0]!.id : null;
@@ -147,23 +193,26 @@ export const configLotEditMethods = {
     this.shopifyEditError = null;
     this.shopifyEditLoading = true;
     this.shopifyEditRequestRevision += 1;
-    const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision };
+    const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/search", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), query, ...(loadMore && this.shopifyEditSearchCursor ? { after: this.shopifyEditSearchCursor } : {}) })
       });
       if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyConflictError"), this.t("configShopifySearchError")));
-      const page = await response.json() as { variants: ShopifyVariantSearchResult[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+      const page = await response.json() as { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
       if (!shopifyEditRequestIsCurrent(this, captured)) return;
       this.shopifyEditSearchResults = loadMore ? [...this.shopifyEditSearchResults, ...page.variants] : page.variants;
       this.shopifyEditSearchHasMore = page.pageInfo.hasNextPage;
       this.shopifyEditSearchCursor = page.pageInfo.endCursor;
       this.shopifyEditSearchCompleted = true;
+      if (!this.shopifyEditSearchResults.length && (page.matchedVariantCount ?? 0) > 0 && page.excludedVariantCount === page.matchedVariantCount) {
+        this.shopifyEditError = this.t("configShopifyNoEligibleResults");
+      }
     } catch (error) {
       if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifySearchError"));
     } finally {
-      if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditLoading = false;
+      if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditLoading = false;
     }
   },
 
@@ -204,7 +253,7 @@ export const configLotEditMethods = {
       this.shopifyEditSaving = true;
       this.shopifyEditError = null;
       this.shopifyEditRequestRevision += 1;
-      const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: lot.id, revision: this.shopifyEditRequestRevision };
+      const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: lot.id, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
       try {
         const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/link", {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -218,7 +267,7 @@ export const configLotEditMethods = {
         if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifyLinkError"));
         return;
       } finally {
-        if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditSaving = false;
+        if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditSaving = false;
       }
     }
     if (!renameResult.changed && !categoryChanged && !skuChanged && !publishChanged) {

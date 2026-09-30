@@ -94,7 +94,29 @@ test("searches variants read-only with pagination and active tracked inventory l
   assert.deepEqual(result.variants[0]?.locations, [{ id: "gid://shopify/Location/4", name: "Store", available: 17 }]);
   assert.deepEqual(result.pageInfo, { hasNextPage: true, endCursor: "next" });
   assert.equal(requests[0]?.variables.after, "cursor");
+  assert.equal(requests[0]?.variables.query, "Bleach*");
+  assert.equal(result.matchedVariantCount, 2);
+  assert.equal(result.excludedVariantCount, 1);
   assert.ok(!requests[0]?.query.includes("mutation"));
+});
+
+test("builds literal Shopify prefix terms without exposing search syntax", async () => {
+  const requests: { variables: Record<string, unknown> }[] = [];
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return response({ productVariants: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } });
+  }) as typeof fetch);
+
+  await client.searchVariants("Kaiju");
+  await client.searchVariants("One Piece");
+  await client.searchVariants("ABC:123-XYZ");
+  await client.searchVariants("AND OR NOT");
+  await client.searchVariants("'Kaiju'");
+  await client.searchVariants("l'orange");
+
+  assert.deepEqual(requests.map(request => request.variables.query), [
+    "Kaiju*", "One* Piece*", "ABC\\:123\\-XYZ*", "and* or* not*", "\\'Kaiju\\'*", "l\\'orange*"
+  ]);
 });
 
 test("resolves a selected variant using the connected shop and refuses malformed IDs", async () => {

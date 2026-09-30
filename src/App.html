@@ -241,15 +241,17 @@
               <section v-else-if="shopifyEditListingStatus === 'loaded' && !shopifyEditListing && shopifyConnectionStatus === 'connected' && currentLotType !== 'singles'" class="mt-3">
                 <div class="text-subtitle-2 mb-2">{{ t('configShopifyLinkTitle') }}</div>
                 <p class="text-caption text-medium-emphasis">{{ t('configShopifyLinkHint') }}</p>
-                <v-text-field :model-value="shopifyEditSearchQuery" :label="t('configShopifySearchLabel')" variant="outlined" density="compact" @update:model-value="onShopifyEditQueryChange" @keyup.enter="searchShopifyEditProducts(false)">
-                    <template #append-inner><v-btn class="app-touch-target" size="small" variant="text" :loading="shopifyEditLoading" :disabled="shopifyEditLoading || shopifyEditSearchQuery.trim().length < 2" @click="searchShopifyEditProducts(false)">{{ t('configShopifySearchAction') }}</v-btn></template>
-                </v-text-field>
-                <div v-if="shopifyEditSearchCompleted && !shopifyEditSearchResults.length" class="text-caption text-medium-emphasis">{{ t('configShopifyNoResults') }}</div>
-                <v-radio-group v-if="shopifyEditSearchResults.length" :model-value="shopifyEditSelectedVariantId" @update:model-value="selectShopifyEditVariant(String($event))">
-                  <v-radio v-for="result in shopifyEditSearchResults" :key="result.variantId" :value="result.variantId" :disabled="shopifyEditSaving">
-                    <template #label><span class="app-text-wrap">{{ result.title }}<template v-if="result.variantTitle && result.variantTitle !== 'Default Title'"> · {{ result.variantTitle }}</template> · {{ result.sku || t('configShopifyNoSku') }} · {{ result.price }}</span></template>
-                  </v-radio>
-                </v-radio-group>
+                <v-autocomplete
+                  :model-value="shopifyEditSelectedVariantId"
+                  :search="shopifyEditSearchQuery"
+                  :items="shopifyEditSearchResults.map((result) => ({ title: result.title + (result.variantTitle && result.variantTitle !== 'Default Title' ? ' · ' + result.variantTitle : '') + ' · ' + (result.sku || t('configShopifyNoSku')) + ' · ' + result.price, value: result.variantId }))"
+                  :label="t('configShopifySearchLabel')" :loading="shopifyEditLoading" :no-filter="true"
+                  :hide-no-data="!shopifyEditSearchCompleted" :no-data-text="t('configShopifyNoResults')"
+                  :disabled="shopifyEditListingStatus !== 'loaded' || !!shopifyEditListing || shopifyConnectionStatus !== 'connected' || shopifyEditSaving"
+                  variant="outlined" density="compact" clearable hide-details="auto"
+                  @update:search="onShopifyEditQueryChange"
+                  @update:model-value="selectShopifyEditVariant($event == null ? '' : String($event))">
+                </v-autocomplete>
                 <v-select v-if="shopifyEditSelectedVariantId && (shopifyEditSearchResults.find((result) => result.variantId === shopifyEditSelectedVariantId)?.locations.length ?? 0) > 1"
                   :model-value="shopifyEditSelectedLocationId"
                   :items="shopifyEditSearchResults.find((result) => result.variantId === shopifyEditSelectedVariantId)?.locations.map((location) => ({ title: location.name + ' · ' + (location.available ?? '—'), value: location.id })) ?? []"

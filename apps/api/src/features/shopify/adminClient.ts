@@ -9,6 +9,15 @@ const API_VERSION = "2026-07";
 type GraphqlResponse = { data?: Record<string, unknown>; errors?: { message: string }[] };
 type Fetcher = typeof fetch;
 
+function buildVariantSearchQuery(input: string): string {
+  return input.trim().split(/\s+/).filter(Boolean).map((rawTerm) => {
+    // Shopify treats these uppercase words as connectives/modifiers. Search case-insensitively
+    // while lowering the reserved forms so user text can never become query syntax.
+    const term = /^(AND|OR|NOT)$/i.test(rawTerm) ? rawTerm.toLowerCase() : rawTerm;
+    return `${term.replace(/[\\:()"'*\-]/g, (character) => `\\${character}`)}*`;
+  }).join(" ");
+}
+
 export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient & ShopifyCatalogClient {
   if (!isShopifyDomain(shop)) throw new Error("Invalid Shopify shop domain");
   const graphql = async <T>(query: string, variables: Record<string, unknown>, beforeMutation?: () => Promise<void>): Promise<T> => {
@@ -30,15 +39,16 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
   };
   return {
     async searchVariants(query, after) {
-      // Treat text as search terms, never as caller-supplied Shopify filter syntax.
-      const search = query.trim().split(/\s+/).map(term => term.replace(/[\\:()"*]/g, " ").trim()).filter(Boolean).map(term => `"${term}"*`).join(" ");
+      // Treat text as literal search terms, never as caller-supplied Shopify filter syntax.
+      const search = buildVariantSearchQuery(query);
       const data = await graphql<{ productVariants?: { nodes: ShopifyVariantNode[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } }>(
         `query SearchVariants($query: String!, $after: String) {
           productVariants(first: 20, query: $query, after: $after) { nodes { ${variantFields(10)} } pageInfo { hasNextPage endCursor } }
         }`, { query: search, after: after ?? null });
       if (!data.productVariants) throw new Error("Shopify returned no variant search results");
-      return { variants: data.productVariants.nodes.flatMap(node => { const variant = normalizeShopifyVariant(node); return variant ? [variant] : []; }),
-        pageInfo: data.productVariants.pageInfo };
+      const variants = data.productVariants.nodes.flatMap(node => { const variant = normalizeShopifyVariant(node); return variant ? [variant] : []; });
+      return { variants, matchedVariantCount: data.productVariants.nodes.length,
+        excludedVariantCount: data.productVariants.nodes.length - variants.length, pageInfo: data.productVariants.pageInfo };
     },
     async getVariant(variantId) {
       if (!/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variantId)) throw new Error("Invalid Shopify variant ID");

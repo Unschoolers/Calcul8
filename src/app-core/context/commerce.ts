@@ -451,6 +451,7 @@ export type LotConfigurationContext = Pick<
   | "activeWorkspaceId"
   | "googleAuthEpoch"
   | "shopifyConnectionStatus"
+  | "shopifyConnectionShop"
   | "additionalFeeAppliesTo"
   | "additionalFeePercent"
   | "boxesPurchased"

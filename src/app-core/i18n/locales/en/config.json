@@ -114,6 +114,7 @@
   "configShopifyConflictError": "This Shopify listing changed or is already linked. Refresh the dialog and try again.",
   "configShopifyListingLoading": "Checking for an existing Shopify listing.",
   "configShopifyNoResults": "No matching Shopify variants were found.",
+  "configShopifyNoEligibleResults": "Matching variants on this page lack tracked stock at an active location. Load more if available, or check quantity tracking and inventory locations in Shopify.",
   "configShopifyStaleLotError": "The selected lot or workspace changed. Reopen Edit Lot before saving.",
   "configShopifyRetry": "Retry"
 }

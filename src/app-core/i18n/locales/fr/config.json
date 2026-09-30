@@ -114,6 +114,7 @@
   "configShopifyConflictError": "Cette annonce Shopify a changé ou est déjà liée. Actualisez la fenêtre et réessayez.",
   "configShopifyListingLoading": "Vérification d’une annonce Shopify existante.",
   "configShopifyNoResults": "Aucune variante Shopify correspondante n’a été trouvée.",
+  "configShopifyNoEligibleResults": "Les variantes correspondantes de cette page n’ont pas de stock suivi à un emplacement actif. Chargez la suite si elle est disponible, ou vérifiez le suivi des quantités et les emplacements dans Shopify.",
   "configShopifyStaleLotError": "Le lot ou l’espace de travail sélectionné a changé. Rouvrez Modifier le lot avant d’enregistrer.",
   "configShopifyRetry": "Réessayer"
 }
