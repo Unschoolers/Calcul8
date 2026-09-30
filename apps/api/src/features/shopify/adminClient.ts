@@ -115,7 +115,7 @@ async pauseProduct(productId, beforeMutation) {
             inventorySetQuantities(input: $input) @idempotent(key: $key) { userErrors { code message } }
           }`, { key: randomUUID(), input: { name: "available", reason: "correction",
             referenceDocumentUri: `calcul8://shopify/inventory/${encodeURIComponent(inventoryItemId)}`,
-            quantities: [{ inventoryItemId, locationId, quantity, compareQuantity: actual }] } }, beforeMutation);
+            quantities: [{ inventoryItemId, locationId, quantity, changeFromQuantity: actual }] } }, beforeMutation);
         const errors = data.inventorySetQuantities?.userErrors;
         if (!errors?.length) return;
         // A different writer won the compare-quantity race. Rebuild desired stock from current source data;

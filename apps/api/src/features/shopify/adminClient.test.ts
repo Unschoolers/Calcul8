@@ -6,6 +6,24 @@ function response(data: unknown): Response {
   return new Response(JSON.stringify({ data }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
+test("sets available stock using the Shopify 2026-07 concurrency input", async () => {
+  let available = 0;
+  const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    if (body.query.includes("query BoxStock")) return response({ inventoryItem: { inventoryLevel: { quantities: [{ quantity: available }] } } });
+    const entry = body.variables.input.quantities[0];
+    if ("compareQuantity" in entry || !("changeFromQuantity" in entry)) {
+      return new Response(JSON.stringify({ errors: [{ message: "Inventory input requires changeFromQuantity; compareQuantity is not supported." }] }), { status: 200 });
+    }
+    if (entry.changeFromQuantity !== available) return response({ inventorySetQuantities: { userErrors: [{ code: "CHANGE_FROM_QUANTITY_STALE", message: "stale" }] } });
+    available = entry.quantity;
+    return response({ inventorySetQuantities: { userErrors: [] } });
+  };
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", fetcher as typeof fetch);
+  await client.setAvailable({ inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4", quantity: 3, previousQuantity: 0 });
+  assert.equal(available, 3);
+});
+
 test("creates a draft sealed-box variant with tracked stock and stable provider IDs", async () => {
   const requests: { query: string; variables: Record<string, any> }[] = [];
   const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
@@ -43,8 +61,8 @@ test("an older inventory target cannot retry over a newer lower target", async (
     const body = JSON.parse(String(init?.body));
     if (body.query.includes("query BoxStock")) return response({ inventoryItem: { inventoryLevel: { quantities: [{ quantity: available }] } } });
     const entry = body.variables.input.quantities[0];
-    if (entry.quantity === 5 && entry.compareQuantity === 0) { oldMutationStarted(); await oldMutation; }
-    if (entry.compareQuantity !== available) return response({ inventorySetQuantities: { userErrors: [{ code: "COMPARE_QUANTITY_STALE", message: "stale" }] } });
+    if (entry.quantity === 5 && entry.changeFromQuantity === 0) { oldMutationStarted(); await oldMutation; }
+    if (entry.changeFromQuantity !== available) return response({ inventorySetQuantities: { userErrors: [{ code: "CHANGE_FROM_QUANTITY_STALE", message: "stale" }] } });
     available = entry.quantity;
     return response({ inventorySetQuantities: { userErrors: [] } });
   };
