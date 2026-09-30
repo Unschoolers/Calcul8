@@ -1,4 +1,5 @@
 import type { ShopifyEditListing, ShopifyVariantSearchResult } from "../../types/app.ts";
+import { isShopifyStockObservation, type ShopifyStockObservation } from "../../../shared/shopify-stock.ts";
 import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import type { ConfigLotMethodImplementation, LotConfigurationContext } from "../context/commerce.ts";
 import { isSinglesLot } from "../shared/lot-types.ts";
@@ -62,6 +63,29 @@ async function shopifyResponseError(response: Response, conflict: string, fallba
 
 
 export const configLotEditMethods = {
+  async loadShopifyLinkedStock(): Promise<ShopifyStockObservation> {
+    const listing = this.shopifyEditListing;
+    if (!this.showRenameLotModal || !shopifyEditSessionIsCurrent(this) || this.shopifyConnectionStatus !== "connected" || listing?.mode !== "linked") {
+      throw new Error(this.t("configShopifyStockStaleRequest"));
+    }
+    const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
+      revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
+    const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/stock", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId })
+    });
+    if (!shopifyEditRequestIsCurrent(this, captured) || this.shopifyEditListing?.variantId !== listing.variantId || this.shopifyEditListing.locationId !== listing.locationId) {
+      throw new Error(this.t("configShopifyStockStaleRequest"));
+    }
+    if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyStockRefreshError"), this.t("configShopifyStockRefreshError")));
+    const payload = await response.json() as { observation?: unknown };
+    if (!shopifyEditRequestIsCurrent(this, captured)) throw new Error(this.t("configShopifyStockStaleRequest"));
+    if (!isShopifyStockObservation(payload.observation) || payload.observation.shop !== captured.shop || payload.observation.variantId !== listing.variantId ||
+      payload.observation.inventoryItemId !== listing.inventoryItemId || payload.observation.locationId !== listing.locationId) {
+      throw new Error(this.t("configShopifyStockRefreshError"));
+    }
+    return payload.observation;
+  },
   openRenameLotModal(): void {
     cancelShopifyEditSearchTimer(this);
     if (!this.currentLotId) {
@@ -295,6 +319,7 @@ export const configLotEditMethods = {
   | "openRenameLotModal"
   | "closeRenameLotModal"
   | "refreshShopifyEditListing"
+  | "loadShopifyLinkedStock"
   | "onShopifyEditQueryChange"
   | "selectShopifyEditVariant"
   | "selectShopifyEditLocation"

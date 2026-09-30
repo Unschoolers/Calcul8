@@ -56,6 +56,29 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
         `query LinkedVariant($id: ID!) { productVariant(id: $id) { ${variantFields()} } }`, { id: variantId });
       return normalizeShopifyVariant(data.productVariant);
     },
+    async getStock(inventoryItemId, locationId) {
+      if (!/^gid:\/\/shopify\/InventoryItem\/\d+$/.test(inventoryItemId)) throw new Error("Invalid Shopify inventory item ID");
+      if (!/^gid:\/\/shopify\/Location\/\d+$/.test(locationId)) throw new Error("Invalid Shopify inventory location ID");
+      const data = await graphql<{ inventoryItem?: { tracked?: boolean; inventoryLevel?: {
+        location?: { id: string; name: string; isActive: boolean } | null;
+        quantities?: { name: string; quantity: number }[];
+      } | null } | null }>(`query LinkedStock($id: ID!, $locationId: ID!) {
+        inventoryItem(id: $id) { tracked inventoryLevel(locationId: $locationId) {
+          location { id name isActive } quantities(names: ["available", "on_hand", "committed"]) { name quantity }
+        } }
+      }`, { id: inventoryItemId, locationId });
+      const item = data.inventoryItem;
+      const level = item?.inventoryLevel;
+      if (!item || !item.tracked) throw new Error("Shopify inventory item is not tracked");
+      if (!level?.location || level.location.id !== locationId || !level.location.isActive) throw new Error("Shopify inventory location is not active");
+      const quantities = new Map((level.quantities ?? []).map(({ name, quantity }) => [name, quantity]));
+      const available = quantities.get("available"), onHand = quantities.get("on_hand"), committed = quantities.get("committed");
+      if (![available, onHand, committed].every((quantity) => typeof quantity === "number" && Number.isSafeInteger(quantity))) {
+        throw new Error("Shopify returned invalid inventory quantities");
+      }
+      if (!level.location.name.trim()) throw new Error("Shopify returned an invalid inventory location");
+      return { locationId: level.location.id, locationName: level.location.name, available: available!, onHand: onHand!, committed: committed! };
+    },
     async upsertBoxProduct(input) {
       let locationId = input.locationId;
       if (!locationId) {

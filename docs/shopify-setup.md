@@ -8,6 +8,12 @@ Search and selection are read-only. Saving a link stores the Shopify product, va
 
 Existing WhatFees-managed listings keep their sealed-box synchronization and publish toggle in Edit inventory. They cannot be converted to an existing-product link in this phase. New lots offer search and link only; opened boxes and loose packs are never newly listed.
 
+## Linked inventory observation
+
+Opening **Edit inventory** for a linked lot reads current stock at its selected Shopify location. **Refresh stock** reads it again. The panel shows available, on-hand and committed Shopify quantities, the observation time, WhatFees-derived sealed boxes, boxes opened for pack sales, remaining loose packs, and the signed difference between Shopify availability and the WhatFees sealed-box estimate. A failed refresh preserves the last observation and marks it stale.
+
+A Shopify receipt changes the observed stock without changing WhatFees purchase history or costs. A Shopify box order is represented once by its imported sale; the panel never subtracts that order again from Shopify's current availability. The first pack sale that consumes a sealed box lowers the WhatFees sealed count and appears in the opened-box count, while the Shopify observation remains unchanged until refreshed. Differences are informational: purchase history, other locations, outstanding sync, and opened boxes may explain them. This comparison assumes the linked variant represents the lot's sealed boxes. It does not write stock to linked products.
+
 ## Shopify app and API settings
 
 Create a Shopify app with these Admin API scopes: `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_locations`, `read_publications`, `write_publications`, and `read_orders`. Register the exact OAuth callback URL for the API environment:

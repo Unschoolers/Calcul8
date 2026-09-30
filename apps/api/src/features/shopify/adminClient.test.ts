@@ -126,3 +126,41 @@ test("resolves a selected variant using the connected shop and refuses malformed
   assert.equal(calls, 0);
   assert.equal(await client.getVariant("gid://shopify/ProductVariant/2"), null);
 });
+
+test("observes tracked linked inventory quantities through one read-only inventory query", async () => {
+  const requests: any[] = [];
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return response({ inventoryItem: { tracked: true, inventoryLevel: { location: { id: "gid://shopify/Location/4", name: "Store", isActive: true }, quantities: [
+      { name: "available", quantity: 12 }, { name: "on_hand", quantity: 14 }, { name: "committed", quantity: 2 }
+    ] } } });
+  }) as typeof fetch);
+  const result = await client.getStock("gid://shopify/InventoryItem/3", "gid://shopify/Location/4");
+  assert.deepEqual(result, { locationId: "gid://shopify/Location/4", locationName: "Store", available: 12, onHand: 14, committed: 2 });
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0].variables, { id: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4" });
+  assert.match(requests[0].query, /tracked/);
+  assert.match(requests[0].query, /isActive/);
+  assert.ok(!requests[0].query.includes("mutation"));
+});
+
+test("rejects untracked inventory, inactive locations, and incomplete quantities", async () => {
+  const payloads = [
+    { inventoryItem: { tracked: false, inventoryLevel: { location: { id: "gid://shopify/Location/4", name: "Store", isActive: true }, quantities: [] } } },
+    { inventoryItem: { tracked: true, inventoryLevel: { location: { id: "gid://shopify/Location/4", name: "Store", isActive: false }, quantities: [] } } },
+    { inventoryItem: { tracked: true, inventoryLevel: { location: { id: "gid://shopify/Location/4", name: "Store", isActive: true }, quantities: [{ name: "available", quantity: 1 }] } } }
+  ];
+  for (const payload of payloads) {
+    const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async () => response(payload)) as typeof fetch);
+    await assert.rejects(() => client.getStock("gid://shopify/InventoryItem/3", "gid://shopify/Location/4"));
+  }
+});
+
+test("preserves negative Shopify available quantity as an oversold observation", async () => {
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async () => response({ inventoryItem: { tracked: true,
+    inventoryLevel: { location: { id: "gid://shopify/Location/4", name: "Store", isActive: true }, quantities: [
+      { name: "available", quantity: -1 }, { name: "on_hand", quantity: 10 }, { name: "committed", quantity: 11 }
+    ] } } })) as typeof fetch);
+  assert.deepEqual(await client.getStock("gid://shopify/InventoryItem/3", "gid://shopify/Location/4"),
+    { locationId: "gid://shopify/Location/4", locationName: "Store", available: -1, onHand: 10, committed: 11 });
+});

@@ -262,6 +262,9 @@
               <div v-if="shopifyEditListing?.mode === 'linked'" class="text-body-2 mb-3">
                 <strong>{{ shopifyEditListing.productTitle }}</strong><span v-if="shopifyEditListing.variantTitle"> · {{ shopifyEditListing.variantTitle }}</span><span v-if="shopifyEditListing.sku"> · {{ shopifyEditListing.sku }}</span>
               </div>
+              <shopify-linked-stock v-if="showRenameLotModal && shopifyEditListing?.mode === 'linked' && shopifyConnectionStatus === 'connected'"
+                :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop + ':' + shopifyEditListing.variantId + ':' + shopifyEditListing.locationId"
+                :boxes-purchased="boxesPurchased" :packs-per-box="packsPerBox" :sales="sales" :load-stock="loadShopifyLinkedStock" :t="t" :language="preferredLanguage" :disabled="shopifyEditSaving" />
               <v-alert v-if="shopifyEditError && shopifyEditListingStatus !== 'error'" type="error" density="compact" variant="tonal" class="mt-2">{{ shopifyEditError }}</v-alert>
               <v-select v-model="renameLotWhatnotVertical" :disabled="shopifyEditSaving" :items="[
                 { title: t('configWhatnotVerticalUnclassified'), value: null },

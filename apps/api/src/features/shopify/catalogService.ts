@@ -12,6 +12,7 @@ export type ShopifyVariantPage = {
 export type ShopifyCatalogClient = {
   searchVariants(query: string, after?: string): Promise<ShopifyVariantPage>;
   getVariant(variantId: string): Promise<ShopifyVariant | null>;
+  getStock(inventoryItemId: string, locationId: string): Promise<{ locationId: string; locationName: string; available: number; onHand: number; committed: number }>;
 };
 
 /** Caller serializes link changes across the scope and holds the lot reconciliation lease. */

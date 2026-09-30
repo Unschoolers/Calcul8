@@ -177,6 +177,7 @@ export interface CommerceMethodState {
   renameCurrentLot(): Promise<void>;
   closeRenameLotModal(): void;
   refreshShopifyEditListing(): Promise<void>;
+  loadShopifyLinkedStock(): Promise<import("../../../shared/shopify-stock.ts").ShopifyStockObservation>;
   searchShopifyEditProducts(loadMore?: boolean): Promise<void>;
   onShopifyEditQueryChange(value: string): void;
   selectShopifyEditVariant(variantId: string): void;
@@ -542,6 +543,7 @@ export type LotConfigurationContext = Pick<
     | "initSalesChart"
     | "loadLot"
     | "refreshShopifyEditListing"
+    | "loadShopifyLinkedStock"
     | "loadSalesForLotId"
     | "loadSalesFromStorage"
     | "onSinglesPurchaseRowsChange"
@@ -698,6 +700,7 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "renameCurrentLot"
     | "closeRenameLotModal"
     | "refreshShopifyEditListing"
+    | "loadShopifyLinkedStock"
     | "searchShopifyEditProducts"
     | "onShopifyEditQueryChange"
     | "selectShopifyEditVariant"
