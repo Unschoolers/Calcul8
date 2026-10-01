@@ -1,4 +1,5 @@
 import type { Chart as ChartJS } from "chart.js";
+import type { ShopifyProductStatus as SharedShopifyProductStatus } from "../../shared/shopify-product-status";
 import type { WhatnotMappedSaleType, WhatnotImportDecisionKind, WhatnotReviewImportAction } from "../../shared/whatnot-import-contracts";
 export type { WhatnotMappedSaleType, WhatnotImportDecisionKind, WhatnotReviewImportAction } from "../../shared/whatnot-import-contracts";
 import type {
@@ -56,6 +57,7 @@ export type ShopifyVariantSearchResult = {
   sku: string;
   price: string;
   inventoryItemId: string;
+  productStatus?: SharedShopifyProductStatus;
   locations: Array<{ id: string; name: string; available: number | null }>;
 };
 export type ShopifyEditListing = {
@@ -64,6 +66,7 @@ export type ShopifyEditListing = {
   productId: string;
   variantId: string;
   productTitle?: string;
+  productStatus?: SharedShopifyProductStatus;
   variantTitle?: string;
   sku?: string;
   inventoryItemId?: string;

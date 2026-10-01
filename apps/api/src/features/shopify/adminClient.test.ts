@@ -186,6 +186,25 @@ test("resolves a selected variant using the connected shop and refuses malformed
   assert.equal(await client.getVariant("gid://shopify/ProductVariant/2"), null);
 });
 
+test("reads only recognized current product status with the provider variant", async () => {
+  const requests: { query: string }[] = [];
+  let status: unknown = "DRAFT";
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    const body = JSON.parse(String(init?.body)); requests.push(body);
+    return response({ productVariant: { id: "gid://shopify/ProductVariant/2", title: "Box", sku: "BL", price: "100",
+      product: { id: "gid://shopify/Product/1", title: "Bleach", status },
+      inventoryItem: { id: "gid://shopify/InventoryItem/3", tracked: true, inventoryLevels: { nodes: [
+        { location: { id: "gid://shopify/Location/4", name: "Store", isActive: true }, quantities: [{ name: "available", quantity: 17 }] }
+      ] } } } });
+  }) as typeof fetch);
+  assert.equal((await client.getVariant("gid://shopify/ProductVariant/2"))?.productStatus, "DRAFT");
+  status = "ACTIVE";
+  assert.equal((await client.getVariant("gid://shopify/ProductVariant/2"))?.productStatus, "ACTIVE");
+  status = "PUBLISHED";
+  assert.equal((await client.getVariant("gid://shopify/ProductVariant/2"))?.productStatus, undefined);
+  assert.equal(requests.every(request => request.query.includes("product { id title status }")), true);
+});
+
 test("observes tracked linked inventory quantities through one read-only inventory query", async () => {
   const requests: any[] = [];
   const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {

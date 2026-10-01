@@ -11,6 +11,8 @@ import { withShopifyLotLease } from "./lotLease";
 import { ensureShopifyOrderWebhooks } from "./webhookSubscription";
 import { parseBody, resolveShopifyScope, workspaceIdFrom } from "./requestHelpers";
 import type { ShopifyListing } from "./listingService";
+import { isShopifyProductStatus } from "../../shared/shopify-product-status";
+import { ShopifyErrorCode } from "../../shared/shopify-errors";
 
 function lotIdFrom(body: Record<string, unknown>): number {
   if (!Number.isSafeInteger(body.lotId) || Number(body.lotId) <= 0) throw new HttpError(400, "A valid lot ID is required");
@@ -45,7 +47,9 @@ export async function shopifyProductListing(request: HttpRequest, context: Invoc
       const connection = await getShopifyConnection(config, scope.partitionKey);
       const mapping = connection ? await createShopifyListingStore(config).get(scope.partitionKey, lotId) : null;
       if (!connection || !mapping || mapping.shop !== connection.shop) return jsonResponse(request, config, 200, { listing: null });
-      let listing = { ...mapping, mode: mapping.mode ?? "managed" };
+      const { productStatus: _storedProductStatus, ...mappingWithoutStoredStatus } = mapping as ShopifyListing & { productStatus?: unknown };
+      void _storedProductStatus;
+      let listing = { ...mappingWithoutStoredStatus, mode: mapping.mode ?? "managed" };
       if (mapping.variantId) {
         try {
           const client = createShopifyAdminClient(connection.shop, () => getShopifyAccessToken(config, scope.partitionKey, connection.shop));
@@ -54,13 +58,15 @@ export async function shopifyProductListing(request: HttpRequest, context: Invoc
               variant.variantId === mapping.variantId && (!mapping.inventoryItemId || variant.inventoryItemId === mapping.inventoryItemId)) {
             const location = variant.locations.find(item => item.id === mapping.locationId);
             listing = { ...listing, productTitle: variant.title, variantTitle: variant.variantTitle, sku: variant.sku,
-              ...(location ? { locationName: location.name } : {}) };
+              ...(location ? { locationName: location.name } : {}),
+              ...(mapping.inventoryItemId === variant.inventoryItemId && isShopifyProductStatus(variant.productStatus)
+                ? { productStatus: variant.productStatus } : {}) };
           }
         } catch { /* Keep the persisted IDs as a useful fallback when Shopify is unavailable. */ }
       }
       const currentConnection = await getShopifyConnection(config, scope.partitionKey);
       if (currentConnection?.shop !== connection.shop || (currentConnection.generation ?? 0) !== (connection.generation ?? 0)) {
-        throw new HttpError(409, "Shopify connection changed; refresh the dialog");
+        throw new HttpError(409, "Shopify connection changed; refresh the dialog", ShopifyErrorCode.CONNECTION_CHANGED);
       }
       return jsonResponse(request, config, 200, { listing });
     }

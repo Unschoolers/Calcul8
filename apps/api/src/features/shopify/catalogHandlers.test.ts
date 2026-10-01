@@ -11,6 +11,7 @@ vi.mock("./adminClient", () => ({ createShopifyAdminClient: () => ({ searchVaria
 vi.mock("./lotLease", () => ({ withShopifyLotLease: async (_cfg: unknown, _scope: unknown, _id: unknown, work: (guard: () => Promise<void>) => Promise<void>) => { await work(async () => {}); return true; } }));
 vi.mock("./webhookSubscription", () => ({ ensureShopifyOrderWebhooks: mocks.webhooks }));
 import { shopifyProductSearch, shopifyProductLink, shopifyProductListing } from "./catalogHandlers";
+import { ShopifyErrorCode } from "../../shared/shopify-errors";
 const request = (body: unknown) => ({ json: async () => body }) as HttpRequest;
 const context = {} as InvocationContext;
 beforeEach(() => {
@@ -72,6 +73,26 @@ test.each(["managed", "linked"] as const)("listing enriches persisted %s IDs wit
   expect(mocks.getVariant).toHaveBeenCalledWith("gid://shopify/ProductVariant/2");
 });
 
+test("listing exposes only a current valid provider status and drops stored status", async () => {
+  const persisted = { shop: "a.myshopify.com", lotId: 42, mode: "linked", productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4", productStatus: "DRAFT" };
+  mocks.get.mockResolvedValue(persisted);
+  mocks.getVariant.mockResolvedValueOnce({ productId: persisted.productId, variantId: persisted.variantId, inventoryItemId: persisted.inventoryItemId, title: "Bleach", variantTitle: "Box", sku: "BL", locations: [], productStatus: "ACTIVE" });
+  const result = await shopifyProductListing(request({ lotId: 42 }), context);
+  expect(result.jsonBody.listing.productStatus).toBe("ACTIVE");
+  expect(mocks.put).not.toHaveBeenCalled();
+});
+
+test("listing omits stale status on lookup failure, malformed provider status, or identity mismatch", async () => {
+  const persisted = { shop: "a.myshopify.com", lotId: 42, productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", inventoryItemId: "gid://shopify/InventoryItem/3", productStatus: "ACTIVE" };
+  mocks.get.mockResolvedValue(persisted);
+  mocks.getVariant.mockRejectedValueOnce(new Error("offline"));
+  expect((await shopifyProductListing(request({ lotId: 42 }), context)).jsonBody.listing).not.toHaveProperty("productStatus");
+  mocks.getVariant.mockResolvedValueOnce({ productId: persisted.productId, variantId: persisted.variantId, inventoryItemId: persisted.inventoryItemId, title: "Bleach", variantTitle: "Box", sku: "BL", locations: [], productStatus: "PUBLISHED" });
+  expect((await shopifyProductListing(request({ lotId: 42 }), context)).jsonBody.listing).not.toHaveProperty("productStatus");
+  mocks.getVariant.mockResolvedValueOnce({ productId: persisted.productId, variantId: persisted.variantId, inventoryItemId: "gid://shopify/InventoryItem/99", title: "Bleach", variantTitle: "Box", sku: "BL", locations: [], productStatus: "DRAFT" });
+  expect((await shopifyProductListing(request({ lotId: 42 }), context)).jsonBody.listing).not.toHaveProperty("productStatus");
+});
+
 test("listing retains identifier fallback when provider details are unavailable or mismatch", async () => {
   const persisted = { shop: "a.myshopify.com", lotId: 42, mode: "linked", productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", locationId: "gid://shopify/Location/4" };
   mocks.get.mockResolvedValue(persisted);
@@ -83,7 +104,7 @@ test("listing retains identifier fallback when provider details are unavailable 
 test("listing hides a mapping when the Shopify connection changes during detail lookup", async () => {
   mocks.get.mockResolvedValue({ shop: "a.myshopify.com", lotId: 42, productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2" });
   mocks.connection.mockResolvedValueOnce({ shop: "a.myshopify.com", generation: 1 }).mockResolvedValueOnce({ shop: "a.myshopify.com", generation: 2 });
-  await expect(shopifyProductListing(request({ lotId: 42 }), context)).rejects.toThrow(/connection changed/i);
+  await expect(shopifyProductListing(request({ lotId: 42 }), context)).rejects.toMatchObject({ code: ShopifyErrorCode.CONNECTION_CHANGED });
 });
 
 

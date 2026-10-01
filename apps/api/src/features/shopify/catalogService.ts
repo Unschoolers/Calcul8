@@ -1,9 +1,11 @@
 import { HttpError } from "../../lib/auth";
 import type { ShopifyListing, ShopifyListingStore } from "./listingService";
+import type { ShopifyProductStatus } from "../../shared/shopify-product-status";
 
 export type ShopifyVariant = {
   productId: string; variantId: string; title: string; variantTitle: string; sku: string; price: string;
   inventoryItemId: string; locations: { id: string; name: string; available: number }[];
+  productStatus?: ShopifyProductStatus;
 };
 export type ShopifyVariantPage = {
   variants: ShopifyVariant[]; matchedVariantCount: number; excludedVariantCount: number;

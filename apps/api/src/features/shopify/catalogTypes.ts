@@ -1,14 +1,15 @@
 import type { ShopifyVariant } from "./catalogService";
+import { isShopifyProductStatus } from "../../shared/shopify-product-status";
 
 type VariantNode = {
   id: string; title: string; sku: string | null; price: string;
-  product: { id: string; title: string };
+  product: { id: string; title: string; status?: unknown };
   inventoryItem: { id: string; tracked: boolean; inventoryLevels: { nodes: {
     location: { id: string; name: string; isActive: boolean }; quantities: { name: string; quantity: number }[];
   }[] } };
 };
 export type ShopifyVariantNode = VariantNode;
-export const variantFields = (locationLimit: 10 | 100 = 100): string => `id title sku price product { id title }
+export const variantFields = (locationLimit: 10 | 100 = 100): string => `id title sku price product { id title status }
   inventoryItem { id tracked inventoryLevels(first: ${locationLimit}) { nodes {
     location { id name isActive } quantities(names: ["available"]) { name quantity }
   } } }`;
@@ -24,5 +25,6 @@ export function normalizeShopifyVariant(node: VariantNode | null | undefined): S
   });
   if (!locations.length) return null;
   return { productId: node.product.id, variantId: node.id, title: node.product.title,
-    variantTitle: node.title, sku: node.sku ?? "", price: node.price, inventoryItemId: node.inventoryItem.id, locations };
+    variantTitle: node.title, sku: node.sku ?? "", price: node.price, inventoryItemId: node.inventoryItem.id, locations,
+    ...(isShopifyProductStatus(node.product.status) ? { productStatus: node.product.status } : {}) };
 }
