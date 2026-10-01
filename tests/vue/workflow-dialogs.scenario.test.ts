@@ -379,9 +379,11 @@ describe("workflow dialog scenarios", () => {
 test("SystemConfigurationDialog no longer owns lot SKU or Shopify controls", () => {
   const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
   const editTemplate = readFileSync("src/App.html", "utf8");
+  const pickerTemplate = readFileSync("src/components/windows/shopify/ShopifyProductPicker.vue", "utf8");
   expect(systemTemplate).not.toMatch(/configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);
   expect(editTemplate).toMatch(/v-model="renameLotExternalSku"/);
-  expect(editTemplate).toMatch(/configShopifyLinkTitle/);
+  expect(editTemplate).toMatch(/<shopify-product-picker[\s\S]*?:results="shopifyEditSearchResults"[\s\S]*?@query-change="onShopifyEditQueryChange"/);
+  expect(pickerTemplate).toMatch(/t\('configShopifyLinkTitle'\)/);
 });
 
 

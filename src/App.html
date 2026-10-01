@@ -238,27 +238,24 @@
                 {{ shopifyEditError }}
                 <v-btn class="app-touch-target" size="small" variant="text" @click="refreshShopifyEditListing">{{ t('configShopifyRetry') }}</v-btn>
               </div>
-              <section v-else-if="shopifyEditListingStatus === 'loaded' && !shopifyEditListing && shopifyConnectionStatus === 'connected' && currentLotType !== 'singles'" class="mt-3">
-                <div class="text-subtitle-2 mb-2">{{ t('configShopifyLinkTitle') }}</div>
-                <p class="text-caption text-medium-emphasis">{{ t('configShopifyLinkHint') }}</p>
-                <v-autocomplete
-                  :model-value="shopifyEditSelectedVariantId"
-                  :search="shopifyEditSearchQuery"
-                  :items="shopifyEditSearchResults.map((result) => ({ title: result.title + (result.variantTitle && result.variantTitle !== 'Default Title' ? ' · ' + result.variantTitle : '') + ' · ' + (result.sku || t('configShopifyNoSku')) + ' · ' + result.price, value: result.variantId }))"
-                  :label="t('configShopifySearchLabel')" :loading="shopifyEditLoading" :no-filter="true"
-                  :hide-no-data="!shopifyEditSearchCompleted" :no-data-text="t('configShopifyNoResults')"
-                  :disabled="shopifyEditListingStatus !== 'loaded' || !!shopifyEditListing || shopifyConnectionStatus !== 'connected' || shopifyEditSaving"
-                  variant="outlined" density="compact" clearable hide-details="auto"
-                  @update:search="onShopifyEditQueryChange"
-                  @update:model-value="selectShopifyEditVariant($event == null ? '' : String($event))">
-                </v-autocomplete>
-                <v-select v-if="shopifyEditSelectedVariantId && (shopifyEditSearchResults.find((result) => result.variantId === shopifyEditSelectedVariantId)?.locations.length ?? 0) > 1"
-                  :model-value="shopifyEditSelectedLocationId"
-                  :items="shopifyEditSearchResults.find((result) => result.variantId === shopifyEditSelectedVariantId)?.locations.map((location) => ({ title: location.name + ' · ' + (location.available ?? '—'), value: location.id })) ?? []"
-                  :label="t('configShopifyLocationLabel')" variant="outlined" density="compact" :disabled="shopifyEditSaving" @update:model-value="selectShopifyEditLocation(String($event))"></v-select>
-                <div v-if="shopifyEditSelectedVariantId" class="text-caption text-medium-emphasis">{{ t('configShopifyLinkSelectionHint') }}</div>
-                <v-btn v-if="shopifyEditSearchHasMore" class="app-touch-target" size="small" variant="text" :loading="shopifyEditLoading" :disabled="shopifyEditLoading" @click="searchShopifyEditProducts(true)">{{ t('configShopifyLoadMore') }}</v-btn>
-              </section>
+              <shopify-product-picker
+                v-else-if="shopifyEditListingStatus === 'loaded' && !shopifyEditListing && shopifyConnectionStatus === 'connected' && currentLotType !== 'singles'"
+                class="mt-3"
+                :query="shopifyEditSearchQuery"
+                :results="shopifyEditSearchResults"
+                :loading="shopifyEditLoading"
+                :completed="shopifyEditSearchCompleted"
+                :has-more="shopifyEditSearchHasMore"
+                :selected-variant-id="shopifyEditSelectedVariantId"
+                :selected-location-id="shopifyEditSelectedLocationId"
+                :error="shopifyEditError"
+                :disabled="shopifyEditSaving"
+                :t="t"
+                @query-change="onShopifyEditQueryChange"
+                @load-more="searchShopifyEditProducts(true)"
+                @confirm="(selection) => { selectShopifyEditVariant(selection.variantId); selectShopifyEditLocation(selection.locationId); }"
+                @cancel="(selection) => { onShopifyEditQueryChange(''); if (selection.product) { shopifyEditSearchResults = [selection.product]; shopifyEditSelectedVariantId = selection.variantId; shopifyEditSelectedLocationId = selection.locationId; } }">
+              </shopify-product-picker>
               <shopify-binding-details v-if="shopifyEditListing" :listing="shopifyEditListing" :t="t" />
               <shopify-linked-stock v-if="showRenameLotModal && shopifyEditListing?.mode === 'linked' && shopifyConnectionStatus === 'connected'"
                 :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop + ':' + shopifyEditListing.variantId + ':' + shopifyEditListing.locationId"

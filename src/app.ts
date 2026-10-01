@@ -25,6 +25,7 @@ import WhatnotReviewDialog from "./components/windows/whatnot/WhatnotReviewDialo
 import ShopifyConnectDialog from "./components/windows/shopify/ShopifyConnectDialog.vue";
 import ShopifyLinkedStock from "./components/windows/shopify/ShopifyLinkedStock.vue";
 import ShopifyBindingDetails from "./components/windows/shopify/ShopifyBindingDetails.vue";
+import ShopifyProductPicker from "./components/windows/shopify/ShopifyProductPicker.vue";
 import {
   buyerProfilePortsKey,
   createBuyerProfilePorts,
@@ -106,7 +107,8 @@ export const appOptions = {
     WhatnotReviewDialog,
     ShopifyConnectDialog,
     ShopifyLinkedStock,
-    ShopifyBindingDetails
+    ShopifyBindingDetails,
+    ShopifyProductPicker
   },
   data: createInitialState,
   provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds">) {
