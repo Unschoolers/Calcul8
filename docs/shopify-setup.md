@@ -2,6 +2,8 @@
 
 Shopify is optional and configured from **Integrations**. A workspace owner connects the store for a workspace; a personal scope uses its own connection. Use **Edit inventory** to search for an existing Shopify product by name or SKU, choose its variant and active inventory location, then Save to link it to a bulk lot. SKU is edited in the same dialog; System configuration contains pricing overrides only.
 
+**Edit inventory** shows the bound Shopify product, variant, SKU, inventory location, and an admin product link for both WhatFees-managed and externally linked listings. Names are read from Shopify when available; stored provider IDs remain visible if that read fails. Viewing these details does not change the binding or Shopify stock.
+
 The Shopify selector loads suggestions as you type at least two characters. Search input is treated as literal prefix terms, not Shopify filter syntax. If Shopify finds matching variants that cannot be linked because inventory tracking or an active location is missing, the selector explains that requirement.
 
 Search and selection are read-only. Saving a link stores the Shopify product, variant, inventory item, and location IDs. Shopify keeps ownership of the linked product: its title, options, price, SKU, publication status, and stock are never overwritten by WhatFees, including on lot edits or disconnect. The marketplace SKU field remains WhatFees metadata. This phase does not push WhatFees stock changes to linked products or import the full catalog automatically. Only tracked variants with an active stock location can be linked. A variant can belong to one lot per scope; changing or removing an existing link is deferred.

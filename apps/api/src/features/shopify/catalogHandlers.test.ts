@@ -64,3 +64,33 @@ test("listing marks legacy provider mappings as managed for the editor", async (
   const result = await shopifyProductListing(request({ lotId: 42 }), context);
   expect(result.jsonBody).toEqual({ listing: { shop: "a.myshopify.com", lotId: 42, productId: "p", mode: "managed" } });
 });
+
+test.each(["managed", "linked"] as const)("listing enriches persisted %s IDs with Shopify names and location", async mode => {
+  mocks.get.mockResolvedValue({ shop: "a.myshopify.com", lotId: 42, mode, productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4" });
+  const result = await shopifyProductListing(request({ lotId: 42 }), context);
+  expect(result.jsonBody).toEqual({ listing: expect.objectContaining({ mode, productTitle: "Bleach", variantTitle: "Box", sku: "BL", locationName: "Store" }) });
+  expect(mocks.getVariant).toHaveBeenCalledWith("gid://shopify/ProductVariant/2");
+});
+
+test("listing retains identifier fallback when provider details are unavailable or mismatch", async () => {
+  const persisted = { shop: "a.myshopify.com", lotId: 42, mode: "linked", productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", locationId: "gid://shopify/Location/4" };
+  mocks.get.mockResolvedValue(persisted);
+  mocks.getVariant.mockResolvedValueOnce(null).mockResolvedValueOnce({ productId: "gid://shopify/Product/other", variantId: persisted.variantId, inventoryItemId: "gid://shopify/InventoryItem/3", locations: [] });
+  expect((await shopifyProductListing(request({ lotId: 42 }), context)).jsonBody).toEqual({ listing: { ...persisted, mode: "linked" } });
+  expect((await shopifyProductListing(request({ lotId: 42 }), context)).jsonBody).toEqual({ listing: { ...persisted, mode: "linked" } });
+});
+
+test("listing hides a mapping when the Shopify connection changes during detail lookup", async () => {
+  mocks.get.mockResolvedValue({ shop: "a.myshopify.com", lotId: 42, productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2" });
+  mocks.connection.mockResolvedValueOnce({ shop: "a.myshopify.com", generation: 1 }).mockResolvedValueOnce({ shop: "a.myshopify.com", generation: 2 });
+  await expect(shopifyProductListing(request({ lotId: 42 }), context)).rejects.toThrow(/connection changed/i);
+});
+
+
+test("listing preserves the binding when Shopify lookup fails without writing to the store", async () => {
+  const persisted = { shop: "a.myshopify.com", lotId: 42, productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", locationId: "gid://shopify/Location/4" };
+  mocks.get.mockResolvedValue(persisted);
+  mocks.getVariant.mockRejectedValueOnce(new Error("Shopify unavailable"));
+  expect((await shopifyProductListing(request({ lotId: 42 }), context)).jsonBody).toEqual({ listing: { ...persisted, mode: "managed" } });
+  expect(mocks.put).not.toHaveBeenCalled();
+});

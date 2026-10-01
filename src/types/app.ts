@@ -60,6 +60,7 @@ export type ShopifyVariantSearchResult = {
 };
 export type ShopifyEditListing = {
   mode: "linked" | "managed";
+  shop?: string;
   productId: string;
   variantId: string;
   productTitle?: string;

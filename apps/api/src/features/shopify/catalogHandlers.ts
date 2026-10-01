@@ -44,7 +44,25 @@ export async function shopifyProductListing(request: HttpRequest, context: Invoc
       const lotId = lotIdFrom(body);
       const connection = await getShopifyConnection(config, scope.partitionKey);
       const mapping = connection ? await createShopifyListingStore(config).get(scope.partitionKey, lotId) : null;
-      return jsonResponse(request, config, 200, { listing: mapping?.shop === connection?.shop && mapping ? { ...mapping, mode: mapping.mode ?? "managed" } : null });
+      if (!connection || !mapping || mapping.shop !== connection.shop) return jsonResponse(request, config, 200, { listing: null });
+      let listing = { ...mapping, mode: mapping.mode ?? "managed" };
+      if (mapping.variantId) {
+        try {
+          const client = createShopifyAdminClient(connection.shop, () => getShopifyAccessToken(config, scope.partitionKey, connection.shop));
+          const variant = await client.getVariant(mapping.variantId);
+          if (variant?.productId === mapping.productId &&
+              variant.variantId === mapping.variantId && (!mapping.inventoryItemId || variant.inventoryItemId === mapping.inventoryItemId)) {
+            const location = variant.locations.find(item => item.id === mapping.locationId);
+            listing = { ...listing, productTitle: variant.title, variantTitle: variant.variantTitle, sku: variant.sku,
+              ...(location ? { locationName: location.name } : {}) };
+          }
+        } catch { /* Keep the persisted IDs as a useful fallback when Shopify is unavailable. */ }
+      }
+      const currentConnection = await getShopifyConnection(config, scope.partitionKey);
+      if (currentConnection?.shop !== connection.shop || (currentConnection.generation ?? 0) !== (connection.generation ?? 0)) {
+        throw new HttpError(409, "Shopify connection changed; refresh the dialog");
+      }
+      return jsonResponse(request, config, 200, { listing });
     }
   });
 }

@@ -259,9 +259,7 @@
                 <div v-if="shopifyEditSelectedVariantId" class="text-caption text-medium-emphasis">{{ t('configShopifyLinkSelectionHint') }}</div>
                 <v-btn v-if="shopifyEditSearchHasMore" class="app-touch-target" size="small" variant="text" :loading="shopifyEditLoading" :disabled="shopifyEditLoading" @click="searchShopifyEditProducts(true)">{{ t('configShopifyLoadMore') }}</v-btn>
               </section>
-              <div v-if="shopifyEditListing?.mode === 'linked'" class="text-body-2 mb-3">
-                <strong>{{ shopifyEditListing.productTitle }}</strong><span v-if="shopifyEditListing.variantTitle"> · {{ shopifyEditListing.variantTitle }}</span><span v-if="shopifyEditListing.sku"> · {{ shopifyEditListing.sku }}</span>
-              </div>
+              <shopify-binding-details v-if="shopifyEditListing" :listing="shopifyEditListing" :t="t" />
               <shopify-linked-stock v-if="showRenameLotModal && shopifyEditListing?.mode === 'linked' && shopifyConnectionStatus === 'connected'"
                 :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop + ':' + shopifyEditListing.variantId + ':' + shopifyEditListing.locationId"
                 :boxes-purchased="boxesPurchased" :packs-per-box="packsPerBox" :sales="sales" :load-stock="loadShopifyLinkedStock" :t="t" :language="preferredLanguage" :disabled="shopifyEditSaving" />
