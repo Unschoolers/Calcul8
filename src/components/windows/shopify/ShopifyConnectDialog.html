@@ -1,13 +1,18 @@
 <app-dialog-shell :model-value="showShopifyConnectDialog" :title="t('shellConnectShopify')"
-  :description="t('shellShopifyConnectHint')" :max-width="440"
-  @update:model-value="(value) => { if (!value) showShopifyConnectDialog = false; }">
+  :description="t('shellShopifyConnectHint')" :max-width="440" :persistent="shopifyConnectionStatus === 'connecting'"
+  @update:model-value="(value) => { if (!value && shopifyConnectionStatus !== 'connecting') showShopifyConnectDialog = false; }">
+  <v-alert v-if="shopifyConnectionStatus === 'error'" type="error" variant="tonal" class="mb-3" role="alert">
+    {{ t('shellShopifyError') }}
+    <v-btn variant="text" @click="refreshShopifyStatus">{{ t('shellShopifyRetry') }}</v-btn>
+  </v-alert>
   <v-text-field v-model="shopifyShopDraft" :label="t('shellShopifyDomainLabel')" placeholder="your-store.myshopify.com"
     variant="outlined" autocomplete="off" autocapitalize="off" spellcheck="false"
+    :disabled="shopifyConnectionStatus === 'connecting'"
     :rules="[(value) => /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i.test(String(value).trim()) || t('shellShopifyDomainInvalid')]"></v-text-field>
   <template #actions>
-    <v-btn @click="showShopifyConnectDialog = false">{{ t('shellShopifyCancel') }}</v-btn>
+    <v-btn :disabled="shopifyConnectionStatus === 'connecting'" @click="() => { if (shopifyConnectionStatus !== 'connecting') showShopifyConnectDialog = false; }">{{ t('shellShopifyCancel') }}</v-btn>
     <v-btn color="primary" :loading="shopifyConnectionStatus === 'connecting'"
-      :disabled="!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i.test(shopifyShopDraft.trim())"
+      :disabled="shopifyConnectionStatus === 'connecting' || !/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i.test(shopifyShopDraft.trim())"
       @click="connectShopify">{{ t('shellConnectShopify') }}</v-btn>
   </template>
 </app-dialog-shell>

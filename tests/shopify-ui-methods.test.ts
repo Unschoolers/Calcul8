@@ -124,3 +124,122 @@ it("does not redirect for a connect response after the signed-in account changes
     Object.defineProperty(globalThis, "window", { configurable: true, value: original });
   }
 });
+
+it("keeps a same-scope mutation pending when passive status refresh completes", async () => {
+  const app = context(); app.shopifyConnectionStatus = "connected";
+  const original = globalThis.window; Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  let finishMutation!: (value: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishMutation = resolve; }));
+  const connect = uiShopifyMethods.connectShopify.call(app as never);
+  expect(app.shopifyConnectionStatus).toBe("connecting");
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ configured: true, connected: false }), { status: 200 }));
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  expect(app.shopifyConnectionStatus).toBe("connecting");
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize" }), { status: 200 }));
+  finishMutation(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize" }), { status: 200 }));
+  await connect; Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+});
+
+it("deduplicates same-scope connect requests", async () => {
+  const app = context(); let finish!: (response: Response) => void;
+  const original = globalThis.window; Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve; }));
+  const first = uiShopifyMethods.connectShopify.call(app as never);
+  await uiShopifyMethods.connectShopify.call(app as never);
+  expect(fetchAuthenticatedApiResponse).toHaveBeenCalledTimes(1);
+  finish(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize" }), { status: 200 })); await first;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+});
+
+it("rejects a redirect to another Shopify store", async () => {
+  const app = context();
+  fetchAuthenticatedApiResponse.mockResolvedValue(new Response(JSON.stringify({ authorizeUrl: "https://attacker.myshopify.com/admin/oauth/authorize" }), { status: 200 }));
+  const original = globalThis.window; Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  try { await uiShopifyMethods.connectShopify.call(app as never); expect(window.location.assign).not.toHaveBeenCalled(); expect(app.shopifyConnectionStatus).toBe("error"); }
+  finally { Object.defineProperty(globalThis, "window", { configurable: true, value: original }); }
+});
+
+it("preserves same-scope connection details when a status retry fails", async () => {
+  const app = context(); app.shopifyConnectionStatus = "connected"; app.shopifyConnectionShop = "mine.myshopify.com"; app.shopifyLastSyncedAt = "then";
+  fetchAuthenticatedApiResponse.mockResolvedValue(new Response(null, { status: 503 }));
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  expect(app.shopifyConnectionStatus).toBe("error"); expect(app.shopifyConnectionShop).toBe("mine.myshopify.com"); expect(app.shopifyLastSyncedAt).toBe("then");
+});
+
+it("does not issue status reads during disconnect or let one reapply connected state afterward", async () => {
+  const app = context(); app.shopifyConnectionStatus = "connected"; app.shopifyConnectionShop = "mine.myshopify.com";
+  let finish!: (response: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finish = resolve; }));
+  const disconnect = uiShopifyMethods.disconnectShopify.call(app as never);
+  expect(app.shopifyConnectionStatus).toBe("connecting");
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  expect(fetchAuthenticatedApiResponse).toHaveBeenCalledTimes(1);
+  finish(new Response(null, { status: 200 })); await disconnect;
+  expect(app.shopifyConnectionStatus).toBe("disconnected");
+  expect(app.shopifyConnectionShop).toBeNull();
+});
+
+it("clears prior-scope shop details when the new-scope status read fails during an old connect", async () => {
+  const app = context(); app.shopifyConnectionStatus = "connected"; app.shopifyConnectionShop = "personal.myshopify.com"; app.shopifyLastSyncedAt = "old";
+  const original = globalThis.window; Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  let finishConnect!: (response: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishConnect = resolve; }));
+  const connect = uiShopifyMethods.connectShopify.call(app as never);
+  app.activeScopeType = "workspace"; app.activeWorkspaceId = "new-team";
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(null, { status: 503 }));
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  expect(app.shopifyConnectionShop).toBeNull(); expect(app.shopifyLastSyncedAt).toBeNull();
+  finishConnect(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize" }), { status: 200 })); await connect;
+  expect(app.shopifyConnectionShop).toBeNull();
+  Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+});
+
+it("invalidates a status read that began before connect and keeps a newer scope mutation locked", async () => {
+  const app = context(); const original = globalThis.window;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  let finishStatus!: (response: Response) => void; let finishOld!: (response: Response) => void; let finishNew!: (response: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishStatus = resolve; }));
+  const oldStatus = uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishOld = resolve; }));
+  const oldConnect = uiShopifyMethods.connectShopify.call(app as never);
+  app.activeScopeType = "workspace"; app.activeWorkspaceId = "team"; app.isCurrentWorkspaceOwner = true;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishNew = resolve; }));
+  const newConnect = uiShopifyMethods.connectShopify.call(app as never);
+  finishOld(new Response(null, { status: 503 })); await oldConnect;
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  expect(fetchAuthenticatedApiResponse).toHaveBeenCalledTimes(3);
+  finishStatus(new Response(JSON.stringify({ configured: true, connected: true, shop: "stale.myshopify.com" }), { status: 200 })); await oldStatus;
+  expect(app.shopifyConnectionStatus).toBe("connecting");
+  finishNew(new Response(null, { status: 503 })); await newConnect;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+});
+
+it("releases an abandoned scope lock so returning A after B can mutate again", async () => {
+  const app = context(); const original = globalThis.window;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  let finishA!: (response: Response) => void;
+  fetchAuthenticatedApiResponse.mockReturnValueOnce(new Promise<Response>(resolve => { finishA = resolve; }));
+  const operationA = uiShopifyMethods.disconnectShopify.call(app as never);
+  app.activeScopeType = "workspace"; app.activeWorkspaceId = "team";
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ configured: true, connected: false }), { status: 200 }));
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  finishA(new Response(null, { status: 503 })); await operationA;
+  app.activeScopeType = "personal"; app.activeWorkspaceId = null;
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ authorizeUrl: "https://mine.myshopify.com/admin/oauth/authorize" }), { status: 200 }));
+  await uiShopifyMethods.connectShopify.call(app as never);
+  expect(fetchAuthenticatedApiResponse).toHaveBeenCalledTimes(3);
+  expect(window.location.assign).toHaveBeenCalledOnce();
+  Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+});
+
+it.each(["connect", "disconnect"] as const)("clears prior-scope metadata before a failed new-scope %s", async operation => {
+  const app = context();
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ configured: true, connected: true, shop: "personal.myshopify.com", lastSyncedAt: "old", syncError: "old failure" }), { status: 200 }));
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  const original = globalThis.window; Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "https://app.example.com/", assign: vi.fn() } } });
+  app.activeScopeType = "workspace"; app.activeWorkspaceId = "team"; app.isCurrentWorkspaceOwner = true;
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(null, { status: 503 }));
+  await uiShopifyMethods[operation === "connect" ? "connectShopify" : "disconnectShopify"].call(app as never);
+  expect(app.shopifyConnectionShop).toBeNull(); expect(app.shopifyLastSyncedAt).toBeNull(); expect(app.shopifySyncError).toBeNull();
+  Object.defineProperty(globalThis, "window", { configurable: true, value: original });
+});

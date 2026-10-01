@@ -1,6 +1,6 @@
 import { fireEvent, screen } from "@testing-library/vue";
 import { defineComponent, Fragment, h, nextTick, provide, reactive } from "vue";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
 import AppShellTopBar from "../../src/components/shell/AppShellTopBar.vue";
 import SystemConfigurationDialog from "../../src/components/shell/SystemConfigurationDialog.vue";
@@ -97,4 +97,31 @@ test.each(["shellShopifyTitle", "shellConnectShopify"])("choosing %s opens the S
   expect(state.showShopifyConnectDialog).toBe(true);
   expect(await screen.findByRole("dialog", { name: "shellConnectShopify" })).toBeVisible();
   expect(screen.getByLabelText("shellShopifyDomainLabel")).toBeVisible();
+});
+
+test("Shopify connect dialog cannot be dismissed while its request is pending", async () => {
+  const state = Object.assign(createShellState(), { showShopifyConnectDialog: true, shopifyConnectionStatus: "connecting" as const });
+  const Harness = defineComponent({ setup() { provide(shellPortsKey, createShellPorts(state as never)); return () => h(ShopifyConnectDialog); } });
+  renderWithApp(Harness);
+  const cancel = screen.getByRole("button", { name: "shellShopifyCancel" });
+  expect(cancel).toBeDisabled();
+  expect(screen.getByLabelText("shellShopifyDomainLabel")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "shellConnectShopify" })).toBeDisabled();
+  await fireEvent.click(cancel);
+  expect(state.showShopifyConnectDialog).toBe(true);
+});
+
+test("Shopify connection errors keep the entered domain and offer manual status retry", async () => {
+  const refreshShopifyStatus = vi.fn();
+  const state = Object.assign(createShellState(), {
+    showShopifyConnectDialog: true, shopifyConnectionStatus: "error" as const,
+    shopifyShopDraft: "my-store.myshopify.com", refreshShopifyStatus
+  });
+  const Harness = defineComponent({ setup() { provide(shellPortsKey, createShellPorts(state as never)); return () => h(ShopifyConnectDialog); } });
+  renderWithApp(Harness);
+  expect(await screen.findByText("shellShopifyError")).toBeVisible();
+  expect(screen.getByLabelText("shellShopifyDomainLabel")).toHaveValue("my-store.myshopify.com");
+  await fireEvent.click(screen.getByRole("button", { name: "shellShopifyRetry" }));
+  expect(refreshShopifyStatus).toHaveBeenCalledOnce();
+  expect(state.shopifyShopDraft).toBe("my-store.myshopify.com");
 });

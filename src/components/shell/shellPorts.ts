@@ -29,7 +29,7 @@ const shellPortKeys = [
   "askConfirmation", "startGuidedOnboarding", "dismissGuidedOnboarding", "promptInstall", "debugLogEntitlement",
   "switchToPersonalWorkspace", "switchToWorkspace", "openWorkspaceMembersModal", "recoverWorkspaceRealtimeNow",
   "getWorkspaceMemberPresenceState", "getWorkspaceMemberPresenceLabel", "connectWhatnot", "disconnectWhatnot",
-  "openShopifyConnectDialog", "connectShopify", "disconnectShopify",
+  "openShopifyConnectDialog", "connectShopify", "disconnectShopify", "refreshShopifyStatus",
   "syncWhatnotSales", "openWhatnotCsvImportDialog", "openWhatnotReviewDialog", "clearPersonalAccountData",
   "logoutCurrentSession", "promptGoogleSignIn", "selectLot", "openRenameLotModal"
 ] as const;
