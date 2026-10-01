@@ -508,6 +508,7 @@ export type LotConfigurationContext = Pick<
   | "shopifyEditLoading"
   | "shopifyEditSaving"
   | "shopifyEditError"
+  | "shopifyEditRecovery"
   | "shopifyEditRequestRevision"
   | "shopifyEditListingStatus"
   | "shopifyEditSessionAuthEpoch"

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { configLotMethods } from "../src/app-core/methods/config-lots.ts";
 import { configLotEditMethods } from "../src/app-core/methods/config-lot-edit.ts";
 import type { ShopifyDraftPreview } from "../src/domain/shopify-draft.ts";
+import { ShopifyErrorCode, ShopifyUiError, shopifyUiErrorRecovery } from "../src/domain/shopify-ui-error.ts";
+import frConfig from "../src/app-core/i18n/locales/fr/config.json";
 import { makeLot } from "./helpers/fixtures.ts";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
@@ -24,7 +26,7 @@ function context() {
     renameLotName: "", renameLotWhatnotVertical: lot.whatnotVertical ?? null, renameLotExternalSku: "", renameLotShopifyEnabled: false,
     shopifyEditListing: null, shopifyEditSearchQuery: "", shopifyEditSearchResults: [], shopifyEditSearchCursor: null,
     shopifyEditSearchHasMore: false, shopifyEditSearchCompleted: false, shopifyEditSelectedVariantId: null,
-    shopifyEditSelectedLocationId: null, shopifyEditLoading: false, shopifyEditSaving: false, shopifyEditError: null,
+    shopifyEditSelectedLocationId: null, shopifyEditLoading: false, shopifyEditSaving: false, shopifyEditError: null, shopifyEditRecovery: "none" as const,
     shopifyEditRequestRevision: 0, shopifyEditListingStatus: "idle" as const, shopifyEditSessionAuthEpoch: null,
     shopifyEditSessionScope: "", shopifyEditSessionLotId: null,
     externalSku: "OLD", shopifyEnabled: false, whatnotVertical: lot.whatnotVertical ?? null,
@@ -95,7 +97,7 @@ test("link failure keeps lot metadata unchanged and leaves Edit Lot open", async
   assert.equal(lot.name, "Old title");
   assert.equal(lot.externalSku, "OLD");
   assert.equal(ctx.showRenameLotModal, true);
-  assert.equal(ctx.shopifyEditError, "Variant already linked");
+  assert.equal(ctx.shopifyEditError, "configShopifyConflictError");
 });
 
 test("cancel discards SKU draft without calling the link endpoint", () => {
@@ -332,6 +334,41 @@ test("saved legacy lot name and SKU whitespace still permit an authoritative dra
   assert.equal(lot.name, "Old title");
   assert.equal(lot.externalSku, "OLD");
 });
+
+test("French API error is safe and recoverable, stale fields are typed, and retry clears recovery", async () => {
+  const { ctx } = context();
+  ctx.t = key => String((frConfig as Record<string, unknown>)[key] ?? key);
+  apiCall.mockImplementation(async (_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null })
+    : path.endsWith("/create-preview") ? response({ preview: draftPreview })
+      : response({ code: ShopifyErrorCode.PRICE_REQUIRED, error: "provider token=secret" }, 400));
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
+  await assert.rejects(configLotEditMethods.createShopifyDraft.call(ctx as never, "gid://shopify/Location/7", "b".repeat(64)));
+  assert.equal(ctx.shopifyEditError, "Ajoutez un prix de vente positif à ce lot.");
+  assert.equal(ctx.shopifyEditRecovery, "none");
+  assert.doesNotMatch(ctx.shopifyEditError, /secret|token=/);
+
+  ctx.renameLotExternalSku = "unsaved";
+  await assert.rejects(configLotEditMethods.loadShopifyDraftPreview.call(ctx as never), (error: unknown) => {
+    assert.ok(error instanceof ShopifyUiError);
+    assert.equal(shopifyUiErrorRecovery(error), "refresh");
+    return true;
+  });
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : response({ preview: draftPreview }));
+  ctx.renameLotExternalSku = "OLD";
+  ctx.shopifyEditError = "stale";
+  ctx.shopifyEditRecovery = "retry";
+  await configShopifyRetry(ctx);
+  assert.equal(ctx.shopifyEditError, null);
+  assert.equal(ctx.shopifyEditRecovery, "none");
+});
+
+async function configShopifyRetry(ctx: ReturnType<typeof context>["ctx"]): Promise<void> {
+  await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
+}
 
 test.each([
   ["scope", (ctx: ReturnType<typeof context>["ctx"]) => { ctx.activeScopeType = "workspace"; ctx.activeWorkspaceId = "workspace-2"; }],

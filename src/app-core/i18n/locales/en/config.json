@@ -167,5 +167,17 @@
   "configShopifyStockStaleRequest": "The inventory or Shopify connection changed. Reopen the editor to refresh stock.",
   "configShopifyStockStale": "The last observation is shown; stock could not be refreshed.",
   "configShopifyStaleLotError": "The selected lot or workspace changed. Reopen Edit Lot before saving.",
-  "configShopifyRetry": "Retry"
+  "configShopifyRetry": "Retry",
+  "configShopifyErrorPreviewStale": "The preview changed. Refresh it before continuing.",
+  "configShopifyErrorPriceRequired": "Add a positive selling price to this lot.",
+  "configShopifyErrorCurrencyMismatch": "The lot currency must match the Shopify store currency.",
+  "configShopifyErrorInventoryInvalid": "Lot inventory is invalid. Review box counts and sales.",
+  "configShopifyErrorLocationRequired": "Choose an active Shopify inventory location.",
+  "configShopifyErrorLotUnavailable": "Sync this lot and its pricing before continuing.",
+  "configShopifyErrorAlreadyLinked": "This lot already has a Shopify product link.",
+  "configShopifyErrorConnectionChanged": "The Shopify connection changed. Refresh and try again.",
+  "configShopifyErrorUnauthorized": "Reconnect Shopify, then try again.",
+  "configShopifyErrorRateLimited": "Shopify is receiving too many requests. Try again shortly.",
+  "configShopifyErrorUnavailable": "Shopify is temporarily unavailable. Try again shortly.",
+  "configShopifyErrorForbidden": "You do not have permission to manage this Shopify connection."
 }

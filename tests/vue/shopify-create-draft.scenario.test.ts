@@ -37,6 +37,7 @@ const t = (key: string) => ({
   shopifyDraftLoading: "Loading authoritative preview…",
   shopifyDraftLoadError: "Could not load preview.",
   shopifyDraftCreateError: "Could not create the draft.",
+  configShopifyDraftInvalidResponse: "Invalid Shopify draft preview",
   configShopifyPickerOpen: "Link existing product",
   commonClose: "Close",
   shopifyDraftRefreshPreview: "Refresh preview"
@@ -121,7 +122,7 @@ test("keeps the preview after create error and reloads it when retrying preview"
   await fireEvent.click(screen.getByRole("option", { name: "Main Warehouse" }));
   await fireEvent.click(screen.getByRole("button", { name: "Create draft and link" }));
 
-  expect(await screen.findByText("stale preview")).toBeTruthy();
+  expect(await screen.findByText("Could not create the draft.")).toBeTruthy();
   expect(screen.getByText("Dragon Shield Matte Sleeves")).toBeTruthy();
   await fireEvent.click(screen.getByRole("button", { name: "Refresh preview" }));
   await waitFor(() => expect(loadPreview).toHaveBeenCalledTimes(2));

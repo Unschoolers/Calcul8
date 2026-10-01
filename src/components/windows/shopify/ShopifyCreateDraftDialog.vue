@@ -2,6 +2,7 @@
 import { defineComponent, type PropType } from "vue";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
 import { isShopifyDraftPreview, type ShopifyDraftPreview } from "../../../domain/shopify-draft.ts";
+import { shopifyUiErrorMessage, shopifyUiErrorRecovery, ShopifyUiError, type Recovery } from "../../../domain/shopify-ui-error.ts";
 
 export default defineComponent({
   name: "ShopifyCreateDraftDialog",
@@ -20,6 +21,7 @@ export default defineComponent({
     isCreating: boolean;
     error: "preview" | "create" | null;
     errorMessage: string;
+    errorRecovery: Recovery;
     requestRevision: number;
   } {
     return {
@@ -29,6 +31,7 @@ export default defineComponent({
       isCreating: false,
       error: null,
       errorMessage: "",
+      errorRecovery: "none",
       requestRevision: 0
     };
   },
@@ -58,6 +61,7 @@ export default defineComponent({
           this.preview = null;
           this.selectedLocationId = "";
           this.error = null;
+          this.errorRecovery = "none";
           this.isLoadingPreview = false;
         }
       }
@@ -77,17 +81,19 @@ export default defineComponent({
       this.selectedLocationId = "";
       this.error = null;
       this.errorMessage = "";
+      this.errorRecovery = "none";
       this.isLoadingPreview = true;
       try {
         const response = await this.loadPreview();
         if (revision !== this.requestRevision || !this.modelValue) return;
-        if (!isShopifyDraftPreview(response)) throw new Error("Invalid Shopify draft preview");
+        if (!isShopifyDraftPreview(response)) throw new ShopifyUiError(null, "refresh", "configShopifyDraftInvalidResponse");
         this.preview = response;
         if (response.locations.length === 1) this.selectedLocationId = response.locations[0].id;
       } catch (error) {
         if (revision === this.requestRevision && this.modelValue) {
           this.error = "preview";
-          this.errorMessage = error instanceof Error && error.message ? error.message : this.t("shopifyDraftLoadError");
+          this.errorMessage = shopifyUiErrorMessage(error, this.t, "shopifyDraftLoadError");
+          this.errorRecovery = shopifyUiErrorRecovery(error);
         }
       } finally {
         if (revision === this.requestRevision) this.isLoadingPreview = false;
@@ -100,6 +106,7 @@ export default defineComponent({
       const previewToken = this.preview.previewToken;
       this.error = null;
       this.errorMessage = "";
+      this.errorRecovery = "none";
       this.isCreating = true;
       try {
         await this.createDraft(selectedLocationId, previewToken);
@@ -107,7 +114,8 @@ export default defineComponent({
       } catch (error) {
         if (revision === this.requestRevision && this.modelValue) {
           this.error = "create";
-          this.errorMessage = error instanceof Error && error.message ? error.message : this.t("shopifyDraftCreateError");
+          this.errorMessage = shopifyUiErrorMessage(error, this.t, "shopifyDraftCreateError");
+          this.errorRecovery = shopifyUiErrorRecovery(error);
         }
       } finally {
         this.isCreating = false;

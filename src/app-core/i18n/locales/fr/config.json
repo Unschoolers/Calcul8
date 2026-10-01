@@ -167,5 +167,17 @@
   "configShopifyStockStaleRequest": "L’inventaire ou la connexion Shopify a changé. Rouvrez l’éditeur pour actualiser le stock.",
   "configShopifyStockStale": "Le dernier relevé est affiché ; le stock n’a pas pu être actualisé.",
   "configShopifyStaleLotError": "Le lot ou l’espace de travail sélectionné a changé. Rouvrez Modifier le lot avant d’enregistrer.",
-  "configShopifyRetry": "Réessayer"
+  "configShopifyRetry": "Réessayer",
+  "configShopifyErrorPreviewStale": "L’aperçu a changé. Actualisez-le avant de continuer.",
+  "configShopifyErrorPriceRequired": "Ajoutez un prix de vente positif à ce lot.",
+  "configShopifyErrorCurrencyMismatch": "La devise du lot doit correspondre à celle de la boutique Shopify.",
+  "configShopifyErrorInventoryInvalid": "Le stock du lot est invalide. Vérifiez les boîtes et les ventes.",
+  "configShopifyErrorLocationRequired": "Choisissez un emplacement de stock Shopify actif.",
+  "configShopifyErrorLotUnavailable": "Synchronisez ce lot et son prix avant de continuer.",
+  "configShopifyErrorAlreadyLinked": "Ce lot possède déjà un lien vers un produit Shopify.",
+  "configShopifyErrorConnectionChanged": "La connexion Shopify a changé. Actualisez et réessayez.",
+  "configShopifyErrorUnauthorized": "Reconnectez Shopify, puis réessayez.",
+  "configShopifyErrorRateLimited": "Shopify reçoit trop de requêtes. Réessayez bientôt.",
+  "configShopifyErrorUnavailable": "Shopify est temporairement indisponible. Réessayez bientôt.",
+  "configShopifyErrorForbidden": "Vous n’avez pas l’autorisation de gérer cette connexion Shopify."
 }

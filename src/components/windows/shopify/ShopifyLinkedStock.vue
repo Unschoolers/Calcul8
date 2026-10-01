@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { ShopifyStockObservation } from "../../../../shared/shopify-stock.ts";
 import { calculateSealedBoxInventory } from "../../../domain/box-inventory.ts";
+import { shopifyUiErrorMessage } from "../../../domain/shopify-ui-error.ts";
 
 const props = defineProps<{
   boxesPurchased: number;
@@ -29,7 +30,7 @@ async function refresh(): Promise<void> {
     const next = await props.loadStock();
     if (revision === requestRevision) observation.value = next;
   } catch (failure) {
-    if (revision === requestRevision) error.value = failure instanceof Error ? failure.message : props.t("configShopifyStockRefreshError");
+    if (revision === requestRevision) error.value = shopifyUiErrorMessage(failure, props.t, "configShopifyStockRefreshError");
   } finally {
     if (revision === requestRevision) loading.value = false;
   }

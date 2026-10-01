@@ -725,6 +725,7 @@ export interface AppState extends LotSetup {
   shopifyEditLoading: boolean;
   shopifyEditSaving: boolean;
   shopifyEditError: string | null;
+  shopifyEditRecovery: "retry" | "refresh" | "reconnect" | "none";
   shopifyEditRequestRevision: number;
   shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error";
   shopifyEditSessionAuthEpoch: number | null;

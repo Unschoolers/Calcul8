@@ -7,6 +7,7 @@ import { isSinglesLot } from "../shared/lot-types.ts";
 import { validateRenameLotName } from "./config-lot-crud.ts";
 import { fetchAuthenticatedApiResponse } from "./ui/common/api-client.ts";
 import { queueCloudConfigSyncPush, queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
+import { ShopifyErrorCode, ShopifyUiError, shopifyResponseUiError, shopifyUiErrorMessage, shopifyUiErrorRecovery, shopifySavedLotFieldsMatch } from "../../domain/shopify-ui-error.ts";
 
 const shopifyEditSearchTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
 
@@ -38,7 +39,7 @@ function shopifyEditSessionIsCurrent(context: ShopifyEditRequestContext): boolea
     context.shopifyEditSessionScope === JSON.stringify(shopifyEditScopeBody(context)) &&
     context.shopifyEditSessionLotId === context.currentLotId;
 }
-function closeShopifyEditState(context: { shopifyEditRequestRevision: number; shopifyEditLoading: boolean; shopifyEditSaving: boolean; shopifyEditSearchResults: ShopifyVariantSearchResult[]; shopifyEditSearchCompleted: boolean; shopifyEditSelectedVariantId: string | null; shopifyEditSelectedLocationId: string | null; shopifyEditError: string | null; shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error"; showRenameLotModal: boolean }): void {
+function closeShopifyEditState(context: { shopifyEditRequestRevision: number; shopifyEditLoading: boolean; shopifyEditSaving: boolean; shopifyEditSearchResults: ShopifyVariantSearchResult[]; shopifyEditSearchCompleted: boolean; shopifyEditSelectedVariantId: string | null; shopifyEditSelectedLocationId: string | null; shopifyEditError: string | null; shopifyEditRecovery: "retry" | "refresh" | "reconnect" | "none"; shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error"; showRenameLotModal: boolean }): void {
   context.shopifyEditRequestRevision += 1;
   context.shopifyEditLoading = false;
   context.shopifyEditSaving = false;
@@ -47,20 +48,11 @@ function closeShopifyEditState(context: { shopifyEditRequestRevision: number; sh
   context.shopifyEditSelectedVariantId = null;
   context.shopifyEditSelectedLocationId = null;
   context.shopifyEditError = null;
+  context.shopifyEditRecovery = "none";
   context.shopifyEditListingStatus = "idle";
   context.showRenameLotModal = false;
 }
-function shopifyEditErrorText(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-async function shopifyResponseError(response: Response, conflict: string, fallback: string): Promise<string> {
-  try {
-    const body = await response.json() as { error?: unknown; message?: unknown };
-    const message = typeof body.error === "string" ? body.error : typeof body.message === "string" ? body.message : "";
-    if (message) return message;
-  } catch { /* Use the localized fallback when the error response has no JSON detail. */ }
-  return response.status === 409 ? conflict : fallback;
-}
+function shopifyEditErrorText(error: unknown, t: (key: string) => string, fallback: string): string { return shopifyUiErrorMessage(error, t, fallback); }
 
 type ShopifyDraftEligibilityContext = ShopifyEditRequestContext & {
   activeScopeType: string;
@@ -82,17 +74,22 @@ function canCreateShopifyDraft(context: ShopifyDraftEligibilityContext): boolean
     !context.isOffline && !context.shopifyEditSaving && context.showRenameLotModal &&
     context.shopifyEditListingStatus === "loaded" && !context.shopifyEditListing && shopifyEditSessionIsCurrent(context) &&
     (context.activeScopeType !== "workspace" || (context.activeWorkspaceId && context.isCurrentWorkspaceOwner)) &&
-    context.renameLotName.trim() === lot.name.trim() && context.renameLotExternalSku.trim() === String(lot.externalSku ?? "").trim());
+    shopifySavedLotFieldsMatch({ name: lot.name, externalSku: lot.externalSku }, { name: context.renameLotName, externalSku: context.renameLotExternalSku }));
 }
 
 
 export const configLotEditMethods = {
   async loadShopifyDraftPreview(): Promise<ShopifyDraftPreview> {
-    if (!canCreateShopifyDraft(this)) throw new Error(this.t("configShopifyDraftNotAvailable"));
+    const savedLot = this.lots.find(candidate => candidate.id === this.currentLotId);
+    if (savedLot && this.currentLotType === "bulk" && !shopifySavedLotFieldsMatch({ name: savedLot.name, externalSku: savedLot.externalSku }, { name: this.renameLotName, externalSku: this.renameLotExternalSku })) {
+      throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
+    }
+    if (!canCreateShopifyDraft(this)) throw new ShopifyUiError(ShopifyErrorCode.LOT_UNAVAILABLE, "none", "configShopifyErrorLotUnavailable");
     cancelShopifyEditSearchTimer(this);
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditLoading = false;
     this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
@@ -100,10 +97,10 @@ export const configLotEditMethods = {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: captured.lotId })
       });
-      if (!shopifyEditRequestIsCurrent(this, captured)) throw new Error(this.t("configShopifyDraftStalePreview"));
-      if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyDraftStalePreview"), this.t("configShopifyDraftPreviewError")));
+      if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
+      if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyDraftPreviewError", "configShopifyDraftStalePreview");
       const payload = await response.json() as { preview?: unknown };
-      if (!shopifyEditRequestIsCurrent(this, captured)) throw new Error(this.t("configShopifyDraftStalePreview"));
+      if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
       if (!isShopifyDraftPreview(payload.preview)) throw new Error(this.t("configShopifyDraftPreviewError"));
       return payload.preview;
     } finally {
@@ -114,12 +111,13 @@ export const configLotEditMethods = {
   async createShopifyDraft(locationId: string, previewToken: string): Promise<void> {
     if (this.shopifyEditSaving) return;
     if (!canCreateShopifyDraft(this) || !/^gid:\/\/shopify\/Location\/\d+$/.test(locationId) || !/^[a-f0-9]{64}$/.test(previewToken)) {
-      throw new Error(this.t("configShopifyDraftStalePreview"));
+      throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
     }
     cancelShopifyEditSearchTimer(this);
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditLoading = false;
     this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
     this.shopifyEditSaving = true;
     const lotId = this.currentLotId;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId,
@@ -129,11 +127,11 @@ export const configLotEditMethods = {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId, locationId, previewToken })
       });
-      if (!shopifyEditRequestIsCurrent(this, captured)) throw new Error(this.t("configShopifyDraftStalePreview"));
-      if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyDraftStalePreview"), this.t("configShopifyDraftCreateError")));
+      if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
+      if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyDraftCreateError", "configShopifyDraftStalePreview");
       const payload = await response.json() as { listing?: ShopifyEditListing };
       const listing = payload.listing;
-      if (!shopifyEditRequestIsCurrent(this, captured) || this.shopifyEditListing) throw new Error(this.t("configShopifyDraftStalePreview"));
+      if (!shopifyEditRequestIsCurrent(this, captured) || this.shopifyEditListing) throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
       if (listing?.mode !== "linked" || listing.shop !== captured.shop || listing.locationId !== locationId ||
         !/^gid:\/\/shopify\/Product\/\d+$/.test(listing.productId) ||
         !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(listing.variantId) ||
@@ -150,7 +148,7 @@ export const configLotEditMethods = {
       this.shopifyEditSearchHasMore = false;
       this.shopifyEditSearchCompleted = false;
     } catch (error) {
-      if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifyDraftCreateError"));
+      if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyUiErrorMessage(error, this.t, "configShopifyDraftCreateError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); }
       throw error;
     } finally {
       if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditSaving = false;
@@ -160,7 +158,7 @@ export const configLotEditMethods = {
   async loadShopifyLinkedStock(): Promise<ShopifyStockObservation> {
     const listing = this.shopifyEditListing;
     if (!this.showRenameLotModal || !shopifyEditSessionIsCurrent(this) || this.shopifyConnectionStatus !== "connected" || listing?.mode !== "linked") {
-      throw new Error(this.t("configShopifyStockStaleRequest"));
+      throw new ShopifyUiError(ShopifyErrorCode.CONNECTION_CHANGED, "refresh", "configShopifyErrorConnectionChanged");
     }
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
@@ -169,11 +167,11 @@ export const configLotEditMethods = {
       body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId })
     });
     if (!shopifyEditRequestIsCurrent(this, captured) || this.shopifyEditListing?.variantId !== listing.variantId || this.shopifyEditListing.locationId !== listing.locationId) {
-      throw new Error(this.t("configShopifyStockStaleRequest"));
+      throw new ShopifyUiError(ShopifyErrorCode.CONNECTION_CHANGED, "refresh", "configShopifyErrorConnectionChanged");
     }
-    if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyStockRefreshError"), this.t("configShopifyStockRefreshError")));
+    if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyStockRefreshError");
     const payload = await response.json() as { observation?: unknown };
-    if (!shopifyEditRequestIsCurrent(this, captured)) throw new Error(this.t("configShopifyStockStaleRequest"));
+    if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(ShopifyErrorCode.CONNECTION_CHANGED, "refresh", "configShopifyErrorConnectionChanged");
     if (!isShopifyStockObservation(payload.observation) || payload.observation.shop !== captured.shop || payload.observation.variantId !== listing.variantId ||
       payload.observation.inventoryItemId !== listing.inventoryItemId || payload.observation.locationId !== listing.locationId) {
       throw new Error(this.t("configShopifyStockRefreshError"));
@@ -201,6 +199,7 @@ export const configLotEditMethods = {
     this.shopifyEditSelectedVariantId = null;
     this.shopifyEditSelectedLocationId = null;
     this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditSessionAuthEpoch = this.googleAuthEpoch;
     this.shopifyEditSessionScope = JSON.stringify(shopifyEditScopeBody(this));
@@ -217,6 +216,7 @@ export const configLotEditMethods = {
       !shopifyEditSessionIsCurrent(this) || this.currentLotType === "singles") return;
     this.shopifyEditListingStatus = "loading";
     this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
     this.shopifyEditRequestRevision += 1;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
@@ -224,7 +224,7 @@ export const configLotEditMethods = {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId })
       });
-      if (!response.ok) throw new Error(this.t("configShopifyListingLoadError"));
+      if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyListingLoadError");
       const payload = await response.json() as { listing?: ShopifyEditListing | null };
       if (shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditListing = payload.listing ?? null;
@@ -233,12 +233,12 @@ export const configLotEditMethods = {
     } catch (error) {
       if (shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditListingStatus = "error";
-        this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifyListingLoadError"));
+        this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyListingLoadError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error);
       }
     } finally {
       if (shopifyEditRequestIsOwned(this, captured) && !shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditListingStatus = "error";
-        this.shopifyEditError = this.t("configShopifyListingLoadError");
+        this.shopifyEditError = this.t("configShopifyErrorConnectionChanged"); this.shopifyEditRecovery = "refresh";
       }
     }
   },
@@ -254,6 +254,7 @@ export const configLotEditMethods = {
     cancelShopifyEditSearchTimer(this);
     this.shopifyEditSearchQuery = value;
     this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditLoading = false;
     this.shopifyEditSearchResults = [];
@@ -310,6 +311,7 @@ export const configLotEditMethods = {
       this.shopifyEditSelectedLocationId = null;
     }
     this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
     this.shopifyEditLoading = true;
     this.shopifyEditRequestRevision += 1;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
@@ -318,7 +320,7 @@ export const configLotEditMethods = {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), query, ...(loadMore && this.shopifyEditSearchCursor ? { after: this.shopifyEditSearchCursor } : {}) })
       });
-      if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyConflictError"), this.t("configShopifySearchError")));
+      if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifySearchError");
       const page = await response.json() as { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
       if (!shopifyEditRequestIsCurrent(this, captured)) return;
       this.shopifyEditSearchResults = loadMore ? [...this.shopifyEditSearchResults, ...page.variants] : page.variants;
@@ -327,9 +329,10 @@ export const configLotEditMethods = {
       this.shopifyEditSearchCompleted = true;
       if (!this.shopifyEditSearchResults.length && (page.matchedVariantCount ?? 0) > 0 && page.excludedVariantCount === page.matchedVariantCount) {
         this.shopifyEditError = this.t("configShopifyNoEligibleResults");
+        this.shopifyEditRecovery = "none";
       }
     } catch (error) {
-      if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifySearchError"));
+      if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifySearchError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); }
     } finally {
       if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditLoading = false;
     }
@@ -338,7 +341,7 @@ export const configLotEditMethods = {
   async renameCurrentLot(): Promise<void> {
     if (this.shopifyEditSaving) return;
     if (this.shopifyEditSessionLotId != null && (!this.showRenameLotModal || !shopifyEditSessionIsCurrent(this))) {
-      this.shopifyEditError = this.t("configShopifyStaleLotError");
+      this.shopifyEditError = this.t("configShopifyErrorLotUnavailable"); this.shopifyEditRecovery = "refresh";
       return;
     }
     if (!this.currentLotId) {
@@ -360,17 +363,18 @@ export const configLotEditMethods = {
     const publishChanged = (lot.shopifyEnabled === true) !== nextShopifyEnabled;
     if (this.shopifyEditSelectedVariantId) {
       if (this.shopifyEditListingStatus !== "loaded" || this.shopifyEditListing) {
-        this.shopifyEditError = this.t("configShopifyListingLoadError");
+        this.shopifyEditError = this.t("configShopifyListingLoadError"); this.shopifyEditRecovery = "retry";
         return;
       }
       const selected = this.shopifyEditSearchResults.find((item) => item.variantId === this.shopifyEditSelectedVariantId);
       const locationId = this.shopifyEditSelectedLocationId;
       if (!selected || !locationId || !selected.locations.some((location) => location.id === locationId)) {
-        this.shopifyEditError = this.t("configShopifyChooseLocation");
+        this.shopifyEditError = this.t("configShopifyErrorLocationRequired"); this.shopifyEditRecovery = "refresh";
         return;
       }
       this.shopifyEditSaving = true;
       this.shopifyEditError = null;
+      this.shopifyEditRecovery = "none";
       this.shopifyEditRequestRevision += 1;
       const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: lot.id, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
       try {
@@ -378,12 +382,12 @@ export const configLotEditMethods = {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: lot.id, variantId: selected.variantId, locationId })
         });
-        if (!response.ok) throw new Error(await shopifyResponseError(response, this.t("configShopifyConflictError"), this.t("configShopifyLinkError")));
+        if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyLinkError");
         const payload = await response.json() as { listing: ShopifyEditListing };
         if (!shopifyEditRequestIsCurrent(this, captured)) return;
         this.shopifyEditListing = payload.listing;
       } catch (error) {
-        if (shopifyEditRequestIsCurrent(this, captured)) this.shopifyEditError = shopifyEditErrorText(error, this.t("configShopifyLinkError"));
+        if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyLinkError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); }
         return;
       } finally {
         if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditSaving = false;
