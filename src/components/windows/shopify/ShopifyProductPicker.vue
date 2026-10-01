@@ -2,6 +2,8 @@
 import { computed, ref, watch } from "vue";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
 import type { ShopifyVariantSearchResult } from "../../../types/app.ts";
+import type { ShopifyDraftPreview } from "../../../domain/shopify-draft.ts";
+import ShopifyCreateDraftDialog from "./ShopifyCreateDraftDialog.vue";
 
 const props = defineProps<{
   query: string;
@@ -14,6 +16,10 @@ const props = defineProps<{
   error: string | null;
   disabled: boolean;
   t: (key: string) => string;
+  canCreateDraft?: boolean;
+  createDraftDisabled?: boolean;
+  loadDraftPreview?: () => Promise<ShopifyDraftPreview>;
+  createDraft?: (locationId: string, previewToken: string) => Promise<void>;
 }>();
 
 const emit = defineEmits<{
@@ -24,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const isOpen = ref(false);
+const isCreateDraftOpen = ref(false);
 const draftVariantId = ref<string | null>(null);
 const draftLocationId = ref<string | null>(null);
 const originalSelection = ref<{ variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }>({ variantId: null, locationId: null, product: null });
@@ -73,8 +80,8 @@ function useProduct(): void {
 </script>
 
 <template>
-  <section class="shopify-product-picker-entry" :aria-label="t('configShopifyLinkTitle')">
-    <div class="text-subtitle-2 mb-2">{{ t('configShopifyLinkTitle') }}</div>
+  <section class="shopify-product-picker-entry" :aria-label="t('configShopifySectionTitle')">
+    <div class="text-subtitle-2 mb-2">{{ t('configShopifySectionTitle') }}</div>
     <div v-if="selectedResult" class="shopify-product-picker-summary mb-3" data-testid="shopify-picker-selected-summary">
       <div class="font-weight-medium" style="overflow-wrap: anywhere">{{ selectedResult.title }}</div>
       <div class="text-caption text-medium-emphasis" style="overflow-wrap: anywhere">{{ selectedResult.variantTitle }}</div>
@@ -84,6 +91,26 @@ function useProduct(): void {
     <v-btn class="app-touch-target" variant="outlined" :disabled="disabled" @click="isOpen = true">
       {{ t('configShopifyPickerOpen') }}
     </v-btn>
+    <div v-if="canCreateDraft && loadDraftPreview && createDraft" class="shopify-product-picker-create">
+      <v-btn
+        class="app-touch-target"
+        color="primary"
+        variant="tonal"
+        :disabled="disabled || createDraftDisabled"
+        @click="isCreateDraftOpen = true"
+      >
+        {{ t('configShopifyCreateDraft') }}
+      </v-btn>
+      <div v-if="createDraftDisabled && !disabled" class="text-caption text-medium-emphasis" role="note">
+        {{ t('configShopifyDraftSaveFirst') }}
+      </div>
+      <shopify-create-draft-dialog
+        v-model="isCreateDraftOpen"
+        :t="t"
+        :load-preview="loadDraftPreview"
+        :create-draft="createDraft"
+      />
+    </div>
 
     <app-dialog-shell
       :model-value="isOpen"
@@ -164,6 +191,13 @@ function useProduct(): void {
 .shopify-product-picker-results {
   display: grid;
   gap: 0.5rem;
+}
+
+.shopify-product-picker-create {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
 }
 
 .shopify-product-picker-result {

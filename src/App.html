@@ -239,6 +239,7 @@
                 <v-btn class="app-touch-target" size="small" variant="text" @click="refreshShopifyEditListing">{{ t('configShopifyRetry') }}</v-btn>
               </div>
               <shopify-product-picker
+                :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop"
                 v-else-if="shopifyEditListingStatus === 'loaded' && !shopifyEditListing && shopifyConnectionStatus === 'connected' && currentLotType !== 'singles'"
                 class="mt-3"
                 :query="shopifyEditSearchQuery"
@@ -249,7 +250,11 @@
                 :selected-variant-id="shopifyEditSelectedVariantId"
                 :selected-location-id="shopifyEditSelectedLocationId"
                 :error="shopifyEditError"
-                :disabled="shopifyEditSaving"
+                :disabled="shopifyEditSaving || isOffline"
+                :can-create-draft="currentLotType === 'bulk' && (activeScopeType !== 'workspace' || isCurrentWorkspaceOwner)"
+                :create-draft-disabled="String(renameLotName || '').trim() !== String(lots.find(lot => lot.id === currentLotId)?.name || '').trim() || String(renameLotExternalSku || '').trim() !== String(lots.find(lot => lot.id === currentLotId)?.externalSku || '').trim()"
+                :load-draft-preview="loadShopifyDraftPreview"
+                :create-draft="createShopifyDraft"
                 :t="t"
                 @query-change="onShopifyEditQueryChange"
                 @load-more="searchShopifyEditProducts(true)"
@@ -295,7 +300,7 @@
                 {{ t('commonDelete') }}
               </v-btn>
               <v-spacer></v-spacer>
-              <v-btn class="app-touch-target" variant="text" @click="closeRenameLotModal">{{ t('commonCancel') }}</v-btn>
+              <v-btn class="app-touch-target" variant="text" :disabled="shopifyEditSaving" @click="closeRenameLotModal">{{ t('commonCancel') }}</v-btn>
               <v-btn class="app-touch-target" color="primary" :loading="shopifyEditSaving" :disabled="shopifyEditSaving || shopifyEditLoading" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
             </template>
           </app-form-layout>

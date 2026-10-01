@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/vue";
+import { fireEvent, screen, waitFor, within } from "@testing-library/vue";
 import { defineComponent, h, reactive } from "vue";
 import { expect, test, vi } from "vitest";
 import ShopifyProductPicker from "../../src/components/windows/shopify/ShopifyProductPicker.vue";
@@ -22,6 +22,7 @@ const laterProduct = {
   locations: [{ id: "loc3", name: "Front", available: 4 }, { id: "loc4", name: "Back", available: 2 }]
 };
 const t = (key: string) => ({
+  configShopifySectionTitle: "Shopify product",
   configShopifySearchLabel: "Product title, variant, or SKU",
   configShopifyNoResults: "No matching Shopify variants were found.",
   configShopifyLoadMore: "Load more",
@@ -30,7 +31,8 @@ const t = (key: string) => ({
   commonCancel: "Cancel",
   configShopifyUseProduct: "Use product",
   configShopifyPickerOpen: "Link existing product",
-  configShopifyLinkTitle: "Link an existing Shopify variant",
+  configShopifyCreateDraft: "Create Shopify product",
+  configShopifyDraftSaveFirst: "Save the lot name and SKU first. The draft uses saved inventory details.",
   configShopifyBindingSku: "SKU",
   configShopifyBindingLocation: "Location",
   configShopifyPrice: "Price",
@@ -107,4 +109,42 @@ test("cancel restores the selection that was present when the picker opened", as
   await screen.findByRole("dialog", { name: "Choose a Shopify product" });
   await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(restoreSelection).toHaveBeenCalledWith({ variantId: "v1", locationId: "loc1", product: longTitleProduct });
+});
+
+test("draft creation is a separate action and closing its dialog preserves a pending existing-product selection", async () => {
+  const selected = { variantId: "v1" as string | null, locationId: "loc2" as string | null };
+  const labels: Record<string, string> = {
+    configShopifySectionTitle: "Shopify product",
+    configShopifyCreateDraft: "Create Shopify product",
+    configShopifyDraftSaveFirst: "Save the lot name and SKU first. The draft uses saved inventory details.",
+    shopifyDraftDialogTitle: "Create Shopify draft",
+    shopifyDraftLoading: "Loading authoritative preview…",
+    commonClose: "Close"
+  };
+  const tWithDraft = (key: string) => labels[key] ?? t(key);
+  const loadDraftPreview = vi.fn(async () => ({
+    title: "Draft", variantTitle: "Sealed box", sku: "DRAFT", price: "2.00", currency: "CAD", quantity: 1,
+    locations: [{ id: "gid://shopify/Location/1", name: "Main" }], previewToken: "a".repeat(64)
+  }));
+  const Harness = defineComponent({ setup: () => () => h(ShopifyProductPicker, {
+    query: "dragon sleeves", results: [longTitleProduct], loading: false, completed: true, hasMore: false,
+    selectedVariantId: selected.variantId, selectedLocationId: selected.locationId, error: null, disabled: false, t: tWithDraft,
+    canCreateDraft: true, loadDraftPreview, createDraft: async () => undefined,
+    onConfirm: (value: { variantId: string; locationId: string }) => Object.assign(selected, value)
+  }) });
+  renderWithApp(Harness);
+
+  expect(screen.getByRole("button", { name: "Create Shopify product" })).toBeTruthy();
+  await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
+  await screen.findByRole("dialog", { name: "Choose a Shopify product" });
+  await fireEvent.click(screen.getByRole("button", { name: /Dragon Shield Matte Sleeves/ }));
+  await fireEvent.click(screen.getByRole("button", { name: "Use product" }));
+  expect(selected).toEqual({ variantId: "v1", locationId: "loc2" });
+
+  await fireEvent.click(screen.getByRole("button", { name: "Create Shopify product" }));
+  expect(await screen.findByText("Draft")).toBeTruthy();
+  const draftDialog = screen.getByRole("dialog", { name: "Create Shopify draft" });
+  await fireEvent.click(within(draftDialog).getAllByRole("button", { name: "Close" })[1]!);
+  expect(selected).toEqual({ variantId: "v1", locationId: "loc2" });
+  expect(loadDraftPreview).toHaveBeenCalledOnce();
 });

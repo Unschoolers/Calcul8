@@ -40,6 +40,65 @@ test("creates a draft sealed-box variant with tracked stock and stable provider 
   assert.deepEqual(requests[1]?.variables.identifier, { handle: "calcul8-box-42" });
 });
 
+test("draft creation embeds initial quantity and ownership marker, while exact-handle recovery is read-only", async () => {
+  const requests: { query: string; variables: Record<string, any> }[] = [];
+  const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)); requests.push(body);
+    if (body.query.includes("DraftByHandle")) return response({ product: null });
+    return response({ productSet: { product: { id: "gid://shopify/Product/1", metafield: { value: "owner-hash" }, variants: { nodes: [{ id: "gid://shopify/ProductVariant/2", title: "Sealed box", inventoryItem: { id: "gid://shopify/InventoryItem/3", tracked: true } }] } }, userErrors: [] } });
+  };
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", fetcher as typeof fetch);
+  const recovered = await client.findOwnedDraft("calcul8-created-handle", "owner-hash", "gid://shopify/Location/4");
+  assert.equal(recovered, null);
+  const created = await client.createLinkedDraft({ handle: "calcul8-created-handle", ownershipHash: "owner-hash", title: "Box", sku: "B", price: "3.00", locationId: "gid://shopify/Location/4", quantity: 6 });
+  assert.equal(created.variantId, "gid://shopify/ProductVariant/2");
+  const input = requests[1]?.variables.input;
+  assert.equal(input.status, "DRAFT");
+  assert.equal(input.variants[0].inventoryQuantities[0].quantity, 6);
+  assert.deepEqual(input.metafields, [{ namespace: "calcul8", key: "draft_owner", type: "single_line_text_field", value: "owner-hash" }]);
+});
+
+test("active location listing paginates and draft recovery checks exact handle, marker, and selected location", async () => {
+  let calls = 0;
+  const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)); calls++;
+    if (body.query.includes("ActiveShopLocations")) return response({ locations: { nodes: [{ id: `gid://shopify/Location/${calls}`, name: `Location ${calls}`, isActive: true }], pageInfo: { hasNextPage: calls === 1, endCursor: calls === 1 ? "next" : null } } });
+    return response({ product: { id: "gid://shopify/Product/1", handle: "calcul8-created-good", metafield: { value: "marker" }, variants: { nodes: [{ id: "gid://shopify/ProductVariant/2", title: "Sealed box", inventoryItem: { id: "gid://shopify/InventoryItem/3", tracked: true, inventoryLevel: { location: { id: "gid://shopify/Location/2", isActive: true }, quantities: [{ name: "available", quantity: 4 }] } } }] } } });
+  };
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", fetcher as typeof fetch);
+  assert.deepEqual(await client.listActiveLocations(), [{ id: "gid://shopify/Location/1", name: "Location 1", isActive: true }, { id: "gid://shopify/Location/2", name: "Location 2", isActive: true }]);
+  assert.ok(await client.findOwnedDraft("calcul8-created-good", "marker", "gid://shopify/Location/2"));
+  await assert.rejects(() => client.findOwnedDraft("calcul8-created-wrong", "marker", "gid://shopify/Location/2"), /another product/);
+});
+
+test("draft recovery uses productByIdentifier with the exact handle and treats explicit null as absent", async () => {
+  let captured: { query: string; variables: Record<string, unknown> } | undefined;
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    captured = JSON.parse(String(init?.body));
+    return response({ product: null });
+  }) as typeof fetch);
+  assert.equal(await client.findOwnedDraft("calcul8-created-exact", "marker", "gid://shopify/Location/4"), null);
+  assert.match(captured?.query ?? "", /productByIdentifier\(identifier:/);
+  assert.deepEqual(captured?.variables.identifier, { handle: "calcul8-created-exact" });
+});
+
+test("draft recovery fails closed when Shopify omits the productByIdentifier field", async () => {
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async () => response({})) as typeof fetch);
+  await assert.rejects(() => client.findOwnedDraft("calcul8-created-exact", "marker", "gid://shopify/Location/4"), /no product lookup result/);
+});
+
+test("order webhook subscription checks its guard before the Shopify write", async () => {
+  let mutations = 0;
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    if (body.query.includes("OrderWebhooks")) return response({ webhookSubscriptions: { nodes: [] } });
+    mutations++;
+    return response({ webhookSubscriptionCreate: { userErrors: [] } });
+  }) as typeof fetch);
+  await assert.rejects(() => (client.ensureOrderWebhooks as any)("https://app.example/webhooks", async () => { throw new Error("connection changed"); }), /connection changed/);
+  assert.equal(mutations, 0);
+});
+
 test("inventory CAS does not raise Shopify stock over an unimported order", async () => {
   const requests: { query: string }[] = [];
   const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {

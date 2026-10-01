@@ -383,7 +383,8 @@ test("SystemConfigurationDialog no longer owns lot SKU or Shopify controls", () 
   expect(systemTemplate).not.toMatch(/configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);
   expect(editTemplate).toMatch(/v-model="renameLotExternalSku"/);
   expect(editTemplate).toMatch(/<shopify-product-picker[\s\S]*?:results="shopifyEditSearchResults"[\s\S]*?@query-change="onShopifyEditQueryChange"/);
-  expect(pickerTemplate).toMatch(/t\('configShopifyLinkTitle'\)/);
+  expect(pickerTemplate).toMatch(/t\('configShopifySectionTitle'\)/);
+  expect(pickerTemplate).toMatch(/t\('configShopifyPickerOpen'\)/);
 });
 
 

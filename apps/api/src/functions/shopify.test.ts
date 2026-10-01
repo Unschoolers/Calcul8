@@ -12,4 +12,6 @@ test("Shopify connection routes include authenticated management and an OAuth ca
   assert.ok(routes.some(route => route.route === "integrations/shopify/status" && route.methods.includes("POST")));
   assert.ok(routes.some(route => route.route === "integrations/shopify/disconnect" && route.methods.includes("POST")));
   assert.ok(routes.some(route => route.route === "integrations/shopify/products/stock" && route.methods.includes("POST")));
+  assert.ok(routes.some(route => route.route === "integrations/shopify/products/create-preview" && route.methods.includes("POST")));
+  assert.ok(routes.some(route => route.route === "integrations/shopify/products/create" && route.methods.includes("POST")));
 });

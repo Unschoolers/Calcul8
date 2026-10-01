@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { configLotMethods } from "../src/app-core/methods/config-lots.ts";
 import { configLotEditMethods } from "../src/app-core/methods/config-lot-edit.ts";
+import type { ShopifyDraftPreview } from "../src/domain/shopify-draft.ts";
 import { makeLot } from "./helpers/fixtures.ts";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
@@ -27,7 +28,7 @@ function context() {
     shopifyEditRequestRevision: 0, shopifyEditListingStatus: "idle" as const, shopifyEditSessionAuthEpoch: null,
     shopifyEditSessionScope: "", shopifyEditSessionLotId: null,
     externalSku: "OLD", shopifyEnabled: false, whatnotVertical: lot.whatnotVertical ?? null,
-    isOffline: false, isGoogleSignedIn: false, hasProAccess: true, t: (key: string) => key,
+    isOffline: false, isGoogleSignedIn: false, hasProAccess: true, isCurrentWorkspaceOwner: true, t: (key: string) => key,
     notify: vi.fn(), saveLotsToStorage: vi.fn(), pushCloudSync: vi.fn(async () => undefined),
     $nextTick: (callback: () => void) => callback(), initPortfolioChart: vi.fn()
   };
@@ -279,4 +280,169 @@ test("duplicate Save does not send a second link request", async () => {
   assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/link")).length, 1);
   pendingLink.resolve(response({ listing: { mode: "linked", productId: "p1", variantId: "v1", inventoryItemId: "i1", locationId: "l1" } }));
   await firstSave;
+});
+
+const draftPreview: ShopifyDraftPreview = {
+  title: "Saved lot title", variantTitle: "Sealed box", sku: "SAVED-SKU", price: "34.50", currency: "CAD", quantity: 8,
+  locations: [{ id: "gid://shopify/Location/123", name: "Main Warehouse" }], previewToken: "b".repeat(64)
+};
+const createdDraftListing = {
+  mode: "linked" as const, shop: "store-a.myshopify.com", productId: "gid://shopify/Product/101",
+  variantId: "gid://shopify/ProductVariant/102", inventoryItemId: "gid://shopify/InventoryItem/103",
+  locationId: "gid://shopify/Location/123", productTitle: "Saved lot title", variantTitle: "Sealed box"
+};
+
+test("draft preview supersedes pending search but preserves the picker selection", async () => {
+  const { ctx } = context();
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : response({ preview: draftPreview }));
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  vi.useFakeTimers();
+  configLotEditMethods.onShopifyEditQueryChange.call(ctx as never, "pending search");
+  ctx.shopifyEditSelectedVariantId = "pending-variant";
+  ctx.shopifyEditSelectedLocationId = "pending-location";
+  ctx.shopifyEditLoading = true;
+  const beforeRevision = ctx.shopifyEditRequestRevision;
+
+  const result = await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
+
+  assert.equal(result.previewToken, "b".repeat(64));
+  assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/products/create-preview")).length, 1);
+  assert.deepEqual(JSON.parse(apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/create-preview"))![2].body), { lotId: 41 });
+  assert.equal(ctx.shopifyEditRequestRevision, beforeRevision + 1);
+  assert.equal(ctx.shopifyEditLoading, false);
+  assert.equal(ctx.shopifyEditSelectedVariantId, "pending-variant");
+  assert.equal(ctx.shopifyEditSelectedLocationId, "pending-location");
+  assert.equal(vi.getTimerCount(), 0);
+});
+
+test("saved legacy lot name and SKU whitespace still permit an authoritative draft preview", async () => {
+  const { ctx, lot } = context();
+  lot.name = " Old title ";
+  lot.externalSku = " OLD ";
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : response({ preview: draftPreview }));
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+
+  const result = await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
+  assert.equal(result.previewToken, "b".repeat(64));
+  await configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.name, "Old title");
+  assert.equal(lot.externalSku, "OLD");
+});
+
+test.each([
+  ["scope", (ctx: ReturnType<typeof context>["ctx"]) => { ctx.activeScopeType = "workspace"; ctx.activeWorkspaceId = "workspace-2"; }],
+  ["auth", (ctx: ReturnType<typeof context>["ctx"]) => { ctx.googleAuthEpoch += 1; }],
+  ["lot", (ctx: ReturnType<typeof context>["ctx"]) => { ctx.currentLotId = 42; }]
+] as const)("draft preview response after a %s change is rejected", async (_change, changeContext) => {
+  const { ctx } = context();
+  const pendingPreview = deferred<Response>();
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : pendingPreview.promise);
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+
+  const loading = configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
+  changeContext(ctx);
+  pendingPreview.resolve(response({ preview: draftPreview }));
+  await assert.rejects(loading, /configShopifyDraftStalePreview/);
+});
+
+test("cancel cannot close the lot editor while draft creation is pending", async () => {
+  const { ctx } = context();
+  const pendingCreate = deferred<Response>();
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : pendingCreate.promise);
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  const revision = ctx.shopifyEditRequestRevision;
+  const create = configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
+
+  configLotMethods.closeRenameLotModal.call(ctx as never);
+
+  assert.equal(ctx.showRenameLotModal, true);
+  assert.equal(ctx.shopifyEditSaving, true);
+  assert.equal(ctx.shopifyEditRequestRevision, revision + 1);
+  pendingCreate.resolve(response({ listing: createdDraftListing }));
+  await create;
+  assert.deepEqual(ctx.shopifyEditListing, createdDraftListing);
+});
+
+test("creating a draft links immediately, blocks duplicate creates, and leaves inventory history untouched", async () => {
+  const { ctx, lot } = context();
+  const pendingCreate = deferred<Response>();
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : pendingCreate.promise);
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  assert.equal(ctx.shopifyEditListingStatus, "loaded");
+  assert.equal(ctx.shopifyEditSessionLotId, ctx.currentLotId);
+  assert.equal(ctx.renameLotName, lot.name);
+  assert.equal(ctx.renameLotExternalSku, lot.externalSku);
+  assert.equal(ctx.currentLotType, "bulk");
+  assert.equal(ctx.shopifyConnectionStatus, "connected");
+  assert.equal(ctx.isOffline, false);
+  assert.equal(ctx.shopifyEditSaving, false);
+  assert.equal(ctx.activeScopeType, "personal");
+  assert.equal(ctx.googleAuthEpoch, ctx.shopifyEditSessionAuthEpoch);
+  assert.equal(ctx.shopifyEditSessionScope, "{}");
+  const originalLot = { ...lot };
+  const firstCreate = configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
+  await configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
+  assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/products/create")).length, 1);
+  assert.equal(ctx.shopifyEditSaving, true);
+  assert.deepEqual(JSON.parse(apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/create"))![2].body), {
+    lotId: 41, locationId: "gid://shopify/Location/123", previewToken: "b".repeat(64)
+  });
+
+  pendingCreate.resolve(response({ listing: createdDraftListing }));
+  await firstCreate;
+  assert.deepEqual(ctx.shopifyEditListing, createdDraftListing);
+  assert.equal(ctx.shopifyEditSelectedVariantId, null);
+  assert.equal(ctx.shopifyEditSelectedLocationId, null);
+  assert.equal(ctx.shopifyEditSaving, false);
+  assert.deepEqual(lot, originalLot);
+  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 0);
+});
+
+test("a draft response from another active store cannot replace the current listing", async () => {
+  const { ctx } = context();
+  const pendingCreate = deferred<Response>();
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : pendingCreate.promise);
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  const create = configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
+  ctx.shopifyConnectionShop = "other-store.myshopify.com";
+  pendingCreate.resolve(response({ listing: createdDraftListing }));
+  await assert.rejects(create, /configShopifyDraftStalePreview/);
+  assert.equal(ctx.shopifyEditListing, null);
+  assert.equal(ctx.shopifyEditSaving, false);
+  assert.equal(ctx.showRenameLotModal, true);
+});
+
+test("a malformed draft mapping cannot replace the existing listing or clear the pending link", async () => {
+  const { ctx } = context();
+  const malformed = { ...createdDraftListing, productId: "product-101", variantId: "variant-102", inventoryItemId: "item-103" };
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: null }) : response({ listing: malformed }));
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  ctx.shopifyEditSelectedVariantId = "existing-selection";
+  ctx.shopifyEditSelectedLocationId = "existing-location";
+  ctx.shopifyEditSearchQuery = "keep this query";
+
+  await assert.rejects(
+    configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken),
+    /configShopifyDraftInvalidResponse/
+  );
+
+  assert.equal(ctx.shopifyEditListing, null);
+  assert.equal(ctx.shopifyEditSelectedVariantId, "existing-selection");
+  assert.equal(ctx.shopifyEditSelectedLocationId, "existing-location");
+  assert.equal(ctx.shopifyEditSearchQuery, "keep this query");
+  assert.equal(ctx.shopifyEditSaving, false);
 });

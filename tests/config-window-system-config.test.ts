@@ -122,7 +122,8 @@ test("Shopify linking and marketplace SKU are edited with the lot, not system as
   const pickerTemplate = readFileSync("src/components/windows/shopify/ShopifyProductPicker.vue", "utf8");
   assert.match(appTemplate, /v-model="renameLotExternalSku"/);
   assert.match(appTemplate, /<shopify-product-picker[\s\S]*?:results="shopifyEditSearchResults"[\s\S]*?@query-change="onShopifyEditQueryChange"/);
-  assert.match(pickerTemplate, /t\('configShopifyLinkTitle'\)/);
+  assert.match(pickerTemplate, /t\('configShopifySectionTitle'\)/);
+  assert.match(pickerTemplate, /t\('configShopifyPickerOpen'\)/);
   assert.match(appTemplate, /searchShopifyEditProducts/);
   assert.match(appTemplate, /renameLotShopifyEnabled/);
   assert.doesNotMatch(systemTemplate, /configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);

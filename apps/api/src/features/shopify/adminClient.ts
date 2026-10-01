@@ -8,6 +8,12 @@ import { isShopifyDomain } from "../../lib/shopify";
 const API_VERSION = "2026-07";
 type GraphqlResponse = { data?: Record<string, unknown>; errors?: { message: string }[] };
 type Fetcher = typeof fetch;
+export type ShopifyLinkedDraftClient = {
+  listActiveLocations(): Promise<{ id: string; name: string; isActive: boolean }[]>;
+  getShopCurrency(): Promise<string>;
+  findOwnedDraft(handle: string, ownershipHash: string, locationId: string): Promise<{ productId: string; variantId: string; inventoryItemId: string; available: number } | null>;
+  createLinkedDraft(input: { handle: string; ownershipHash: string; title: string; sku: string; price: string; locationId: string; quantity: number; beforeMutation?: () => Promise<void> }): Promise<{ productId: string; variantId: string; inventoryItemId: string }>;
+};
 
 function buildVariantSearchQuery(input: string): string {
   return input.trim().split(/\s+/).filter(Boolean).map((rawTerm) => {
@@ -18,7 +24,7 @@ function buildVariantSearchQuery(input: string): string {
   }).join(" ");
 }
 
-export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient & ShopifyCatalogClient {
+export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient & ShopifyCatalogClient & ShopifyLinkedDraftClient {
   if (!isShopifyDomain(shop)) throw new Error("Invalid Shopify shop domain");
   const graphql = async <T>(query: string, variables: Record<string, unknown>, beforeMutation?: () => Promise<void>): Promise<T> => {
     const token = await getToken();
@@ -38,6 +44,56 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
     if (payload.userErrors?.length) throw new Error(payload.userErrors.map((error) => error.message).join("; "));
   };
   return {
+    async listActiveLocations() {
+      const locations: { id: string; name: string; isActive: boolean }[] = [];
+      let after: string | null = null;
+      do {
+        type LocationPage = { locations?: { nodes?: { id: string; name: string; isActive: boolean }[]; pageInfo?: { hasNextPage: boolean; endCursor: string | null } } };
+        const data: LocationPage = await graphql<LocationPage>(
+          `query ActiveShopLocations($after: String) { locations(first: 100, after: $after) { nodes { id name isActive } pageInfo { hasNextPage endCursor } } }`, { after });
+        const page: NonNullable<LocationPage["locations"]> | undefined = data.locations;
+        if (!page) throw new Error("Shopify returned no locations");
+        locations.push(...page.nodes!.filter(item => item.isActive && item.name.trim()));
+        after = page.pageInfo?.hasNextPage ? page.pageInfo.endCursor : null;
+        if (page.pageInfo?.hasNextPage && !after) throw new Error("Shopify returned an invalid location cursor");
+      } while (after);
+      return locations;
+    },
+    async getShopCurrency() {
+      const data = await graphql<{ shop?: { currencyCode?: string } }>(`query ShopCurrency { shop { currencyCode } }`, {});
+      const currency = data.shop?.currencyCode;
+      if (!currency || !/^[A-Z]{3}$/.test(currency)) throw new Error("Shopify returned an invalid store currency");
+      return currency;
+    },
+    async findOwnedDraft(handle, ownershipHash, locationId) {
+      const data = await graphql<{ product?: { id: string; handle: string; metafield?: { value: string } | null; variants?: { nodes?: { id: string; title: string; inventoryItem?: { id: string; tracked: boolean; inventoryLevel?: { location?: { id: string; isActive: boolean } | null; quantities?: { name: string; quantity: number }[] } | null } }[] } | null } | null }>(
+        `query DraftByHandle($identifier: ProductIdentifierInput!, $locationId: ID!) { product: productByIdentifier(identifier: $identifier) { id handle metafield(namespace: "calcul8", key: "draft_owner") { value } variants(first: 2) { nodes { id title inventoryItem { id tracked inventoryLevel(locationId: $locationId) { location { id isActive } quantities(names: ["available"]) { name quantity } } } } } } }`, { identifier: { handle }, locationId });
+      if (data.product === undefined) throw new Error("Shopify returned no product lookup result");
+      if (data.product === null) return null;
+      const product = data.product;
+      if (product.handle !== handle || product.metafield?.value !== ownershipHash) throw new Error("Shopify draft handle belongs to another product");
+      const variants = product.variants?.nodes ?? [];
+      if (variants.length !== 1 || variants[0]?.title !== "Sealed box" || !variants[0]?.inventoryItem?.tracked ||
+        !/^gid:\/\/shopify\/Product\/\d+$/.test(product.id) || !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variants[0]?.id ?? "") ||
+        !/^gid:\/\/shopify\/InventoryItem\/\d+$/.test(variants[0]?.inventoryItem?.id ?? "")) throw new Error("Shopify draft does not match the sealed-box product");
+      const location = variants[0]!.inventoryItem!.inventoryLevel?.location;
+      if (location?.id !== locationId || !location.isActive) throw new Error("Shopify draft is not stocked at the selected active location");
+      const available = variants[0]!.inventoryItem!.inventoryLevel?.quantities?.find(quantity => quantity.name === "available")?.quantity;
+      if (!Number.isSafeInteger(available)) throw new Error("Shopify draft returned invalid available stock");
+      return { productId: product.id, variantId: variants[0]!.id, inventoryItemId: variants[0]!.inventoryItem!.id, available: available! };
+    },
+    async createLinkedDraft(input) {
+      const data = await graphql<{ productSet?: { product?: { id: string; variants?: { nodes?: { id: string; title: string; inventoryItem?: { id: string; tracked: boolean } }[] } }; userErrors?: { message: string }[] } }>(
+        `mutation CreateLinkedDraft($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { id variants(first: 2) { nodes { id title inventoryItem { id tracked } } } } userErrors { message } } }`, {
+          identifier: { handle: input.handle }, input: { title: input.title, handle: input.handle, status: "DRAFT", productType: "Sealed box", vendor: "Calcul8",
+            metafields: [{ namespace: "calcul8", key: "draft_owner", type: "single_line_text_field", value: input.ownershipHash }],
+            productOptions: [{ name: "Format", position: 1, values: [{ name: "Sealed box" }] }], variants: [{ optionValues: [{ optionName: "Format", name: "Sealed box" }], sku: input.sku, price: input.price, inventoryPolicy: "DENY", inventoryItem: { tracked: true }, inventoryQuantities: [{ locationId: input.locationId, name: "available", quantity: input.quantity }] }] }
+        }, input.beforeMutation);
+      checkErrors(data.productSet);
+      const product = data.productSet?.product, variant = product?.variants?.nodes;
+      if (!/^gid:\/\/shopify\/Product\/\d+$/.test(product?.id ?? "") || variant?.length !== 1 || variant[0]?.title !== "Sealed box" || !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variant[0]?.id ?? "") || !variant[0]?.inventoryItem?.tracked || !/^gid:\/\/shopify\/InventoryItem\/\d+$/.test(variant[0]?.inventoryItem?.id ?? "")) throw new Error("Shopify did not create a single tracked sealed-box variant");
+      return { productId: product!.id, variantId: variant![0]!.id, inventoryItemId: variant![0]!.inventoryItem!.id };
+    },
     async searchVariants(query, after) {
       // Treat text as literal search terms, never as caller-supplied Shopify filter syntax.
       const search = buildVariantSearchQuery(query);
@@ -138,7 +194,7 @@ async pauseProduct(productId, beforeMutation) {
     { product: { id: productId, status: "DRAFT" } }, beforeMutation);
       checkErrors(data.productUpdate);
     },
-    async ensureOrderWebhooks(callbackUrl) {
+    async ensureOrderWebhooks(callbackUrl, beforeMutation) {
       const existing = await graphql<{ webhookSubscriptions?: { nodes?: { topic: string; uri: string }[] } }>(
         `query OrderWebhooks($uri: String!) { webhookSubscriptions(first: 50, uri: $uri) { nodes { topic uri } } }`,
         { uri: callbackUrl });
@@ -147,7 +203,7 @@ async pauseProduct(productId, beforeMutation) {
         const result = await graphql<{ webhookSubscriptionCreate?: { userErrors?: { message: string }[] } }>(
           `mutation SubscribeOrders($topic: WebhookSubscriptionTopic!, $input: WebhookSubscriptionInput!) {
             webhookSubscriptionCreate(topic: $topic, webhookSubscription: $input) { userErrors { message } }
-          }`, { topic, input: { uri: callbackUrl, format: "JSON" } });
+          }`, { topic, input: { uri: callbackUrl, format: "JSON" } }, beforeMutation);
         checkErrors(result.webhookSubscriptionCreate);
       }
     },

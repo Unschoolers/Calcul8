@@ -14,10 +14,10 @@ export function shopifyOrderWebhookUri(redirectUri: string): string {
   return url.toString();
 }
 
-export async function ensureShopifyOrderWebhooks(config: ApiConfig, scopeKey: string): Promise<void> {
+export async function ensureShopifyOrderWebhooks(config: ApiConfig, scopeKey: string, beforeMutation?: () => Promise<void>): Promise<void> {
   if (!config.shopifyRedirectUri) return;
   const connection = await getShopifyConnection(config, scopeKey);
   if (!connection) return;
   const client = createShopifyAdminClient(connection.shop, () => getShopifyAccessToken(config, scopeKey, connection.shop));
-  await client.ensureOrderWebhooks(shopifyOrderWebhookUri(config.shopifyRedirectUri));
+  await client.ensureOrderWebhooks(shopifyOrderWebhookUri(config.shopifyRedirectUri), beforeMutation);
 }

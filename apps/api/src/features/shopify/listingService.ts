@@ -7,6 +7,8 @@ export type ShopifyListing = {
   lotId: number;
   /** Missing means an existing WhatFees-managed listing. Linked products remain Shopify-owned. */
   mode?: "managed" | "linked";
+  creationHandle?: string;
+  locationName?: string;
   productTitle?: string;
   variantTitle?: string;
   sku?: string;
@@ -30,7 +32,7 @@ export type ShopifyListingClient = {
   }): Promise<{ productId: string; variantId: string; inventoryItemId: string; locationId: string }>;
   activateProduct(productId: string, beforeMutation?: () => Promise<void>): Promise<void>;
   pauseProduct(productId: string, beforeMutation?: () => Promise<void>): Promise<void>;
-  ensureOrderWebhooks(callbackUrl: string): Promise<void>;
+  ensureOrderWebhooks(callbackUrl: string, beforeMutation?: () => Promise<void>): Promise<void>;
   setAvailable(input: { inventoryItemId: string; locationId: string; quantity: number; previousQuantity: number; beforeMutation?: () => Promise<void> }): Promise<void>;
 };
 export type InventorySale = { type: string; quantity: number; packsCount: number };

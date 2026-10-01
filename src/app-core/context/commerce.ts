@@ -23,6 +23,7 @@ import type {
 } from "./runtime.ts";
 import type { ScopedApiContext } from "./api.ts";
 import type { SyncMethodState } from "./sync.ts";
+import type { WorkspaceComputedState } from "./workspace.ts";
 import type { WhatnotFeePeriodSummary } from "../shared/whatnot-fee-summary.ts";
 
 export interface CommerceComputedState {
@@ -182,6 +183,8 @@ export interface CommerceMethodState {
   onShopifyEditQueryChange(value: string): void;
   selectShopifyEditVariant(variantId: string): void;
   selectShopifyEditLocation(locationId: string): void;
+  loadShopifyDraftPreview(): Promise<import("../../domain/shopify-draft.ts").ShopifyDraftPreview>;
+  createShopifyDraft(locationId: string, previewToken: string): Promise<void>;
   loadLot(): void;
   deleteCurrentLot(): void;
   canUseAdminLotSyncTools(): boolean;
@@ -416,7 +419,7 @@ export type PricingWorkflowContext = Pick<
     | "totalPacks"
     | "totalSpots"
     | "whatnotFeeSummary"
-  > &
+> &
   Pick<CommerceMethodState,
     | "applyLiveSinglesSuggestedPricing"
     | "autoSaveSetup"
@@ -533,7 +536,8 @@ export type LotConfigurationContext = Pick<
   | "whatnotVertical"
   | "systemPricingDefaults"
   | "targetProfitPercent"
-> &
+  > &
+  Pick<WorkspaceComputedState, "isCurrentWorkspaceOwner"> &
   Pick<CommerceComputedState, "currentLotType"> &
   Pick<CommerceMethodState,
     | "autoSaveSetup"
@@ -542,6 +546,8 @@ export type LotConfigurationContext = Pick<
     | "getSalesStorageKey"
     | "initSalesChart"
     | "loadLot"
+    | "loadShopifyDraftPreview"
+    | "createShopifyDraft"
     | "refreshShopifyEditListing"
     | "loadShopifyLinkedStock"
     | "loadSalesForLotId"
@@ -702,6 +708,8 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "refreshShopifyEditListing"
     | "loadShopifyLinkedStock"
     | "searchShopifyEditProducts"
+    | "loadShopifyDraftPreview"
+    | "createShopifyDraft"
     | "onShopifyEditQueryChange"
     | "selectShopifyEditVariant"
     | "selectShopifyEditLocation"
