@@ -222,6 +222,7 @@ test("stale Edit Lot session cannot save into a newly selected lot", async () =>
   assert.equal(second.externalSku, "KEEP");
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal(ctx.shopifyEditError, "configShopifyStaleLotError");
+  assert.equal(ctx.shopifyEditRecovery, "refresh");
 });
 
 test("addSinglesPurchaseRow generates a non-colliding id when Date.now matches an existing row id", () => {

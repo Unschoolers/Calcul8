@@ -84,7 +84,7 @@ export const configLotEditMethods = {
     if (savedLot && this.currentLotType === "bulk" && !shopifySavedLotFieldsMatch({ name: savedLot.name, externalSku: savedLot.externalSku }, { name: this.renameLotName, externalSku: this.renameLotExternalSku })) {
       throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
     }
-    if (!canCreateShopifyDraft(this)) throw new ShopifyUiError(ShopifyErrorCode.LOT_UNAVAILABLE, "none", "configShopifyErrorLotUnavailable");
+    if (!canCreateShopifyDraft(this)) throw new ShopifyUiError(null, "none", "configShopifyDraftNotAvailable");
     cancelShopifyEditSearchTimer(this);
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditLoading = false;
@@ -158,7 +158,7 @@ export const configLotEditMethods = {
   async loadShopifyLinkedStock(): Promise<ShopifyStockObservation> {
     const listing = this.shopifyEditListing;
     if (!this.showRenameLotModal || !shopifyEditSessionIsCurrent(this) || this.shopifyConnectionStatus !== "connected" || listing?.mode !== "linked") {
-      throw new ShopifyUiError(ShopifyErrorCode.CONNECTION_CHANGED, "refresh", "configShopifyErrorConnectionChanged");
+      throw new ShopifyUiError(null, "refresh", "configShopifyStockStaleRequest");
     }
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
@@ -167,11 +167,11 @@ export const configLotEditMethods = {
       body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId })
     });
     if (!shopifyEditRequestIsCurrent(this, captured) || this.shopifyEditListing?.variantId !== listing.variantId || this.shopifyEditListing.locationId !== listing.locationId) {
-      throw new ShopifyUiError(ShopifyErrorCode.CONNECTION_CHANGED, "refresh", "configShopifyErrorConnectionChanged");
+      throw new ShopifyUiError(null, "refresh", "configShopifyStockStaleRequest");
     }
     if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyStockRefreshError");
     const payload = await response.json() as { observation?: unknown };
-    if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(ShopifyErrorCode.CONNECTION_CHANGED, "refresh", "configShopifyErrorConnectionChanged");
+    if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(null, "refresh", "configShopifyStockStaleRequest");
     if (!isShopifyStockObservation(payload.observation) || payload.observation.shop !== captured.shop || payload.observation.variantId !== listing.variantId ||
       payload.observation.inventoryItemId !== listing.inventoryItemId || payload.observation.locationId !== listing.locationId) {
       throw new Error(this.t("configShopifyStockRefreshError"));
@@ -341,7 +341,7 @@ export const configLotEditMethods = {
   async renameCurrentLot(): Promise<void> {
     if (this.shopifyEditSaving) return;
     if (this.shopifyEditSessionLotId != null && (!this.showRenameLotModal || !shopifyEditSessionIsCurrent(this))) {
-      this.shopifyEditError = this.t("configShopifyErrorLotUnavailable"); this.shopifyEditRecovery = "refresh";
+      this.shopifyEditError = this.t("configShopifyStaleLotError"); this.shopifyEditRecovery = "refresh";
       return;
     }
     if (!this.currentLotId) {
@@ -369,7 +369,7 @@ export const configLotEditMethods = {
       const selected = this.shopifyEditSearchResults.find((item) => item.variantId === this.shopifyEditSelectedVariantId);
       const locationId = this.shopifyEditSelectedLocationId;
       if (!selected || !locationId || !selected.locations.some((location) => location.id === locationId)) {
-        this.shopifyEditError = this.t("configShopifyErrorLocationRequired"); this.shopifyEditRecovery = "refresh";
+        this.shopifyEditError = this.t("configShopifyChooseLocation"); this.shopifyEditRecovery = "none";
         return;
       }
       this.shopifyEditSaving = true;

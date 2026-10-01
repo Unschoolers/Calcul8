@@ -43,6 +43,7 @@ test.each(["provider", "scope", "auth", "dialog"])("stock observations arriving 
   if (change === "dialog") ctx.showRenameLotModal = false;
   finish(new Response(JSON.stringify({ observation }), { status: 200 }));
   await expect(pending).rejects.toThrow("configShopifyStockStaleRequest");
+  await expect(pending).rejects.toMatchObject({ code: null, recovery: "refresh", messageKey: "configShopifyStockStaleRequest" });
 });
 
 test("stock responses with a mismatched location or invalid quantity are rejected", async () => {

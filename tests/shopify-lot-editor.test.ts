@@ -335,6 +335,39 @@ test("saved legacy lot name and SKU whitespace still permit an authoritative dra
   assert.equal(lot.externalSku, "OLD");
 });
 
+test("local draft ineligibility keeps its no-action guidance", async () => {
+  const { ctx } = context();
+  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing") ? response({ listing: null }) : response({ preview: draftPreview }));
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  await settle();
+  ctx.isOffline = true;
+  await assert.rejects(configLotEditMethods.loadShopifyDraftPreview.call(ctx as never), (error: unknown) => {
+    assert.ok(error instanceof ShopifyUiError);
+    assert.equal(error.code, null);
+    assert.equal(error.messageKey, "configShopifyDraftNotAvailable");
+    assert.equal(shopifyUiErrorRecovery(error), "none");
+    return true;
+  });
+});
+
+test("missing link location preserves picker guidance without retry recovery", async () => {
+  const { ctx } = context();
+  ctx.showRenameLotModal = true;
+  ctx.shopifyEditSessionAuthEpoch = ctx.googleAuthEpoch;
+  ctx.shopifyEditSessionScope = "{}";
+  ctx.shopifyEditSessionLotId = ctx.currentLotId;
+  ctx.renameLotName = "Old title";
+  ctx.renameLotExternalSku = "OLD";
+  ctx.renameLotShopifyEnabled = false;
+  ctx.shopifyEditListingStatus = "loaded";
+  ctx.shopifyEditSearchResults = [{ productId: "p1", variantId: "v1", title: "Product", variantTitle: "Default Title", sku: "SKU", price: "2.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 1 }] }];
+  ctx.shopifyEditSelectedVariantId = "v1";
+  ctx.shopifyEditSelectedLocationId = null;
+  await configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(ctx.shopifyEditError, "configShopifyChooseLocation");
+  assert.equal(ctx.shopifyEditRecovery, "none");
+});
+
 test("French API error is safe and recoverable, stale fields are typed, and retry clears recovery", async () => {
   const { ctx } = context();
   ctx.t = key => String((frConfig as Record<string, unknown>)[key] ?? key);

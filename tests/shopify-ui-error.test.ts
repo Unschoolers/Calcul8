@@ -53,10 +53,10 @@ describe("Shopify UI errors", () => {
   it("separates authentication from permission recovery and honors a known code before status", async () => {
     const auth = await shopifyResponseUiError(new Response("{}",{status:401}), t,"fallback");
     const forbidden = await shopifyResponseUiError(new Response("{}",{status:403}), t,"fallback");
-    const coded = await shopifyResponseUiError(new Response(JSON.stringify({code: ShopifyErrorCode.CONNECTION_CHANGED}),{status:401}), t,"fallback");
+    const coded = await shopifyResponseUiError(new Response(JSON.stringify({code: ShopifyErrorCode.PREVIEW_STALE}),{status:401}), t,"fallback");
     expect(shopifyUiErrorRecovery(auth)).toBe("reconnect");
     expect(shopifyUiErrorRecovery(forbidden)).toBe("none");
-    expect(shopifyUiErrorRecovery(coded)).toBe("reconnect");
+    expect(shopifyUiErrorRecovery(coded)).toBe("refresh");
   });
   it("uses a real French catalog value for a server validation code", async () => {
     const error = await shopifyResponseUiError(new Response(JSON.stringify({code: ShopifyErrorCode.PRICE_REQUIRED}),{status:400}), key => String((frConfig as Record<string, unknown>)[key] ?? key), "fallback");
