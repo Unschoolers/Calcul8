@@ -250,6 +250,7 @@ export function createInitialState(): AppState {
     shopifyEditSaving: false,
     shopifyEditError: null,
     shopifyEditRecovery: "none",
+    shopifyEditErrorOperation: null,
     shopifyEditRequestRevision: 0,
     shopifyEditListingStatus: "idle",
     shopifyEditSessionAuthEpoch: null,

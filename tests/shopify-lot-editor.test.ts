@@ -26,7 +26,7 @@ function context() {
     renameLotName: "", renameLotWhatnotVertical: lot.whatnotVertical ?? null, renameLotExternalSku: "", renameLotShopifyEnabled: false,
     shopifyEditListing: null, shopifyEditSearchQuery: "", shopifyEditSearchResults: [], shopifyEditSearchCursor: null,
     shopifyEditSearchHasMore: false, shopifyEditSearchCompleted: false, shopifyEditSelectedVariantId: null,
-    shopifyEditSelectedLocationId: null, shopifyEditLoading: false, shopifyEditSaving: false, shopifyEditError: null, shopifyEditRecovery: "none" as const,
+    shopifyEditSelectedLocationId: null, shopifyEditLoading: false, shopifyEditSaving: false, shopifyEditError: null, shopifyEditRecovery: "none" as const, shopifyEditErrorOperation: null,
     shopifyEditRequestRevision: 0, shopifyEditListingStatus: "idle" as const, shopifyEditSessionAuthEpoch: null,
     shopifyEditSessionScope: "", shopifyEditSessionLotId: null,
     externalSku: "OLD", shopifyEnabled: false, whatnotVertical: lot.whatnotVertical ?? null,
@@ -82,6 +82,41 @@ test("link is deferred until Save, then saves selected identity and lot metadata
   assert.equal(ctx.showRenameLotModal, false);
 });
 
+test("cancel restoration survives the query debounce and keeps the selected link available to Save", async () => {
+  vi.useFakeTimers();
+  const { ctx } = context();
+  const product = { productId: "p1", variantId: "v1", title: "Dragon Shield", variantTitle: "Display", sku: "SKU-1", price: "12.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 2 }] };
+  ctx.showRenameLotModal = true;
+  ctx.shopifyEditSessionAuthEpoch = ctx.googleAuthEpoch;
+  ctx.shopifyEditSessionScope = "{}";
+  ctx.shopifyEditSessionLotId = ctx.currentLotId;
+  ctx.shopifyEditListingStatus = "loaded";
+  ctx.renameLotName = "Old title";
+  ctx.renameLotExternalSku = "OLD";
+  ctx.shopifyEditSearchQuery = "dragon";
+  ctx.shopifyEditSearchResults = [product];
+  ctx.shopifyEditSelectedVariantId = "v1";
+  ctx.shopifyEditSelectedLocationId = "l1";
+  apiCall.mockImplementation(async (_context: unknown, path: string) => path.endsWith("/link")
+    ? response({ listing: { mode: "linked", productId: "p1", variantId: "v1", locationId: "l1" } })
+    : response({ variants: [], pageInfo: { hasNextPage: false, endCursor: null } }));
+
+  configLotEditMethods.onShopifyEditQueryChange.call(ctx as never, "another query");
+  assert.deepEqual(ctx.shopifyEditSearchResults, []);
+  const restore = Reflect.get(configLotEditMethods, "restoreShopifyEditSelection") as (selection: unknown) => void;
+  restore.call(ctx, { query: "dragon", variantId: "v1", locationId: "l1", product });
+  await vi.advanceTimersByTimeAsync(301);
+
+  assert.equal(ctx.shopifyEditSearchQuery, "dragon");
+  assert.deepEqual(ctx.shopifyEditSearchResults, [product]);
+  assert.equal(ctx.shopifyEditSelectedVariantId, "v1");
+  assert.equal(ctx.shopifyEditSelectedLocationId, "l1");
+  assert.equal(apiCall.mock.calls.some((call) => String(call[1]).endsWith("/products/search")), false);
+  await configLotEditMethods.renameCurrentLot.call(ctx as never);
+  const linkCall = apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/link"));
+  assert.deepEqual(JSON.parse(String(linkCall?.[2]?.body)), { lotId: 41, variantId: "v1", locationId: "l1" });
+});
+
 test("link failure keeps lot metadata unchanged and leaves Edit Lot open", async () => {
   const { ctx, lot } = context();
   apiCall.mockImplementation(async (_context: unknown, path: string) =>
@@ -98,6 +133,7 @@ test("link failure keeps lot metadata unchanged and leaves Edit Lot open", async
   assert.equal(lot.externalSku, "OLD");
   assert.equal(ctx.showRenameLotModal, true);
   assert.equal(ctx.shopifyEditError, "configShopifyConflictError");
+  assert.equal(ctx.shopifyEditErrorOperation, "link");
 });
 
 test("cancel discards SKU draft without calling the link endpoint", () => {
@@ -366,6 +402,7 @@ test("missing link location preserves picker guidance without retry recovery", a
   await configLotMethods.renameCurrentLot.call(ctx as never);
   assert.equal(ctx.shopifyEditError, "configShopifyChooseLocation");
   assert.equal(ctx.shopifyEditRecovery, "none");
+  assert.equal(ctx.shopifyEditErrorOperation, "link");
 });
 
 test("French API error is safe and recoverable, stale fields are typed, and retry clears recovery", async () => {
@@ -381,6 +418,7 @@ test("French API error is safe and recoverable, stale fields are typed, and retr
   await assert.rejects(configLotEditMethods.createShopifyDraft.call(ctx as never, "gid://shopify/Location/7", "b".repeat(64)));
   assert.equal(ctx.shopifyEditError, "Ajoutez un prix de vente positif à ce lot.");
   assert.equal(ctx.shopifyEditRecovery, "none");
+  assert.equal(ctx.shopifyEditErrorOperation, "create");
   assert.doesNotMatch(ctx.shopifyEditError, /secret|token=/);
 
   ctx.renameLotExternalSku = "unsaved";

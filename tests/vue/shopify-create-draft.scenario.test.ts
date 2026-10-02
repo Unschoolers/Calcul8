@@ -1,9 +1,10 @@
-import { fireEvent, screen, waitFor } from "@testing-library/vue";
+import { fireEvent, screen, waitFor, within } from "@testing-library/vue";
 import { expect, test, vi } from "vitest";
 import { reactive } from "vue";
 import ShopifyCreateDraftDialog from "../../src/components/windows/shopify/ShopifyCreateDraftDialog.vue";
 import ShopifyProductPicker from "../../src/components/windows/shopify/ShopifyProductPicker.vue";
 import type { ShopifyDraftPreview } from "../../src/domain/shopify-draft.ts";
+import { ShopifyUiError } from "../../src/domain/shopify-ui-error.ts";
 import { renderWithApp } from "./render.ts";
 
 const preview: ShopifyDraftPreview = {
@@ -39,8 +40,12 @@ const t = (key: string) => ({
   shopifyDraftCreateError: "Could not create the draft.",
   configShopifyDraftInvalidResponse: "Invalid Shopify draft preview",
   configShopifyPickerOpen: "Link existing product",
+  configShopifyPickerTitle: "Choose a Shopify product",
   commonClose: "Close",
-  shopifyDraftRefreshPreview: "Refresh preview"
+  shopifyDraftRefreshPreview: "Refresh preview",
+  configShopifyRetry: "Retry",
+  configShopifyReconnectInSettings: "Reconnect Shopify in Settings to continue.",
+  configShopifyNoResults: "No matching Shopify variants were found."
 }[key] ?? key);
 
 function renderDialog(overrides: Partial<{
@@ -67,7 +72,7 @@ test("shows only the authoritative server preview and Shopify draft ownership no
   expect(await screen.findByText("Dragon Shield Matte Sleeves")).toBeTruthy();
   expect(screen.getByText("Sealed box")).toBeTruthy();
   expect(screen.getByText("DS-MATTE-100")).toBeTruthy();
-  expect(screen.getByText("34.50 CAD")).toBeTruthy();
+  expect(screen.getByText("CA$34.50")).toBeTruthy();
   expect(screen.getByText("7")).toBeTruthy();
   expect(screen.getByText("This product stays a draft until you publish it in Shopify.")).toBeTruthy();
   expect(screen.getByText("Shopify owns future stock and product management.")).toBeTruthy();
@@ -110,7 +115,7 @@ test("submits the preview token once and closes only after successful create", a
   expect(props.modelValue).toBe(false);
 });
 
-test("keeps the preview after create error and reloads it when retrying preview", async () => {
+test("keeps the preview after create error and retries creation only on explicit action", async () => {
   const createDraft = vi.fn().mockRejectedValueOnce(new Error("stale preview"));
   const loadPreview = vi.fn(async () => preview);
   renderDialog({ createDraft, loadPreview });
@@ -124,9 +129,26 @@ test("keeps the preview after create error and reloads it when retrying preview"
 
   expect(await screen.findByText("Could not create the draft.")).toBeTruthy();
   expect(screen.getByText("Dragon Shield Matte Sleeves")).toBeTruthy();
-  await fireEvent.click(screen.getByRole("button", { name: "Refresh preview" }));
-  await waitFor(() => expect(loadPreview).toHaveBeenCalledTimes(2));
+  await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await waitFor(() => expect(createDraft).toHaveBeenCalledTimes(2));
+  expect(loadPreview).toHaveBeenCalledOnce();
   expect(screen.getByText("Dragon Shield Matte Sleeves")).toBeTruthy();
+});
+
+test("offers preview refresh for stale preview errors and reconnect guidance for auth errors", async () => {
+  const loadPreview = vi.fn()
+    .mockRejectedValueOnce(new ShopifyUiError(null, "refresh", "configShopifyDraftStalePreview"))
+    .mockResolvedValueOnce(preview);
+  renderDialog({ loadPreview });
+  await screen.findByRole("button", { name: "Refresh preview" });
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  await fireEvent.click(screen.getByRole("button", { name: "Refresh preview" }));
+  expect(await screen.findByText("Dragon Shield Matte Sleeves")).toBeTruthy();
+
+  renderDialog({ loadPreview: async () => { throw new ShopifyUiError(null, "reconnect", "configShopifyErrorUnauthorized"); } });
+  expect(await screen.findByText("Reconnect Shopify in Settings to continue.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Refresh preview" })).toBeNull();
 });
 
 test("ignores a preview response from an earlier open after close and reopen", async () => {
@@ -175,4 +197,24 @@ test("keeps draft creation explicit and disables it with a save-first hint for u
   expect(screen.getByRole("button", { name: "Link existing product" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Create Shopify product" }).hasAttribute("disabled")).toBe(true);
   expect(screen.getByText("Save the lot name and SKU first. The draft uses saved inventory details.")).toBeTruthy();
+});
+
+test("offers explicit draft creation from completed empty search without overlapping dialogs", async () => {
+  renderWithApp(ShopifyProductPicker, { props: {
+    query: "no match", results: [], loading: false, completed: true, hasMore: false,
+    selectedVariantId: null, selectedLocationId: null, error: null, disabled: false, t,
+    canCreateDraft: true, createDraftDisabled: false, loadDraftPreview: async () => preview,
+    createDraft: async () => undefined
+  } });
+
+  await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
+  const picker = await screen.findByRole("dialog", { name: "Choose a Shopify product" });
+  expect(within(picker).getByText("No matching Shopify variants were found.")).toBeTruthy();
+  await fireEvent.click(within(picker).getByRole("button", { name: "Create Shopify product" }));
+
+  expect(await screen.findByRole("dialog", { name: "Create Shopify draft" })).toBeTruthy();
+  const pickerOverlay = screen.getByRole("dialog", { name: "Choose a Shopify product" });
+  expect(pickerOverlay.querySelector(".v-overlay__content")?.getAttribute("style")).toContain("display: none");
+  const visibleDialogs = screen.getAllByRole("dialog").filter(dialog => !dialog.querySelector(".v-overlay__content")?.getAttribute("style")?.includes("display: none"));
+  expect(visibleDialogs).toHaveLength(1);
 });

@@ -78,6 +78,7 @@ function createContext(overrides: Ctx = {}): Ctx {
     shopifyEditLoading: false,
     shopifyEditSaving: false,
     shopifyEditError: null,
+    shopifyEditErrorOperation: null,
     shopifyEditRequestRevision: 0,
     shopifyEditListingStatus: "idle" as const,
     shopifyEditSessionAuthEpoch: null,

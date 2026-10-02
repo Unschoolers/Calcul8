@@ -10,10 +10,11 @@ export default defineComponent({
   props: {
     modelValue: { type: Boolean, default: false },
     t: { type: Function as PropType<(key: string) => string>, required: true },
+    language: { type: String, default: "en" },
     loadPreview: { type: Function as PropType<() => Promise<ShopifyDraftPreview>>, required: true },
     createDraft: { type: Function as PropType<(locationId: string, previewToken: string) => Promise<void>>, required: true }
   },
-  emits: ["update:modelValue"],
+  emits: ["update:modelValue", "created"],
   data(): {
     preview: ShopifyDraftPreview | null;
     selectedLocationId: string;
@@ -45,6 +46,16 @@ export default defineComponent({
     },
     locationItems(): Array<{ title: string; value: string }> {
       return (this.preview?.locations ?? []).map(location => ({ title: location.name, value: location.id }));
+    },
+    formattedPrice(): string {
+      if (!this.preview) return "";
+      const amount = Number(this.preview.price);
+      if (!Number.isFinite(amount)) return `${this.preview.price} ${this.preview.currency}`;
+      try { return new Intl.NumberFormat(this.language, { style: "currency", currency: this.preview.currency }).format(amount); }
+      catch { return `${this.preview.price} ${this.preview.currency}`; }
+    },
+    recoveryActionText(): string {
+      return this.errorRecovery === "retry" ? this.t("configShopifyRetry") : this.t("shopifyDraftRefreshPreview");
     }
   },
   watch: {
@@ -110,7 +121,10 @@ export default defineComponent({
       this.isCreating = true;
       try {
         await this.createDraft(selectedLocationId, previewToken);
-        if (revision === this.requestRevision && this.modelValue) this.$emit("update:modelValue", false);
+        if (revision === this.requestRevision && this.modelValue) {
+          this.$emit("created");
+          this.$emit("update:modelValue", false);
+        }
       } catch (error) {
         if (revision === this.requestRevision && this.modelValue) {
           this.error = "create";
@@ -154,14 +168,15 @@ export default defineComponent({
       <div v-if="isLoadingPreview" role="status">{{ t('shopifyDraftLoading') }}</div>
       <v-alert v-else-if="error === 'preview'" type="error" variant="tonal" role="alert">
         {{ errorMessage || t('shopifyDraftLoadError') }}
-        <v-btn variant="text" :disabled="isCreating" @click="fetchPreview">{{ t('shopifyDraftRefreshPreview') }}</v-btn>
+        <div v-if="errorRecovery === 'reconnect'" class="text-caption mt-2">{{ t('configShopifyReconnectInSettings') }}</div>
+        <v-btn v-else-if="errorRecovery === 'retry' || errorRecovery === 'refresh'" variant="text" :disabled="isCreating" @click="fetchPreview">{{ recoveryActionText }}</v-btn>
       </v-alert>
       <div v-else-if="preview" class="shopify-draft-preview">
         <dl class="shopify-draft-preview__fields">
           <div><dt>{{ t('shopifyDraftTitleLabel') }}</dt><dd>{{ preview.title }}</dd></div>
           <div><dt>{{ t('shopifyDraftVariantLabel') }}</dt><dd>{{ preview.variantTitle }}</dd></div>
           <div><dt>{{ t('shopifyDraftSkuLabel') }}</dt><dd>{{ preview.sku }}</dd></div>
-          <div><dt>{{ t('shopifyDraftPriceLabel') }}</dt><dd>{{ preview.price }} {{ preview.currency }}</dd></div>
+          <div><dt>{{ t('shopifyDraftPriceLabel') }}</dt><dd>{{ formattedPrice }}</dd></div>
           <div><dt>{{ t('shopifyDraftQuantityLabel') }}</dt><dd>{{ preview.quantity }}</dd></div>
         </dl>
         <v-select
@@ -177,7 +192,9 @@ export default defineComponent({
         <v-alert type="info" variant="tonal" density="compact">{{ t('shopifyDraftFutureStock') }}</v-alert>
         <v-alert v-if="error === 'create'" type="error" variant="tonal" role="alert">
           {{ errorMessage || t('shopifyDraftCreateError') }}
-          <v-btn variant="text" :disabled="isCreating" @click="fetchPreview">{{ t('shopifyDraftRefreshPreview') }}</v-btn>
+          <div v-if="errorRecovery === 'reconnect'" class="text-caption mt-2">{{ t('configShopifyReconnectInSettings') }}</div>
+          <v-btn v-else-if="errorRecovery === 'refresh'" variant="text" :disabled="isCreating" @click="fetchPreview">{{ t('shopifyDraftRefreshPreview') }}</v-btn>
+          <v-btn v-else-if="errorRecovery === 'retry'" variant="text" :disabled="isCreating" @click="submitCreate">{{ t('configShopifyRetry') }}</v-btn>
         </v-alert>
       </div>
     </v-card-text>

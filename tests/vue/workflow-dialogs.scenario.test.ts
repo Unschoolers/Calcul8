@@ -382,7 +382,7 @@ test("SystemConfigurationDialog no longer owns lot SKU or Shopify controls", () 
   const pickerTemplate = readFileSync("src/components/windows/shopify/ShopifyProductPicker.vue", "utf8");
   expect(systemTemplate).not.toMatch(/configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);
   expect(editTemplate).toMatch(/v-model="renameLotExternalSku"/);
-  expect(editTemplate).toMatch(/<shopify-product-picker[\s\S]*?:results="shopifyEditSearchResults"[\s\S]*?@query-change="onShopifyEditQueryChange"/);
+  expect(editTemplate).toMatch(/<shopify-lot-integration[\s\S]*?:state="\{ listing: shopifyEditListing[\s\S]*?@query-change="onShopifyEditQueryChange"/);
   expect(pickerTemplate).toMatch(/t\('configShopifySectionTitle'\)/);
   expect(pickerTemplate).toMatch(/t\('configShopifyPickerOpen'\)/);
 });

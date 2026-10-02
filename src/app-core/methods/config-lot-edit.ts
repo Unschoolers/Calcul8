@@ -39,7 +39,7 @@ function shopifyEditSessionIsCurrent(context: ShopifyEditRequestContext): boolea
     context.shopifyEditSessionScope === JSON.stringify(shopifyEditScopeBody(context)) &&
     context.shopifyEditSessionLotId === context.currentLotId;
 }
-function closeShopifyEditState(context: { shopifyEditRequestRevision: number; shopifyEditLoading: boolean; shopifyEditSaving: boolean; shopifyEditSearchResults: ShopifyVariantSearchResult[]; shopifyEditSearchCompleted: boolean; shopifyEditSelectedVariantId: string | null; shopifyEditSelectedLocationId: string | null; shopifyEditError: string | null; shopifyEditRecovery: "retry" | "refresh" | "reconnect" | "none"; shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error"; showRenameLotModal: boolean }): void {
+function closeShopifyEditState(context: { shopifyEditRequestRevision: number; shopifyEditLoading: boolean; shopifyEditSaving: boolean; shopifyEditSearchResults: ShopifyVariantSearchResult[]; shopifyEditSearchCompleted: boolean; shopifyEditSelectedVariantId: string | null; shopifyEditSelectedLocationId: string | null; shopifyEditError: string | null; shopifyEditRecovery: "retry" | "refresh" | "reconnect" | "none"; shopifyEditErrorOperation: "listing" | "search" | "link" | "create" | null; shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error"; showRenameLotModal: boolean }): void {
   context.shopifyEditRequestRevision += 1;
   context.shopifyEditLoading = false;
   context.shopifyEditSaving = false;
@@ -49,6 +49,7 @@ function closeShopifyEditState(context: { shopifyEditRequestRevision: number; sh
   context.shopifyEditSelectedLocationId = null;
   context.shopifyEditError = null;
   context.shopifyEditRecovery = "none";
+  context.shopifyEditErrorOperation = null;
   context.shopifyEditListingStatus = "idle";
   context.showRenameLotModal = false;
 }
@@ -90,6 +91,7 @@ export const configLotEditMethods = {
     this.shopifyEditLoading = false;
     this.shopifyEditError = null;
     this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
@@ -118,6 +120,7 @@ export const configLotEditMethods = {
     this.shopifyEditLoading = false;
     this.shopifyEditError = null;
     this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
     this.shopifyEditSaving = true;
     const lotId = this.currentLotId;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId,
@@ -148,7 +151,7 @@ export const configLotEditMethods = {
       this.shopifyEditSearchHasMore = false;
       this.shopifyEditSearchCompleted = false;
     } catch (error) {
-      if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyUiErrorMessage(error, this.t, "configShopifyDraftCreateError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); }
+      if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyUiErrorMessage(error, this.t, "configShopifyDraftCreateError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "create"; }
       throw error;
     } finally {
       if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditSaving = false;
@@ -200,6 +203,7 @@ export const configLotEditMethods = {
     this.shopifyEditSelectedLocationId = null;
     this.shopifyEditError = null;
     this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditSessionAuthEpoch = this.googleAuthEpoch;
     this.shopifyEditSessionScope = JSON.stringify(shopifyEditScopeBody(this));
@@ -217,6 +221,7 @@ export const configLotEditMethods = {
     this.shopifyEditListingStatus = "loading";
     this.shopifyEditError = null;
     this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
     this.shopifyEditRequestRevision += 1;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
@@ -229,16 +234,25 @@ export const configLotEditMethods = {
       if (shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditListing = payload.listing ?? null;
         this.shopifyEditListingStatus = "loaded";
+        if (this.shopifyEditListing) {
+          this.shopifyEditSelectedVariantId = null;
+          this.shopifyEditSelectedLocationId = null;
+          this.shopifyEditSearchQuery = "";
+          this.shopifyEditSearchResults = [];
+          this.shopifyEditSearchCursor = null;
+          this.shopifyEditSearchHasMore = false;
+          this.shopifyEditSearchCompleted = false;
+        }
       }
     } catch (error) {
       if (shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditListingStatus = "error";
-        this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyListingLoadError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error);
+        this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyListingLoadError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "listing";
       }
     } finally {
       if (shopifyEditRequestIsOwned(this, captured) && !shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditListingStatus = "error";
-        this.shopifyEditError = this.t("configShopifyErrorConnectionChanged"); this.shopifyEditRecovery = "refresh";
+        this.shopifyEditError = this.t("configShopifyErrorConnectionChanged"); this.shopifyEditRecovery = "refresh"; this.shopifyEditErrorOperation = "listing";
       }
     }
   },
@@ -255,6 +269,7 @@ export const configLotEditMethods = {
     this.shopifyEditSearchQuery = value;
     this.shopifyEditError = null;
     this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
     this.shopifyEditRequestRevision += 1;
     this.shopifyEditLoading = false;
     this.shopifyEditSearchResults = [];
@@ -272,6 +287,23 @@ export const configLotEditMethods = {
         }
       }, 300));
     }
+  },
+
+  restoreShopifyEditSelection(selection: { query: string; variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }): void {
+    if (this.shopifyEditSaving || !this.showRenameLotModal || !shopifyEditSessionIsCurrent(this)) return;
+    cancelShopifyEditSearchTimer(this);
+    this.shopifyEditRequestRevision += 1;
+    this.shopifyEditLoading = false;
+    this.shopifyEditSearchQuery = selection.query;
+    this.shopifyEditSearchResults = selection.product ? [selection.product] : [];
+    this.shopifyEditSearchCursor = null;
+    this.shopifyEditSearchHasMore = false;
+    this.shopifyEditSearchCompleted = Boolean(selection.product);
+    this.shopifyEditSelectedVariantId = selection.variantId;
+    this.shopifyEditSelectedLocationId = selection.locationId;
+    this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
   },
 
   selectShopifyEditVariant(variantId: string): void {
@@ -312,6 +344,7 @@ export const configLotEditMethods = {
     }
     this.shopifyEditError = null;
     this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
     this.shopifyEditLoading = true;
     this.shopifyEditRequestRevision += 1;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
@@ -330,9 +363,10 @@ export const configLotEditMethods = {
       if (!this.shopifyEditSearchResults.length && (page.matchedVariantCount ?? 0) > 0 && page.excludedVariantCount === page.matchedVariantCount) {
         this.shopifyEditError = this.t("configShopifyNoEligibleResults");
         this.shopifyEditRecovery = "none";
+        this.shopifyEditErrorOperation = "search";
       }
     } catch (error) {
-      if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifySearchError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); }
+      if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifySearchError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "search"; }
     } finally {
       if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditLoading = false;
     }
@@ -341,7 +375,7 @@ export const configLotEditMethods = {
   async renameCurrentLot(): Promise<void> {
     if (this.shopifyEditSaving) return;
     if (this.shopifyEditSessionLotId != null && (!this.showRenameLotModal || !shopifyEditSessionIsCurrent(this))) {
-      this.shopifyEditError = this.t("configShopifyStaleLotError"); this.shopifyEditRecovery = "refresh";
+      this.shopifyEditError = this.t("configShopifyStaleLotError"); this.shopifyEditRecovery = "refresh"; this.shopifyEditErrorOperation = "link";
       return;
     }
     if (!this.currentLotId) {
@@ -364,17 +398,20 @@ export const configLotEditMethods = {
     if (this.shopifyEditSelectedVariantId) {
       if (this.shopifyEditListingStatus !== "loaded" || this.shopifyEditListing) {
         this.shopifyEditError = this.t("configShopifyListingLoadError"); this.shopifyEditRecovery = "retry";
+        this.shopifyEditErrorOperation = "listing";
         return;
       }
       const selected = this.shopifyEditSearchResults.find((item) => item.variantId === this.shopifyEditSelectedVariantId);
       const locationId = this.shopifyEditSelectedLocationId;
       if (!selected || !locationId || !selected.locations.some((location) => location.id === locationId)) {
         this.shopifyEditError = this.t("configShopifyChooseLocation"); this.shopifyEditRecovery = "none";
+        this.shopifyEditErrorOperation = "link";
         return;
       }
       this.shopifyEditSaving = true;
       this.shopifyEditError = null;
       this.shopifyEditRecovery = "none";
+      this.shopifyEditErrorOperation = null;
       this.shopifyEditRequestRevision += 1;
       const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: lot.id, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
       try {
@@ -387,7 +424,7 @@ export const configLotEditMethods = {
         if (!shopifyEditRequestIsCurrent(this, captured)) return;
         this.shopifyEditListing = payload.listing;
       } catch (error) {
-        if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyLinkError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); }
+        if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyLinkError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "link"; }
         return;
       } finally {
         if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditSaving = false;
@@ -422,6 +459,7 @@ export const configLotEditMethods = {
   | "refreshShopifyEditListing"
   | "loadShopifyLinkedStock"
   | "onShopifyEditQueryChange"
+  | "restoreShopifyEditSelection"
   | "selectShopifyEditVariant"
   | "selectShopifyEditLocation"
   | "searchShopifyEditProducts"

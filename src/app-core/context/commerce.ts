@@ -12,7 +12,8 @@ import type {
   SinglesCatalogSource,
   SinglesPurchaseEntry,
   SinglesSaleCardOption,
-  SinglesSaleLine
+  SinglesSaleLine,
+  ShopifyVariantSearchResult
 } from "../../types/app.ts";
 import type { GameMethodState, GameSessionStateContext } from "./game.ts";
 import type { PortfolioChartContext, PortfolioMethodState } from "./portfolio.ts";
@@ -181,6 +182,7 @@ export interface CommerceMethodState {
   loadShopifyLinkedStock(): Promise<import("../../../shared/shopify-stock.ts").ShopifyStockObservation>;
   searchShopifyEditProducts(loadMore?: boolean): Promise<void>;
   onShopifyEditQueryChange(value: string): void;
+  restoreShopifyEditSelection(selection: { query: string; variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }): void;
   selectShopifyEditVariant(variantId: string): void;
   selectShopifyEditLocation(locationId: string): void;
   loadShopifyDraftPreview(): Promise<import("../../domain/shopify-draft.ts").ShopifyDraftPreview>;
@@ -509,6 +511,7 @@ export type LotConfigurationContext = Pick<
   | "shopifyEditSaving"
   | "shopifyEditError"
   | "shopifyEditRecovery"
+  | "shopifyEditErrorOperation"
   | "shopifyEditRequestRevision"
   | "shopifyEditListingStatus"
   | "shopifyEditSessionAuthEpoch"
@@ -712,6 +715,7 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "loadShopifyDraftPreview"
     | "createShopifyDraft"
     | "onShopifyEditQueryChange"
+    | "restoreShopifyEditSelection"
     | "selectShopifyEditVariant"
     | "selectShopifyEditLocation"
     | "loadLot"

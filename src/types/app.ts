@@ -17,6 +17,7 @@ import type {
 
 export type AppTab = "config" | "live" | "sales" | "portfolio" | "wheel";
 export type LotType = "bulk" | "singles";
+export type ShopifyEditErrorOperation = "listing" | "search" | "link" | "create" | null;
 export type GuidedOnboardingStatus = "idle" | "available" | "running" | "completed" | "dismissed";
 export type SinglesCatalogSource = "ua" | "pokemon" | "none";
 export type CostInputMode = "perBox" | "total";
@@ -729,6 +730,7 @@ export interface AppState extends LotSetup {
   shopifyEditSaving: boolean;
   shopifyEditError: string | null;
   shopifyEditRecovery: "retry" | "refresh" | "reconnect" | "none";
+  shopifyEditErrorOperation: ShopifyEditErrorOperation;
   shopifyEditRequestRevision: number;
   shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error";
   shopifyEditSessionAuthEpoch: number | null;

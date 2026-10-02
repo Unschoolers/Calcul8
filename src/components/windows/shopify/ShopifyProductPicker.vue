@@ -16,6 +16,8 @@ const props = defineProps<{
   error: string | null;
   disabled: boolean;
   t: (key: string) => string;
+  language?: string;
+  recovery?: "retry" | "refresh" | "reconnect" | "none";
   canCreateDraft?: boolean;
   createDraftDisabled?: boolean;
   loadDraftPreview?: () => Promise<ShopifyDraftPreview>;
@@ -26,7 +28,9 @@ const emit = defineEmits<{
   (event: "query-change", value: string): void;
   (event: "load-more"): void;
   (event: "confirm", value: { variantId: string; locationId: string }): void;
-  (event: "cancel", value: { variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }): void;
+  (event: "cancel", value: { variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null; query: string }): void;
+  (event: "retry-search"): void;
+  (event: "created"): void;
 }>();
 
 const isOpen = ref(false);
@@ -34,6 +38,7 @@ const isCreateDraftOpen = ref(false);
 const draftVariantId = ref<string | null>(null);
 const draftLocationId = ref<string | null>(null);
 const originalSelection = ref<{ variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }>({ variantId: null, locationId: null, product: null });
+const originalQuery = ref("");
 const selectedResult = computed(() => props.results.find((result) => result.variantId === props.selectedVariantId) ?? null);
 const draftResult = computed(() => props.results.find((result) => result.variantId === draftVariantId.value)
   ?? (originalSelection.value.variantId === draftVariantId.value ? originalSelection.value.product : null));
@@ -44,6 +49,7 @@ watch(isOpen, (open) => {
   if (!open) return;
   const product = props.results.find((result) => result.variantId === props.selectedVariantId) ?? null;
   originalSelection.value = { variantId: props.selectedVariantId, locationId: props.selectedLocationId, product };
+  originalQuery.value = props.query;
   draftVariantId.value = props.selectedVariantId;
   draftLocationId.value = props.selectedLocationId;
 });
@@ -56,8 +62,21 @@ watch(() => props.query, (query, previousQuery) => {
 
 function closePicker(): void {
   if (!isOpen.value) return;
-  emit("cancel", originalSelection.value);
+  emit("cancel", { ...originalSelection.value, query: originalQuery.value });
   isOpen.value = false;
+}
+
+function formatSearchPrice(price: string): string {
+  const amount = Number(price);
+  if (!Number.isFinite(amount)) return price;
+  try { return new Intl.NumberFormat(props.language || "en", { maximumFractionDigits: 2 }).format(amount); }
+  catch { return price; }
+}
+
+function openDraftFromSearch(): void {
+  if (props.disabled || props.createDraftDisabled || !props.canCreateDraft || !props.loadDraftPreview || !props.createDraft) return;
+  closePicker();
+  isCreateDraftOpen.value = true;
 }
 
 function chooseVariant(variantId: string): void {
@@ -85,7 +104,7 @@ function useProduct(): void {
     <div v-if="selectedResult" class="shopify-product-picker-summary mb-3" data-testid="shopify-picker-selected-summary">
       <div class="font-weight-medium" style="overflow-wrap: anywhere">{{ selectedResult.title }}</div>
       <div class="text-caption text-medium-emphasis" style="overflow-wrap: anywhere">{{ selectedResult.variantTitle }}</div>
-      <div class="text-caption text-medium-emphasis" style="overflow-wrap: anywhere">{{ t('configShopifyBindingSku') }}: {{ selectedResult.sku || t('configShopifyNoSku') }} · {{ selectedResult.price }}</div>
+      <div class="text-caption text-medium-emphasis" style="overflow-wrap: anywhere">{{ t('configShopifyBindingSku') }}: {{ selectedResult.sku || t('configShopifyNoSku') }} · {{ formatSearchPrice(selectedResult.price) }}</div>
       <div class="text-caption text-medium-emphasis">{{ t('configShopifyBindingLocation') }}: {{ selectedResult.locations.find((location) => location.id === selectedLocationId)?.name || selectedLocationId }}</div>
     </div>
     <v-btn class="app-touch-target" variant="outlined" :disabled="disabled" @click="isOpen = true">
@@ -97,7 +116,7 @@ function useProduct(): void {
         color="primary"
         variant="tonal"
         :disabled="disabled || createDraftDisabled"
-        @click="isCreateDraftOpen = true"
+        @click="openDraftFromSearch"
       >
         {{ t('configShopifyCreateDraft') }}
       </v-btn>
@@ -107,8 +126,10 @@ function useProduct(): void {
       <shopify-create-draft-dialog
         v-model="isCreateDraftOpen"
         :t="t"
+        :language="language"
         :load-preview="loadDraftPreview"
         :create-draft="createDraft"
+        @created="emit('created')"
       />
     </div>
 
@@ -140,8 +161,15 @@ function useProduct(): void {
       />
 
       <div v-if="error" class="text-body-2 text-error mt-3" role="alert">{{ error }}</div>
+      <div v-if="recovery === 'reconnect'" class="text-caption text-medium-emphasis mt-2">{{ t('configShopifyReconnectInSettings') }}</div>
+      <div v-else-if="error && (recovery === 'retry' || recovery === 'refresh')" class="mt-2">
+        <v-btn class="app-touch-target" size="small" variant="text" :disabled="disabled || loading" @click="emit('retry-search')">{{ t('configShopifyRetry') }}</v-btn>
+      </div>
       <div v-if="loading && !results.length" class="text-body-2 text-medium-emphasis mt-4" role="status">{{ t('configShopifySearching') }}</div>
-      <div v-else-if="query.trim().length >= 2 && completed && !results.length && !error" class="text-body-2 text-medium-emphasis mt-4" role="status">{{ t('configShopifyNoResults') }}</div>
+      <div v-else-if="query.trim().length >= 2 && completed && !results.length && !error" class="text-body-2 text-medium-emphasis mt-4" role="status">
+        {{ t('configShopifyNoResults') }}
+        <v-btn v-if="canCreateDraft && loadDraftPreview && createDraft" class="app-touch-target mt-2" variant="tonal" :disabled="disabled || createDraftDisabled" @click="openDraftFromSearch">{{ t('configShopifyCreateDraft') }}</v-btn>
+      </div>
       <div v-else-if="query.trim().length < 2" class="text-body-2 text-medium-emphasis mt-4">{{ t('configShopifySearchMinimum') }}</div>
 
       <div v-else-if="results.length" class="shopify-product-picker-results mt-3" role="group" :aria-label="t('configShopifySearchResults')">
@@ -158,7 +186,7 @@ function useProduct(): void {
           <span class="shopify-product-picker-result-title">{{ result.title }}</span>
           <span class="shopify-product-picker-result-meta">{{ result.variantTitle }}</span>
           <span class="shopify-product-picker-result-meta">{{ t('configShopifyBindingSku') }}: {{ result.sku || t('configShopifyNoSku') }}</span>
-          <span class="shopify-product-picker-result-price">{{ t('configShopifyPrice') }}: {{ result.price }}</span>
+          <span class="shopify-product-picker-result-price">{{ t('configShopifyPrice') }}: {{ formatSearchPrice(result.price) }}</span>
         </button>
       </div>
 

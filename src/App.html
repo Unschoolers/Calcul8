@@ -233,39 +233,22 @@
               <v-switch v-if="currentLotType !== 'singles' && shopifyEditListing?.mode === 'managed'" v-model="renameLotShopifyEnabled" :label="t('configShopifyPublishLabel')" :disabled="shopifyEditSaving" color="primary" density="compact" hide-details></v-switch>
               <div v-if="shopifyEditListing?.mode === 'linked'" class="text-caption text-medium-emphasis mb-3">{{ t('configShopifyLinkedHint') }}</div>
               <div v-else-if="shopifyEditListing?.mode === 'managed'" class="text-caption text-medium-emphasis mb-3">{{ t('configShopifyManagedHint') }}</div>
-              <div v-if="shopifyEditListingStatus === 'loading'" class="text-caption text-medium-emphasis mb-3">{{ t('configShopifyListingLoading') }}</div>
-              <div v-else-if="shopifyEditListingStatus === 'error'" class="text-caption text-medium-emphasis mb-3">
-                {{ shopifyEditError }}
-                <v-btn class="app-touch-target" size="small" variant="text" @click="refreshShopifyEditListing">{{ t('configShopifyRetry') }}</v-btn>
-              </div>
-              <shopify-product-picker
+              <shopify-lot-integration
                 :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop"
-                v-else-if="shopifyEditListingStatus === 'loaded' && !shopifyEditListing && shopifyConnectionStatus === 'connected' && currentLotType !== 'singles'"
-                class="mt-3"
-                :query="shopifyEditSearchQuery"
-                :results="shopifyEditSearchResults"
-                :loading="shopifyEditLoading"
-                :completed="shopifyEditSearchCompleted"
-                :has-more="shopifyEditSearchHasMore"
-                :selected-variant-id="shopifyEditSelectedVariantId"
-                :selected-location-id="shopifyEditSelectedLocationId"
-                :error="shopifyEditError"
-                :disabled="shopifyEditSaving || isOffline"
-                :can-create-draft="currentLotType === 'bulk' && (activeScopeType !== 'workspace' || isCurrentWorkspaceOwner)"
-                :create-draft-disabled="String(renameLotName || '').trim() !== String(lots.find(lot => lot.id === currentLotId)?.name || '').trim() || String(renameLotExternalSku || '').trim() !== String(lots.find(lot => lot.id === currentLotId)?.externalSku || '').trim()"
-                :load-draft-preview="loadShopifyDraftPreview"
-                :create-draft="createShopifyDraft"
+                v-if="showRenameLotModal && currentLotType !== 'singles'"
+                :state="{ listing: shopifyEditListing, listingStatus: shopifyEditListingStatus, error: shopifyEditError, errorOperation: shopifyEditErrorOperation, recovery: shopifyEditRecovery, saving: shopifyEditSaving, search: { query: shopifyEditSearchQuery, results: shopifyEditSearchResults, loading: shopifyEditLoading, completed: shopifyEditSearchCompleted, hasMore: shopifyEditSearchHasMore, selectedVariantId: shopifyEditSelectedVariantId, selectedLocationId: shopifyEditSelectedLocationId } }"
+                :lot="{ type: currentLotType, saved: lots.find(lot => lot.id === currentLotId), draftName: renameLotName, draftSku: renameLotExternalSku, boxesPurchased, packsPerBox, sales }"
+                :connection="{ status: shopifyConnectionStatus, shop: shopifyConnectionShop, offline: isOffline, canManage: activeScopeType !== 'workspace' || isCurrentWorkspaceOwner }"
+                :language="preferredLanguage"
                 :t="t"
+                :callbacks="{ loadPreview: loadShopifyDraftPreview, createDraft: createShopifyDraft, refreshListing: refreshShopifyEditListing, loadStock: loadShopifyLinkedStock }"
                 @query-change="onShopifyEditQueryChange"
                 @load-more="searchShopifyEditProducts(true)"
+                @retry-search="searchShopifyEditProducts(false)"
                 @confirm="(selection) => { selectShopifyEditVariant(selection.variantId); selectShopifyEditLocation(selection.locationId); }"
-                @cancel="(selection) => { onShopifyEditQueryChange(''); if (selection.product) { shopifyEditSearchResults = [selection.product]; shopifyEditSelectedVariantId = selection.variantId; shopifyEditSelectedLocationId = selection.locationId; } }">
-              </shopify-product-picker>
-              <shopify-binding-details v-if="shopifyEditListing" :listing="shopifyEditListing" :t="t" />
-              <shopify-linked-stock v-if="showRenameLotModal && shopifyEditListing?.mode === 'linked' && shopifyConnectionStatus === 'connected'"
-                :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop + ':' + shopifyEditListing.variantId + ':' + shopifyEditListing.locationId"
-                :boxes-purchased="boxesPurchased" :packs-per-box="packsPerBox" :sales="sales" :load-stock="loadShopifyLinkedStock" :t="t" :language="preferredLanguage" :disabled="shopifyEditSaving" />
-              <v-alert v-if="shopifyEditError && shopifyEditListingStatus !== 'error'" type="error" density="compact" variant="tonal" class="mt-2">{{ shopifyEditError }}</v-alert>
+                @cancel="restoreShopifyEditSelection($event)"
+                @retry-save="renameCurrentLot">
+              </shopify-lot-integration>
               <v-select v-model="renameLotWhatnotVertical" :disabled="shopifyEditSaving" :items="[
                 { title: t('configWhatnotVerticalUnclassified'), value: null },
                 { title: t('configWhatnotVerticalSports'), value: 'sports' },

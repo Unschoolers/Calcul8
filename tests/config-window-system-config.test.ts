@@ -78,7 +78,12 @@ test("Whatnot vertical is required for new lots and edited through the lot dialo
     "configWhatnotVerticalFashion",
     "configWhatnotVerticalOtherCollectibles",
     "configWhatnotVerticalCoins",
-    "configWhatnotVerticalOther"
+    "configWhatnotVerticalOther",
+    "configShopifyDraftCreated",
+    "configShopifyWorkspaceOwnerHint",
+    "configShopifyReconnectInSettings",
+    "configShopifyRefreshListing",
+    "configShopifyRetrySave"
   ]) {
     assert.ok(en[key]?.trim(), `missing English copy for ${key}`);
     assert.ok(fr[key]?.trim(), `missing French copy for ${key}`);
@@ -121,7 +126,9 @@ test("Shopify linking and marketplace SKU are edited with the lot, not system as
   const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
   const pickerTemplate = readFileSync("src/components/windows/shopify/ShopifyProductPicker.vue", "utf8");
   assert.match(appTemplate, /v-model="renameLotExternalSku"/);
-  assert.match(appTemplate, /<shopify-product-picker[\s\S]*?:results="shopifyEditSearchResults"[\s\S]*?@query-change="onShopifyEditQueryChange"/);
+  assert.match(appTemplate, /<shopify-lot-integration[\s\S]*?v-if="showRenameLotModal && currentLotType !== 'singles'"[\s\S]*?:state="\{ listing: shopifyEditListing[\s\S]*?@query-change="onShopifyEditQueryChange"/);
+  assert.match(appTemplate, /@cancel="restoreShopifyEditSelection\(\$event\)"/);
+  assert.match(appTemplate, /@retry-save="renameCurrentLot"/);
   assert.match(pickerTemplate, /t\('configShopifySectionTitle'\)/);
   assert.match(pickerTemplate, /t\('configShopifyPickerOpen'\)/);
   assert.match(appTemplate, /searchShopifyEditProducts/);
