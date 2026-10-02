@@ -10,7 +10,7 @@ const observation = (available: number) => ({
   observedAt: "2026-09-30T20:00:00.000Z"
 });
 const t = (key: string) => key;
-const row = (key: string) => screen.getByText(key).closest("tr")!.textContent;
+const value = (key: string) => screen.getByTestId(`stock-value-${key}`).textContent;
 
 test("Shopify receipts, imported box sales, and opened boxes move independent inventory counts", async () => {
   let stock = 10;
@@ -20,36 +20,66 @@ test("Shopify receipts, imported box sales, and opened boxes move independent in
     boxesPurchased: 10, packsPerBox: 10, sales: state.sales, loadStock, t
   }) });
   renderWithApp(Harness);
-  await waitFor(() => expect(row("configShopifyStockAvailable")).toContain("10"));
-  expect(row("configShopifyStockSealed")).toContain("10");
+  await waitFor(() => expect(value("configShopifyStockAvailable")).toContain("10"));
+  expect(value("configShopifyStockSealed")).toContain("10");
 
   stock = 12; // Shopify receives two boxes; WhatFees purchase history stays unchanged.
   await fireEvent.click(screen.getByRole("button", { name: "configShopifyStockRefresh" }));
-  await waitFor(() => expect(row("configShopifyStockAvailable")).toContain("12"));
-  expect(row("configShopifyStockSealed")).toContain("10");
-  expect(row("configShopifyStockDifference")).toContain("+2");
+  await waitFor(() => expect(value("configShopifyStockAvailable")).toContain("12"));
+  expect(value("configShopifyStockSealed")).toContain("10");
+  expect(value("configShopifyStockDifference")).toContain("+2");
 
   stock = 11;
   state.sales.push({ type: "box", quantity: 1, packsCount: 0, externalProvider: "shopify" });
   await fireEvent.click(screen.getByRole("button", { name: "configShopifyStockRefresh" }));
-  await waitFor(() => expect(row("configShopifyStockAvailable")).toContain("11"));
-  expect(row("configShopifyStockSealed")).toContain("9");
-  expect(row("configShopifyStockDifference")).toContain("+2"); // Current Shopify availability is not deducted again.
+  await waitFor(() => expect(value("configShopifyStockAvailable")).toContain("11"));
+  expect(value("configShopifyStockSealed")).toContain("9");
+  expect(value("configShopifyStockDifference")).toContain("+2"); // Current Shopify availability is not deducted again.
 
   state.sales.push({ type: "pack", quantity: 1, packsCount: 1 });
-  await waitFor(() => expect(row("configShopifyStockSealed")).toContain("8"));
-  expect(row("configShopifyStockOpened")).toContain("1");
-  expect(row("configShopifyStockLoosePacks")).toContain("9");
-  expect(row("configShopifyStockAvailable")).toContain("11");
-  expect(row("configShopifyStockDifference")).toContain("+3");
+  await waitFor(() => expect(value("configShopifyStockSealed")).toContain("8"));
+  await fireEvent.click(screen.getByRole("button", { name: "configShopifyStockDetails" }));
+  expect(screen.getByTestId("stock-value-configShopifyStockOpened").textContent).toContain("1");
+  expect(screen.getByTestId("stock-value-configShopifyStockLoosePacks").textContent).toContain("9");
+  expect(value("configShopifyStockAvailable")).toContain("11");
+  expect(value("configShopifyStockDifference")).toContain("+3");
 });
 
 test("failed refresh preserves the previous observation and exposes a stale state", async () => {
   const loadStock = vi.fn().mockResolvedValueOnce(observation(4)).mockRejectedValueOnce(new Error("offline"));
   renderWithApp(ShopifyLinkedStock, { props: { boxesPurchased: 4, packsPerBox: 10, sales: [], loadStock, t } });
-  await waitFor(() => expect(row("configShopifyStockAvailable")).toContain("4"));
+  await waitFor(() => expect(value("configShopifyStockAvailable")).toContain("4"));
   await fireEvent.click(screen.getByRole("button", { name: "configShopifyStockRefresh" }));
   await waitFor(() => expect(screen.getByText("configShopifyStockStale")).toBeTruthy());
-  expect(row("configShopifyStockAvailable")).toContain("4");
+  expect(value("configShopifyStockAvailable")).toContain("4");
   expect(screen.getByRole("button", { name: "configShopifyStockRefresh" }).hasAttribute("disabled")).toBe(false);
+});
+
+test("keeps unknown stock visibly different from a zero observation", async () => {
+  let resolveStock!: (value: ReturnType<typeof observation>) => void;
+  const loadStock = vi.fn(() => new Promise<ReturnType<typeof observation>>((resolve) => { resolveStock = resolve; }));
+  renderWithApp(ShopifyLinkedStock, { props: { boxesPurchased: 0, packsPerBox: 10, sales: [], loadStock, t } });
+  expect(value("configShopifyStockAvailable")).toContain("—");
+  expect(value("configShopifyStockSealed")).toContain("0");
+  resolveStock(observation(0));
+  await waitFor(() => expect(value("configShopifyStockAvailable")).toContain("0"));
+  expect(value("configShopifyStockDifference")).toContain("0");
+});
+
+test("announces a successful refresh and exposes expandable secondary details", async () => {
+  const loadStock = vi.fn().mockResolvedValue(observation(3));
+  renderWithApp(ShopifyLinkedStock, { props: { boxesPurchased: 3, packsPerBox: 10, sales: [], loadStock, t } });
+  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("configShopifyStockUpdated"));
+  const disclosure = screen.getByRole("button", { name: "configShopifyStockDetails" });
+  expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.getByTestId("stock-value-configShopifyStockOnHand").closest(".shopify-stock-card__details")).toHaveStyle({ display: "none" });
+  await fireEvent.click(disclosure);
+  expect(disclosure.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByTestId("stock-value-configShopifyStockOnHand").textContent).toContain("4");
+  expect(screen.getByTestId("stock-value-configShopifyStockCommitted").textContent).toContain("1");
+});
+
+test("exposes the primary quantities as a named stock summary group", async () => {
+  renderWithApp(ShopifyLinkedStock, { props: { boxesPurchased: 0, packsPerBox: 10, sales: [], loadStock: vi.fn(async () => observation(0)), t } });
+  expect(screen.getByRole("group", { name: "configShopifyStockSummary" })).toBeTruthy();
 });
