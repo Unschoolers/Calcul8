@@ -39,7 +39,7 @@ const statusKey = computed(() => {
 .shopify-binding-card__status { min-width: 0; max-width: 100%; flex: 0 1 auto; }
 .shopify-binding-card__metadata { display: grid; grid-template-columns: minmax(0, 1fr); gap: .55rem .9rem; margin: 0; }
 .shopify-binding-card__metadata > div { min-width: 0; }
-.shopify-binding-card__metadata dt { color: rgb(var(--v-theme-on-surface-variant)); font-size: .75rem; line-height: 1.3; }
+.shopify-binding-card__metadata dt { color: rgba(var(--v-theme-on-surface), .78); font-size: .75rem; line-height: 1.3; }
 .shopify-binding-card__metadata dd { margin: .1rem 0 0; overflow-wrap: anywhere; font-size: .875rem; }
 .shopify-binding-card__link { display: inline-flex; align-items: center; min-height: 44px; margin-top: .35rem; overflow-wrap: anywhere; }
 @media (min-width: 600px) { .shopify-binding-card__metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

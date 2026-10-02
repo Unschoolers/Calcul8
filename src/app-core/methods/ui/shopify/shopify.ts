@@ -13,13 +13,13 @@ type ShopifyContext = {
   shopifyLastSyncedAt: string | null;
   shopifySyncError: string | null;
 };
-type Ownership = { key: string; token: object; statusRevision: number; seenKey: string; pendingKey?: string };
+type Ownership = { token: object; statusRevision: number; seenKey: string; pendingKey?: string };
 const ownership = new WeakMap<object, Ownership>();
 function keyOf(c: ShopifyContext): string { return `${c.googleAuthEpoch}:${c.activeScopeType}:${JSON.stringify(scopeBody(c))}`; }
 function record(c: object & ShopifyContext): Ownership {
   let value = ownership.get(c);
   if (!value) {
-    value = { key: keyOf(c), token: {}, statusRevision: 0, seenKey: keyOf(c) };
+    value = { token: {}, statusRevision: 0, seenKey: keyOf(c) };
     ownership.set(c, value);
   }
   return value;
@@ -28,7 +28,6 @@ function enterScope(context: object & ShopifyContext, owner = record(context)): 
   const key = keyOf(context);
   if (owner.seenKey === key) return owner;
   owner.seenKey = key;
-  owner.key = key;
   owner.pendingKey = undefined;
   owner.token = {};
   ++owner.statusRevision;
@@ -42,7 +41,6 @@ function beginMutation(context: object & ShopifyContext): { current: () => boole
   const owner = enterScope(context); const key = keyOf(context);
   if (owner.pendingKey === key) return null;
   const token = {};
-  owner.key = key;
   owner.seenKey = key;
   owner.pendingKey = key;
   owner.token = token;

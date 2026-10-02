@@ -16,3 +16,7 @@ One API-local pure error-code contract with frontend re-export; one typed UI err
 
 ## Acceptance
 TDD regressions: localized errors, duplicate requests, old/new operation ordering, auth/scope/lot/store changes, selection/cancel, empty-search creation, dirty fields, immediate success binding, current-status changes/fallback, stock receipts/imported sales counted once/opened-box difference. Browser checks: 320/390/412px and desktop, EN/FR light/dark, long text, enlarged text and reduced-height keyboard simulation. Full web/API verification and test typechecks, independent review, main push and CI/Pages/API checks. Real Android and development-store transactions must be reported separately and only performed when authorized environments are available.
+
+
+## Task 6 closure scope amendment (2026-10-02)
+The user explicitly waived remaining Playwright, UI, and screenshot checks. Close Task 6 with code review and root-owned fresh component/type verification. Preserve the completed historical 19-case run and four screenshots as historical evidence; mark final title/catalog/config edits as not browser-reverified. Make no native-device or live-store claims. This amendment changes remaining verification scope only; it does not rewrite prior acceptance history.

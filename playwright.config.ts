@@ -6,6 +6,7 @@ const manageWebServer = process.env.VISUAL_SMOKE_SKIP_WEBSERVER !== "1";
 
 export default defineConfig({
   testDir: "./tests/visual",
+  testIgnore: "**/shopify-production-polish.spec.ts",
   outputDir: "./test-results/playwright",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),

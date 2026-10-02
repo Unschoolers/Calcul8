@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, ref } from "vue";
 import type { ShopifyLotIntegrationProps } from "../../../domain/shopify-lot-integration.ts";
 import { shopifySavedLotFieldsMatch } from "../../../domain/shopify-ui-error.ts";
 import ShopifyProductPicker from "./ShopifyProductPicker.vue";
-import ShopifyCreateDraftDialog from "./ShopifyCreateDraftDialog.vue";
 import ShopifyBindingDetails from "./ShopifyBindingDetails.vue";
 import ShopifyLinkedStock from "./ShopifyLinkedStock.vue";
 

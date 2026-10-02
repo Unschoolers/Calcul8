@@ -100,12 +100,17 @@ test.each(["shellShopifyTitle", "shellConnectShopify"])("choosing %s opens the S
 });
 
 test("Shopify connect dialog cannot be dismissed while its request is pending", async () => {
-  const state = Object.assign(createShellState(), { showShopifyConnectDialog: true, shopifyConnectionStatus: "connecting" as const });
+  const state = Object.assign(createShellState(), {
+    showShopifyConnectDialog: true,
+    shopifyConnectionStatus: "connecting" as const,
+    shopifyShopDraft: "my-store.myshopify.com"
+  });
   const Harness = defineComponent({ setup() { provide(shellPortsKey, createShellPorts(state as never)); return () => h(ShopifyConnectDialog); } });
   renderWithApp(Harness);
   const cancel = screen.getByRole("button", { name: "shellShopifyCancel" });
   expect(cancel).toBeDisabled();
   expect(screen.getByLabelText("shellShopifyDomainLabel")).toBeDisabled();
+  expect(screen.getByLabelText("shellShopifyDomainLabel")).toHaveValue("my-store.myshopify.com");
   expect(screen.getByRole("button", { name: "shellConnectShopify" })).toBeDisabled();
   await fireEvent.click(cancel);
   expect(state.showShopifyConnectDialog).toBe(true);

@@ -68,3 +68,40 @@ export async function expectNoPageOverflow(page: Page): Promise<void> {
 
   expect(offenders, `Visible horizontal overflow offenders: ${JSON.stringify(offenders, null, 2)}`).toEqual([]);
 }
+
+export async function expectShopifyBindingMetadataContrast(page: Page): Promise<void> {
+  await expect(page.locator(".shopify-binding-card__metadata dt")).toHaveCount(4);
+  const ratios = await page.locator(".shopify-binding-card__metadata dt").evaluateAll((labels) => {
+    const channels = (value: string) => (value.match(/[\d.]+/g) ?? []).map(Number);
+    const composite = (front: number[], back: number[]) => front.slice(0, 3).map((channel, index) => {
+      const alpha = front[3] ?? 1;
+      return channel * alpha + back[index]! * (1 - alpha);
+    });
+    const luminance = (rgb: number[]) => rgb.slice(0, 3).map((channel) => {
+      const normalized = channel / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index]!, 0);
+
+    return labels.map((label) => {
+      const foreground = channels(getComputedStyle(label).color);
+      let parent: Element | null = label.parentElement;
+      let background = [255, 255, 255, 1];
+      while (parent) {
+        const color = channels(getComputedStyle(parent).backgroundColor);
+        if (color.length >= 3 && (color[3] ?? 1) > 0) {
+          background = color;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      const back = background.length === 4 ? composite(background, [255, 255, 255]) : background;
+      const front = foreground.length === 4 ? composite(foreground, back) : foreground;
+      const light = Math.max(luminance(front), luminance(back));
+      const dark = Math.min(luminance(front), luminance(back));
+      return { text: label.textContent?.trim(), ratio: (light + 0.05) / (dark + 0.05) };
+    });
+  });
+
+  expect(ratios).toHaveLength(4);
+  expect(ratios.every(({ ratio }) => ratio >= 4.5), `Shopify binding metadata label contrast ratios: ${JSON.stringify(ratios)}`).toBe(true);
+}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
 import type { ShopifyVariantSearchResult } from "../../../types/app.ts";
 import type { ShopifyDraftPreview } from "../../../domain/shopify-draft.ts";
@@ -35,6 +35,7 @@ const emit = defineEmits<{
 
 const isOpen = ref(false);
 const isCreateDraftOpen = ref(false);
+const createDraftEntry = ref<HTMLElement | null>(null);
 const draftVariantId = ref<string | null>(null);
 const draftLocationId = ref<string | null>(null);
 const originalSelection = ref<{ variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }>({ variantId: null, locationId: null, product: null });
@@ -73,9 +74,14 @@ function formatSearchPrice(price: string): string {
   catch { return price; }
 }
 
-function openDraftFromSearch(): void {
+async function openDraftFromSearch(): Promise<void> {
   if (props.disabled || props.createDraftDisabled || !props.canCreateDraft || !props.loadDraftPreview || !props.createDraft) return;
   closePicker();
+  await nextTick();
+  if (props.disabled || props.createDraftDisabled || !props.canCreateDraft || !props.loadDraftPreview || !props.createDraft) return;
+  const trigger = createDraftEntry.value?.querySelector<HTMLElement>("button.v-btn");
+  if (!trigger) return;
+  trigger.focus();
   isCreateDraftOpen.value = true;
 }
 
@@ -110,7 +116,7 @@ function useProduct(): void {
     <v-btn class="app-touch-target" variant="outlined" :disabled="disabled" @click="isOpen = true">
       {{ t('configShopifyPickerOpen') }}
     </v-btn>
-    <div v-if="canCreateDraft && loadDraftPreview && createDraft" class="shopify-product-picker-create">
+    <div v-if="canCreateDraft && loadDraftPreview && createDraft" ref="createDraftEntry" class="shopify-product-picker-create">
       <v-btn
         class="app-touch-target"
         color="primary"
@@ -143,7 +149,7 @@ function useProduct(): void {
     >
       <template #title>
         <div class="d-flex align-center ga-2">
-          <span class="flex-grow-1">{{ t('configShopifyPickerTitle') }}</span>
+          <span class="flex-grow-1 app-text-wrap shopify-product-picker-dialog-title">{{ t('configShopifyPickerTitle') }}</span>
           <v-btn data-picker-close class="app-touch-target" icon="mdi-close" variant="text" size="small" :aria-label="t('commonClose')" :disabled="disabled" @click="closePicker"></v-btn>
         </div>
       </template>
@@ -216,6 +222,8 @@ function useProduct(): void {
 </template>
 
 <style scoped>
+.shopify-product-picker-dialog-title { white-space: normal; }
+
 .shopify-product-picker-results {
   display: grid;
   gap: 0.5rem;

@@ -54,3 +54,7 @@
 - [ ] Browser 320/390/412/mobile and desktop, EN/FR light/dark long text/enlarged text and reduced-height keyboard simulation; no overflow, reachable sticky actions, focus/cancel and immediate success. Capture screenshots; record real Android/store limitations separately.
 - [ ] Full VITE_API_BASE_URL=https://api.whatfees.ca/api npm run verify; npm run verify:api; web/API test typechecks. Final independent review and fixes.
 - [ ] Commit evidence, push reviewed commits main and verify CI/Pages/API.
+
+
+## Task 6 closure scope amendment (2026-10-02)
+The user explicitly waived remaining Playwright, UI, and screenshot checks. Close Task 6 with code review and root-owned fresh component/type verification. Preserve the completed historical 19-case run and four screenshots as historical evidence; mark final title/catalog/config edits as not browser-reverified. Make no native-device or live-store claims. This amendment changes remaining verification scope only; it does not rewrite prior acceptance history.
