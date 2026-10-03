@@ -4,11 +4,13 @@ import vuetify from "vite-plugin-vuetify";
 import packageJson from "./package.json";
 
 const appVersion = packageJson.version ?? "0.0.0";
+const appBuildId = process.env.GITHUB_SHA?.trim() || appVersion;
 
 export default defineConfig({
   base: "./",
   define: {
-    __APP_VERSION__: JSON.stringify(appVersion)
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __APP_BUILD_ID__: JSON.stringify(appBuildId)
   },
   plugins: [
     vue(),

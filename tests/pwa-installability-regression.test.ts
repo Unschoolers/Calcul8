@@ -54,5 +54,5 @@ test("production stamping emits the Android web-version manifest", () => {
   const stampSource = readRepoFile("scripts/stamp-sw-version.mjs");
 
   assert.match(stampSource, /app-version\.json/);
-  assert.match(stampSource, /JSON\.stringify\(\{ version: appVersion \}/);
+  assert.match(stampSource, /JSON\.stringify\(\{ version: appVersion, buildId: appBuildId \}/);
 });

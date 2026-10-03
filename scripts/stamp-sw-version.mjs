@@ -6,8 +6,9 @@ const rootDir = path.resolve(import.meta.dirname, "..");
 const swPath = path.join(rootDir, "dist", "sw.js");
 const appVersionPath = path.join(rootDir, "dist", "app-version.json");
 const appVersion = String(packageJson.version ?? "").trim() || "0.0.0";
+const appBuildId = process.env.GITHUB_SHA?.trim() || appVersion;
 const sourceLine = 'const swVersion = new URL(self.location.href).searchParams.get("v") || "dev";';
-const stampedLine = `const swVersion = ${JSON.stringify(appVersion)};`;
+const stampedLine = `const swVersion = ${JSON.stringify(appBuildId)};`;
 
 const swSource = await readFile(swPath, "utf8");
 if (!swSource.includes(sourceLine)) {
@@ -15,4 +16,4 @@ if (!swSource.includes(sourceLine)) {
 }
 
 await writeFile(swPath, swSource.replace(sourceLine, stampedLine), "utf8");
-await writeFile(appVersionPath, `${JSON.stringify({ version: appVersion }, null, 2)}\n`, "utf8");
+await writeFile(appVersionPath, `${JSON.stringify({ version: appVersion, buildId: appBuildId }, null, 2)}\n`, "utf8");
