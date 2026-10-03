@@ -1,4 +1,4 @@
-import { APP_VERSION } from "../../constants.ts";
+import { APP_BUILD_ID, APP_VERSION } from "../../constants.ts";
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { PwaMethodImplementation } from "../context/shell.ts";
 import { getAppRuntime } from "../platform/runtime.ts";
@@ -125,7 +125,9 @@ export const pwaMethods = {
       if (!payload || typeof payload !== "object") return;
       const remoteVersion = (payload as { version?: unknown }).version;
       if (typeof remoteVersion !== "string" || !remoteVersion.trim()) return;
-      if (remoteVersion.trim() !== APP_VERSION) {
+      const remoteBuildId = (payload as { buildId?: unknown }).buildId;
+      if (remoteVersion.trim() !== APP_VERSION ||
+        (typeof remoteBuildId === "string" && remoteBuildId.trim() && remoteBuildId.trim() !== APP_BUILD_ID)) {
         this.showAppUpdatePrompt = true;
       }
     } catch {
@@ -302,4 +304,3 @@ export const pwaMethods = {
     window.addEventListener("load", this.serviceWorkerLoadListener, { once: true });
   }
 } satisfies PwaMethodImplementation;
-

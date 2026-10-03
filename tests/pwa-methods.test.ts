@@ -10,7 +10,7 @@ vi.mock("../src/app-core/platform/runtime.ts", () => ({
 }));
 
 import { pwaMethods } from "../src/app-core/methods/pwa.ts";
-import { APP_VERSION } from "../src/constants.ts";
+import { APP_BUILD_ID, APP_VERSION } from "../src/constants.ts";
 import type { BeforeInstallPromptEvent } from "../src/types/app.ts";
 
 type PwaContext = Record<string, any>;
@@ -239,6 +239,10 @@ test("Android version check ignores matching, malformed, and unavailable respons
   await pwa.checkForAndroidAppUpdate.call(context as never);
   assert.equal(context.showAppUpdatePrompt, false);
 
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ version: APP_VERSION, buildId: APP_BUILD_ID }) });
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, false);
+
   fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ version: 123 }) });
   await pwa.checkForAndroidAppUpdate.call(context as never);
   assert.equal(context.showAppUpdatePrompt, false);
@@ -250,6 +254,19 @@ test("Android version check ignores matching, malformed, and unavailable respons
   fetchMock.mockRejectedValueOnce(new Error("offline"));
   await pwa.checkForAndroidAppUpdate.call(context as never);
   assert.equal(context.showAppUpdatePrompt, false);
+});
+
+test("Android detects a new deployment even when the visible version is unchanged", async () => {
+  getAppRuntimeMock.mockReturnValue("android");
+  stubWindow();
+  vi.stubGlobal("fetch", vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ version: APP_VERSION, buildId: "another-deployment" })
+  })));
+
+  const context = createContext();
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, true);
 });
 
 test("Android update actions reuse the prompt with a direct cache-busted refresh", () => {
