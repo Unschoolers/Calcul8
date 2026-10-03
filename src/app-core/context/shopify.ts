@@ -4,6 +4,8 @@ import type { FeatureMethodImplementation, RuntimeMethodState } from "./runtime.
 import type { WorkspaceComputedState } from "./workspace.ts";
 
 export interface ShopifyMethodState {
+  refreshShopifyBindings(): Promise<void>;
+  resetShopifyBindings(): void;
   refreshShopifyStatus(): Promise<void>;
   openShopifyConnectDialog(): void;
   connectShopify(): Promise<void>;
@@ -11,8 +13,9 @@ export interface ShopifyMethodState {
 }
 
 export type ShopifyMethodContext = ScopedApiContext &
-  Pick<AppState, "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyLastSyncedAt" | "shopifySyncError" | "shopifyShopDraft" | "showShopifyConnectDialog"> &
+  Pick<AppState, "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyLastSyncedAt" | "shopifySyncError" | "shopifyShopDraft" | "showShopifyConnectDialog" | "shopifyBindingsSummary" | "shopifyBindingsStatus" | "shopifyBindingsStale" | "shopifyBindingsScope"> &
   Pick<WorkspaceComputedState, "isCurrentWorkspaceOwner"> &
-  Pick<RuntimeMethodState, "notify">;
+  Pick<RuntimeMethodState, "notify"> & Pick<ShopifyMethodState, "refreshShopifyBindings" | "resetShopifyBindings">;
 
-export type ShopifyMethodImplementation = FeatureMethodImplementation<ShopifyMethodContext, ShopifyMethodState>;
+export type ShopifyMethodImplementation = FeatureMethodImplementation<ShopifyMethodContext, Omit<ShopifyMethodState, "refreshShopifyBindings" | "resetShopifyBindings">>;
+export type ShopifyBindingMethodImplementation = FeatureMethodImplementation<ShopifyMethodContext, Pick<ShopifyMethodState, "refreshShopifyBindings" | "resetShopifyBindings">>;

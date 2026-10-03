@@ -5,6 +5,7 @@ import { expect, test, vi } from "vitest";
 import ShopifyProductPicker from "../../src/components/windows/shopify/ShopifyProductPicker.vue";
 import ShopifyLotIntegration from "../../src/components/windows/shopify/ShopifyLotIntegration.vue";
 import { configLotEditMethods } from "../../src/app-core/methods/config-lot-edit.ts";
+import type { BindingAction, BindingMutation, ProductDetailsDraft, ProductDetailsResult, DraftCreateMutation, ProductDetailsMutation } from "../../shared/shopify-product-manager.ts";
 import type { ShopifyDraftPreview } from "../../src/domain/shopify-draft.ts";
 import type { ShopifyEditListing } from "../../src/types/app.ts";
 import { renderWithApp } from "./render.ts";
@@ -13,12 +14,12 @@ const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
 vi.mock("../../src/app-core/methods/ui/common/api-client.ts", () => ({ fetchAuthenticatedApiResponse: apiCall }));
 
 const longTitleProduct = {
-  productId: "p1", variantId: "v1",
+  productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/1",
   title: "Dragon Shield Matte Sleeves for the Complete Collector Edition",
   variantTitle: "Midnight Black Premium Finish",
   sku: "DRAGON-MATTE-BLACK-COLLECTOR-EDITION-001",
-  price: "12.00", inventoryItemId: "i1",
-  locations: [{ id: "loc1", name: "Main Warehouse", available: 8 }, { id: "loc2", name: "Overflow Storage", available: 3 }]
+  price: "12.00", inventoryItemId: "gid://shopify/InventoryItem/1",
+  locations: [{ id: "gid://shopify/Location/1", name: "Main Warehouse", available: 8 }, { id: "gid://shopify/Location/2", name: "Overflow Storage", available: 3 }]
 };
 const laterProduct = {
   ...longTitleProduct, productId: "p2", variantId: "v2", title: "Later page product",
@@ -65,8 +66,17 @@ function renderAppShopifyEditHarness(initiallySelected = false, loadPreview: () 
     shopifyEditListing: null as ShopifyEditListing | null, shopifyEditListingStatus: "loaded", shopifyEditError: null as string | null, shopifyEditErrorOperation: null as "listing" | "search" | "link" | "create" | null, shopifyEditRecovery: "none" as const, shopifyEditSaving: false,
     shopifyEditSearchQuery: "dragon", shopifyEditSearchResults: [longTitleProduct], shopifyEditLoading: false, shopifyEditSearchCompleted: true,
     shopifyEditSearchHasMore: false, shopifyEditSearchCursor: null as string | null,
-    shopifyEditSelectedVariantId: initiallySelected ? "v1" : null, shopifyEditSelectedLocationId: initiallySelected ? "loc1" : null,
+    shopifyEditSelectedVariantId: initiallySelected ? "gid://shopify/ProductVariant/1" : null, shopifyEditSelectedLocationId: initiallySelected ? "gid://shopify/Location/1" : null,
     shopifyEditRequestRevision: 1, shopifyEditSessionAuthEpoch: 1, shopifyEditSessionScope: "{}", shopifyEditSessionLotId: 41,
+    shopifyEditManagerOpen: false, shopifyEditBindingVersion: null as string | null, shopifyEditGeneration: 2,
+    shopifyEditDetailsOutcome: null as ProductDetailsResult['outcome'] | null, shopifyEditPendingOwnerScope: null as string | null,
+    shopifyEditOperationId: null as string | null, shopifyEditPendingBindingMutation: null as BindingMutation | null,
+    shopifyEditPendingDetailsMutation: null as ProductDetailsMutation | null, shopifyEditPendingCreateMutation: null as DraftCreateMutation | null,
+    refreshShopifyBindings: vi.fn(async () => {}),
+    applyShopifyBinding(action: BindingAction, selection?: { variantId?: string; locationId?: string; confirmTransfer?: boolean }) { return configLotEditMethods.applyShopifyBinding.call(state as never, action, selection); },
+    saveShopifyBinding(request: BindingMutation) { return configLotEditMethods.saveShopifyBinding.call(state as never, request); },
+    saveShopifyProductDetails(draft: ProductDetailsDraft) { return configLotEditMethods.saveShopifyProductDetails.call(state as never, draft); },
+    resetShopifyEditor() { return configLotEditMethods.resetShopifyEditor.call(state as never); },
     renameLotName: "Old title", renameLotExternalSku: "OLD", renameLotShopifyEnabled: false, renameLotWhatnotVertical: "tcg",
     boxesPurchased: 1, packsPerBox: 24, sales: [], preferredLanguage: "en", lots: [lot], t,
     onShopifyEditQueryChange(value: string) { return configLotEditMethods.onShopifyEditQueryChange.call(state as never, value); },
@@ -78,7 +88,7 @@ function renderAppShopifyEditHarness(initiallySelected = false, loadPreview: () 
       return restore.call(state, selection);
     },
     renameCurrentLot() { return configLotEditMethods.renameCurrentLot.call(state as never); },
-    saveLotsToStorage() {},
+    saveLotsToStorage() {}, notify() {}, currentTab: "config",
     loadShopifyDraftPreview: loadPreview,
     createShopifyDraft(locationId: string, previewToken: string) { return configLotEditMethods.createShopifyDraft.call(state as never, locationId, previewToken); },
     refreshShopifyEditListing() { return configLotEditMethods.refreshShopifyEditListing.call(state as never); },
@@ -144,8 +154,8 @@ test("picker renders readable multiline results and confirms selection without p
   await waitFor(() => expect(state.shopifyEditSearchResults).toHaveLength(2));
   expect(JSON.parse(String(apiCall.mock.calls.at(-1)?.[2]?.body)).after).toBe("cursor-1");
   await fireEvent.click(screen.getByRole("button", { name: "Use product" }));
-  expect(state.shopifyEditSelectedVariantId).toBe("v1");
-  expect(state.shopifyEditSelectedLocationId).toBe("loc2");
+  expect(state.shopifyEditSelectedVariantId).toBe("gid://shopify/ProductVariant/1");
+  expect(state.shopifyEditSelectedLocationId).toBe("gid://shopify/Location/2");
   expect(apiCall.mock.calls.every((call) => String(call[1]).endsWith("/products/search"))).toBe(true);
 });
 
@@ -153,163 +163,102 @@ test("cancel restores the selection that was present when the picker opened", as
   const restoreSelection = vi.fn();
   renderWithApp(ShopifyProductPicker, { props: {
     query: "dragon", results: [longTitleProduct], loading: false, completed: true, hasMore: false,
-    selectedVariantId: "v1", selectedLocationId: "loc1", error: null, disabled: false, t,
+    selectedVariantId: "gid://shopify/ProductVariant/1", selectedLocationId: "gid://shopify/Location/1", error: null, disabled: false, t,
     onCancel: restoreSelection
   } });
   await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
   await screen.findByRole("dialog", { name: "Choose a Shopify product" });
   await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(restoreSelection).toHaveBeenCalledWith({ variantId: "v1", locationId: "loc1", product: longTitleProduct, query: "dragon" });
+  expect(restoreSelection).toHaveBeenCalledWith({ variantId: "gid://shopify/ProductVariant/1", locationId: "gid://shopify/Location/1", product: longTitleProduct, query: "dragon" });
 });
 
-test("App cancellation restores an opening selection after query edits without restarting the root debounce, then Save links it", async () => {
-  apiCall.mockClear();
-  apiCall.mockImplementation(async (_ctx: unknown, path: string) => new Response(JSON.stringify(path.endsWith("/products/link")
-    ? { listing: { mode: "linked", productId: "p1", variantId: "v1", locationId: "loc1" } }
-    : { variants: [], pageInfo: { hasNextPage: false, endCursor: null } }), { status: 200 }));
-  const { state } = renderAppShopifyEditHarness(true);
-
+async function openManager() { await fireEvent.click(screen.getByRole("button", { name: "configShopifyManageProduct" })); }
+async function chooseCurrentProduct() {
   await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
-  await fireEvent.update(screen.getByRole("textbox", { name: "Product title, variant, or SKU" }), "changed query");
-  expect(state.shopifyEditSearchResults).toEqual([]);
-  expect(state.shopifyEditSelectedVariantId).toBeNull();
-  await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  await new Promise(resolve => setTimeout(resolve, 350));
+  await fireEvent.click(screen.getByRole("button", { name: /Dragon Shield Matte Sleeves/ }));
+  const location = await screen.findByRole("combobox", { name: "Inventory location" });
+  await fireEvent.click(location);
+  await fireEvent.keyDown(location, { key: "ArrowDown" });
+  await fireEvent.click(await screen.findByRole("option", { name: /Main Warehouse/ }));
+}
 
-  expect(state.shopifyEditSearchQuery).toBe("dragon");
-  expect(state.shopifyEditSearchResults).toEqual([longTitleProduct]);
-  expect(state.shopifyEditSelectedVariantId).toBe("v1");
-  expect(state.shopifyEditSelectedLocationId).toBe("loc1");
-  expect(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/search"))).toBe(false);
-
+test("App cancellation and inventory Save never persist a proposed Shopify selection", async () => {
+  apiCall.mockClear();
+  const { state } = renderAppShopifyEditHarness(true);
+  state.renameLotName = "Unsaved inventory name";
+  await openManager(); await chooseCurrentProduct();
+  await fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(state.renameLotName).toBe("Unsaved inventory name");
   await fireEvent.click(screen.getByRole("button", { name: "Save lot" }));
-  const linkCall = apiCall.mock.calls.find(call => String(call[1]).endsWith("/products/link"));
-  expect(JSON.parse(String(linkCall?.[2]?.body))).toEqual({ lotId: 41, variantId: "v1", locationId: "loc1" });
+  expect(state.lots[0]?.name).toBe("Unsaved inventory name");
+  expect(apiCall).not.toHaveBeenCalled();
 });
 
-test("empty-search Create closes the picker through snapshot restoration so cancelling preview keeps the pending link", async () => {
-  apiCall.mockImplementation(async () => new Response(JSON.stringify({ variants: [], pageInfo: { hasNextPage: false, endCursor: null } }), { status: 200 }));
+test("closing a loading draft preview preserves inventory fields without creating a product", async () => {
+  apiCall.mockClear();
   const loadPreview = vi.fn(() => new Promise<ShopifyDraftPreview>(() => undefined));
-  const { state } = renderAppShopifyEditHarness(true, loadPreview);
-
-  await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
-  await fireEvent.update(screen.getByRole("textbox", { name: "Product title, variant, or SKU" }), "new query");
-  await waitFor(() => expect(state.shopifyEditSearchCompleted).toBe(true), { timeout: 1200 });
-  expect(state.shopifyEditSearchResults).toEqual([]);
-  expect(state.shopifyEditSelectedVariantId).toBeNull();
-  const picker = screen.getByRole("dialog", { name: "Choose a Shopify product" });
-  await fireEvent.click(within(picker).getByRole("button", { name: "Create Shopify product" }));
+  const { state } = renderAppShopifyEditHarness(false, loadPreview);
+  await openManager(); await fireEvent.click(screen.getByRole("button", { name: "Create Shopify product" }));
   await screen.findByText("Loading preview…");
-
-  expect(state.shopifyEditSearchQuery).toBe("dragon");
-  expect(state.shopifyEditSearchResults).toEqual([longTitleProduct]);
-  expect(state.shopifyEditSelectedVariantId).toBe("v1");
-  expect(state.shopifyEditSelectedLocationId).toBe("loc1");
-  const previewDialog = screen.getByRole("dialog", { name: "Create Shopify draft" });
-  const closeButtons = within(previewDialog).getAllByRole("button", { name: "Close" });
-  await fireEvent.click(closeButtons[closeButtons.length - 1]!);
-  expect(state.shopifyEditSelectedVariantId).toBe("v1");
-  expect(loadPreview).toHaveBeenCalledOnce();
+  await fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(state.renameLotName).toBe("Old title"); expect(state.renameLotExternalSku).toBe("OLD");
+  expect(state.shopifyEditManagerOpen).toBe(false); expect(loadPreview).toHaveBeenCalledOnce(); expect(apiCall).not.toHaveBeenCalled();
 });
 
-test("App parent Save link failure stays visible after the picker closes and guides Shopify reconnect", async () => {
-  apiCall.mockImplementation(async () => new Response(JSON.stringify({ error: "provider details must stay hidden" }), { status: 401 }));
-  renderAppShopifyEditHarness(false);
-
-  await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
-  await fireEvent.click(screen.getByRole("button", { name: /Dragon Shield Matte Sleeves/ }));
-  const location = screen.getByRole("combobox", { name: "Inventory location" });
-  await fireEvent.click(location);
-  await fireEvent.keyDown(location, { key: "ArrowDown" });
-  await waitFor(() => expect(screen.getByRole("option", { name: /Main Warehouse/ })).toBeTruthy());
-  await fireEvent.click(screen.getByRole("option", { name: /Main Warehouse/ }));
-  await fireEvent.click(screen.getByRole("button", { name: "Use product" }));
-  expect(screen.queryByRole("dialog", { name: "Choose a Shopify product" })?.querySelector(".v-overlay__content")?.getAttribute("style")).toContain("display: none");
-
-  await fireEvent.click(screen.getByRole("button", { name: "Save lot" }));
-  const alert = await screen.findByRole("alert");
-  expect(alert).toHaveTextContent("Reconnect Shopify, then try again.");
-  expect(alert).toHaveTextContent("Reconnect Shopify in Settings to continue.");
+test("an explicit link authorization failure stays in the manager with reconnect guidance", async () => {
+  apiCall.mockClear(); apiCall.mockImplementation(async () => new Response(JSON.stringify({ error: "provider details must stay hidden" }), { status: 401 }));
+  const { state } = renderAppShopifyEditHarness(); await openManager(); await chooseCurrentProduct();
+  await fireEvent.click(screen.getByRole("button", { name: "configShopifyConfirmLink" }));
+  await waitFor(() => expect(state.shopifyEditError).toBe("Reconnect Shopify, then try again."));
+  const alert = screen.getAllByRole("alert").find(item => item.textContent?.includes("Reconnect Shopify, then try again."));
+  expect(alert).toBeDefined();
+  expect(screen.getAllByText("Reconnect Shopify in Settings to continue.").length).toBeGreaterThan(0);
   expect(alert).not.toHaveTextContent("provider details must stay hidden");
+  expect(state.showRenameLotModal).toBe(true);
+  expect(apiCall.mock.calls.filter(call => String(call[1]).endsWith("/products/binding"))).toHaveLength(1);
 });
 
-test("App link conflict can refresh the authoritative listing and save preserved lot metadata without relinking", async () => {
+test("a rejected duplicate link can refresh current binding while preserving inventory metadata", async () => {
   apiCall.mockClear();
-  const listing = { mode: "linked", shop: "store-a.myshopify.com", productId: "gid://shopify/Product/22", variantId: "gid://shopify/ProductVariant/33", inventoryItemId: "gid://shopify/InventoryItem/44", locationId: "gid://shopify/Location/55", productTitle: "Already linked product" };
-  apiCall.mockImplementation(async (_ctx: unknown, path: string) => path.endsWith("/products/link")
-    ? new Response(JSON.stringify({ error: "Variant is already linked" }), { status: 409 })
-    : new Response(JSON.stringify({ listing }), { status: 200 }));
-  const { state } = renderAppShopifyEditHarness(true);
-
-  await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
-  await fireEvent.click(screen.getByRole("button", { name: /Dragon Shield Matte Sleeves/ }));
-  const location = screen.getByRole("combobox", { name: "Inventory location" });
-  await fireEvent.click(location);
-  await fireEvent.keyDown(location, { key: "ArrowDown" });
-  await waitFor(() => expect(screen.getByRole("option", { name: /Main Warehouse/ })).toBeTruthy());
-  await fireEvent.click(screen.getByRole("option", { name: /Main Warehouse/ }));
-  await fireEvent.click(screen.getByRole("button", { name: "Use product" }));
-  expect(state.shopifyEditListing).toBeNull();
-  expect(state.shopifyEditListingStatus).toBe("loaded");
-  expect(state.shopifyEditSelectedVariantId).toBe("v1");
-  expect(state.shopifyEditSelectedLocationId).toBe("loc1");
-  state.renameLotExternalSku = "NEW-SKU";
-
-  await fireEvent.click(screen.getByRole("button", { name: "Save lot" }));
-  await waitFor(() => expect(state.shopifyEditErrorOperation).toBe("link"));
-  expect(state.shopifyEditRecovery).toBe("refresh");
-  await fireEvent.click(screen.getByRole("button", { name: "Refresh listing" }));
-  await waitFor(() => expect(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/listing"))).toBe(true));
+  const listing = { mode: "linked", shop: "store-a.myshopify.com", scopeKey: "u", lotId: 41, productId: "gid://shopify/Product/22", variantId: "gid://shopify/ProductVariant/33", inventoryItemId: "gid://shopify/InventoryItem/44", locationId: "gid://shopify/Location/55", productTitle: "Already linked product", lastQuantity: 1, updatedAt: "now" };
+  apiCall.mockImplementation(async (_ctx: unknown, path: string) => path.endsWith("/products/binding")
+    ? new Response(JSON.stringify({ code: "SHOPIFY_VARIANT_ALREADY_BOUND" }), { status: 409 })
+    : new Response(JSON.stringify({ listing, bindingVersion: "v2", generation: 2, shop: listing.shop }), { status: 200 }));
+  const { state } = renderAppShopifyEditHarness(); state.renameLotExternalSku = "NEW-SKU";
+  await openManager(); await chooseCurrentProduct(); await fireEvent.click(screen.getByRole("button", { name: "configShopifyConfirmLink" }));
+  await waitFor(() => expect(state.shopifyEditRecovery).toBe("refresh"));
+  await waitFor(() => expect(screen.getByRole("button", { name: "configShopifyBack" })).toBeEnabled());
+  await fireEvent.click(screen.getByRole("button", { name: "configShopifyBack" }));
+  await fireEvent.click(await screen.findByRole("button", { name: "Refresh listing" }));
   await waitFor(() => expect(state.shopifyEditListing?.productId).toBe(listing.productId));
   expect(state.renameLotExternalSku).toBe("NEW-SKU");
-
-  await fireEvent.click(screen.getByRole("button", { name: "Save lot" }));
+  await fireEvent.click(screen.getByRole("button", { name: "Close" })); await fireEvent.click(screen.getByRole("button", { name: "Save lot" }));
   expect(state.lots[0]?.externalSku).toBe("NEW-SKU");
-  expect(state.shopifyEditSelectedVariantId).toBeNull();
-  expect(state.shopifyEditSelectedLocationId).toBeNull();
-  expect(apiCall.mock.calls.filter(call => String(call[1]).endsWith("/products/link"))).toHaveLength(1);
-  expect(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/create"))).toBe(false);
+  expect(apiCall.mock.calls.filter(call => String(call[1]).endsWith("/products/binding"))).toHaveLength(1);
 });
 
-test("closing a failed draft preview never offers parent Save retry for the restored existing-product selection", async () => {
-  apiCall.mockClear();
-  apiCall.mockImplementation(async (_ctx: unknown, path: string) => {
-    if (path.endsWith("/products/search")) return new Response(JSON.stringify({ variants: [], pageInfo: { hasNextPage: false, endCursor: null } }), { status: 200 });
-    if (path.endsWith("/products/create")) return new Response(JSON.stringify({ error: "temporary failure" }), { status: 503 });
-    return new Response(JSON.stringify({ preview: {
-      title: "New draft", variantTitle: "Default Title", sku: "OLD", price: "12.00", currency: "USD", quantity: 1,
-      locations: [{ id: "gid://shopify/Location/123", name: "Main Warehouse" }], previewToken: "b".repeat(64)
-    } }), { status: 200 });
-  });
-  const preview = {
-    title: "New draft", variantTitle: "Default Title", sku: "OLD", price: "12.00", currency: "USD", quantity: 1,
-    locations: [{ id: "gid://shopify/Location/123", name: "Main Warehouse" }], previewToken: "b".repeat(64)
-  } satisfies ShopifyDraftPreview;
-  const { state } = renderAppShopifyEditHarness(true, async () => preview);
-
-  await fireEvent.click(screen.getByRole("button", { name: "Link existing product" }));
-  await fireEvent.update(screen.getByRole("textbox", { name: "Product title, variant, or SKU" }), "new query");
-  await waitFor(() => expect(state.shopifyEditSearchCompleted).toBe(true), { timeout: 1200 });
-  const picker = screen.getByRole("dialog", { name: "Choose a Shopify product" });
-  await fireEvent.click(within(picker).getByRole("button", { name: "Create Shopify product" }));
-  await screen.findByRole("dialog", { name: "Create Shopify draft" });
+test("an ambiguous draft attempt remains recoverable after closing the manager and never turns into an inventory Save link", async () => {
+  apiCall.mockClear(); apiCall.mockImplementation(async () => new Response(JSON.stringify({ error: "temporary failure" }), { status: 503 }));
+  const preview = { title: "New draft", variantTitle: "Booster box", sku: "OLD", price: "12.00", currency: "USD", quantity: 1, locations: [{ id: "gid://shopify/Location/123", name: "Main Warehouse" }], previewToken: "b".repeat(64) } satisfies ShopifyDraftPreview;
+  const { state } = renderAppShopifyEditHarness(false, async () => preview);
+  await openManager(); await fireEvent.click(screen.getByRole("button", { name: "Create Shopify product" }));
+  await screen.findByRole("textbox", { name: "shopifyDraftTitleLabel" });
   await fireEvent.click(screen.getByRole("button", { name: "Create draft and link" }));
-  await waitFor(() => expect(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/create"))).toBe(true));
-  await waitFor(() => expect(state.shopifyEditError).not.toBeNull());
-  expect(state.shopifyEditErrorOperation).toBe("create");
-  expect(state.shopifyEditSelectedVariantId).toBe("v1");
-  expect(state.shopifyEditSelectedLocationId).toBe("loc1");
-
-  const previewDialog = screen.getByRole("dialog", { name: "Create Shopify draft" });
-  const closeButtons = within(previewDialog).getAllByRole("button", { name: "Close" });
-  await fireEvent.click(closeButtons[closeButtons.length - 1]!);
-
-  expect(screen.queryByRole("button", { name: "Retry Save" })).toBeNull();
-  expect(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/link"))).toBe(false);
+  await waitFor(() => expect(state.shopifyEditPendingCreateMutation).not.toBeNull());
+  await waitFor(() => expect(state.shopifyEditSaving).toBe(false));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Close" })).toBeEnabled());
+  await fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  await screen.findByText("configShopifyRetainAttemptHint");
+  const close = screen.getAllByRole("button", { name: "Close" }); await fireEvent.click(close[close.length - 1]!);
+  await waitFor(() => expect(state.shopifyEditManagerOpen).toBe(false));
+  expect(state.shopifyEditPendingCreateMutation).not.toBeNull();
+  await fireEvent.click(screen.getByRole("button", { name: "Save lot" }));
+  expect(apiCall.mock.calls.filter(call => String(call[1]).endsWith("/products/create"))).toHaveLength(1);
+  expect(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/binding") || String(call[1]).endsWith("/products/link"))).toBe(false);
 });
 
 test("draft creation is a separate action and closing its dialog preserves a pending existing-product selection", async () => {
-  const selected = { variantId: "v1" as string | null, locationId: "loc2" as string | null };
+  const selected = { variantId: "gid://shopify/ProductVariant/1" as string | null, locationId: "gid://shopify/Location/2" as string | null };
   const labels: Record<string, string> = {
     configShopifySectionTitle: "Shopify product",
     configShopifyCreateDraft: "Create Shopify product",
@@ -336,12 +285,12 @@ test("draft creation is a separate action and closing its dialog preserves a pen
   await screen.findByRole("dialog", { name: "Choose a Shopify product" });
   await fireEvent.click(screen.getByRole("button", { name: /Dragon Shield Matte Sleeves/ }));
   await fireEvent.click(screen.getByRole("button", { name: "Use product" }));
-  expect(selected).toEqual({ variantId: "v1", locationId: "loc2" });
+  expect(selected).toEqual({ variantId: "gid://shopify/ProductVariant/1", locationId: "gid://shopify/Location/2" });
 
   await fireEvent.click(screen.getByRole("button", { name: "Create Shopify product" }));
   expect(await screen.findByText("Draft")).toBeTruthy();
   const draftDialog = screen.getByRole("dialog", { name: "Create Shopify draft" });
   await fireEvent.click(within(draftDialog).getAllByRole("button", { name: "Close" })[1]!);
-  expect(selected).toEqual({ variantId: "v1", locationId: "loc2" });
+  expect(selected).toEqual({ variantId: "gid://shopify/ProductVariant/1", locationId: "gid://shopify/Location/2" });
   expect(loadDraftPreview).toHaveBeenCalledOnce();
 });

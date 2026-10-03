@@ -2,6 +2,12 @@ import type { LotType, Sale, ShopifyEditErrorOperation, ShopifyEditListing, Shop
 import type { ShopifyDraftPreview } from "./shopify-draft.ts";
 import type { Recovery } from "./shopify-ui-error.ts";
 import type { ShopifyStockObservation } from "../../shared/shopify-stock.ts";
+import type { BindingAction, BindingMutation, BindingResult, DraftCreateMutation, DraftOverrides, ProductDetailsDraft, ProductDetailsMutation, ProductDetailsResult } from "../../shared/shopify-product-manager.ts";
+
+export interface CreateShopifyDraftCallback {
+  (overrides: DraftOverrides, previewToken: string): Promise<void | BindingResult>;
+  (locationId: string, previewToken: string): Promise<void>;
+}
 
 export type ShopifyLotIntegrationProps = {
   state: {
@@ -11,6 +17,12 @@ export type ShopifyLotIntegrationProps = {
     errorOperation: ShopifyEditErrorOperation;
     recovery: Recovery;
     saving: boolean;
+    bindingVersion?: string | null;
+    generation?: number | null;
+    detailsOutcome?: ProductDetailsResult["outcome"] | null;
+    pendingBindingMutation?: BindingMutation | null;
+    pendingDetailsMutation?: ProductDetailsMutation | null;
+    pendingCreateMutation?: DraftCreateMutation | null;
     search: {
       query: string;
       results: ShopifyVariantSearchResult[];
@@ -34,8 +46,10 @@ export type ShopifyLotIntegrationProps = {
   language: string;
   t: (key: string) => string;
   callbacks: {
-    loadPreview: () => Promise<ShopifyDraftPreview>;
-    createDraft: (locationId: string, previewToken: string) => Promise<void>;
+    loadPreview: (overrides?: Partial<DraftOverrides>) => Promise<ShopifyDraftPreview>;
+    createDraft: CreateShopifyDraftCallback;
+    saveBinding: (action: BindingAction, selection?: { variantId?: string; locationId?: string; confirmTransfer?: boolean }) => Promise<BindingResult>;
+    saveDetails: (draft: ProductDetailsDraft) => Promise<ProductDetailsResult>;
     refreshListing: () => Promise<void>;
     loadStock: () => Promise<ShopifyStockObservation>;
   };

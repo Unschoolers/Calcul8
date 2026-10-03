@@ -2,6 +2,7 @@ import type { LotType } from "../../types/app.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { translateAppMessage } from "../i18n/index.ts";
 import { getLotType } from "./lot-types.ts";
+import { isShopifyLotLink, type ShopifyLotLink } from "../../domain/shopify-binding-summary.ts";
 
 export type LotOptionItem = {
   title: string;
@@ -12,6 +13,7 @@ export type LotOptionItem = {
   symbolIcon: string;
   completionIcon: string | null;
   groupLabel?: string | null;
+  shopifyLink?: ShopifyLotLink;
 };
 
 type LotLike = {
@@ -22,6 +24,7 @@ type LotLike = {
   isComplete?: boolean;
   lotType?: LotType;
   singlesCatalogSource?: string;
+  shopifyLink?: ShopifyLotLink;
 };
 
 function getLotTypeGroupLabel(lotType: LotType, preferredLanguage = ""): string {
@@ -79,7 +82,8 @@ export function attachLotOptionGroupLabels(
     symbolIcon: typeof item.symbolIcon === "string" && item.symbolIcon.trim()
       ? item.symbolIcon
       : getLotSymbolIcon(getLotType(item)),
-    completionIcon: item.completionIcon === "mdi-check-circle" ? item.completionIcon : null
+    completionIcon: item.completionIcon === "mdi-check-circle" ? item.completionIcon : null,
+    ...(isShopifyLotLink(item.shopifyLink) ? { shopifyLink: item.shopifyLink } : {})
   }));
 
   return baseItems.map((item, index, allItems) => {
@@ -100,7 +104,8 @@ export function buildLotOptionItems(lots: LotLike[], preferredLanguage = ""): Lo
       lotType: getLotType(lot),
       isComplete: lot.isComplete === true,
       symbolIcon: getLotSymbolIcon(getLotType(lot)),
-      completionIcon: lot.isComplete === true ? "mdi-check-circle" : null
+      completionIcon: lot.isComplete === true ? "mdi-check-circle" : null,
+      ...(isShopifyLotLink(lot.shopifyLink) ? { shopifyLink: lot.shopifyLink } : {})
     })),
     preferredLanguage
   );
@@ -124,7 +129,6 @@ export function filterLotOptionItems(
     preferredLanguage
   );
 }
-
 
 
 

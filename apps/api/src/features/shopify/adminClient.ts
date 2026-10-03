@@ -11,8 +11,12 @@ type Fetcher = typeof fetch;
 export type ShopifyLinkedDraftClient = {
   listActiveLocations(): Promise<{ id: string; name: string; isActive: boolean }[]>;
   getShopCurrency(): Promise<string>;
-  findOwnedDraft(handle: string, ownershipHash: string, locationId: string): Promise<{ productId: string; variantId: string; inventoryItemId: string; available: number } | null>;
-  createLinkedDraft(input: { handle: string; ownershipHash: string; title: string; sku: string; price: string; locationId: string; quantity: number; beforeMutation?: () => Promise<void> }): Promise<{ productId: string; variantId: string; inventoryItemId: string }>;
+  findOwnedDraft(handle: string, ownershipHash: string, locationId: string, options?: { variantTitle: "Sealed box" | "Booster box" }): Promise<{ productId: string; variantId: string; inventoryItemId: string; available: number } | null>;
+  createLinkedDraft(input: { handle: string; ownershipHash: string; title: string; sku: string; price: string; locationId: string; quantity: number; variantTitle?: "Sealed box" | "Booster box"; beforeMutation?: () => Promise<void> }): Promise<{ productId: string; variantId: string; inventoryItemId: string }>;
+};
+export type ShopifyProductDetailsClient = {
+  updateProductTitle(productId: string, title: string, beforeMutation?: () => Promise<void>): Promise<void>;
+  updateVariantPrice(productId: string, variantId: string, price: string, beforeMutation?: () => Promise<void>): Promise<void>;
 };
 
 function buildVariantSearchQuery(input: string): string {
@@ -24,7 +28,7 @@ function buildVariantSearchQuery(input: string): string {
   }).join(" ");
 }
 
-export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient & ShopifyCatalogClient & ShopifyLinkedDraftClient {
+export function createShopifyAdminClient(shop: string, getToken: () => Promise<string>, fetcher: Fetcher = fetch): ShopifyListingClient & ShopifyCatalogClient & ShopifyLinkedDraftClient & ShopifyProductDetailsClient {
   if (!isShopifyDomain(shop)) throw new Error("Invalid Shopify shop domain");
   const graphql = async <T>(query: string, variables: Record<string, unknown>, beforeMutation?: () => Promise<void>): Promise<T> => {
     const token = await getToken();
@@ -41,9 +45,24 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
   };
   const checkErrors = (payload: { userErrors?: { message: string }[] } | null | undefined): void => {
     if (!payload) throw new Error("Shopify returned no mutation result");
-    if (payload.userErrors?.length) throw new Error(payload.userErrors.map((error) => error.message).join("; "));
+    if (payload.userErrors?.length) throw Object.assign(new Error(payload.userErrors.map((error) => error.message).join("; ")), { definitive: true });
   };
   return {
+    async updateProductTitle(productId, title, beforeMutation) {
+      const data = await graphql<{ productUpdate?: { product?: { id: string }; userErrors?: { message: string }[] } }>(
+        `mutation UpdateLinkedTitle($product: ProductUpdateInput!) { productUpdate(product: $product) { product { id } userErrors { message } } }`,
+        { product: { id: productId, title } }, beforeMutation);
+      checkErrors(data.productUpdate);
+      if (data.productUpdate?.product?.id !== productId) throw new Error("Shopify product identity mismatch");
+    },
+    async updateVariantPrice(productId, variantId, price, beforeMutation) {
+      const data = await graphql<{ productVariantsBulkUpdate?: { product?: { id: string }; productVariants?: { id: string }[]; userErrors?: { message: string }[] } }>(
+        `mutation UpdateLinkedPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkUpdate(productId: $productId, variants: $variants, allowPartialUpdates: false) { product { id } productVariants { id } userErrors { message } } }`,
+        { productId, variants: [{ id: variantId, price }] }, beforeMutation);
+      checkErrors(data.productVariantsBulkUpdate);
+      if (data.productVariantsBulkUpdate?.product?.id !== productId || data.productVariantsBulkUpdate.productVariants?.length !== 1 ||
+        data.productVariantsBulkUpdate.productVariants[0]?.id !== variantId) throw new Error("Shopify variant identity mismatch");
+    },
     async listActiveLocations() {
       const locations: { id: string; name: string; isActive: boolean }[] = [];
       let after: string | null = null;
@@ -65,7 +84,7 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
       if (!currency || !/^[A-Z]{3}$/.test(currency)) throw new Error("Shopify returned an invalid store currency");
       return currency;
     },
-    async findOwnedDraft(handle, ownershipHash, locationId) {
+    async findOwnedDraft(handle, ownershipHash, locationId, options) {
       const data = await graphql<{ product?: { id: string; handle: string; metafield?: { value: string } | null; variants?: { nodes?: { id: string; title: string; inventoryItem?: { id: string; tracked: boolean; inventoryLevel?: { location?: { id: string; isActive: boolean } | null; quantities?: { name: string; quantity: number }[] } | null } }[] } | null } | null }>(
         `query DraftByHandle($identifier: ProductIdentifierInput!, $locationId: ID!) { product: productByIdentifier(identifier: $identifier) { id handle metafield(namespace: "calcul8", key: "draft_owner") { value } variants(first: 2) { nodes { id title inventoryItem { id tracked inventoryLevel(locationId: $locationId) { location { id isActive } quantities(names: ["available"]) { name quantity } } } } } } }`, { identifier: { handle }, locationId });
       if (data.product === undefined) throw new Error("Shopify returned no product lookup result");
@@ -73,7 +92,7 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
       const product = data.product;
       if (product.handle !== handle || product.metafield?.value !== ownershipHash) throw new Error("Shopify draft handle belongs to another product");
       const variants = product.variants?.nodes ?? [];
-      if (variants.length !== 1 || variants[0]?.title !== "Sealed box" || !variants[0]?.inventoryItem?.tracked ||
+      if (variants.length !== 1 || variants[0]?.title !== (options?.variantTitle ?? "Sealed box") || !variants[0]?.inventoryItem?.tracked ||
         !/^gid:\/\/shopify\/Product\/\d+$/.test(product.id) || !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variants[0]?.id ?? "") ||
         !/^gid:\/\/shopify\/InventoryItem\/\d+$/.test(variants[0]?.inventoryItem?.id ?? "")) throw new Error("Shopify draft does not match the sealed-box product");
       const location = variants[0]!.inventoryItem!.inventoryLevel?.location;
@@ -83,15 +102,16 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
       return { productId: product.id, variantId: variants[0]!.id, inventoryItemId: variants[0]!.inventoryItem!.id, available: available! };
     },
     async createLinkedDraft(input) {
+      const variantTitle = input.variantTitle ?? "Sealed box";
       const data = await graphql<{ productSet?: { product?: { id: string; variants?: { nodes?: { id: string; title: string; inventoryItem?: { id: string; tracked: boolean } }[] } }; userErrors?: { message: string }[] } }>(
         `mutation CreateLinkedDraft($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { id variants(first: 2) { nodes { id title inventoryItem { id tracked } } } } userErrors { message } } }`, {
           identifier: { handle: input.handle }, input: { title: input.title, handle: input.handle, status: "DRAFT", productType: "Sealed box", vendor: "Calcul8",
             metafields: [{ namespace: "calcul8", key: "draft_owner", type: "single_line_text_field", value: input.ownershipHash }],
-            productOptions: [{ name: "Format", position: 1, values: [{ name: "Sealed box" }] }], variants: [{ optionValues: [{ optionName: "Format", name: "Sealed box" }], sku: input.sku, price: input.price, inventoryPolicy: "DENY", inventoryItem: { tracked: true }, inventoryQuantities: [{ locationId: input.locationId, name: "available", quantity: input.quantity }] }] }
+            productOptions: [{ name: "Format", position: 1, values: [{ name: variantTitle }] }], variants: [{ optionValues: [{ optionName: "Format", name: variantTitle }], sku: input.sku, price: input.price, inventoryPolicy: "DENY", inventoryItem: { tracked: true }, inventoryQuantities: [{ locationId: input.locationId, name: "available", quantity: input.quantity }] }] }
         }, input.beforeMutation);
       checkErrors(data.productSet);
       const product = data.productSet?.product, variant = product?.variants?.nodes;
-      if (!/^gid:\/\/shopify\/Product\/\d+$/.test(product?.id ?? "") || variant?.length !== 1 || variant[0]?.title !== "Sealed box" || !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variant[0]?.id ?? "") || !variant[0]?.inventoryItem?.tracked || !/^gid:\/\/shopify\/InventoryItem\/\d+$/.test(variant[0]?.inventoryItem?.id ?? "")) throw new Error("Shopify did not create a single tracked sealed-box variant");
+      if (!/^gid:\/\/shopify\/Product\/\d+$/.test(product?.id ?? "") || variant?.length !== 1 || variant[0]?.title !== variantTitle || !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variant[0]?.id ?? "") || !variant[0]?.inventoryItem?.tracked || !/^gid:\/\/shopify\/InventoryItem\/\d+$/.test(variant[0]?.inventoryItem?.id ?? "")) throw new Error("Shopify did not create a single tracked sealed-box variant");
       return { productId: product!.id, variantId: variant![0]!.id, inventoryItemId: variant![0]!.inventoryItem!.id };
     },
     async searchVariants(query, after) {

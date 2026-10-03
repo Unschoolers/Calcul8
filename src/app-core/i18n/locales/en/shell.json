@@ -157,5 +157,10 @@
   "workspaceCreateFailedNotice": "Failed to create the workspace.",
   "workspaceCreateInProgressNotice": "This workspace is already being created. Keep this dialog open and try again shortly.",
   "workspaceCreateMismatchNotice": "This creation request changed after it started. Close the dialog and start again.",
-  "workspaceCreateRecoveryConflictNotice": "Workspace creation could not resume safely. Keep this dialog open and try again."
+  "workspaceCreateRecoveryConflictNotice": "Workspace creation could not resume safely. Keep this dialog open and try again.",
+  "shopifyLotLinked": "Linked to Shopify",
+  "shopifyLotManaged": "Managed by Calcul8 in Shopify",
+  "shopifyLotStale": "Last known link; refresh unavailable",
+  "shopifyLotDisconnected": "Shopify disconnected; link retained",
+  "shopifyLotAttention": "This Shopify link needs attention"
 }

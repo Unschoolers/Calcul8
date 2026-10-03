@@ -27,6 +27,7 @@
                     </v-icon>
                   </span>
                   <div class="lot-selector-selection__title app-dense-card-title">{{ resolveLotSelectorDisplayItem(item).title }}</div>
+                  <shopify-link-indicator v-if="resolveLotSelectorDisplayItem(item).shopifyLink" :link="resolveLotSelectorDisplayItem(item).shopifyLink" :t="t" />
                 </div>
                 <div class="lot-selector-selection__subtitle app-dense-card-meta">{{ resolveLotSelectorDisplayItem(item).subtitle }}</div>
               </div>
@@ -57,6 +58,9 @@
                   <v-list-item-subtitle class="text-caption">
                     {{ resolveLotSelectorDisplayItem(item).subtitle }}
                   </v-list-item-subtitle>
+                  <template #append>
+                    <shopify-link-indicator v-if="resolveLotSelectorDisplayItem(item).shopifyLink" :link="resolveLotSelectorDisplayItem(item).shopifyLink" :t="t" />
+                  </template>
                 </v-list-item>
               </div>
             </template>

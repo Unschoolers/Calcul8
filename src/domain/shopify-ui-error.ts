@@ -11,7 +11,10 @@ const definitions: Record<Code, { key: string; recovery: Recovery }> = {
   [ShopifyErrorCode.LOCATION_REQUIRED]: { key: "configShopifyErrorLocationRequired", recovery: "refresh" },
   [ShopifyErrorCode.LOT_UNAVAILABLE]: { key: "configShopifyErrorLotUnavailable", recovery: "refresh" },
   [ShopifyErrorCode.ALREADY_LINKED]: { key: "configShopifyErrorAlreadyLinked", recovery: "refresh" },
-  [ShopifyErrorCode.CONNECTION_CHANGED]: { key: "configShopifyErrorConnectionChanged", recovery: "reconnect" }
+  [ShopifyErrorCode.CONNECTION_CHANGED]: { key: "configShopifyErrorConnectionChanged", recovery: "reconnect" },
+  [ShopifyErrorCode.DETAILS_CHANGED]: { key: "configShopifyDetailsChanged", recovery: "refresh" },
+  [ShopifyErrorCode.BINDING_CHANGED]: { key: "configShopifyConflictError", recovery: "refresh" },
+  [ShopifyErrorCode.VARIANT_ALREADY_BOUND]: { key: "configShopifyConflictError", recovery: "refresh" }
 };
 export class ShopifyUiError extends Error {
   constructor(readonly code: Code | null, readonly recovery: Recovery, readonly messageKey: string) { super(messageKey); this.name = "ShopifyUiError"; }

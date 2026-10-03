@@ -85,6 +85,7 @@ export const appWatch: AppWatchObject = {
     deep: true
   },
   activeScopeType() {
+    this.resetShopifyBindings?.();
     if (isDevNoLoginRoute()) return;
     void this.hydrateBuyerProfiles();
     refreshWorkspaceRealtime(this);
@@ -96,6 +97,7 @@ export const appWatch: AppWatchObject = {
   },
 
   activeWorkspaceId() {
+    this.resetShopifyBindings?.();
     if (isDevNoLoginRoute()) return;
     void this.hydrateBuyerProfiles();
     refreshWorkspaceRealtime(this);
@@ -211,6 +213,7 @@ export const appWatch: AppWatchObject = {
   },
 
   googleAuthEpoch() {
+    this.resetShopifyBindings?.();
     if (!this.isGoogleSignedIn) {
       if (typeof this.stopGuidedOnboarding === "function") {
         this.stopGuidedOnboarding();

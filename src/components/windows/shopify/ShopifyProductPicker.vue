@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
 import type { ShopifyVariantSearchResult } from "../../../types/app.ts";
 import type { ShopifyDraftPreview } from "../../../domain/shopify-draft.ts";
+import ShopifyProductSelection from "./ShopifyProductSelection.vue";
 import ShopifyCreateDraftDialog from "./ShopifyCreateDraftDialog.vue";
 
 const props = defineProps<{
@@ -85,18 +86,6 @@ async function openDraftFromSearch(): Promise<void> {
   isCreateDraftOpen.value = true;
 }
 
-function chooseVariant(variantId: string): void {
-  if (props.disabled) return;
-  const result = props.results.find((item) => item.variantId === variantId);
-  draftVariantId.value = result?.variantId ?? null;
-  draftLocationId.value = result?.locations.length === 1 ? result.locations[0]!.id : null;
-}
-
-function chooseLocation(locationId: string): void {
-  if (props.disabled || !draftResult.value?.locations.some((location) => location.id === locationId)) return;
-  draftLocationId.value = locationId;
-}
-
 function useProduct(): void {
   if (!canConfirm.value || !draftVariantId.value || !draftLocationId.value) return;
   emit("confirm", { variantId: draftVariantId.value, locationId: draftLocationId.value });
@@ -154,63 +143,17 @@ function useProduct(): void {
         </div>
       </template>
 
-      <v-text-field
-        :model-value="query"
-        :label="t('configShopifySearchLabel')"
-        variant="outlined"
-        density="comfortable"
-        clearable
-        hide-details="auto"
-        :loading="loading"
-        :disabled="disabled"
-        @update:model-value="(value: string | null) => emit('query-change', value ?? '')"
-      />
-
-      <div v-if="error" class="text-body-2 text-error mt-3" role="alert">{{ error }}</div>
-      <div v-if="recovery === 'reconnect'" class="text-caption text-medium-emphasis mt-2">{{ t('configShopifyReconnectInSettings') }}</div>
-      <div v-else-if="error && (recovery === 'retry' || recovery === 'refresh')" class="mt-2">
-        <v-btn class="app-touch-target" size="small" variant="text" :disabled="disabled || loading" @click="emit('retry-search')">{{ t('configShopifyRetry') }}</v-btn>
-      </div>
-      <div v-if="loading && !results.length" class="text-body-2 text-medium-emphasis mt-4" role="status">{{ t('configShopifySearching') }}</div>
-      <div v-else-if="query.trim().length >= 2 && completed && !results.length && !error" class="text-body-2 text-medium-emphasis mt-4" role="status">
-        {{ t('configShopifyNoResults') }}
-        <v-btn v-if="canCreateDraft && loadDraftPreview && createDraft" class="app-touch-target mt-2" variant="tonal" :disabled="disabled || createDraftDisabled" @click="openDraftFromSearch">{{ t('configShopifyCreateDraft') }}</v-btn>
-      </div>
-      <div v-else-if="query.trim().length < 2" class="text-body-2 text-medium-emphasis mt-4">{{ t('configShopifySearchMinimum') }}</div>
-
-      <div v-else-if="results.length" class="shopify-product-picker-results mt-3" role="group" :aria-label="t('configShopifySearchResults')">
-        <button
-          v-for="result in results"
-          :key="result.variantId"
-          type="button"
-          class="shopify-product-picker-result"
-          :class="{ 'shopify-product-picker-result--selected': draftVariantId === result.variantId }"
-          :aria-pressed="draftVariantId === result.variantId"
-          :disabled="disabled"
-          @click="chooseVariant(result.variantId)"
-        >
-          <span class="shopify-product-picker-result-title">{{ result.title }}</span>
-          <span class="shopify-product-picker-result-meta">{{ result.variantTitle }}</span>
-          <span class="shopify-product-picker-result-meta">{{ t('configShopifyBindingSku') }}: {{ result.sku || t('configShopifyNoSku') }}</span>
-          <span class="shopify-product-picker-result-price">{{ t('configShopifyPrice') }}: {{ formatSearchPrice(result.price) }}</span>
-        </button>
-      </div>
-
-      <v-select
-        v-if="draftResult && draftResult.locations.length > 1"
-        :model-value="draftLocationId"
-        :items="draftResult.locations.map((location) => ({ title: `${location.name} · ${location.available ?? '—'}`, value: location.id }))"
-        :label="t('configShopifyLocationLabel')"
-        variant="outlined"
-        density="comfortable"
-        class="mt-4"
-        :disabled="disabled"
-        @update:model-value="(value: string | null) => chooseLocation(value ?? '')"
-      />
-
-      <div v-if="hasMore" class="d-flex justify-center mt-2">
-        <v-btn class="app-touch-target" variant="text" :loading="loading" :disabled="loading || disabled" @click="emit('load-more')">{{ t('configShopifyLoadMore') }}</v-btn>
-      </div>
+      <ShopifyProductSelection
+        :query="query" :results="results" :loading="loading" :completed="completed" :has-more="hasMore"
+        :selected-variant-id="draftVariantId" :selected-location-id="draftLocationId" :selected-product="originalSelection.product"
+        :error="error" :recovery="recovery" :disabled="disabled" :language="language" :t="t"
+        @query-change="emit('query-change', $event)" @load-more="emit('load-more')" @retry-search="emit('retry-search')"
+        @selection="(selection) => { draftVariantId = selection.variantId; draftLocationId = selection.locationId; }"
+      >
+        <template #empty>
+          <v-btn v-if="canCreateDraft && loadDraftPreview && createDraft" class="app-touch-target mt-2" variant="tonal" :disabled="disabled || createDraftDisabled" @click="openDraftFromSearch">{{ t('configShopifyCreateDraft') }}</v-btn>
+        </template>
+      </ShopifyProductSelection>
 
       <template #actions>
         <v-spacer />
@@ -223,59 +166,5 @@ function useProduct(): void {
 
 <style scoped>
 .shopify-product-picker-dialog-title { white-space: normal; }
-
-.shopify-product-picker-results {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.shopify-product-picker-create {
-  display: grid;
-  justify-items: start;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-}
-
-.shopify-product-picker-result {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  width: 100%;
-  min-width: 0;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 0.5rem;
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  text-align: left;
-  cursor: pointer;
-}
-
-.shopify-product-picker-result--selected {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
-.shopify-product-picker-result:focus-visible {
-  outline: 2px solid rgb(var(--v-theme-primary));
-  outline-offset: 2px;
-}
-
-.shopify-product-picker-result-title {
-  width: 100%;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.shopify-product-picker-result-meta,
-.shopify-product-picker-result-price {
-  width: 100%;
-  font-size: 0.875rem;
-  overflow-wrap: anywhere;
-}
-
-.shopify-product-picker-result-meta {
-  color: rgba(var(--v-theme-on-surface), 0.72);
-}
+.shopify-product-picker-create { display: grid; justify-items: start; gap: .4rem; margin-top: .75rem; }
 </style>

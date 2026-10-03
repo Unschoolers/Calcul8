@@ -6,10 +6,12 @@ export type ShopifyOrderLine = {
   variantId: string; quantity: number; cancelled: boolean; paidAt: string;
   unitPrice?: number;
 };
-type OrderDocument = ShopifyOrderLine & { id: string; userId: string; docType: "shopify_order_line"; _etag?: string };
+export type ShopifyOrderTombstone = Omit<ShopifyOrderLine, "lotId" | "cancelled"> & { lotId: null; cancelled: true };
+export type ShopifyOrderRecord = ShopifyOrderLine | ShopifyOrderTombstone;
+type OrderDocument = ShopifyOrderRecord & { id: string; userId: string; docType: "shopify_order_line"; _etag?: string };
 const documentId = (shop: string, orderId: string, lineId: string) => `shopify_order_line:${shop}:${orderId}:${lineId}`;
 
-export async function recordShopifyPaidLine(config: ApiConfig, line: ShopifyOrderLine): Promise<boolean> {
+export async function recordShopifyPaidLine(config: ApiConfig, line: ShopifyOrderRecord): Promise<boolean> {
   const { entitlements } = getContainers(config);
   const document: OrderDocument = { ...line, id: documentId(line.shop, line.orderId, line.lineId),
     userId: line.scopeKey, docType: "shopify_order_line" };
@@ -36,12 +38,17 @@ export async function cancelShopifyOrderLine(config: ApiConfig, scopeKey: string
   throw new Error("Shopify order cancellation conflicted; retry delivery");
 }
 
-export async function getShopifyOrderLine(config: ApiConfig, scopeKey: string, shop: string, orderId: string, lineId: string): Promise<ShopifyOrderLine | null> {
+export async function getShopifyOrderRecord(config: ApiConfig, scopeKey: string, shop: string, orderId: string, lineId: string): Promise<ShopifyOrderRecord | null> {
   const { entitlements } = getContainers(config);
   try {
     const { resource } = await withCosmosRetry(() => entitlements.item(documentId(shop, orderId, lineId), scopeKey).read<OrderDocument>());
     return resource?.docType === "shopify_order_line" && resource.scopeKey === scopeKey ? resource : null;
   } catch (error) { if (isNotFoundError(error)) return null; throw error; }
+}
+
+export async function getShopifyOrderLine(config: ApiConfig, scopeKey: string, shop: string, orderId: string, lineId: string): Promise<ShopifyOrderLine | null> {
+  const record = await getShopifyOrderRecord(config, scopeKey, shop, orderId, lineId);
+  return record && record.lotId !== null ? record : null;
 }
 
 export async function listShopifyOrderLines(config: ApiConfig, scopeKey: string, lotId: number, includeCancelled = false): Promise<ShopifyOrderLine[]> {
@@ -51,5 +58,6 @@ export async function listShopifyOrderLines(config: ApiConfig, scopeKey: string,
     parameters: [{ name: "@type", value: "shopify_order_line" }, { name: "@scope", value: scopeKey }, { name: "@lot", value: lotId }]
   }, { partitionKey: scopeKey });
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
-  return (resources ?? []).filter((line) => line.scopeKey === scopeKey && (includeCancelled || !line.cancelled));
+  return (resources ?? []).filter((line): line is OrderDocument & ShopifyOrderLine =>
+    line.scopeKey === scopeKey && typeof line.lotId === "number" && (includeCancelled || !line.cancelled));
 }

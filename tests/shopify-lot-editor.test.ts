@@ -58,7 +58,7 @@ test("search explains when Shopify matches are excluded by inventory eligibility
   assert.deepEqual(ctx.shopifyEditSearchResults, []);
 });
 
-test("link is deferred until Save, then saves selected identity and lot metadata", async () => {
+test("inventory Save persists lot metadata without sending a Shopify binding mutation", async () => {
   const { ctx, lot } = context();
   apiCall.mockImplementation(async (_context: unknown, path: string) =>
     path.endsWith("/listing")
@@ -74,66 +74,25 @@ test("link is deferred until Save, then saves selected identity and lot metadata
   ctx.shopifyEditSelectedLocationId = "l1";
   assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/link")).length, 0);
   await configLotMethods.renameCurrentLot.call(ctx as never);
-  assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/link")).length, 1);
-  assert.deepEqual(JSON.parse(apiCall.mock.calls.find((call) => String(call[1]).endsWith("/link"))[2].body), { lotId: 41, variantId: "v1", locationId: "l1" });
+  assert.equal(apiCall.mock.calls.some((call) => /\/products\/(?:link|binding)$/.test(String(call[1]))), false);
   assert.equal(lot.name, "Updated title");
   assert.equal(lot.externalSku, "NEW");
   assert.equal(ctx.externalSku, "NEW");
   assert.equal(ctx.showRenameLotModal, false);
 });
 
-test("cancel restoration survives the query debounce and keeps the selected link available to Save", async () => {
-  vi.useFakeTimers();
-  const { ctx } = context();
-  const product = { productId: "p1", variantId: "v1", title: "Dragon Shield", variantTitle: "Display", sku: "SKU-1", price: "12.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 2 }] };
-  ctx.showRenameLotModal = true;
-  ctx.shopifyEditSessionAuthEpoch = ctx.googleAuthEpoch;
-  ctx.shopifyEditSessionScope = "{}";
-  ctx.shopifyEditSessionLotId = ctx.currentLotId;
-  ctx.shopifyEditListingStatus = "loaded";
-  ctx.renameLotName = "Old title";
-  ctx.renameLotExternalSku = "OLD";
-  ctx.shopifyEditSearchQuery = "dragon";
-  ctx.shopifyEditSearchResults = [product];
-  ctx.shopifyEditSelectedVariantId = "v1";
-  ctx.shopifyEditSelectedLocationId = "l1";
-  apiCall.mockImplementation(async (_context: unknown, path: string) => path.endsWith("/link")
-    ? response({ listing: { mode: "linked", productId: "p1", variantId: "v1", locationId: "l1" } })
-    : response({ variants: [], pageInfo: { hasNextPage: false, endCursor: null } }));
-
-  configLotEditMethods.onShopifyEditQueryChange.call(ctx as never, "another query");
-  assert.deepEqual(ctx.shopifyEditSearchResults, []);
-  const restore = Reflect.get(configLotEditMethods, "restoreShopifyEditSelection") as (selection: unknown) => void;
-  restore.call(ctx, { query: "dragon", variantId: "v1", locationId: "l1", product });
-  await vi.advanceTimersByTimeAsync(301);
-
-  assert.equal(ctx.shopifyEditSearchQuery, "dragon");
-  assert.deepEqual(ctx.shopifyEditSearchResults, [product]);
-  assert.equal(ctx.shopifyEditSelectedVariantId, "v1");
-  assert.equal(ctx.shopifyEditSelectedLocationId, "l1");
-  assert.equal(apiCall.mock.calls.some((call) => String(call[1]).endsWith("/products/search")), false);
-  await configLotEditMethods.renameCurrentLot.call(ctx as never);
-  const linkCall = apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/link"));
-  assert.deepEqual(JSON.parse(String(linkCall?.[2]?.body)), { lotId: 41, variantId: "v1", locationId: "l1" });
-});
-
-test("link failure keeps lot metadata unchanged and leaves Edit Lot open", async () => {
+test("legacy managed listing keeps its publish preference in inventory Save", async () => {
   const { ctx, lot } = context();
-  apiCall.mockImplementation(async (_context: unknown, path: string) =>
-    path.endsWith("/listing") ? response({ listing: null }) : response({ error: "Variant already linked" }, 409));
+  lot.shopifyEnabled = true;
+  apiCall.mockImplementation(async (_context: unknown, path: string) => path.endsWith("/listing")
+    ? response({ listing: { mode: "managed", productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", inventoryItemId: "gid://shopify/InventoryItem/3", locationId: "gid://shopify/Location/4" } })
+    : response({}));
   configLotMethods.openRenameLotModal.call(ctx as never);
   await settle();
-  ctx.renameLotName = "Should not commit";
-  ctx.renameLotExternalSku = "SHOULD-NOT-COMMIT";
-  ctx.shopifyEditSearchResults = [{ productId: "p1", variantId: "v1", title: "Product", variantTitle: "Default Title", sku: "SKU", price: "2.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 1 }] }];
-  ctx.shopifyEditSelectedVariantId = "v1";
-  ctx.shopifyEditSelectedLocationId = "l1";
+  ctx.renameLotShopifyEnabled = false;
   await configLotMethods.renameCurrentLot.call(ctx as never);
-  assert.equal(lot.name, "Old title");
-  assert.equal(lot.externalSku, "OLD");
-  assert.equal(ctx.showRenameLotModal, true);
-  assert.equal(ctx.shopifyEditError, "configShopifyConflictError");
-  assert.equal(ctx.shopifyEditErrorOperation, "link");
+  assert.equal(lot.shopifyEnabled, false);
+  assert.equal(apiCall.mock.calls.some(call => String(call[1]).endsWith("/products/binding")), false);
 });
 
 test("cancel discards SKU draft without calling the link endpoint", () => {
@@ -282,44 +241,6 @@ test("stale listing response unlocks a retry against the newly connected shop", 
   assert.equal(listingCalls, 2);
 });
 
-test("stale link response clears saving without committing lot metadata", async () => {
-  const { ctx, lot } = context();
-  const staleLink = deferred<Response>();
-  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
-    ? response({ listing: null }) : staleLink.promise);
-  configLotMethods.openRenameLotModal.call(ctx as never);
-  await settle();
-  ctx.renameLotName = "Must not commit";
-  ctx.shopifyEditSearchResults = [{ productId: "p1", variantId: "v1", title: "Product", variantTitle: "Default Title", sku: "SKU", price: "2.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 1 }] }];
-  ctx.shopifyEditSelectedVariantId = "v1";
-  ctx.shopifyEditSelectedLocationId = "l1";
-  const save = configLotMethods.renameCurrentLot.call(ctx as never);
-  ctx.shopifyConnectionShop = "other-store.myshopify.com";
-  staleLink.resolve(response({ listing: { mode: "linked", productId: "p1", variantId: "v1", inventoryItemId: "i1", locationId: "l1" } }));
-  await save;
-  assert.equal(lot.name, "Old title");
-  assert.equal(ctx.shopifyEditSaving, false);
-  assert.equal(ctx.showRenameLotModal, true);
-});
-
-test("duplicate Save does not send a second link request", async () => {
-  const { ctx } = context();
-  const pendingLink = deferred<Response>();
-  apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
-    ? response({ listing: null }) : pendingLink.promise);
-  configLotMethods.openRenameLotModal.call(ctx as never);
-  await settle();
-  ctx.shopifyEditSearchResults = [{ productId: "p1", variantId: "v1", title: "Product", variantTitle: "Default Title", sku: "SKU", price: "2.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 1 }] }];
-  ctx.shopifyEditSelectedVariantId = "v1";
-  ctx.shopifyEditSelectedLocationId = "l1";
-  const firstSave = configLotMethods.renameCurrentLot.call(ctx as never);
-  await settle();
-  await configLotMethods.renameCurrentLot.call(ctx as never);
-  assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/link")).length, 1);
-  pendingLink.resolve(response({ listing: { mode: "linked", productId: "p1", variantId: "v1", inventoryItemId: "i1", locationId: "l1" } }));
-  await firstSave;
-});
-
 const draftPreview: ShopifyDraftPreview = {
   title: "Saved lot title", variantTitle: "Sealed box", sku: "SAVED-SKU", price: "34.50", currency: "CAD", quantity: 8,
   locations: [{ id: "gid://shopify/Location/123", name: "Main Warehouse" }], previewToken: "b".repeat(64)
@@ -347,7 +268,7 @@ test("draft preview supersedes pending search but preserves the picker selection
 
   assert.equal(result.previewToken, "b".repeat(64));
   assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/products/create-preview")).length, 1);
-  assert.deepEqual(JSON.parse(apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/create-preview"))![2].body), { lotId: 41 });
+  assert.deepEqual(JSON.parse(apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/create-preview"))![2].body), { lotId: 41, expectedVersion: null, generation: 0, manager: true });
   assert.equal(ctx.shopifyEditRequestRevision, beforeRevision + 1);
   assert.equal(ctx.shopifyEditLoading, false);
   assert.equal(ctx.shopifyEditSelectedVariantId, "pending-variant");
@@ -384,25 +305,6 @@ test("local draft ineligibility keeps its no-action guidance", async () => {
     assert.equal(shopifyUiErrorRecovery(error), "none");
     return true;
   });
-});
-
-test("missing link location preserves picker guidance without retry recovery", async () => {
-  const { ctx } = context();
-  ctx.showRenameLotModal = true;
-  ctx.shopifyEditSessionAuthEpoch = ctx.googleAuthEpoch;
-  ctx.shopifyEditSessionScope = "{}";
-  ctx.shopifyEditSessionLotId = ctx.currentLotId;
-  ctx.renameLotName = "Old title";
-  ctx.renameLotExternalSku = "OLD";
-  ctx.renameLotShopifyEnabled = false;
-  ctx.shopifyEditListingStatus = "loaded";
-  ctx.shopifyEditSearchResults = [{ productId: "p1", variantId: "v1", title: "Product", variantTitle: "Default Title", sku: "SKU", price: "2.00", inventoryItemId: "i1", locations: [{ id: "l1", name: "Main", available: 1 }] }];
-  ctx.shopifyEditSelectedVariantId = "v1";
-  ctx.shopifyEditSelectedLocationId = null;
-  await configLotMethods.renameCurrentLot.call(ctx as never);
-  assert.equal(ctx.shopifyEditError, "configShopifyChooseLocation");
-  assert.equal(ctx.shopifyEditRecovery, "none");
-  assert.equal(ctx.shopifyEditErrorOperation, "link");
 });
 
 test("French API error is safe and recoverable, stale fields are typed, and retry clears recovery", async () => {
@@ -463,9 +365,10 @@ test("cancel cannot close the lot editor while draft creation is pending", async
   const { ctx } = context();
   const pendingCreate = deferred<Response>();
   apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
-    ? response({ listing: null }) : pendingCreate.promise);
+    ? response({ listing: null }) : path.endsWith("/create-preview") ? response({ preview: draftPreview }) : pendingCreate.promise);
   configLotMethods.openRenameLotModal.call(ctx as never);
   await settle();
+  await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
   const revision = ctx.shopifyEditRequestRevision;
   const create = configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
 
@@ -483,9 +386,10 @@ test("creating a draft links immediately, blocks duplicate creates, and leaves i
   const { ctx, lot } = context();
   const pendingCreate = deferred<Response>();
   apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
-    ? response({ listing: null }) : pendingCreate.promise);
+    ? response({ listing: null }) : path.endsWith("/create-preview") ? response({ preview: draftPreview }) : pendingCreate.promise);
   configLotMethods.openRenameLotModal.call(ctx as never);
   await settle();
+  await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
   assert.equal(ctx.shopifyEditListingStatus, "loaded");
   assert.equal(ctx.shopifyEditSessionLotId, ctx.currentLotId);
   assert.equal(ctx.renameLotName, lot.name);
@@ -499,11 +403,12 @@ test("creating a draft links immediately, blocks duplicate creates, and leaves i
   assert.equal(ctx.shopifyEditSessionScope, "{}");
   const originalLot = { ...lot };
   const firstCreate = configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
-  await configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
+  await assert.rejects(configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken));
   assert.equal(apiCall.mock.calls.filter((call) => String(call[1]).endsWith("/products/create")).length, 1);
   assert.equal(ctx.shopifyEditSaving, true);
   assert.deepEqual(JSON.parse(apiCall.mock.calls.find((call) => String(call[1]).endsWith("/products/create"))![2].body), {
-    lotId: 41, locationId: "gid://shopify/Location/123", previewToken: "b".repeat(64)
+    lotId: 41, operationId: ctx.shopifyEditOperationId, expectedVersion: null, generation: 0,
+    overrides: { title: "Saved lot title", price: "34.50", locationId: "gid://shopify/Location/123" }, previewToken: "b".repeat(64)
   });
 
   pendingCreate.resolve(response({ listing: createdDraftListing }));
@@ -520,13 +425,14 @@ test("a draft response from another active store cannot replace the current list
   const { ctx } = context();
   const pendingCreate = deferred<Response>();
   apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
-    ? response({ listing: null }) : pendingCreate.promise);
+    ? response({ listing: null }) : path.endsWith("/create-preview") ? response({ preview: draftPreview }) : pendingCreate.promise);
   configLotMethods.openRenameLotModal.call(ctx as never);
   await settle();
+  await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
   const create = configLotEditMethods.createShopifyDraft.call(ctx as never, draftPreview.locations[0]!.id, draftPreview.previewToken);
   ctx.shopifyConnectionShop = "other-store.myshopify.com";
   pendingCreate.resolve(response({ listing: createdDraftListing }));
-  await assert.rejects(create, /configShopifyDraftStalePreview/);
+  await create;
   assert.equal(ctx.shopifyEditListing, null);
   assert.equal(ctx.shopifyEditSaving, false);
   assert.equal(ctx.showRenameLotModal, true);
@@ -536,9 +442,10 @@ test("a malformed draft mapping cannot replace the existing listing or clear the
   const { ctx } = context();
   const malformed = { ...createdDraftListing, productId: "product-101", variantId: "variant-102", inventoryItemId: "item-103" };
   apiCall.mockImplementation((_context: unknown, path: string) => path.endsWith("/listing")
-    ? response({ listing: null }) : response({ listing: malformed }));
+    ? response({ listing: null }) : path.endsWith("/create-preview") ? response({ preview: draftPreview }) : response({ listing: malformed }));
   configLotMethods.openRenameLotModal.call(ctx as never);
   await settle();
+  await configLotEditMethods.loadShopifyDraftPreview.call(ctx as never);
   ctx.shopifyEditSelectedVariantId = "existing-selection";
   ctx.shopifyEditSelectedLocationId = "existing-location";
   ctx.shopifyEditSearchQuery = "keep this query";

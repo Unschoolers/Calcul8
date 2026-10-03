@@ -13,6 +13,8 @@ import type { SinglesComputedObject } from "../context/commerce.ts";
 import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType, isSinglesLot } from "../shared/lot-types.ts";
+import { projectShopifyLotLink } from "../../domain/shopify-binding-summary.ts";
+import { shopifyBindingsScopeKey } from "../methods/ui/shopify/shopify-bindings.ts";
 import {
     getLotSalesFromAccessContext,
     type LotSalesAccessContext
@@ -162,6 +164,8 @@ export const singlesComputed: SinglesComputedObject = {
     return buildLotOptionItems(
       [...bulkLots, ...singlesLots].map((lot) => ({
         ...lot,
+        shopifyLink: projectShopifyLotLink(this.shopifyBindingsScope === shopifyBindingsScopeKey(this) ? this.shopifyBindingsSummary : null, lot.id,
+          { shop: this.shopifyConnectionShop, status: this.shopifyConnectionStatus }, this.shopifyBindingsStale),
         isComplete: lotIsCompleteByDefault(this, lot)
       })),
       this.preferredLanguage
@@ -357,7 +361,6 @@ export const singlesComputed: SinglesComputedObject = {
     };
   }
 };
-
 
 
 

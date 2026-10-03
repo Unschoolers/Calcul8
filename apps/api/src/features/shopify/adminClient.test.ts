@@ -6,6 +6,32 @@ function response(data: unknown): Response {
   return new Response(JSON.stringify({ data }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
+test("explicit detail edits send only the product title and selected variant price", async () => {
+  const requests: { query: string; variables: Record<string, unknown> }[] = [];
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    const body = JSON.parse(String(init?.body)); requests.push(body);
+    if (body.query.includes("productVariantsBulkUpdate")) return response({ productVariantsBulkUpdate: { product: { id: "gid://shopify/Product/1" }, productVariants: [{ id: "gid://shopify/ProductVariant/2" }], userErrors: [] } });
+    return response({ productUpdate: { product: { id: "gid://shopify/Product/1" }, userErrors: [] } });
+  }) as typeof fetch);
+  await client.updateProductTitle("gid://shopify/Product/1", "Tokyo ghoul — Booster box");
+  await client.updateVariantPrice("gid://shopify/Product/1", "gid://shopify/ProductVariant/2", "180.00");
+  assert.deepEqual(requests[0]?.variables, { product: { id: "gid://shopify/Product/1", title: "Tokyo ghoul — Booster box" } });
+  assert.deepEqual(requests[1]?.variables, { productId: "gid://shopify/Product/1", variants: [{ id: "gid://shopify/ProductVariant/2", price: "180.00" }] });
+  assert.equal(requests.length, 2);
+});
+
+test("detail mutations check ownership after token refresh and reject mismatched provider results", async () => {
+  let calls = 0;
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async () => {
+    calls++;
+    return response({ productVariantsBulkUpdate: { product: { id: "gid://shopify/Product/1" }, productVariants: [{ id: "gid://shopify/ProductVariant/99" }], userErrors: [] }, productUpdate: { product: { id: "gid://shopify/Product/99" }, userErrors: [] } });
+  }) as typeof fetch);
+  await assert.rejects(() => client.updateProductTitle("gid://shopify/Product/1", "Custom", async () => { throw new Error("connection changed"); }), /connection changed/);
+  assert.equal(calls, 0);
+  await assert.rejects(() => client.updateProductTitle("gid://shopify/Product/1", "Custom"), /identity|product/i);
+  await assert.rejects(() => client.updateVariantPrice("gid://shopify/Product/1", "gid://shopify/ProductVariant/2", "180.00"), /identity|variant/i);
+});
+
 test("sets available stock using the Shopify 2026-07 concurrency input", async () => {
   let available = 0;
   const fetcher = async (_url: string | URL | Request, init?: RequestInit) => {
@@ -241,4 +267,17 @@ test("preserves negative Shopify available quantity as an oversold observation",
     ] } } })) as typeof fetch);
   assert.deepEqual(await client.getStock("gid://shopify/InventoryItem/3", "gid://shopify/Location/4"),
     { locationId: "gid://shopify/Location/4", locationName: "Store", available: -1, onHand: 10, committed: 11 });
+});
+
+test("modern booster draft creation and exact recovery preserve the requested variant label", async () => {
+  const requests: any[] = [];
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (_url, init) => {
+    const body = JSON.parse(String(init?.body)); requests.push(body);
+    const variant = { id: "gid://shopify/ProductVariant/2", title: "Booster box", inventoryItem: { id: "gid://shopify/InventoryItem/3", tracked: true, inventoryLevel: { location: { id: "gid://shopify/Location/4", isActive: true }, quantities: [{ name: "available", quantity: 2 }] } } };
+    return body.query.includes("mutation") ? response({ productSet: { product: { id: "gid://shopify/Product/1", variants: { nodes: [variant] } }, userErrors: [] } }) : response({ product: { id: "gid://shopify/Product/1", handle: "h", metafield: { value: "exact-fingerprint" }, variants: { nodes: [variant] } } });
+  }) as typeof fetch);
+  await client.createLinkedDraft({ handle: "h", ownershipHash: "exact-fingerprint", title: "Custom", price: "25.00", sku: "SKU", locationId: "gid://shopify/Location/4", quantity: 3, variantTitle: "Booster box" });
+  assert.equal(requests[0].variables.input.productOptions[0].values[0].name, "Booster box");
+  assert.ok(await client.findOwnedDraft("h", "exact-fingerprint", "gid://shopify/Location/4", { variantTitle: "Booster box" }));
+  await assert.rejects(() => client.findOwnedDraft("h", "exact-fingerprint", "gid://shopify/Location/4"), /match/);
 });

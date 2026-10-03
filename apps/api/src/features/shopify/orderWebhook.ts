@@ -3,7 +3,8 @@ import type { ApiConfig } from "../../types";
 import { isShopifyDomain } from "../../lib/shopify";
 import { listShopifyConnectionsForShop } from "../../lib/cosmos/shopifyRepository";
 import { createShopifyListingStore } from "../../lib/cosmos/shopifyListingRepository";
-import { cancelShopifyOrderLine, getShopifyOrderLine, recordShopifyPaidLine } from "../../lib/cosmos/shopifyOrderRepository";
+import { cancelShopifyOrderLine, getShopifyOrderRecord, recordShopifyPaidLine, type ShopifyOrderRecord } from "../../lib/cosmos/shopifyOrderRepository";
+import { isActiveShopifyListing } from "./listingService";
 import { reconcileShopifyScope } from "./reconcileService";
 import { projectShopifyBoxSale } from "./saleProjection";
 
@@ -15,6 +16,10 @@ export function verifyShopifyWebhook(body: Buffer, signature: string | null, sec
 }
 
 type OrderLine = { id: string; variantId: string; quantity: number; unitPrice: number };
+export function assertShopifyOrderIdentity(line: ShopifyOrderRecord, identity: { scopeKey: string; shop: string; orderId: string; lineId: string; variantId: string }): void {
+  if (line.scopeKey !== identity.scopeKey || line.shop !== identity.shop || line.orderId !== identity.orderId ||
+    line.lineId !== identity.lineId || line.variantId !== identity.variantId) throw new Error("Shopify order line identity conflict");
+}
 export function parseShopifyOrder(body: unknown): { orderId: string; paidAt: string; lines: OrderLine[] } {
   if (!body || typeof body !== "object") throw new Error("Invalid Shopify order");
   const value = body as Record<string, unknown>;
@@ -50,28 +55,33 @@ export async function processShopifyOrderWebhook(config: ApiConfig, shop: string
   const affected = new Map<string, Set<number>>();
   for (const connection of connections) {
     const listings = await store.list(connection.scopeKey);
-    const byVariant = new Map(listings.filter((listing) => listing.shop === shop).map((listing) => [listing.variantId, listing]));
+    const byVariant = new Map(listings.filter((listing) => listing.shop === shop && isActiveShopifyListing(listing)).map((listing) => [listing.variantId, listing]));
     for (const line of order.lines) {
+      const identity = { scopeKey: connection.scopeKey, shop, orderId: order.orderId, lineId: line.id, variantId: line.variantId };
+      const historical = await getShopifyOrderRecord(config, connection.scopeKey, shop, order.orderId, line.id);
+      if (historical) assertShopifyOrderIdentity(historical, identity);
       const listing = byVariant.get(line.variantId);
-      if (!listing || (topic === "orders/paid" && line.quantity === 0)) continue;
-      if (topic === "orders/paid") {
-        await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
-          lotId: listing.lotId, orderId: order.orderId, lineId: line.id, variantId: line.variantId,
-          quantity: line.quantity, cancelled: false, paidAt: order.paidAt, unitPrice: line.unitPrice });
-      } else {
-        // A cancellation arriving before a paid event leaves a tombstone, so a late paid retry cannot resell it.
-        const tombstone = await recordShopifyPaidLine(config, { scopeKey: connection.scopeKey, shop,
-          lotId: listing.lotId, orderId: order.orderId, lineId: line.id, variantId: line.variantId,
-          quantity: line.quantity, cancelled: true, paidAt: order.paidAt, unitPrice: line.unitPrice });
-        if (!tombstone) await cancelShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
+      if (!historical) {
+        if (topic === "orders/paid") {
+          if (!listing || line.quantity === 0) continue;
+          await recordShopifyPaidLine(config, { ...identity, lotId: listing.lotId,
+            quantity: line.quantity, cancelled: false, paidAt: order.paidAt, unitPrice: line.unitPrice });
+        } else {
+          // Keep cancellation identity even after unlink; delayed payment must not bind to a later lot.
+          await recordShopifyPaidLine(config, { ...identity, lotId: listing?.lotId ?? null,
+            quantity: line.quantity, cancelled: true, paidAt: order.paidAt, unitPrice: line.unitPrice });
+        }
       }
-      const persisted = await getShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
+      if (topic === "orders/cancelled") await cancelShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
+      const persisted = await getShopifyOrderRecord(config, connection.scopeKey, shop, order.orderId, line.id);
       if (!persisted) throw new Error("Shopify order line was not persisted");
+      assertShopifyOrderIdentity(persisted, identity);
+      if (persisted.lotId === null) continue;
       await projectShopifyBoxSale(config, persisted);
-      const latest = await getShopifyOrderLine(config, connection.scopeKey, shop, order.orderId, line.id);
-      if (latest && latest.cancelled !== persisted.cancelled) await projectShopifyBoxSale(config, latest);
+      const latest = await getShopifyOrderRecord(config, connection.scopeKey, shop, order.orderId, line.id);
+      if (latest && latest.lotId !== null && latest.cancelled !== persisted.cancelled) await projectShopifyBoxSale(config, latest);
       const lots = affected.get(connection.scopeKey) ?? new Set<number>();
-      lots.add(listing.lotId);
+      lots.add(persisted.lotId);
       affected.set(connection.scopeKey, lots);
     }
   }
