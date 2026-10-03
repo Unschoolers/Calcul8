@@ -35,6 +35,7 @@ function enterScope(context: object & ShopifyContext, owner = record(context)): 
   context.shopifyLastSyncedAt = null;
   context.shopifySyncError = null;
   context.shopifyConnectionStatus = "disconnected";
+  (context as ShopifyContext & { resetShopifyBindings?: () => void }).resetShopifyBindings?.();
   return owner;
 }
 function beginMutation(context: object & ShopifyContext): { current: () => boolean; release: () => void } | null {
@@ -72,6 +73,7 @@ export const uiShopifyMethods = {
       this.shopifyConnectionShop = status.connected ? status.shop ?? null : null;
       this.shopifyLastSyncedAt = status.connected ? status.lastSyncedAt ?? null : null;
       this.shopifySyncError = status.connected ? status.syncError ?? null : null;
+      void this.refreshShopifyBindings?.();
     } catch {
       if (key !== keyOf(this) || revision !== owner.statusRevision || owner.pendingKey === key) return;
       this.shopifyConnectionStatus = "error";
@@ -108,6 +110,7 @@ export const uiShopifyMethods = {
       if (!response.ok) throw new Error("Shopify disconnect failed");
       if (!current()) return;
       this.shopifyConnectionStatus = "disconnected"; this.shopifyConnectionShop = null; this.shopifyLastSyncedAt = null; this.shopifySyncError = null; this.showShopifyConnectDialog = false;
+      void this.refreshShopifyBindings?.();
     } catch { if (current()) this.shopifyConnectionStatus = "error"; }
     finally { release(); }
   }

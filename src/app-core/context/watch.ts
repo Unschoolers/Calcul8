@@ -36,7 +36,7 @@ export type ScopeWatchContext = WorkspaceRealtimeContext &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
   Pick<BuyerMethodState, "hydrateBuyerProfiles"> &
   Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
-  Pick<ShopifyMethodState, "refreshShopifyStatus">;
+  Pick<ShopifyMethodState, "refreshShopifyStatus" | "resetShopifyBindings">;
 
 export type LanguageWatchContext = Pick<AppState, "currentTab" | "preferredLanguage"> &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
@@ -90,8 +90,8 @@ export type AuthWatchContext = WorkspaceRealtimeContext &
   Pick<SyncMethodState, "startCloudSyncScheduler" | "stopCloudSyncScheduler"> &
   Pick<WorkspaceMethodState, "previewPendingWorkspaceInvite" | "refreshWorkspaces"> &
   Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
-  Pick<ShopifyMethodState, "refreshShopifyStatus"> &
-  Pick<AppState, "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyShopDraft" | "showShopifyConnectDialog" | "shopifyLastSyncedAt" | "shopifySyncError"> &
+  Pick<ShopifyMethodState, "refreshShopifyStatus" | "resetShopifyBindings"> &
+  Pick<AppState, "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyShopDraft" | "showShopifyConnectDialog" | "shopifyLastSyncedAt" | "shopifySyncError" | "shopifyBindingsSummary" | "shopifyBindingsStatus" | "shopifyBindingsStale" | "shopifyBindingsScope"> &
   Pick<AppVueContext, "$nextTick">;
 
 export type CurrentLotWatchContext = WorkspaceRealtimeContext &

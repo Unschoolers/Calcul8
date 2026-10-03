@@ -14,7 +14,7 @@ test("preview derives a sealed-box draft from saved lot data and sales", () => {
     sales: [{ type: "box", quantity: 1, packsCount: 0 }, { type: "pack", quantity: 2, packsCount: 24 }],
     locations: [{ id: "gid://shopify/Location/1", name: "Main", isActive: true }], shopCurrency: "USD"
   });
-  expect(result.preview).toMatchObject({ title: "Set X — sealed box", variantTitle: "Sealed box", sku: "X-7", price: "90.00", currency: "USD", quantity: 5, locations: [{ id: "gid://shopify/Location/1", name: "Main" }] });
+  expect(result.preview).toMatchObject({ title: "Set X — Booster box", variantTitle: "Booster box", sku: "X-7", price: "90.00", currency: "USD", quantity: 5, locations: [{ id: "gid://shopify/Location/1", name: "Main" }] });
   expect(result.preview.previewToken).toMatch(/^[a-f0-9]{64}$/);
   expect(result.handle).toMatch(/^calcul8-created-/);
 });
@@ -41,4 +41,15 @@ test("preview rounds currency price to cents and rejects values that round to ze
 test("preview rejects quantities outside Shopify GraphQL Int", () => {
   const base = { scopeKey: "user:1", shop: "a.myshopify.com", generation: 0, lot: { id: 1, lotType: "bulk", boxesPurchased: 2_147_483_648, packsPerBox: 10, boxPriceSell: 1, sellingCurrency: "USD" }, sales: [], locations: [{ id: "gid://shopify/Location/1", name: "Main", isActive: true }], shopCurrency: "USD" };
   expectCode(() => buildShopifyDraftPreview(base), ShopifyErrorCode.INVENTORY_INVALID);
+});
+
+
+test("final preview binds custom title, price and location alongside authoritative stock", () => {
+  const base = { scopeKey: "u", shop: "a.myshopify.com", generation: 1, lot: { id: 7, name: "Set", lotType: "bulk", boxesPurchased: 3, packsPerBox: 10, boxPriceSell: 5, sellingCurrency: "CAD" }, sales: [], locations: [{ id: "gid://shopify/Location/1", name: "Main", isActive: true }, { id: "gid://shopify/Location/2", name: "Other", isActive: true }], shopCurrency: "CAD" };
+  const overrides = { title: "Custom", price: "23.50", locationId: "gid://shopify/Location/1" };
+  const one = buildShopifyDraftPreview({ ...base, overrides });
+  expect(one.preview).toMatchObject({ title: "Custom", price: "23.50", variantTitle: "Booster box", quantity: 3 });
+  expect(buildShopifyDraftPreview({ ...base, overrides: { ...overrides, locationId: "gid://shopify/Location/2" } }).preview.previewToken).not.toBe(one.preview.previewToken);
+  expect(buildShopifyDraftPreview({ ...base, overrides: { ...overrides, price: "24.00" } }).preview.previewToken).not.toBe(one.preview.previewToken);
+  expect(() => buildShopifyDraftPreview({ ...base, overrides: { ...overrides, title: "" } })).toThrow();
 });

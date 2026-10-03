@@ -74,6 +74,17 @@ export async function getShopifyConnection(config: ApiConfig, scopeKey: string):
   } catch (error) { if (isNotFoundError(error)) return null; throw error; }
 }
 
+/** Safe identity projection for known bindings, including a disconnected store. Never exposes tokens. */
+export async function getShopifyConnectionIdentity(config: ApiConfig, scopeKey: string): Promise<{ shop: string | null; generation: number; connected: boolean }> {
+  const empty = { shop: null, generation: 0, connected: false };
+  const { entitlements } = getContainers(config);
+  try {
+    const { resource } = await withCosmosRetry(() => entitlements.item(connectionId(scopeKey), scopeKey).read<ConnectionDocument>());
+    if (!resource || resource.docType !== "shopify_connection" || resource.scopeKey !== scopeKey) return empty;
+    return { shop: resource.shop || null, generation: resource.generation ?? 0, connected: Boolean(resource.accessTokenCiphertext && !resource.disconnectedAt) };
+  } catch (error) { if (isNotFoundError(error)) return empty; throw error; }
+}
+
 export async function listShopifyConnectionScopes(config: ApiConfig): Promise<string[]> {
   const { entitlements } = getContainers(config);
   const iterator = entitlements.items.query<ConnectionDocument>({

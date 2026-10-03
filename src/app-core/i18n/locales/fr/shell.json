@@ -157,5 +157,10 @@
   "workspaceCreateFailedNotice": "Impossible de créer l’espace de travail.",
   "workspaceCreateInProgressNotice": "Cet espace de travail est déjà en cours de création. Gardez cette fenêtre ouverte et réessayez sous peu.",
   "workspaceCreateMismatchNotice": "Cette demande de création a changé après son démarrage. Fermez la fenêtre et recommencez.",
-  "workspaceCreateRecoveryConflictNotice": "La création de l’espace de travail n’a pas pu reprendre en toute sécurité. Gardez cette fenêtre ouverte et réessayez."
+  "workspaceCreateRecoveryConflictNotice": "La création de l’espace de travail n’a pas pu reprendre en toute sécurité. Gardez cette fenêtre ouverte et réessayez.",
+  "shopifyLotLinked": "Lié à Shopify",
+  "shopifyLotManaged": "Géré par Calcul8 dans Shopify",
+  "shopifyLotStale": "Dernier lien connu ; actualisation indisponible",
+  "shopifyLotDisconnected": "Shopify déconnecté ; lien conservé",
+  "shopifyLotAttention": "Ce lien Shopify nécessite votre attention"
 }

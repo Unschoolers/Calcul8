@@ -139,7 +139,7 @@ describe("workflow dialog scenarios", () => {
       "showStripeCheckoutModal",
       "confirmDialog"
     ]) {
-      expect(template).toMatch(new RegExp(`<app-dialog-shell[^>]*(?:v-model|:model-value)="${model}"`));
+      expect(template).toMatch(new RegExp(`<app-dialog-shell[^>]*(?:v-model|:model-value)="${model}(?:\\s|")`));
     }
     expect(template).not.toMatch(/<v-dialog\b/);
   });

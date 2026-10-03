@@ -33,12 +33,12 @@ test("falls back to stored IDs and omits an unsafe admin link", () => {
 });
 
 test.each(["managed", "linked"] as const)("edit inventory renders the saved %s binding using the production template", (mode) => {
-  const template = readFileSync("src/components/windows/shopify/ShopifyLotIntegration.vue", "utf8").match(/<ShopifyBindingDetails\b[^>]*\/>/)?.[0];
+  const template = readFileSync("src/components/windows/shopify/ShopifyLotManager.vue", "utf8").match(/<ShopifyBindingDetails\b[^>]*\/>/)?.[0];
   expect(template).toBeTruthy();
   const Harness = defineComponent({
     components: { ShopifyBindingDetails },
     template,
-    setup: () => ({ t, state: { listing: { mode, productId: "gid://shopify/Product/123", variantId: "gid://shopify/ProductVariant/456", productTitle: "Kaiju #8" } } })
+    setup: () => ({ t, listing: { mode, productId: "gid://shopify/Product/123", variantId: "gid://shopify/ProductVariant/456", productTitle: "Kaiju #8" } })
   });
   renderWithApp(Harness);
   expect(screen.getByTestId("shopify-binding-details")).toHaveTextContent("Kaiju #8");

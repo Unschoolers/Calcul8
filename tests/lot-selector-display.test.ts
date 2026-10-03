@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, expect } from "vitest";
 import { resolveLotSelectorDisplayItem } from "../src/components/shell/lotSelectorDisplay.ts";
 
 const lotItem = {
@@ -28,4 +28,11 @@ test("lot selector returns empty display fields for malformed slot items", () =>
     groupLabel: "",
     lotType: ""
   });
+});
+
+test("Shopify linkage stays independent of completion through direct and raw slot adapters", () => {
+  const shopifyLink = { mode: "linked" as const, stale: true, disconnected: false, attention: false };
+  expect(resolveLotSelectorDisplayItem({ raw: { ...lotItem, shopifyLink } }).shopifyLink).toEqual(shopifyLink);
+  expect(resolveLotSelectorDisplayItem({ ...lotItem, shopifyLink }).shopifyLink).toEqual(shopifyLink);
+  expect(resolveLotSelectorDisplayItem({ ...lotItem, shopifyLink: { mode: "unknown" } }).shopifyLink).toBeUndefined();
 });

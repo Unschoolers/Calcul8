@@ -1,26 +1,9 @@
 import { createHash } from "node:crypto";
 import type { SyncLotDto } from "../../../../../shared/sync-contracts";
 import { calculateSealedBoxInventory } from "../../shared/box-inventory.cjs";
+import type { ShopifyManagerListing } from "../../shared/shopify-product-manager";
 
-export type ShopifyListing = {
-  scopeKey: string;
-  lotId: number;
-  /** Missing means an existing WhatFees-managed listing. Linked products remain Shopify-owned. */
-  mode?: "managed" | "linked";
-  creationHandle?: string;
-  locationName?: string;
-  productTitle?: string;
-  variantTitle?: string;
-  sku?: string;
-  shop: string;
-  productId: string;
-  variantId: string;
-  inventoryItemId: string;
-  locationId: string;
-  lastQuantity: number;
-  updatedAt: string;
-  version?: string;
-};
+export type ShopifyListing = ShopifyManagerListing;
 export type ShopifyListingStore = {
   get(scopeKey: string, lotId: number): Promise<ShopifyListing | null>;
   put(listing: ShopifyListing): Promise<ShopifyListing>;
@@ -37,6 +20,11 @@ export type ShopifyListingClient = {
 };
 export type InventorySale = { type: string; quantity: number; packsCount: number };
 
+/** Old persisted records omit lifecycle; treat them as active during the additive migration. */
+export function isActiveShopifyListing(listing: ShopifyListing | null): boolean {
+  return Boolean(listing && listing.lifecycle !== "unlinked");
+}
+
 export function shopifyBoxHandle(scopeKey: string, lotId: number): string {
   return `calcul8-box-${createHash("sha256").update(`${scopeKey}:${lotId}`).digest("hex").slice(0, 24)}`;
 }
@@ -48,6 +36,8 @@ export async function reconcileBoxListing(input: {
 }): Promise<{ status: "skipped" | "published" | "paused" | "linked"; sealedBoxes: number }> {
   const { scopeKey, shop, lot, sales, store, client } = input;
   const previousMapping = await store.get(scopeKey, lot.id);
+  // A tombstone suppresses delayed snapshots and automatic recovery even if the store changed.
+  if (previousMapping?.lifecycle === "unlinked") return { status: "skipped", sealedBoxes: 0 };
   // A different shop can only be connected after the previous products were drafted on disconnect.
   const existing = previousMapping?.shop === shop ? previousMapping : null;
   if (previousMapping?.mode === "linked") return existing
@@ -71,7 +61,7 @@ export async function reconcileBoxListing(input: {
     scopeKey, lotId: lot.id, shop, productId: ids.productId, variantId: ids.variantId,
     inventoryItemId: ids.inventoryItemId, locationId: ids.locationId,
     lastQuantity: existing?.lastQuantity ?? 0, updatedAt: existing?.updatedAt ?? new Date(0).toISOString(),
-    version: previousMapping?.version
+    version: previousMapping?.version, lifecycle: "active"
   };
   await input.beforeMutation?.();
   const stored = await store.put(listing);

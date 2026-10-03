@@ -84,7 +84,7 @@ test("requires an explicit location choice when the shop has multiple locations"
   const create = await screen.findByRole("button", { name: "Create draft and link" });
   expect(create.hasAttribute("disabled")).toBe(true);
 
-  const location = screen.getByRole("combobox", { name: "Inventory location" });
+  const location = await screen.findByRole("combobox", { name: "Inventory location" });
   await fireEvent.click(location);
   await fireEvent.keyDown(location, { key: "ArrowDown" });
   await waitFor(() => expect(screen.getByRole("option", { name: "Main Warehouse" })).toBeTruthy());
@@ -101,7 +101,7 @@ test("submits the preview token once and closes only after successful create", a
   renderWithApp(ShopifyCreateDraftDialog, { props });
 
   await screen.findByText("Dragon Shield Matte Sleeves");
-  const location = screen.getByRole("combobox", { name: "Inventory location" });
+  const location = await screen.findByRole("combobox", { name: "Inventory location" });
   await fireEvent.click(location);
   await fireEvent.keyDown(location, { key: "ArrowDown" });
   await waitFor(() => expect(screen.getByRole("option", { name: "Main Warehouse" })).toBeTruthy());
@@ -120,7 +120,7 @@ test("keeps the preview after create error and retries creation only on explicit
   const loadPreview = vi.fn(async () => preview);
   renderDialog({ createDraft, loadPreview });
   await screen.findByText("Dragon Shield Matte Sleeves");
-  const location = screen.getByRole("combobox", { name: "Inventory location" });
+  const location = await screen.findByRole("combobox", { name: "Inventory location" });
   await fireEvent.click(location);
   await fireEvent.keyDown(location, { key: "ArrowDown" });
   await waitFor(() => expect(screen.getByRole("option", { name: "Main Warehouse" })).toBeTruthy());
@@ -213,7 +213,7 @@ test("offers explicit draft creation from completed empty search without overlap
   await fireEvent.click(within(picker).getByRole("button", { name: "Create Shopify product" }));
 
   expect(await screen.findByRole("dialog", { name: "Create Shopify draft" })).toBeTruthy();
-  const pickerOverlay = screen.getByRole("dialog", { name: "Choose a Shopify product" });
+  const pickerOverlay = screen.getByRole("dialog", { hidden: true, name: "" });
   expect(pickerOverlay.querySelector(".v-overlay__content")?.getAttribute("style")).toContain("display: none");
   const visibleDialogs = screen.getAllByRole("dialog").filter(dialog => !dialog.querySelector(".v-overlay__content")?.getAttribute("style")?.includes("display: none"));
   expect(visibleDialogs).toHaveLength(1);

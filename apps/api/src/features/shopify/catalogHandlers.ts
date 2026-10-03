@@ -4,15 +4,17 @@ import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { getShopifyConnection } from "../../lib/cosmos/shopifyRepository";
 import { getEffectiveSyncSnapshot } from "../../lib/cosmos/syncSnapshotRepository";
 import { createShopifyListingStore } from "../../lib/cosmos/shopifyListingRepository";
+import { createShopifyOperationStore } from "../../lib/cosmos/shopifyOperationRepository";
 import { createShopifyAdminClient } from "./adminClient";
 import { getShopifyAccessToken } from "./tokenProvider";
 import { linkExistingVariant } from "./catalogService";
 import { withShopifyLotLease } from "./lotLease";
 import { ensureShopifyOrderWebhooks } from "./webhookSubscription";
 import { parseBody, resolveShopifyScope, workspaceIdFrom } from "./requestHelpers";
-import type { ShopifyListing } from "./listingService";
+import { isActiveShopifyListing, type ShopifyListing } from "./listingService";
 import { isShopifyProductStatus } from "../../shared/shopify-product-status";
 import { ShopifyErrorCode } from "../../shared/shopify-errors";
+import { normalizeDraftCreateMutation, normalizeProductDetailsMutation, normalizeShopifyMoney } from "../../shared/shopify-product-manager";
 
 function lotIdFrom(body: Record<string, unknown>): number {
   if (!Number.isSafeInteger(body.lotId) || Number(body.lotId) <= 0) throw new HttpError(400, "A valid lot ID is required");
@@ -44,20 +46,55 @@ export async function shopifyProductListing(request: HttpRequest, context: Invoc
       const body = await parseBody(request);
       const scope = await resolveShopifyScope(config, actor, workspaceIdFrom(body));
       const lotId = lotIdFrom(body);
+      const managerRequest = body.manager === true;
       const connection = await getShopifyConnection(config, scope.partitionKey);
-      const mapping = connection ? await createShopifyListingStore(config).get(scope.partitionKey, lotId) : null;
-      if (!connection || !mapping || mapping.shop !== connection.shop) return jsonResponse(request, config, 200, { listing: null });
-      const { productStatus: _storedProductStatus, ...mappingWithoutStoredStatus } = mapping as ShopifyListing & { productStatus?: unknown };
-      void _storedProductStatus;
-      let listing = { ...mappingWithoutStoredStatus, mode: mapping.mode ?? "managed" };
-      if (mapping.variantId) {
+      const store = createShopifyListingStore(config);
+      const mapping = connection ? await store.get(scope.partitionKey, lotId) : null;
+      const pending = async () => {
+        if (!managerRequest || !connection) return {};
+        const attempts = await createShopifyOperationStore(config).list(scope.partitionKey, lotId);
+        const currentConnection = await getShopifyConnection(config, scope.partitionKey);
+        if (currentConnection?.shop !== connection.shop || (currentConnection.generation ?? 0) !== (connection.generation ?? 0)) {
+          throw new HttpError(409, "Shopify connection changed; refresh the dialog", ShopifyErrorCode.CONNECTION_CHANGED);
+        }
+        const relevant = attempts.filter(item => item.shop === connection.shop && item.generation === (connection.generation ?? 0) &&
+          item.bindingVersion === (mapping?.version ?? null)).sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+        const create = relevant.find(item => item.kind === "create" && item.status !== "mapped" && item.status !== "failed" &&
+          item.request && normalizeDraftCreateMutation(item.request));
+        const details = relevant.find(item => item.kind === "details" && !item.terminalConflict &&
+          Object.values(item.outcome).some(value => value !== "confirmed") &&
+          mapping?.mode === "linked" && item.productId === mapping.productId && item.variantId === mapping.variantId);
+        return {
+          ...(create?.kind === "create" && create.request ? { pendingCreateMutation: create.request } : {}),
+          ...(details?.kind === "details" ? { pendingDetailsMutation: normalizeProductDetailsMutation({
+            lotId, operationId: details.operationId, expectedVersion: details.bindingVersion, generation: details.generation,
+            currency: details.currency, expected: details.expected, draft: details.draft
+          }), detailsOutcome: details.outcome } : {})
+        };
+      };
+      if (!connection) return jsonResponse(request, config, 200, { listing: null,
+        ...(managerRequest ? { bindingVersion: mapping?.version ?? null, shop: null, generation: 0 } : {}) });
+      if (!mapping) return jsonResponse(request, config, 200, { listing: null,
+        ...(managerRequest ? { bindingVersion: null, shop: connection.shop, generation: connection.generation ?? 0, ...await pending() } : {}) });
+      if (mapping.shop !== connection.shop) return jsonResponse(request, config, 200, { listing: null,
+        ...(managerRequest || (typeof mapping.version === "string" && mapping.version)
+          ? { bindingVersion: mapping.version ?? null } : {}),
+        ...(managerRequest ? { shop: connection.shop, generation: connection.generation ?? 0, ...await pending() } : {}) });
+      const { productStatus: _storedProductStatus, lastMutationFingerprint: _storedMutationFingerprint, price: _storedPrice, currency: _storedCurrency, observedAt: _storedObservedAt, availableLocations: _storedLocations, ...mappingWithoutStoredStatus } = mapping as ShopifyListing & { productStatus?: unknown };
+      void _storedProductStatus; void _storedMutationFingerprint;
+      let listing = mapping.lifecycle === "unlinked" ? null : { ...mappingWithoutStoredStatus, mode: mapping.mode ?? "managed" };
+      if (mapping.variantId && isActiveShopifyListing(mapping)) {
         try {
           const client = createShopifyAdminClient(connection.shop, () => getShopifyAccessToken(config, scope.partitionKey, connection.shop));
           const variant = await client.getVariant(mapping.variantId);
           if (variant?.productId === mapping.productId &&
               variant.variantId === mapping.variantId && (!mapping.inventoryItemId || variant.inventoryItemId === mapping.inventoryItemId)) {
             const location = variant.locations.find(item => item.id === mapping.locationId);
-            listing = { ...listing, productTitle: variant.title, variantTitle: variant.variantTitle, sku: variant.sku,
+            const price = normalizeShopifyMoney(variant.price, true);
+            const currency = managerRequest ? await client.getShopCurrency() : null;
+            listing = { ...listing!, productTitle: variant.title, variantTitle: variant.variantTitle, sku: variant.sku,
+              ...(managerRequest ? { availableLocations: variant.locations.map(({ id, name }) => ({ id, name })) } : {}),
+              ...(managerRequest && price && currency && /^[A-Z]{3}$/.test(currency) ? { price, currency, observedAt: new Date().toISOString() } : {}),
               ...(location ? { locationName: location.name } : {}),
               ...(mapping.inventoryItemId === variant.inventoryItemId && isShopifyProductStatus(variant.productStatus)
                 ? { productStatus: variant.productStatus } : {}) };
@@ -68,7 +105,17 @@ export async function shopifyProductListing(request: HttpRequest, context: Invoc
       if (currentConnection?.shop !== connection.shop || (currentConnection.generation ?? 0) !== (connection.generation ?? 0)) {
         throw new HttpError(409, "Shopify connection changed; refresh the dialog", ShopifyErrorCode.CONNECTION_CHANGED);
       }
-      return jsonResponse(request, config, 200, { listing });
+      const currentMapping = await store.get(scope.partitionKey, lotId);
+      if (!currentMapping || currentMapping.scopeKey !== mapping.scopeKey || currentMapping.shop !== mapping.shop || currentMapping.lotId !== mapping.lotId ||
+        currentMapping.version !== mapping.version || currentMapping.lifecycle !== mapping.lifecycle || currentMapping.mode !== mapping.mode ||
+        currentMapping.productId !== mapping.productId || currentMapping.variantId !== mapping.variantId ||
+        currentMapping.inventoryItemId !== mapping.inventoryItemId || currentMapping.locationId !== mapping.locationId ||
+        currentMapping.lastMutationId !== mapping.lastMutationId) {
+        throw new HttpError(409, "Shopify product link changed; refresh the dialog", ShopifyErrorCode.BINDING_CHANGED);
+      }
+      return jsonResponse(request, config, 200, { listing,
+        ...(managerRequest ? { bindingVersion: mapping.version ?? null, shop: connection.shop, generation: connection.generation ?? 0, ...await pending() } :
+          (typeof mapping.version === "string" && mapping.version ? { bindingVersion: mapping.version } : {})) });
     }
   });
 }

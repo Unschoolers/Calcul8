@@ -243,3 +243,16 @@ it.each(["connect", "disconnect"] as const)("clears prior-scope metadata before 
   expect(app.shopifyConnectionShop).toBeNull(); expect(app.shopifyLastSyncedAt).toBeNull(); expect(app.shopifySyncError).toBeNull();
   Object.defineProperty(globalThis, "window", { configurable: true, value: original });
 });
+
+it("successful status and disconnect refresh the batched link cache; failed mutations do not", async () => {
+  const app = { ...context(), refreshShopifyBindings: vi.fn(async () => {}), resetShopifyBindings: vi.fn() };
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(JSON.stringify({ configured: true, connected: true, shop: "mine.myshopify.com" })));
+  await uiShopifyMethods.refreshShopifyStatus.call(app as never);
+  expect(app.refreshShopifyBindings).toHaveBeenCalledTimes(1);
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(null, { status: 503 }));
+  await uiShopifyMethods.disconnectShopify.call(app as never);
+  expect(app.refreshShopifyBindings).toHaveBeenCalledTimes(1);
+  fetchAuthenticatedApiResponse.mockResolvedValueOnce(new Response(null, { status: 200 }));
+  await uiShopifyMethods.disconnectShopify.call(app as never);
+  expect(app.refreshShopifyBindings).toHaveBeenCalledTimes(2);
+});

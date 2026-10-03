@@ -38,7 +38,7 @@ vi.mock("./core", () => ({
   isPreconditionFailedError: (error: unknown) => (error as { statusCode?: number }).statusCode === 412
 }));
 
-import { createShopifyStore, getShopifyConnection, deleteShopifyConnection } from "./shopifyRepository";
+import { createShopifyStore, getShopifyConnection, getShopifyConnectionIdentity, deleteShopifyConnection } from "./shopifyRepository";
 
 beforeEach(() => docs.clear());
 const config = {} as ApiConfig;
@@ -73,4 +73,13 @@ test("a Shopify connection can refresh the same store but cannot replace it with
   assert.equal((await store.getConnection("user:42"))?.accessTokenCiphertext, "refreshed");
   await assert.rejects(() => store.putConnection({ ...connection, shop: "other.myshopify.com" }, 0), { status: 409 });
   assert.equal((await store.getConnection("user:42"))?.shop, "mine.myshopify.com");
+});
+
+test("binding summaries retain safe store identity after disconnect without exposing credentials", async () => {
+  const store = createShopifyStore(config);
+  await store.putConnection({ scopeKey: "user:42", scopeType: "user", scopeId: "42", shop: "mine.myshopify.com", accessTokenCiphertext: "private-cipher", scopes: [], connectedByUserId: "42", updatedAt: "2026-09-28T00:00:00Z" }, 0);
+  assert.deepEqual(await getShopifyConnectionIdentity(config, "user:42"), { shop: "mine.myshopify.com", generation: 0, connected: true });
+  await deleteShopifyConnection(config, "user:42");
+  assert.deepEqual(await getShopifyConnectionIdentity(config, "user:42"), { shop: "mine.myshopify.com", generation: 1, connected: false });
+  assert.deepEqual(await getShopifyConnectionIdentity(config, "user:other"), { shop: null, generation: 0, connected: false });
 });

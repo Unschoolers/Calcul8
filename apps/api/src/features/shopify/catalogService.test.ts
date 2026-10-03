@@ -12,7 +12,7 @@ function harness(listings: ShopifyListing[] = []) {
 test("links exact provider IDs and current stock without any Shopify mutation", async () => {
   const { input } = harness();
   const result = await linkExistingVariant(input);
-  expect(result).toMatchObject({ mode: "linked", lotId: 42, productId: candidate.productId, variantId: candidate.variantId, inventoryItemId: candidate.inventoryItemId, locationId: candidate.locations[0].id, lastQuantity: 17 });
+  expect(result).toMatchObject({ mode: "linked", lifecycle: "active", lotId: 42, productId: candidate.productId, variantId: candidate.variantId, inventoryItemId: candidate.inventoryItemId, locationId: candidate.locations[0].id, lastQuantity: 17 });
 });
 test("rejects variants unavailable in the connected shop and foreign inventory locations", async () => {
   const { input, client, store } = harness();
@@ -33,4 +33,9 @@ test("repeating a link preserves the mapping version and cannot silently switch 
   const { input } = harness([listing]);
   expect(await linkExistingVariant(input)).toMatchObject({ version: "etag" });
   await expect(linkExistingVariant({ ...input, variantId: "gid://shopify/ProductVariant/99" })).rejects.toThrow(/already linked/i);
+});
+
+test("legacy linking cannot resurrect an explicitly unlinked mapping", async () => {
+  const { input } = harness([{ scopeKey: "u", lotId: 42, shop: "a.myshopify.com", mode: "linked", lifecycle: "unlinked", productId: candidate.productId, variantId: candidate.variantId, inventoryItemId: candidate.inventoryItemId, locationId: candidate.locations[0].id, lastQuantity: 17, updatedAt: "now", version: "v1" } as ShopifyListing]);
+  await expect(linkExistingVariant(input)).rejects.toThrow(/removed|unlink|setup/i);
 });

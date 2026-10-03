@@ -5,6 +5,7 @@
   :scrollable="scrollable"
   :fullscreen="isMobileFullscreen"
   :content-class="['app-dialog-overlay', `app-dialog-overlay--${variant}`]"
+  :aria-hidden="!modelValue || null"
   :aria-labelledby="titleId"
   :aria-describedby="description ? descriptionId : null"
   @update:model-value="updateModelValue"

@@ -41,3 +41,8 @@ test("does not turn a provider read failure into a stock observation", async () 
   await expect(shopifyProductStock(request({ lotId: 42 }), context)).rejects.toThrow(/provider unavailable/i);
   expect(mocks.get).toHaveBeenCalledTimes(1);
 });
+test("an unlinked tombstone cannot trigger a Shopify stock read", async () => {
+  mocks.get.mockResolvedValue({ ...mapping, lifecycle: "unlinked" });
+  await expect(shopifyProductStock(request({ lotId: 42 }), context)).rejects.toThrow(/linked/i);
+  expect(mocks.getStock).not.toHaveBeenCalled();
+});

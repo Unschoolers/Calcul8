@@ -1,5 +1,6 @@
 import type { Chart as ChartJS } from "chart.js";
 import type { ShopifyProductStatus as SharedShopifyProductStatus } from "../../shared/shopify-product-status";
+import type { BindingMutation, DraftCreateMutation, ProductDetailsMutation, ProductDetailsResult } from "../../shared/shopify-product-manager.ts";
 import type { WhatnotMappedSaleType, WhatnotImportDecisionKind, WhatnotReviewImportAction } from "../../shared/whatnot-import-contracts";
 export type { WhatnotMappedSaleType, WhatnotImportDecisionKind, WhatnotReviewImportAction } from "../../shared/whatnot-import-contracts";
 import type {
@@ -17,7 +18,7 @@ import type {
 
 export type AppTab = "config" | "live" | "sales" | "portfolio" | "wheel";
 export type LotType = "bulk" | "singles";
-export type ShopifyEditErrorOperation = "listing" | "search" | "link" | "create" | null;
+export type ShopifyEditErrorOperation = "listing" | "search" | "link" | "binding" | "details" | "create" | null;
 export type GuidedOnboardingStatus = "idle" | "available" | "running" | "completed" | "dismissed";
 export type SinglesCatalogSource = "ua" | "pokemon" | "none";
 export type CostInputMode = "perBox" | "total";
@@ -63,6 +64,14 @@ export type ShopifyVariantSearchResult = {
 };
 export type ShopifyEditListing = {
   mode: "linked" | "managed";
+  scopeKey?: string;
+  lotId?: number;
+  lifecycle?: "active" | "unlinked";
+  version?: string;
+  lastQuantity?: number;
+  updatedAt?: string;
+  lastMutationId?: string;
+  lastMutationFingerprint?: string;
   shop?: string;
   productId: string;
   variantId: string;
@@ -73,6 +82,10 @@ export type ShopifyEditListing = {
   inventoryItemId?: string;
   locationId?: string;
   locationName?: string;
+  price?: string;
+  currency?: string;
+  observedAt?: string;
+  availableLocations?: Array<{ id: string; name: string }>;
 };
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotCsvImportSource = "csv";
@@ -736,6 +749,15 @@ export interface AppState extends LotSetup {
   shopifyEditSessionAuthEpoch: number | null;
   shopifyEditSessionScope: string;
   shopifyEditSessionLotId: number | null;
+  shopifyEditBindingVersion: string | null;
+  shopifyEditGeneration: number | null;
+  shopifyEditOperationId: string | null;
+  shopifyEditPendingOwnerScope: string | null;
+  shopifyEditPendingBindingMutation: BindingMutation | null;
+  shopifyEditPendingDetailsMutation: ProductDetailsMutation | null;
+  shopifyEditPendingCreateMutation: DraftCreateMutation | null;
+  shopifyEditDetailsOutcome: ProductDetailsResult["outcome"] | null;
+  shopifyEditManagerOpen: boolean;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   newLotWhatnotVertical: WhatnotVertical | null;
@@ -749,6 +771,10 @@ export interface AppState extends LotSetup {
   salesCacheEpoch: number;
   whatnotFeeDateOnly: string;
   whatnotConnectionStatus: WhatnotConnectionStatus;
+  shopifyBindingsSummary: import("../../shared/shopify-product-manager.ts").BindingSummary | null;
+  shopifyBindingsStatus: "idle" | "loading" | "loaded" | "error";
+  shopifyBindingsStale: boolean;
+  shopifyBindingsScope: string;
   shopifyConnectionStatus: WhatnotConnectionStatus;
   shopifyConnectionShop: string | null;
   shopifyLastSyncedAt: string | null;

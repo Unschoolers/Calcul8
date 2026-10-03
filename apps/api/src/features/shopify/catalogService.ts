@@ -1,5 +1,6 @@
 import { HttpError } from "../../lib/auth";
 import type { ShopifyListing, ShopifyListingStore } from "./listingService";
+import { isActiveShopifyListing } from "./listingService";
 import type { ShopifyProductStatus } from "../../shared/shopify-product-status";
 
 export type ShopifyVariant = {
@@ -26,14 +27,16 @@ export async function linkExistingVariant(input: {
 }): Promise<ShopifyListing> {
   const { scopeKey, shop, lotId, variantId, locationId, store, client } = input;
   const existing = await store.get(scopeKey, lotId);
-  if (existing?.shop === shop) {
+  if (existing?.lifecycle === "unlinked") throw new HttpError(409, "This Shopify product link was removed; use explicit setup to link it again");
+  if (existing) {
+    if (existing.shop !== shop) throw new HttpError(409, "This lot already has a Shopify product link from another store");
     if (existing.mode !== "linked") throw new HttpError(409, "This lot already has a WhatFees-managed Shopify listing");
-    if (existing.variantId !== variantId || existing.locationId !== locationId) {
-      throw new HttpError(409, "This lot is already linked to another Shopify variant or location");
-    }
+    if (existing.variantId !== variantId || existing.locationId !== locationId) throw new HttpError(409, "This lot is already linked to another Shopify variant or location");
+    await input.beforeSave?.();
+    return existing;
   }
   const listings = await store.list(scopeKey);
-  if (listings.some(item => item.shop === shop && item.variantId === variantId && item.lotId !== lotId)) {
+  if (listings.some(item => item.shop === shop && item.variantId === variantId && item.lotId !== lotId && isActiveShopifyListing(item))) {
     throw new HttpError(409, "This Shopify variant is already linked to another lot");
   }
   const variant = await client.getVariant(variantId);
@@ -41,10 +44,10 @@ export async function linkExistingVariant(input: {
   const location = variant.locations.find(item => item.id === locationId);
   if (!location) throw new HttpError(400, "Choose an active inventory location for this Shopify variant");
   const listing: ShopifyListing = {
-    scopeKey, shop, lotId, mode: "linked", productId: variant.productId, variantId: variant.variantId,
+    scopeKey, shop, lotId, mode: "linked", lifecycle: "active", productId: variant.productId, variantId: variant.variantId,
     inventoryItemId: variant.inventoryItemId, locationId: location.id, lastQuantity: location.available,
     productTitle: variant.title, variantTitle: variant.variantTitle, sku: variant.sku,
-    updatedAt: new Date().toISOString(), version: existing?.version
+    updatedAt: new Date().toISOString()
   };
   await input.beforeSave?.();
   return store.put(listing);

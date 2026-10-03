@@ -26,6 +26,14 @@ import type { ScopedApiContext } from "./api.ts";
 import type { SyncMethodState } from "./sync.ts";
 import type { WorkspaceComputedState } from "./workspace.ts";
 import type { WhatnotFeePeriodSummary } from "../shared/whatnot-fee-summary.ts";
+import type {
+  BindingAction,
+  BindingMutation,
+  BindingResult,
+  DraftOverrides,
+  ProductDetailsDraft,
+  ProductDetailsResult
+} from "../../../shared/shopify-product-manager.ts";
 
 export interface CommerceComputedState {
   whatnotFeeSummary: WhatnotFeePeriodSummary;
@@ -185,8 +193,13 @@ export interface CommerceMethodState {
   restoreShopifyEditSelection(selection: { query: string; variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }): void;
   selectShopifyEditVariant(variantId: string): void;
   selectShopifyEditLocation(locationId: string): void;
-  loadShopifyDraftPreview(): Promise<import("../../domain/shopify-draft.ts").ShopifyDraftPreview>;
+  loadShopifyDraftPreview(overrides?: Partial<DraftOverrides>): Promise<import("../../domain/shopify-draft.ts").ShopifyDraftPreview>;
+  createShopifyDraft(overrides: DraftOverrides, previewToken: string): Promise<BindingResult>;
   createShopifyDraft(locationId: string, previewToken: string): Promise<void>;
+  saveShopifyBinding(request: BindingMutation): Promise<BindingResult>;
+  applyShopifyBinding(action: BindingAction, selection?: { variantId?: string; locationId?: string; confirmTransfer?: boolean }): Promise<BindingResult>;
+  saveShopifyProductDetails(draft: ProductDetailsDraft): Promise<ProductDetailsResult>;
+  resetShopifyEditor(): void;
   loadLot(): void;
   deleteCurrentLot(): void;
   canUseAdminLotSyncTools(): boolean;
@@ -275,7 +288,7 @@ type CommerceState = Pick<
 export type CommerceContext = CommerceState &
   CommerceComputedState &
   Pick<CommerceMethodState, "calculatePriceForUnits"> &
-  Pick<AppState, "salesCacheEpoch" | "whatnotFeeDateOnly"> &
+  Pick<AppState, "salesCacheEpoch" | "whatnotFeeDateOnly" | "googleAuthEpoch" | "activeScopeType" | "activeWorkspaceId" | "shopifyConnectionShop" | "shopifyConnectionStatus" | "shopifyBindingsSummary" | "shopifyBindingsScope" | "shopifyBindingsStale"> &
   Pick<CommerceMethodState, "getAllSalesByLotId" | "getSalesCacheEntry"> &
   Pick<RuntimeMethodState, "formatCurrency">;
 
@@ -517,6 +530,15 @@ export type LotConfigurationContext = Pick<
   | "shopifyEditSessionAuthEpoch"
   | "shopifyEditSessionScope"
   | "shopifyEditSessionLotId"
+  | "shopifyEditBindingVersion"
+  | "shopifyEditGeneration"
+  | "shopifyEditOperationId"
+  | "shopifyEditPendingOwnerScope"
+  | "shopifyEditPendingBindingMutation"
+  | "shopifyEditPendingDetailsMutation"
+  | "shopifyEditPendingCreateMutation"
+  | "shopifyEditDetailsOutcome"
+  | "shopifyEditManagerOpen"
   | "sellingCurrency"
   | "sellingShippingPerOrder"
   | "sellingTaxPercent"
@@ -552,6 +574,10 @@ export type LotConfigurationContext = Pick<
     | "loadLot"
     | "loadShopifyDraftPreview"
     | "createShopifyDraft"
+    | "saveShopifyBinding"
+    | "applyShopifyBinding"
+    | "saveShopifyProductDetails"
+    | "resetShopifyEditor"
     | "refreshShopifyEditListing"
     | "loadShopifyLinkedStock"
     | "loadSalesForLotId"
@@ -572,6 +598,7 @@ export type LotConfigurationContext = Pick<
   > &
   Pick<SyncMethodState, "pushCloudSync"> &
   Pick<AppVueContext, "$nextTick"> &
+  { refreshShopifyBindings(): Promise<void> } &
   ScopedApiContext;
 
 export type LotIoContext = Pick<
@@ -714,6 +741,10 @@ export type ConfigLotMethodImplementation = FeatureMethodImplementation<
     | "searchShopifyEditProducts"
     | "loadShopifyDraftPreview"
     | "createShopifyDraft"
+    | "saveShopifyBinding"
+    | "applyShopifyBinding"
+    | "saveShopifyProductDetails"
+    | "resetShopifyEditor"
     | "onShopifyEditQueryChange"
     | "restoreShopifyEditSelection"
     | "selectShopifyEditVariant"

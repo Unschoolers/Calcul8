@@ -1,13 +1,14 @@
 import type { ApiConfig } from "../../types";
-import type { ShopifyListing, ShopifyListingStore } from "../../features/shopify/listingService";
+import type { ShopifyListingStore } from "../../features/shopify/listingService";
+import type { ShopifyManagerListing } from "../../shared/shopify-product-manager";
 import { getContainers, isConflictError, isNotFoundError, isPreconditionFailedError, withCosmosRetry } from "./core";
 
 const listingId = (lotId: number) => `shopify_listing:${lotId}`;
-type ListingDocument = ShopifyListing & { id: string; userId: string; docType: "shopify_listing"; _etag?: string };
+type ListingDocument = ShopifyManagerListing & { id: string; userId: string; docType: "shopify_listing"; _etag?: string };
 
-export function createShopifyListingStore(config: ApiConfig): ShopifyListingStore & { list(scopeKey: string): Promise<ShopifyListing[]> } {
+export function createShopifyListingStore(config: ApiConfig): ShopifyListingStore & { list(scopeKey: string): Promise<ShopifyManagerListing[]> } {
   const { entitlements } = getContainers(config);
-  const strip = (resource: ListingDocument): ShopifyListing => {
+  const strip = (resource: ListingDocument): ShopifyManagerListing => {
     const { id: _id, userId: _userId, docType: _docType, _etag, ...listing } = resource;
     return { ...listing, version: _etag };
   };

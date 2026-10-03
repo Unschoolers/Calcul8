@@ -70,3 +70,12 @@ test("a linked mapping from a previous shop cannot create a product in a differe
     lot: { id: 1, shopifyEnabled: true, boxesPurchased: 3, packsPerBox: 10, boxPriceSell: 100 }, sales: [] });
   assert.equal(vi.mocked(client.upsertBoxProduct).mock.calls.length, 0);
 });
+
+test("an explicitly unlinked enabled lot never recreates or mutates its Shopify product", async () => {
+  const { store, client } = harness();
+  await store.put({ scopeKey: "u", lotId: 1, shop: "example.myshopify.com", lifecycle: "unlinked", productId: "p", variantId: "v", inventoryItemId: "i", locationId: "l", lastQuantity: 17, updatedAt: "now" } as ShopifyListing);
+  const result = await reconcileBoxListing({ scopeKey: "u", shop: "example.myshopify.com", store, client, lot: { id: 1, shopifyEnabled: true, boxesPurchased: 3, packsPerBox: 10, boxPriceSell: 100 }, sales: [] });
+  assert.equal(result.status, "skipped");
+  assert.equal(vi.mocked(client.upsertBoxProduct).mock.calls.length, 0);
+  assert.equal(vi.mocked(client.setAvailable).mock.calls.length, 0);
+});

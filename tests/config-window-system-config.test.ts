@@ -127,11 +127,11 @@ test("Shopify linking and marketplace SKU are edited with the lot, not system as
   const pickerTemplate = readFileSync("src/components/windows/shopify/ShopifyProductPicker.vue", "utf8");
   assert.match(appTemplate, /v-model="renameLotExternalSku"/);
   assert.match(appTemplate, /<shopify-lot-integration[\s\S]*?v-if="showRenameLotModal && currentLotType !== 'singles'"[\s\S]*?:state="\{ listing: shopifyEditListing[\s\S]*?@query-change="onShopifyEditQueryChange"/);
-  assert.match(appTemplate, /@cancel="restoreShopifyEditSelection\(\$event\)"/);
-  assert.match(appTemplate, /@retry-save="renameCurrentLot"/);
+  assert.match(appTemplate, /saveBinding: applyShopifyBinding, saveDetails: saveShopifyProductDetails/);
+  assert.match(appTemplate, /@manager-open="shopifyEditManagerOpen = \$event"/);
   assert.match(pickerTemplate, /t\('configShopifySectionTitle'\)/);
   assert.match(pickerTemplate, /t\('configShopifyPickerOpen'\)/);
   assert.match(appTemplate, /searchShopifyEditProducts/);
-  assert.match(appTemplate, /renameLotShopifyEnabled/);
+  assert.match(appTemplate, /v-if="currentLotType !== 'singles' && shopifyEditListing\?\.mode === 'managed'" v-model="renameLotShopifyEnabled"/);
   assert.doesNotMatch(systemTemplate, /configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);
 });

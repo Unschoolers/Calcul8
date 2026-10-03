@@ -30,7 +30,9 @@ describe("Shopify UI errors", () => {
     [ShopifyErrorCode.LOCATION_REQUIRED, "configShopifyErrorLocationRequired", "refresh"],
     [ShopifyErrorCode.LOT_UNAVAILABLE, "configShopifyErrorLotUnavailable", "refresh"],
     [ShopifyErrorCode.ALREADY_LINKED, "configShopifyErrorAlreadyLinked", "refresh"],
-    [ShopifyErrorCode.CONNECTION_CHANGED, "configShopifyErrorConnectionChanged", "reconnect"]
+    [ShopifyErrorCode.CONNECTION_CHANGED, "configShopifyErrorConnectionChanged", "reconnect"],
+    [ShopifyErrorCode.BINDING_CHANGED, "configShopifyConflictError", "refresh"],
+    [ShopifyErrorCode.VARIANT_ALREADY_BOUND, "configShopifyConflictError", "refresh"]
   ] as const)("maps server code %s to its untranslated key and recovery", async (code, key, recovery) => {
     const error = await shopifyResponseUiError(new Response(JSON.stringify({ code }), { status: 400 }), t, "fallback");
     expect(error.messageKey).toBe(key);

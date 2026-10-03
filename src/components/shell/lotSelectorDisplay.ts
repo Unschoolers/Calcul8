@@ -1,6 +1,7 @@
 import {
-  resolveVuetifySlotString
+  resolveVuetifySlotString, resolveVuetifySlotValue
 } from "../../app-core/shared/vuetify-slot-items.ts";
+import { isShopifyLotLink, type ShopifyLotLink } from "../../domain/shopify-binding-summary.ts";
 
 export type LotSelectorDisplayItem = {
   title: string;
@@ -9,6 +10,7 @@ export type LotSelectorDisplayItem = {
   completionIcon: string;
   groupLabel: string;
   lotType: string;
+  shopifyLink?: ShopifyLotLink;
 };
 
 const EMPTY_LOT_SELECTOR_DISPLAY_ITEM: LotSelectorDisplayItem = {
@@ -25,12 +27,14 @@ export function resolveLotSelectorDisplayItem(item: unknown): LotSelectorDisplay
     return { ...EMPTY_LOT_SELECTOR_DISPLAY_ITEM };
   }
 
+  const shopifyLink = resolveVuetifySlotValue(item, ["shopifyLink"]);
   return {
     title: resolveVuetifySlotString(item, ["title"]),
     subtitle: resolveVuetifySlotString(item, ["subtitle"]),
     symbolIcon: resolveVuetifySlotString(item, ["symbolIcon"]),
     completionIcon: resolveVuetifySlotString(item, ["completionIcon"]),
     groupLabel: resolveVuetifySlotString(item, ["groupLabel"]),
-    lotType: resolveVuetifySlotString(item, ["lotType"])
+    lotType: resolveVuetifySlotString(item, ["lotType"]),
+    ...(isShopifyLotLink(shopifyLink) ? { shopifyLink } : {})
   };
 }
