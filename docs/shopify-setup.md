@@ -24,7 +24,7 @@ A Shopify receipt changes the observed stock without changing WhatFees purchase 
 
 ## Shopify app and API settings
 
-Create a Shopify app with these Admin API scopes: `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_locations`, `read_publications`, `write_publications`, and `read_orders`. Register the exact OAuth callback URL for the API environment:
+Create a Shopify app with these Admin API scopes: `read_products`, `write_products`, `write_files`, `read_inventory`, `write_inventory`, `read_locations`, `read_publications`, `write_publications`, and `read_orders`. Register the exact OAuth callback URL for the API environment:
 
 `https://<api-host>/api/integrations/shopify/connect/callback`
 
@@ -46,3 +46,5 @@ The app computes sealed boxes as purchased boxes minus box sales minus boxes con
 Shopify order webhooks match new lines to active managed or linked variants by their stable provider ID. Existing paid/cancelled lines retain the original lot when a binding is removed, replaced, or its variant is reused by another lot. They are signed and idempotent. The integration counts paid box lines and reverses cancelled lines. Refunds and later order edits are not yet reflected, so in those cases stock can remain conservatively low until the affected order is cancelled or adjusted outside this integration. Disconnect pauses WhatFees-managed products before credentials are removed and leaves externally linked products unchanged. Reconnect the same store to continue, or disconnect before connecting a different store.
 
 No live store credentials are included in the repository. Validate OAuth, publication, inventory location, paid/cancelled webhook delivery, and disconnect against a development store before enabling a production store.
+
+Lot images are optional inventory metadata and do not require Shopify. Draft creation copies a saved image to Shopify using staged product media uploads. Add `write_files` to the app’s configured scopes and reconnect existing connections to grant the new permission before creating drafts with images. Drafts without images and existing product links continue to work with existing permissions.

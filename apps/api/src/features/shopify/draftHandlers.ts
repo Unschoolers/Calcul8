@@ -30,6 +30,7 @@ async function authoritativePreview(config: Parameters<typeof getShopifyConnecti
   if (!snapshot) throw new HttpError(409, "Sync inventory before creating a Shopify product", ShopifyErrorCode.LOT_UNAVAILABLE);
   const lot = snapshot.lots.find(item => item.id === lotId);
   if (!lot) throw new HttpError(404, "Sync this lot before creating a Shopify product", ShopifyErrorCode.LOT_UNAVAILABLE);
+  if (lot.image && !connection.scopes?.includes("write_files")) throw new HttpError(409, "Reconnect Shopify to grant product image upload permission", ShopifyErrorCode.IMAGE_PERMISSION_REQUIRED);
   if (lot.lotType === "singles") throw new HttpError(400, "Shopify draft creation requires a bulk lot");
   const meta = await getSyncMetaWithModes(config, scopeKey);
   const rawSales: readonly unknown[] = meta?.salesMode === "entity"
@@ -140,7 +141,7 @@ export async function shopifyProductCreate(request: HttpRequest, context: Invoca
           if (!ids) {
             await assertCurrent();
             try {
-              ids = await client.createLinkedDraft({ handle: built.handle, ownershipHash: built.ownershipHash, title: built.preview.title, sku: built.preview.sku, price: built.preview.price, locationId: requestedLocationId, quantity: built.preview.quantity, beforeMutation: assertCurrent });
+              ids = await client.createLinkedDraft({ handle: built.handle, ownershipHash: built.ownershipHash, image: built.image, title: built.preview.title, sku: built.preview.sku, price: built.preview.price, locationId: requestedLocationId, quantity: built.preview.quantity, beforeMutation: assertCurrent });
             } catch (error) {
               // productSet may have completed while the response was lost. Recover by exact identity;
               // never issue a second upsert or inventory mutation in this request.

@@ -180,10 +180,11 @@
         <system-configuration-dialog></system-configuration-dialog>
 
         <!-- New Lot Modal -->
-        <app-dialog-shell v-model="showNewLotModal" :title="t('newLotTitle')" :max-width="400">
+        <app-dialog-shell v-model="showNewLotModal" :title="t('newLotTitle')" :max-width="400" @update:model-value="(value) => { if (!value) newLotImage = ''; }">
           <app-form-layout id="guided-onboarding-new-lot-card" data-driver-target="guided-onboarding-new-lot-card">
               <v-text-field id="guided-onboarding-lot-name-field" v-model="lotNameDraft" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="createNewLot"></v-text-field>
+              <lot-image-editor v-if="showNewLotModal" v-model="newLotImage" :t="t" @busy="newLotImageBusy = $event" />
               <v-btn-toggle v-model="newLotType" mandatory divided density="compact" variant="outlined"
                 class="mt-2 segment-toggle app-form-row app-responsive-segment-toggle">
                 <v-btn class="app-touch-target" value="bulk" size="small">{{ t('commonBulk') }}</v-btn>
@@ -218,8 +219,8 @@
               </div>
             <template #actions>
               <v-spacer></v-spacer>
-              <v-btn class="app-touch-target" variant="text" @click="showNewLotModal = false">{{ t('commonCancel') }}</v-btn>
-              <v-btn id="guided-onboarding-create-lot-btn" class="app-touch-target" color="primary" @click="createNewLot">{{ t('commonCreate') }}</v-btn>
+              <v-btn class="app-touch-target" variant="text" @click="showNewLotModal = false; newLotImage = ''">{{ t('commonCancel') }}</v-btn>
+              <v-btn id="guided-onboarding-create-lot-btn" class="app-touch-target" color="primary" :disabled="newLotImageBusy" @click="createNewLot">{{ t('commonCreate') }}</v-btn>
             </template>
           </app-form-layout>
         </app-dialog-shell>
@@ -229,6 +230,7 @@
           <app-form-layout compact :responsive="false">
               <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined" density="comfortable" hide-details="auto" :disabled="shopifyEditSaving"
                 @keyup.enter="renameCurrentLot"></v-text-field>
+              <lot-image-editor v-if="showRenameLotModal" :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId" v-model="renameLotImage" :t="t" :disabled="shopifyEditSaving" @busy="renameLotImageBusy = $event" />
               <v-text-field v-if="currentLotType === 'singles' || (!shopifyEditListing && shopifyEditListingStatus !== 'loading')" v-model="renameLotExternalSku" :label="t('configInventoryReferenceLabel')" :hint="t('configInventoryReferenceHint')" :placeholder="t('configMarketplaceSkuPlaceholder')" variant="outlined" density="comfortable" hide-details="auto" :disabled="shopifyEditSaving" />
               <v-select v-model="renameLotWhatnotVertical" :disabled="shopifyEditSaving" :items="[
                 { title: t('configWhatnotVerticalUnclassified'), value: null },
@@ -247,7 +249,7 @@
                   :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop"
                   v-if="showRenameLotModal && currentLotType !== 'singles'"
                   :state="{ listing: shopifyEditListing, listingStatus: shopifyEditListingStatus, error: shopifyEditError, errorOperation: shopifyEditErrorOperation, recovery: shopifyEditRecovery, saving: shopifyEditSaving, bindingVersion: shopifyEditBindingVersion, generation: shopifyEditGeneration, detailsOutcome: shopifyEditDetailsOutcome, pendingBindingMutation: shopifyEditPendingBindingMutation, pendingDetailsMutation: shopifyEditPendingDetailsMutation, pendingCreateMutation: shopifyEditPendingCreateMutation, search: { query: shopifyEditSearchQuery, results: shopifyEditSearchResults, loading: shopifyEditLoading, completed: shopifyEditSearchCompleted, hasMore: shopifyEditSearchHasMore, selectedVariantId: shopifyEditSelectedVariantId, selectedLocationId: shopifyEditSelectedLocationId } }"
-                  :lot="{ type: currentLotType, saved: lots.find(lot => lot.id === currentLotId), draftName: renameLotName, draftSku: renameLotExternalSku, boxesPurchased, packsPerBox, sales }"
+                  :lot="{ type: currentLotType, saved: lots.find(lot => lot.id === currentLotId), draftName: renameLotName, draftSku: renameLotExternalSku, draftImage: renameLotImage, imageBusy: renameLotImageBusy, boxesPurchased, packsPerBox, sales }"
                   :connection="{ status: shopifyConnectionStatus, shop: shopifyConnectionShop, offline: isOffline, canManage: activeScopeType !== 'workspace' || isCurrentWorkspaceOwner }"
                   :language="preferredLanguage"
                   :t="t"
@@ -283,7 +285,7 @@
               </v-btn>
               <v-spacer></v-spacer>
               <v-btn class="app-touch-target" variant="text" :disabled="shopifyEditSaving" @click="closeRenameLotModal">{{ t('commonCancel') }}</v-btn>
-              <v-btn class="app-touch-target" color="primary" :loading="shopifyEditSaving" :disabled="shopifyEditSaving || shopifyEditLoading" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
+              <v-btn class="app-touch-target" color="primary" :loading="shopifyEditSaving" :disabled="shopifyEditSaving || shopifyEditLoading || renameLotImageBusy" @click="renameCurrentLot">{{ t('commonSave') }}</v-btn>
           </template>
         </app-dialog-shell>
 

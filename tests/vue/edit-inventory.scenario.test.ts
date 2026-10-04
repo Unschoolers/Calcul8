@@ -6,6 +6,7 @@ import { createInitialState } from "../../src/app-core/state.ts";
 import { translateAppMessage } from "../../src/app-core/i18n/index.ts";
 import AppDialogShell from "../../src/components/ui/AppDialogShell.vue";
 import AppFormLayout from "../../src/components/ui/AppFormLayout.vue";
+import LotImageEditor from "../../src/components/ui/LotImageEditor.vue";
 import ShopifyLotIntegration from "../../src/components/windows/shopify/ShopifyLotIntegration.vue";
 import { renderWithApp } from "./render.ts";
 import { vuetify } from "../../src/vuetify.ts";
@@ -30,7 +31,7 @@ test.each(["unionArenaDark", "unionArenaLight"])("%s: linked inventory hides the
     loadShopifyDraftPreview: vi.fn(), createShopifyDraft: vi.fn(), refreshShopifyEditListing: vi.fn(), loadShopifyLinkedStock: vi.fn(),
     applyShopifyBinding: vi.fn(), saveShopifyProductDetails: vi.fn(), onShopifyEditQueryChange: vi.fn(), searchShopifyEditProducts: vi.fn()
   });
-  renderWithApp(defineComponent({ components: { AppDialogShell, AppFormLayout, ShopifyLotIntegration }, setup: () => ctx, template }));
+  renderWithApp(defineComponent({ components: { AppDialogShell, AppFormLayout, ShopifyLotIntegration, LotImageEditor }, setup: () => ctx, template }));
   expect(screen.queryByRole("textbox", { name: "Inventory reference (optional)" })).toBeNull();
   expect(ctx.renameLotExternalSku).toBe("KEPT-REFERENCE");
   const manage = screen.getByRole("button", { name: "Manage Shopify product" });

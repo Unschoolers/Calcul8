@@ -14,6 +14,7 @@ export type LotOptionItem = {
   completionIcon: string | null;
   groupLabel?: string | null;
   shopifyLink?: ShopifyLotLink;
+  image?: string;
 };
 
 type LotLike = {
@@ -25,6 +26,7 @@ type LotLike = {
   lotType?: LotType;
   singlesCatalogSource?: string;
   shopifyLink?: ShopifyLotLink;
+  image?: string;
 };
 
 function getLotTypeGroupLabel(lotType: LotType, preferredLanguage = ""): string {
@@ -75,6 +77,7 @@ export function attachLotOptionGroupLabels(
 ): LotOptionItem[] {
   const baseItems = sortLotOptionItemsByType(items).map((item) => ({
     title: item.title,
+    ...(item.image ? { image: item.image } : {}),
     value: item.value,
     subtitle: item.subtitle,
     lotType: getLotType(item),
@@ -99,6 +102,7 @@ export function buildLotOptionItems(lots: LotLike[], preferredLanguage = ""): Lo
   return attachLotOptionGroupLabels(
     lots.map((lot) => ({
       title: lot.name,
+      ...(lot.image ? { image: lot.image } : {}),
       value: lot.id,
       subtitle: formatLotOptionSubtitle(lot, preferredLanguage),
       lotType: getLotType(lot),

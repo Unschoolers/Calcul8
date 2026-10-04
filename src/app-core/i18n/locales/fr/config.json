@@ -242,5 +242,6 @@
   "configShopifyRetainAttemptHint": "Cette opération en attente sera conservée. Rouvrez le gestionnaire pour la récupérer avant de modifier autre chose.",
   "configShopifyKeepEditing": "Continuer la modification",
   "configShopifyDiscard": "Abandonner les modifications",
-  "configShopifyBack": "Retour"
+  "configShopifyBack": "Retour",
+  "configShopifyImagePermissionRequired": "Reconnectez Shopify pour autoriser l’envoi d’images de produits. Votre image d’inventaire est déjà enregistrée."
 }

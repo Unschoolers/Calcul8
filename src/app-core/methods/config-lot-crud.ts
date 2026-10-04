@@ -1,3 +1,4 @@
+import { normalizeSyncLotImage } from "./ui/sync/sync-contracts.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot, LotSetup, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults, WhatnotVertical } from "../../types/app.ts";
 import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
@@ -9,6 +10,7 @@ export type CreateNewLotOptions = {
   lots: Lot[];
   currentLotId: number | null;
   newLotName: string;
+  newLotImage?: string;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   newLotWhatnotVertical: WhatnotVertical | null;
@@ -27,6 +29,7 @@ export function createNewLotRecord({
   lots,
   currentLotId,
   newLotName,
+  newLotImage,
   newLotType,
   newLotCatalogSource,
   newLotWhatnotVertical,
@@ -94,6 +97,7 @@ export function createNewLotRecord({
     lot: {
       id: generatedId,
       name: newLotName.trim(),
+      image: normalizeSyncLotImage(newLotImage),
       createdAt: todayDate,
       lotType: nextLotType,
       usesSystemPricingDefaults: systemPricingFields ? true : undefined,

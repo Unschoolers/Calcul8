@@ -7,5 +7,13 @@
   "lotNameLabel": "Inventory name",
   "newLotTitle": "New inventory",
   "itemCatalogAutocompleteDisabledHelp": "Manual mode: type your own item names. Catalog autocomplete is off for this inventory.",
-  "itemCatalogAutocompleteEnabledHelp": "Autocomplete suggestions use the selected catalog."
+  "itemCatalogAutocompleteEnabledHelp": "Autocomplete suggestions use the selected catalog.",
+  "lotImageLabel": "Inventory image (optional)",
+  "lotImageHint": "Shown beside the inventory name.",
+  "lotImageAdd": "Add image",
+  "lotImageReplace": "Replace image",
+  "lotImageRemove": "Remove image",
+  "lotImageInvalidType": "Choose a photo or a raster image.",
+  "lotImageTooLarge": "This image could not be compressed enough. Try a smaller image.",
+  "lotImageReadError": "Could not read this image. Try a JPG, PNG or WebP file."
 }

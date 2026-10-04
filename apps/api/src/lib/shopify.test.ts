@@ -17,6 +17,7 @@ test("authorization URL carries the exact shop, callback, scopes and one-use sta
   assert.equal(url.searchParams.get("redirect_uri"), "https://api.example.com/callback");
   assert.equal(url.searchParams.get("state"), "opaque");
   assert.match(url.searchParams.get("scope") ?? "", /write_inventory/);
+  assert.ok(url.searchParams.get("scope")?.split(",").includes("write_files"), "OAuth must request permission for product images");
 });
 
 test("Shopify callback requires valid HMAC and recent timestamp", () => {

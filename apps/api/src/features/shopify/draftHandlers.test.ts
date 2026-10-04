@@ -164,3 +164,14 @@ test("modern explicit setup permits a matched tombstone but rejects stale bindin
   await expect(shopifyProductCreatePreview(request({ lotId: 42, manager: true, expectedVersion: "old", generation: 2 }), context)).rejects.toThrow(/changed/i);
   await expect(shopifyProductCreatePreview(request({ lotId: 42, manager: true, expectedVersion: "removed", generation: 3 }), context)).rejects.toThrow(/connection/i);
 });
+
+test("lot image draft creation requires media permission and passes the saved image to Shopify", async () => {
+  const image = "data:image/jpeg;base64,/9j/2Q==";
+  mocks.snapshot.mockResolvedValue({ lots: [{ ...lot, image }], salesByLot: { "42": [] } });
+  await expect(shopifyProductCreatePreview(request({ lotId: 42 }), context)).rejects.toThrow(/reconnect|image.*permission/i);
+  expect(mocks.create).not.toHaveBeenCalled();
+  mocks.connection.mockResolvedValue({ shop: "a.myshopify.com", generation: 2, scopes: ["write_files", "write_products"] });
+  const result = await shopifyProductCreatePreview(request({ lotId: 42 }), context);
+  await shopifyProductCreate(request({ lotId: 42, locationId: "gid://shopify/Location/7", previewToken: result.jsonBody.preview.previewToken }), context);
+  expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ image }));
+});

@@ -1,3 +1,4 @@
+import { normalizeSyncLotImage } from "../../shared/sync-contracts.cjs";
 import { createHash } from "node:crypto";
 import type { SyncLotDto } from "../../../../../shared/sync-contracts";
 import { calculateSealedBoxInventory } from "../../shared/box-inventory.cjs";
@@ -15,7 +16,7 @@ export function shopifyDraftHandle(scopeKey: string, lotId: number): string {
   return `calcul8-created-${hash([scopeKey, lotId]).slice(0, 24)}`;
 }
 
-export function buildShopifyDraftPreview(input: DraftPreviewInput): { preview: ShopifyDraftPreview; handle: string; ownershipHash: string } {
+export function buildShopifyDraftPreview(input: DraftPreviewInput): { preview: ShopifyDraftPreview; handle: string; ownershipHash: string; image?: string } {
   const { lot } = input;
   if (!Number.isSafeInteger(lot.id) || lot.id <= 0 || lot.lotType === "singles") throw Object.assign(new Error("A bulk lot is required"), { code: ShopifyErrorCode.LOT_UNAVAILABLE });
   const overrides = input.overrides ? normalizeDraftOverrides(input.overrides) : undefined;
@@ -35,6 +36,8 @@ export function buildShopifyDraftPreview(input: DraftPreviewInput): { preview: S
   const title = overrides?.title ?? (typeof lot.name === "string" && lot.name.trim() ? `${lot.name.trim()} — ${suffix}` : `Lot ${lot.id} — ${suffix}`);
   if (title.length > 255) throw new Error("Shopify title cannot exceed 255 characters");
   const sku = typeof lot.externalSku === "string" && lot.externalSku.trim() ? lot.externalSku.trim() : `CALCUL8-${lot.id}-BOX`;
-  const data = { scopeKey: input.scopeKey, shop: input.shop, generation: input.generation, lotId: lot.id, title, variantTitle, sku, price: normalizedPrice, currency, quantity: inventory.sealedBoxes, locations, locationId: overrides?.locationId, bindingVersion: input.bindingVersion };
-  return { preview: { title, variantTitle, sku, price: normalizedPrice, currency, quantity: inventory.sealedBoxes, locations, previewToken: hash(data) }, handle: shopifyDraftHandle(input.scopeKey, lot.id), ownershipHash: hash([input.scopeKey, lot.id, "shopify-draft-v1"]) };
+  const image = normalizeSyncLotImage(lot.image);
+  if (lot.image && !image) throw new Error("Invalid lot image; upload a supported image and save the lot");
+  const data = { ...(image ? { imageHash: hash(image) } : {}), scopeKey: input.scopeKey, shop: input.shop, generation: input.generation, lotId: lot.id, title, variantTitle, sku, price: normalizedPrice, currency, quantity: inventory.sealedBoxes, locations, locationId: overrides?.locationId, bindingVersion: input.bindingVersion };
+  return { ...(image ? { image } : {}), preview: { title, variantTitle, sku, price: normalizedPrice, currency, quantity: inventory.sealedBoxes, locations, previewToken: hash(data) }, handle: shopifyDraftHandle(input.scopeKey, lot.id), ownershipHash: hash([input.scopeKey, lot.id, "shopify-draft-v1"]) };
 }

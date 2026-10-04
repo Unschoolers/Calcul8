@@ -11,7 +11,7 @@ export type DraftCreationServiceInput = {
   scopeKey: string; shop: string; generation: number; request: DraftCreateMutation;
   store: ShopifyListingStore; operations: ShopifyOperationStore;
   client: Pick<ShopifyLinkedDraftClient, "findOwnedDraft" | "createLinkedDraft">;
-  loadPreview: () => Promise<{ preview: ShopifyDraftPreview }>;
+  loadPreview: () => Promise<{ preview: ShopifyDraftPreview; image?: string }>;
   assertCurrent: () => Promise<void>;
 };
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -48,7 +48,7 @@ export async function createShopifyDraftAttempt(input: DraftCreationServiceInput
     const handle = `calcul8-created-${hash([input.scopeKey, input.shop, request.lotId, request.operationId, request.expectedVersion]).slice(0, 24)}`;
     attempt = { kind: "create", scopeKey: input.scopeKey, shop: input.shop, lotId: request.lotId, operationId: request.operationId, fingerprint, generation: input.generation, bindingVersion: request.expectedVersion, request,
       handle, ownershipHash: hash([input.scopeKey, request.lotId, fingerprint]), status: "prepared", updatedAt: new Date().toISOString(),
-      payload: { title: built.preview.title, price: built.preview.price, currency: built.preview.currency, sku: built.preview.sku, quantity: built.preview.quantity, locationId: location.id, locationName: location.name, variantTitle: "Booster box" } };
+      payload: { ...(built.image ? { image: built.image } : {}), title: built.preview.title, price: built.preview.price, currency: built.preview.currency, sku: built.preview.sku, quantity: built.preview.quantity, locationId: location.id, locationName: location.name, variantTitle: "Booster box" } };
   }
   const persist = async () => { await guard(); attempt = await input.operations.put({ ...attempt!, updatedAt: new Date().toISOString() }) as CreateAttempt; };
   await persist();
@@ -70,7 +70,10 @@ export async function createShopifyDraftAttempt(input: DraftCreationServiceInput
       await guard();
       try { recovered = await input.client.findOwnedDraft(attempt.handle, attempt.ownershipHash, attempt.payload.locationId, { variantTitle: attempt.payload.variantTitle }); } catch { /* Keep the durable uncertainty. */ }
       if (!recovered) {
-        if (error && typeof error === "object" && "definitive" in error && error.definitive === true) { attempt.status = "failed"; await persist(); }
+        if (error && typeof error === "object" && "definitive" in error && error.definitive === true) {
+          attempt.status = "failed"; await persist();
+          if ("imageUploadFailed" in error) throw new HttpError(502, error instanceof Error ? error.message : "Shopify image upload failed; retry creation");
+        }
         conflict("Shopify creation outcome is unknown; recover the original attempt");
       }
       ids = recovered;

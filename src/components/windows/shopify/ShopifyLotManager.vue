@@ -25,8 +25,8 @@ const unresolved = computed(() => Boolean(props.state.pendingDetailsMutation || 
 const detailsDirty = computed(() => title.value !== baseline.value.title || price.value !== baseline.value.price);
 const fieldsReady = computed(() => Boolean(props.state.listingStatus === "loaded" && listing.value?.observedAt && listing.value.currency && listing.value.price !== undefined && props.state.bindingVersion));
 const canSaveDetails = computed(() => !blocked.value && !props.state.pendingBindingMutation && !props.state.pendingCreateMutation && props.callbacks.saveDetails && (props.state.pendingDetailsMutation || (fieldsReady.value && detailsDirty.value && title.value.trim() && title.value.trim().length <= 255 && normalizeShopifyMoney(price.value))));
-const savedFieldsMatch = computed(() => Boolean(props.lot.saved && shopifySavedLotFieldsMatch(props.lot.saved, { name: props.lot.draftName, externalSku: props.lot.draftSku })));
-const canCreate = computed(() => !blocked.value && savedFieldsMatch.value && props.state.listingStatus === "loaded" && !listing.value && !unresolved.value);
+const savedFieldsMatch = computed(() => Boolean(props.lot.saved && shopifySavedLotFieldsMatch(props.lot.saved, { name: props.lot.draftName, externalSku: props.lot.draftSku, image: props.lot.draftImage })));
+const canCreate = computed(() => !props.lot.imageBusy && !blocked.value && savedFieldsMatch.value && props.state.listingStatus === "loaded" && !listing.value && !unresolved.value);
 const canRefreshListing = computed(() => !pending.value && !props.state.saving && !props.connection.offline && props.connection.status === "connected" && (!unresolved.value || Boolean(props.state.pendingBindingMutation && props.state.recovery === "refresh")));
 function canRunBindingAction(action: BindingAction, selection?: { variantId?: string; locationId?: string; confirmTransfer?: boolean }): boolean {
   if (blocked.value || !props.callbacks.saveBinding || props.state.pendingDetailsMutation || props.state.pendingCreateMutation) return false;

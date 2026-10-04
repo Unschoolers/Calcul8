@@ -152,6 +152,8 @@
     "tests/wheel-window.test.ts",
     "tests/vue/**/*.test.ts",
     "playwright.shopify.config.ts",
+    "playwright.lot-images.config.ts",
+    "tests/visual/lot-images.spec.ts",
     "tests/visual/shopify-production-polish.spec.ts",
     "tests/visual/vite.shopify.config.ts",
     "tests/visual/fixtures/shopify.ts",

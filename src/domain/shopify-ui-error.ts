@@ -12,6 +12,7 @@ const definitions: Record<Code, { key: string; recovery: Recovery }> = {
   [ShopifyErrorCode.LOT_UNAVAILABLE]: { key: "configShopifyErrorLotUnavailable", recovery: "refresh" },
   [ShopifyErrorCode.ALREADY_LINKED]: { key: "configShopifyErrorAlreadyLinked", recovery: "refresh" },
   [ShopifyErrorCode.CONNECTION_CHANGED]: { key: "configShopifyErrorConnectionChanged", recovery: "reconnect" },
+  [ShopifyErrorCode.IMAGE_PERMISSION_REQUIRED]: { key: "configShopifyImagePermissionRequired", recovery: "reconnect" },
   [ShopifyErrorCode.DETAILS_CHANGED]: { key: "configShopifyDetailsChanged", recovery: "refresh" },
   [ShopifyErrorCode.BINDING_CHANGED]: { key: "configShopifyConflictError", recovery: "refresh" },
   [ShopifyErrorCode.VARIANT_ALREADY_BOUND]: { key: "configShopifyConflictError", recovery: "refresh" }
@@ -42,6 +43,6 @@ export function shopifyUiErrorMessage(error: unknown, t: Translator, fallbackKey
   try { return t(key); } catch { try { return t(fallbackKey); } catch { return fallbackKey; } }
 }
 export function shopifyUiErrorRecovery(error: unknown): Recovery { return error instanceof ShopifyUiError ? error.recovery : "retry"; }
-export function shopifySavedLotFieldsMatch(saved: { name: string; externalSku?: string }, draft: { name: string; externalSku: string }): boolean {
-  return saved.name.trim() === draft.name.trim() && (saved.externalSku ?? "").trim() === draft.externalSku.trim();
+export function shopifySavedLotFieldsMatch(saved: { name: string; externalSku?: string; image?: string }, draft: { name: string; externalSku: string; image?: string }): boolean {
+  return saved.name.trim() === draft.name.trim() && (saved.externalSku ?? "").trim() === draft.externalSku.trim() && (saved.image ?? "") === (draft.image ?? "");
 }

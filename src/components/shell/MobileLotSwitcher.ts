@@ -2,6 +2,7 @@ import { nextTick } from "vue";
 import { filterLotOptionItems, type LotOptionItem } from "../../app-core/shared/lot-option-items.ts";
 import { useShellPorts, type ShellPorts } from "./shellPorts.ts";
 import "./MobileLotSwitcher.css";
+import LotThumbnail from "../ui/LotThumbnail.vue";
 import ShopifyLinkIndicator from "../windows/shopify/ShopifyLinkIndicator.vue";
 
 type MobileLotSwitcherState = {
@@ -19,7 +20,7 @@ type MobileLotSwitcherContext = ShellPorts & MobileLotSwitcherState & {
 
 export const MobileLotSwitcher = {
   name: "MobileLotSwitcher",
-  components: { ShopifyLinkIndicator },
+  components: { ShopifyLinkIndicator, LotThumbnail },
   data(): MobileLotSwitcherState {
     return { isOpen: false, searchQuery: "" };
   },

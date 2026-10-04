@@ -61,3 +61,16 @@ test("stale preview and provider recovery identity mismatch do not seed or attac
   await expect(createShopifyDraftAttempt(changed.input)).rejects.toThrow(/identity/i);
   expect(changed.store.put).toHaveBeenCalledTimes(1);
 });
+
+test("creation pins the saved lot image for recovery even if the image is edited later", async () => {
+  const h = harness(); const image = "data:image/jpeg;base64,/9j/2Q==";
+  const preview = await h.input.loadPreview();
+  const input = { ...h.input, loadPreview: async () => ({ ...preview, image }) };
+  h.store.put.mockRejectedValueOnce(new Error("mapping failed"));
+  await expect(createShopifyDraftAttempt(input)).rejects.toThrow("mapping failed");
+  expect(h.client.createLinkedDraft.mock.calls[0]?.[0]).toMatchObject({ image });
+  expect(h.records.get("create-1")).toMatchObject({ payload: { image } });
+  h.client.findOwnedDraft.mockResolvedValue({ ...h.ids, available: 2 });
+  await createShopifyDraftAttempt({ ...input, loadPreview: async () => ({ ...preview, image: "data:image/png;base64,iVBORw==" }) });
+  expect(h.client.createLinkedDraft).toHaveBeenCalledTimes(1);
+});

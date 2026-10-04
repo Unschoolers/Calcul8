@@ -9,7 +9,7 @@
     @click="openLotSwitcher"
   >
     <span class="mobile-lot-switcher__lot-icon" aria-hidden="true">
-      <v-icon size="18">{{ selectedLotItem?.symbolIcon || 'mdi-package-variant-closed' }}</v-icon>
+      <lot-thumbnail :image="selectedLotItem?.image" :icon="selectedLotItem?.symbolIcon || 'mdi-package-variant-closed'" :size="30" />
       <v-icon
         v-if="selectedLotItem?.completionIcon"
         class="mobile-lot-switcher__completion"
@@ -85,7 +85,7 @@
             >
               <template #prepend>
                 <span class="lot-selector-icon-stack mr-3" aria-hidden="true">
-                  <v-icon size="20">{{ item.symbolIcon }}</v-icon>
+                  <lot-thumbnail :image="item.image" :icon="item.symbolIcon" />
                   <v-icon
                     v-if="item.completionIcon"
                     size="12"

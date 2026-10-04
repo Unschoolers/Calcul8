@@ -281,3 +281,43 @@ test("modern booster draft creation and exact recovery preserve the requested va
   assert.ok(await client.findOwnedDraft("h", "exact-fingerprint", "gid://shopify/Location/4", { variantTitle: "Booster box" }));
   await assert.rejects(() => client.findOwnedDraft("h", "exact-fingerprint", "gid://shopify/Location/4"), /match/);
 });
+
+test("draft image is staged as bytes then attached through ProductSet files", async () => {
+  const calls: { url: string; init?: RequestInit }[] = [];
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (String(url) === "https://storage.googleapis.com/shopify-upload") return new Response(null, { status: 201 });
+    const body = JSON.parse(String(init?.body));
+    if (body.query.includes("stagedUploadsCreate")) return response({ stagedUploadsCreate: { stagedTargets: [{ url: "https://storage.googleapis.com/shopify-upload", resourceUrl: "https://example.myshopify.com/admin/tmp/lot.jpg", parameters: [{ name: "key", value: "lot.jpg" }] }], userErrors: [] } });
+    return response({ productSet: { product: { id: "gid://shopify/Product/1", variants: { nodes: [{ id: "gid://shopify/ProductVariant/2", title: "Booster box", inventoryItem: { id: "gid://shopify/InventoryItem/3", tracked: true } }] } }, userErrors: [] } });
+  }) as typeof fetch);
+  await client.createLinkedDraft({ handle: "lot-7", ownershipHash: "hash", title: "Box", sku: "B", price: "20.00", locationId: "gid://shopify/Location/4", quantity: 3, variantTitle: "Booster box", image: "data:image/jpeg;base64,/9j/2Q==" });
+  assert.equal(calls.length, 3);
+  const staged = JSON.parse(String(calls[0]?.init?.body)).variables.input[0];
+  assert.equal(staged.resource, "PRODUCT_IMAGE");
+  assert.equal(staged.mimeType, "image/jpeg");
+  assert.equal(staged.httpMethod, "POST");
+  const upload = calls[1]?.init;
+  assert.ok(upload?.body instanceof FormData);
+  const file = upload.body.get("file") as File;
+  assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [255, 216, 255, 217]);
+  assert.equal(upload.body.get("key"), "lot.jpg");
+  assert.equal(new Headers(upload.headers).has("X-Shopify-Access-Token"), false);
+  const input = JSON.parse(String(calls[2]?.init?.body)).variables.input;
+  assert.deepEqual(input.files, [{ originalSource: "https://example.myshopify.com/admin/tmp/lot.jpg", contentType: "IMAGE", alt: "Box" }]);
+  assert.equal(input.variants[0].inventoryQuantities[0].quantity, 3);
+});
+
+test("image upload failures and stale guards prevent draft creation", async () => {
+  let mutations = 0;
+  const client = createShopifyAdminClient("example.myshopify.com", async () => "token", (async (url, init) => {
+    if (String(url) === "https://storage.googleapis.com/shopify-upload") return new Response(null, { status: 500 });
+    const body = JSON.parse(String(init?.body));
+    if (body.query.includes("stagedUploadsCreate")) return response({ stagedUploadsCreate: { stagedTargets: [{ url: "https://storage.googleapis.com/shopify-upload", resourceUrl: "https://example.myshopify.com/admin/tmp/lot.jpg", parameters: [] }], userErrors: [] } });
+    mutations++; throw new Error("unexpected product mutation");
+  }) as typeof fetch);
+  const input = { handle: "lot-7", ownershipHash: "hash", title: "Box", sku: "B", price: "20.00", locationId: "gid://shopify/Location/4", quantity: 3, image: "data:image/jpeg;base64,/9j/2Q==" };
+  await assert.rejects(() => client.createLinkedDraft(input), /upload/i);
+  await assert.rejects(() => client.createLinkedDraft({ ...input, beforeMutation: async () => { throw new Error("stale scope"); } }), /stale scope/);
+  assert.equal(mutations, 0);
+});

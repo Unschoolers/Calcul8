@@ -71,3 +71,10 @@ describe("Shopify UI errors", () => {
     expect(shopifySavedLotFieldsMatch({name:"Box"},{name:"Box",externalSku:""})).toBe(true);
   });
 });
+
+it("Shopify creation requires saving image-only edits and removals first", () => {
+  const image = "data:image/jpeg;base64,/9j/2Q==";
+  expect(shopifySavedLotFieldsMatch({ name: "Box", image }, { name: "Box", externalSku: "", image })).toBe(true);
+  expect(shopifySavedLotFieldsMatch({ name: "Box" }, { name: "Box", externalSku: "", image })).toBe(false);
+  expect(shopifySavedLotFieldsMatch({ name: "Box", image }, { name: "Box", externalSku: "", image: "" })).toBe(false);
+});

@@ -263,3 +263,12 @@ test("parseSyncWheelConfigs rejects invalid entries", () => {
       && error.message === "Field 'wheelConfigs[0].tiers' must be an array when provided."
   );
 });
+
+test("lot image sync preserves a supported image and rejects malformed uploads explicitly", () => {
+  const image = "data:image/jpeg;base64,/9j/2Q==";
+  assert.equal(parseSyncLotsShape({ lots: [{ id: 7, image }] }).lots[0]?.image, image);
+  for (const invalid of ["javascript:alert(1)", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/jpeg;base64," + "A".repeat(220000)]) {
+    assert.throws(() => parseSyncLotsShape({ lots: [{ id: 7, image: invalid }] }), (error: unknown) => error instanceof HttpError && error.status === 400 && /image/.test(error.message));
+  }
+  assert.equal(parseSyncLotsShape({ lots: [{ id: 7, image: "" }] }).lots[0]?.image, undefined);
+});

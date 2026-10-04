@@ -5,6 +5,7 @@ import { isShopifyLotLink, type ShopifyLotLink } from "../../domain/shopify-bind
 
 export type LotSelectorDisplayItem = {
   title: string;
+  image?: string;
   subtitle: string;
   symbolIcon: string;
   completionIcon: string;
@@ -29,6 +30,7 @@ export function resolveLotSelectorDisplayItem(item: unknown): LotSelectorDisplay
 
   const shopifyLink = resolveVuetifySlotValue(item, ["shopifyLink"]);
   return {
+    ...(resolveVuetifySlotString(item, ["image"]) ? { image: resolveVuetifySlotString(item, ["image"]) } : {}),
     title: resolveVuetifySlotString(item, ["title"]),
     subtitle: resolveVuetifySlotString(item, ["subtitle"]),
     symbolIcon: resolveVuetifySlotString(item, ["symbolIcon"]),
