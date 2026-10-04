@@ -1527,3 +1527,13 @@
       margin-left: var(--app-lot-selector-divider-margin-left);
       background: var(--app-lot-selector-divider-bg);
     }
+
+.edit-inventory-shopify {
+  display: grid;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.edit-inventory-shopify > .v-switch {
+  padding-inline: var(--app-space-3);
+}

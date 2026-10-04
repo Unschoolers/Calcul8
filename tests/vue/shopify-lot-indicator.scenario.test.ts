@@ -13,7 +13,8 @@ test("a linked marker is accessible and is not a tiny interactive control", () =
   renderWithApp(ShopifyLinkIndicator, { props: { t, link: { mode: "linked", stale: false, disconnected: false, attention: false } } });
   const marker = screen.getByRole("img", { name: "Linked to Shopify" });
   expect(marker).toHaveAttribute("title", "Linked to Shopify");
-  expect(marker.querySelector(".mdi-shopify")).toBeTruthy();
+  expect(marker.querySelector("svg path")?.getAttribute("d")).toBeTruthy();
+  expect(marker.querySelector(".mdi-shopify")).toBeNull();
   expect(screen.queryByRole("button")).toBeNull();
 });
 
@@ -39,6 +40,10 @@ function ports() {
 test("mobile current inventory and each linked row retain separate Shopify markers", async () => {
   renderWithApp(MobileLotSwitcher, { global: { provide: { [shellPortsKey as symbol]: ports() } } });
   expect(screen.getAllByRole("img", { name: "Linked to Shopify" })).toHaveLength(1);
+  const trigger = screen.getByRole("button", { name: "shellOpenLotSwitcherAction" });
+  expect(trigger.children).toHaveLength(3);
+  expect(trigger.lastElementChild?.querySelector(".shopify-link-indicator")).toBeTruthy();
+  expect(trigger.lastElementChild?.querySelector(".mobile-lot-switcher__chevron")).toBeTruthy();
   await fireEvent.click(screen.getByRole("button", { name: "shellOpenLotSwitcherAction" }));
   expect(await screen.findAllByRole("img", { name: "Linked to Shopify" })).toHaveLength(3);
   expect(screen.getByRole("option", { name: /Lot 7/ })).toHaveAttribute("aria-selected", "true");

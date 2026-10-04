@@ -98,7 +98,7 @@ function retryBinding() { const attempt = props.state.pendingBindingMutation; if
 
 <template>
   <AppDialogShell :model-value="true" :title="heading" :max-width="720" :persistent="pending || state.saving || createStatus.pending" initial-focus-selector=".shopify-manager__heading" @update:model-value="(value) => { if (!value) leave('close'); }">
-    <template #title><div class="shopify-manager__header"><v-icon aria-hidden="true" color="primary">mdi-shopify</v-icon><div class="shopify-manager__heading" tabindex="-1">{{ heading }}</div><v-btn class="app-touch-target" icon="mdi-close" variant="text" :aria-label="t('commonClose')" :disabled="pending || state.saving || createStatus.pending" @click="leave('close')" /></div></template>
+    <template #title><div class="shopify-manager__header"><v-icon aria-hidden="true" color="primary">$shopify</v-icon><div class="shopify-manager__heading" tabindex="-1">{{ heading }}</div><v-btn class="app-touch-target" icon="mdi-close" variant="text" :aria-label="t('commonClose')" :disabled="pending || state.saving || createStatus.pending" @click="leave('close')" /></div></template>
     <div class="shopify-manager">
       <p v-if="connection.offline || connection.status !== 'connected' || state.recovery === 'reconnect'" class="text-body-2" role="note">{{ t('configShopifyReconnectInSettings') }}</p>
       <p v-if="!connection.canManage" class="text-body-2" role="note">{{ t('configShopifyWorkspaceOwnerHint') }}</p>

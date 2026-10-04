@@ -2,6 +2,8 @@ import { expect, test } from "vitest";
 import { buildLotOptionItems, filterLotOptionItems } from "../src/app-core/shared/lot-option-items.ts";
 import { singlesComputed } from "../src/app-core/computed/singles.ts";
 import { shopifyBindingsScopeKey } from "../src/app-core/methods/ui/shopify/shopify-bindings.ts";
+import { portfolioComputed } from "../src/app-core/computed/portfolio.ts";
+import { portfolioWindowDefinition } from "../src/components/windows/portfolio/PortfolioWindow.definition.ts";
 
 test("grouping and search preserve Shopify link metadata alongside completion", () => {
   const shopifyLink = { mode: "linked" as const, stale: false, disconnected: false, attention: false };
@@ -17,4 +19,12 @@ test("computed options join same-scope bindings and omit them immediately after 
   expect(singlesComputed.lotItems.call(context as never)[0]?.shopifyLink?.mode).toBe("linked");
   context.googleAuthEpoch++;
   expect(singlesComputed.lotItems.call(context as never)[0]?.shopifyLink).toBeUndefined();
+});
+
+test("portfolio inventory filtering preserves the shell's scoped link marker", () => {
+  const shopifyLink = { mode: "managed" as const, stale: true, disconnected: false, attention: false };
+  const context = { lots: [{ id: 7, name: "Kaiju", lotType: "bulk" }], lotItems: [{ value: 7, shopifyLink }], preferredLanguage: "en", getAllSalesByLotId: () => new Map(), getSalesCacheEntry: () => null, portfolioLotFilterIds: [], portfolioLotTypeFilter: "both", portfolioDashboardPreset: "all" };
+  const items = portfolioComputed.portfolioLotFilterItems.call(context as never);
+  expect(items[0]?.shopifyLink).toEqual(shopifyLink);
+  expect(portfolioWindowDefinition.methods.resolvePortfolioLotFilterItem.call({} as never, { raw: items[0] }).shopifyLink).toEqual(shopifyLink);
 });

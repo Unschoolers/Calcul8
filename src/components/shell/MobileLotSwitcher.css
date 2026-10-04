@@ -78,6 +78,13 @@
   color: var(--app-text-muted);
 }
 
+.mobile-lot-switcher__trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+  white-space: nowrap;
+}
+
 .mobile-lot-sheet {
   max-height: min(78dvh, 680px);
   padding-bottom: var(--app-safe-area-bottom);
@@ -201,4 +208,3 @@
     display: block;
   }
 }
-

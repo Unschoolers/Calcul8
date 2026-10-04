@@ -1,3 +1,4 @@
+import { isShopifyLotLink, type ShopifyLotLink } from "../../../domain/shopify-binding-summary.ts";
 import {
   buildBuyerQuickViewSummary,
   type BuyerQuickViewSummary
@@ -70,6 +71,7 @@ type PortfolioLotFilterDisplayItem = {
   symbolIcon: string;
   completionIcon: string | null;
   groupLabel: string | null;
+  shopifyLink?: ShopifyLotLink;
 };
 
 type PortfolioDashboardPresetDisplayItem = {
@@ -90,6 +92,7 @@ function toDisplayString(value: unknown): string {
 
 function resolvePortfolioLotFilterDisplayItem(item: unknown): PortfolioLotFilterDisplayItem {
   const lotType = resolveVuetifySlotString(item, ["lotType"]) === "singles" ? "singles" : "bulk";
+  const shopifyLink = resolveVuetifySlotValue(item, ["shopifyLink"]);
   return {
     title: resolveVuetifySlotString(item, ["title"]),
     value: toDisplayNumber(resolveVuetifySlotValue(item, ["value"])),
@@ -97,7 +100,8 @@ function resolvePortfolioLotFilterDisplayItem(item: unknown): PortfolioLotFilter
     lotType,
     symbolIcon: resolveVuetifySlotString(item, ["symbolIcon"]) || (lotType === "singles" ? "mdi-cards-outline" : "mdi-cube-outline"),
     completionIcon: resolveVuetifySlotString(item, ["completionIcon"]) === "mdi-check-circle" ? "mdi-check-circle" : null,
-    groupLabel: resolveVuetifySlotString(item, ["groupLabel"]) || null
+    groupLabel: resolveVuetifySlotString(item, ["groupLabel"]) || null,
+    ...(isShopifyLotLink(shopifyLink) ? { shopifyLink } : {})
   };
 }
 
@@ -694,6 +698,7 @@ export const PortfolioWindowDefinition = {
           isComplete?: boolean;
           symbolIcon?: string;
           completionIcon?: string | null;
+          shopifyLink?: ShopifyLotLink;
         }>
         : [];
 

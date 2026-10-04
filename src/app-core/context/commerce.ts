@@ -1,3 +1,4 @@
+import type { LotOptionItem } from "../shared/lot-option-items.ts";
 import type {
   AppState,
   FeeProfilePreset,
@@ -47,26 +48,8 @@ export interface CommerceComputedState {
   currentLotUsesSystemPricingDefaults: boolean;
   hasLotSelected: boolean;
   isLiveTabDisabled: boolean;
-  lotItems: Array<{
-    title: string;
-    value: number;
-    subtitle: string;
-    lotType: LotType;
-    isComplete: boolean;
-    symbolIcon: string;
-    completionIcon: string | null;
-    groupLabel?: string | null;
-  }>;
-  visibleLotItems: Array<{
-    title: string;
-    value: number;
-    subtitle: string;
-    lotType: LotType;
-    isComplete: boolean;
-    symbolIcon: string;
-    completionIcon: string | null;
-    groupLabel?: string | null;
-  }>;
+  lotItems: LotOptionItem[];
+  visibleLotItems: LotOptionItem[];
   singlesPurchaseTotalQuantity: number;
   singlesPurchaseTotalCost: number;
   singlesPurchaseTotalMarketValue: number;
