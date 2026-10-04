@@ -1,5 +1,6 @@
 import {
   normalizeSyncLotDto,
+  normalizeSyncLotImage,
   normalizeSyncSaleDto,
   normalizeSyncWheelConfigDto
 } from "../shared/sync-contracts.cjs";
@@ -49,6 +50,9 @@ function parseLots(value: unknown): SyncLotDto[] {
   return lots.map((lot, index) => {
     if (typeof lot.id !== "string" && typeof lot.id !== "number") {
       throw new HttpError(400, `Field 'lots[${index}].id' must be a string or number.`);
+    }
+    if (lot.image != null && lot.image !== "" && !normalizeSyncLotImage(lot.image)) {
+      throw new HttpError(400, `Field 'lots[${index}].image' must be a supported image under 160 KB.`);
     }
     const normalizedLot = normalizeSyncLotDto(lot);
     if (!normalizedLot) {

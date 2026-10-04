@@ -53,3 +53,13 @@ test("final preview binds custom title, price and location alongside authoritati
   expect(buildShopifyDraftPreview({ ...base, overrides: { ...overrides, price: "24.00" } }).preview.previewToken).not.toBe(one.preview.previewToken);
   expect(() => buildShopifyDraftPreview({ ...base, overrides: { ...overrides, title: "" } })).toThrow();
 });
+
+test("draft preview carries the lot image and becomes stale when only the image changes", () => {
+  const input = { scopeKey: "u", shop: "a.myshopify.com", generation: 1,
+    lot: { id: 7, name: "Box", image: "data:image/jpeg;base64,/9j/2Q==", boxesPurchased: 3, packsPerBox: 12, boxPriceSell: 20 }, sales: [],
+    locations: [{ id: "gid://shopify/Location/4", name: "Main", isActive: true }], shopCurrency: "CAD" };
+  const first = buildShopifyDraftPreview(input);
+  expect(first.image).toBe("data:image/jpeg;base64,/9j/2Q==");
+  expect(buildShopifyDraftPreview({ ...input, lot: { ...input.lot, image: "data:image/png;base64,iVBORw==" } }).preview.previewToken).not.toBe(first.preview.previewToken);
+  expect(buildShopifyDraftPreview({ ...input, lot: { ...input.lot, image: undefined } }).image).toBeUndefined();
+});

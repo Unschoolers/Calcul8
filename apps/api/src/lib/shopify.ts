@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-export const SHOPIFY_SCOPES = "read_products,write_products,read_inventory,write_inventory,read_locations,read_publications,write_publications,read_orders";
+export const SHOPIFY_SCOPES = "read_products,write_products,write_files,read_inventory,write_inventory,read_locations,read_publications,write_publications,read_orders";
 const CALLBACK_MAX_AGE_SECONDS = 600;
 
 export function isShopifyDomain(shop: string): boolean {

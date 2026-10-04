@@ -1,3 +1,4 @@
+import { normalizeSyncLotImage } from "./ui/sync/sync-contracts.ts";
 import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import type { ConfigLotMethodImplementation, LotConfigurationContext } from "../context/commerce.ts";
 import { isSinglesLot } from "../shared/lot-types.ts";
@@ -17,6 +18,8 @@ export const configLotEditMethods = {
     if (!lot) return;
     shopifyEditorMethods.resetShopifyEditor.call(this);
     this.renameLotName = lot.name;
+    this.renameLotImage = normalizeSyncLotImage(lot.image) ?? "";
+    this.renameLotImageBusy = false;
     this.renameLotWhatnotVertical = normalizeWhatnotVertical(lot.whatnotVertical);
     this.renameLotExternalSku = typeof lot.externalSku === "string" ? lot.externalSku : "";
     // Publish eligibility is inventory configuration. The manager owns Shopify binding actions.
@@ -35,6 +38,7 @@ export const configLotEditMethods = {
   },
 
   async renameCurrentLot(): Promise<void> {
+    if (this.renameLotImageBusy || this.shopifyEditSaving) return;
     if (!this.currentLotId) {
       this.notify("Select a lot first", "warning");
       return;
@@ -54,15 +58,18 @@ export const configLotEditMethods = {
     }
     const nextVertical = normalizeWhatnotVertical(this.renameLotWhatnotVertical);
     const nextSku = (this.renameLotExternalSku ?? "").trim();
+    const nextImage = normalizeSyncLotImage(this.renameLotImage);
+    const imageChanged = normalizeSyncLotImage(lot.image) !== nextImage;
     const categoryChanged = normalizeWhatnotVertical(lot.whatnotVertical) !== nextVertical;
     const skuChanged = (lot.externalSku ?? "") !== nextSku;
     const publishChanged = this.shopifyEditListing?.mode === "managed" &&
       (lot.shopifyEnabled === true) !== (this.renameLotShopifyEnabled === true);
-    if (!renameResult.changed && !categoryChanged && !skuChanged && !publishChanged) {
+    if (!renameResult.changed && !categoryChanged && !skuChanged && !publishChanged && !imageChanged) {
       closeLotEditDialog(this);
       return;
     }
     if (renameResult.changed) lot.name = renameResult.nextName;
+    lot.image = nextImage;
     lot.whatnotVertical = nextVertical;
     lot.externalSku = nextSku;
     if (publishChanged) lot.shopifyEnabled = this.renameLotShopifyEnabled === true;
@@ -70,7 +77,7 @@ export const configLotEditMethods = {
     this.whatnotVertical = nextVertical;
     this.saveLotsToStorage();
     queueWorkspaceConfigSyncPush(this);
-    if (categoryChanged || skuChanged || publishChanged) queueCloudConfigSyncPush(this);
+    if (categoryChanged || skuChanged || publishChanged || imageChanged) queueCloudConfigSyncPush(this);
     closeLotEditDialog(this);
     this.renameLotName = "";
     this.renameLotWhatnotVertical = nextVertical;

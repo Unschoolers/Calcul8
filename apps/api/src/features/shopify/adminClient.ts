@@ -1,3 +1,4 @@
+import { uploadLotImage, type StagedImageTarget } from "./lotImageUpload";
 import type { ShopifyCatalogClient } from "./catalogService";
 import { normalizeShopifyVariant, variantFields, type ShopifyVariantNode } from "./catalogTypes";
 import { randomUUID } from "node:crypto";
@@ -12,7 +13,7 @@ export type ShopifyLinkedDraftClient = {
   listActiveLocations(): Promise<{ id: string; name: string; isActive: boolean }[]>;
   getShopCurrency(): Promise<string>;
   findOwnedDraft(handle: string, ownershipHash: string, locationId: string, options?: { variantTitle: "Sealed box" | "Booster box" }): Promise<{ productId: string; variantId: string; inventoryItemId: string; available: number } | null>;
-  createLinkedDraft(input: { handle: string; ownershipHash: string; title: string; sku: string; price: string; locationId: string; quantity: number; variantTitle?: "Sealed box" | "Booster box"; beforeMutation?: () => Promise<void> }): Promise<{ productId: string; variantId: string; inventoryItemId: string }>;
+  createLinkedDraft(input: { handle: string; ownershipHash: string; title: string; sku: string; price: string; locationId: string; quantity: number; variantTitle?: "Sealed box" | "Booster box"; image?: string; beforeMutation?: () => Promise<void> }): Promise<{ productId: string; variantId: string; inventoryItemId: string }>;
 };
 export type ShopifyProductDetailsClient = {
   updateProductTitle(productId: string, title: string, beforeMutation?: () => Promise<void>): Promise<void>;
@@ -103,9 +104,20 @@ export function createShopifyAdminClient(shop: string, getToken: () => Promise<s
     },
     async createLinkedDraft(input) {
       const variantTitle = input.variantTitle ?? "Sealed box";
+      const imageSource = input.image ? await uploadLotImage({ image: input.image, filename: input.handle, fetcher, assertCurrent: input.beforeMutation,
+        stage: async (mimeType, filename) => {
+          const staged = await graphql<{ stagedUploadsCreate?: { stagedTargets?: StagedImageTarget[]; userErrors?: { message: string }[] } }>(
+            `mutation StageLotImage($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { message } } }`,
+            { input: [{ filename, mimeType, resource: "PRODUCT_IMAGE", httpMethod: "POST" }] }, input.beforeMutation);
+          checkErrors(staged.stagedUploadsCreate);
+          const targets = staged.stagedUploadsCreate?.stagedTargets;
+          if (targets?.length !== 1 || !targets[0]) throw new Error("Shopify returned no image upload target");
+          return targets[0];
+        }
+      }) : undefined;
       const data = await graphql<{ productSet?: { product?: { id: string; variants?: { nodes?: { id: string; title: string; inventoryItem?: { id: string; tracked: boolean } }[] } }; userErrors?: { message: string }[] } }>(
         `mutation CreateLinkedDraft($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { id variants(first: 2) { nodes { id title inventoryItem { id tracked } } } } userErrors { message } } }`, {
-          identifier: { handle: input.handle }, input: { title: input.title, handle: input.handle, status: "DRAFT", productType: "Sealed box", vendor: "Calcul8",
+          identifier: { handle: input.handle }, input: { ...(imageSource ? { files: [{ originalSource: imageSource, contentType: "IMAGE", alt: input.title }] } : {}), title: input.title, handle: input.handle, status: "DRAFT", productType: "Sealed box", vendor: "Calcul8",
             metafields: [{ namespace: "calcul8", key: "draft_owner", type: "single_line_text_field", value: input.ownershipHash }],
             productOptions: [{ name: "Format", position: 1, values: [{ name: variantTitle }] }], variants: [{ optionValues: [{ optionName: "Format", name: variantTitle }], sku: input.sku, price: input.price, inventoryPolicy: "DENY", inventoryItem: { tracked: true }, inventoryQuantities: [{ locationId: input.locationId, name: "available", quantity: input.quantity }] }] }
         }, input.beforeMutation);

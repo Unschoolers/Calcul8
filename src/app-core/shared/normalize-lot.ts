@@ -1,3 +1,4 @@
+import { normalizeSyncLotImage } from "../methods/ui/sync/sync-contracts.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot } from "../../types/app.ts";
 import { resolveLotBusinessDate, resolveLotCreatedDate } from "../../shared/lot-dates.ts";
@@ -17,6 +18,7 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const feeProfile = resolveStoredFeeProfile(lot);
   return {
     ...lot,
+    image: normalizeSyncLotImage(lot.image),
     whatnotVertical: normalizeWhatnotVertical(lot.whatnotVertical),
     isComplete: lot.isComplete === true,
     lotType,

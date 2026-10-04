@@ -77,7 +77,7 @@ function renderAppShopifyEditHarness(initiallySelected = false, loadPreview: () 
     saveShopifyBinding(request: BindingMutation) { return configLotEditMethods.saveShopifyBinding.call(state as never, request); },
     saveShopifyProductDetails(draft: ProductDetailsDraft) { return configLotEditMethods.saveShopifyProductDetails.call(state as never, draft); },
     resetShopifyEditor() { return configLotEditMethods.resetShopifyEditor.call(state as never); },
-    renameLotName: "Old title", renameLotExternalSku: "OLD", renameLotShopifyEnabled: false, renameLotWhatnotVertical: "tcg",
+    renameLotImage: "", renameLotImageBusy: false, renameLotName: "Old title", renameLotExternalSku: "OLD", renameLotShopifyEnabled: false, renameLotWhatnotVertical: "tcg",
     boxesPurchased: 1, packsPerBox: 24, sales: [], preferredLanguage: "en", lots: [lot], t,
     onShopifyEditQueryChange(value: string) { return configLotEditMethods.onShopifyEditQueryChange.call(state as never, value); },
     searchShopifyEditProducts(loadMore = false) { return configLotEditMethods.searchShopifyEditProducts.call(state as never, loadMore); },

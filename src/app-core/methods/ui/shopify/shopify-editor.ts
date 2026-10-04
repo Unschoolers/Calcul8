@@ -105,9 +105,11 @@ type ShopifyDraftEligibilityContext = ShopifyEditRequestContext & {
   isCurrentWorkspaceOwner: boolean;
   isOffline: boolean;
   currentLotType: string;
-  lots: Array<{ id: number; name: string; externalSku?: string }>;
+  lots: Array<{ id: number; name: string; externalSku?: string; image?: string }>;
   renameLotName: string;
   renameLotExternalSku: string;
+  renameLotImage: string;
+  renameLotImageBusy: boolean;
   shopifyEditListing: ShopifyEditListing | null;
   shopifyEditListingStatus: "idle" | "loading" | "loaded" | "error";
   shopifyEditSaving: boolean;
@@ -116,10 +118,10 @@ type ShopifyDraftEligibilityContext = ShopifyEditRequestContext & {
 function canCreateShopifyDraft(context: ShopifyDraftEligibilityContext): boolean {
   const lot = context.lots.find(candidate => candidate.id === context.currentLotId);
   return Boolean(lot && context.currentLotType === "bulk" && context.shopifyConnectionStatus === "connected" &&
-    !context.isOffline && !context.shopifyEditSaving && context.showRenameLotModal &&
+    !context.isOffline && !context.renameLotImageBusy && !context.shopifyEditSaving && context.showRenameLotModal &&
     context.shopifyEditListingStatus === "loaded" && !context.shopifyEditListing && shopifyEditSessionIsCurrent(context) &&
     (context.activeScopeType !== "workspace" || (context.activeWorkspaceId && context.isCurrentWorkspaceOwner)) &&
-    shopifySavedLotFieldsMatch({ name: lot.name, externalSku: lot.externalSku }, { name: context.renameLotName, externalSku: context.renameLotExternalSku }));
+    shopifySavedLotFieldsMatch({ name: lot.name, externalSku: lot.externalSku, image: lot.image }, { name: context.renameLotName, externalSku: context.renameLotExternalSku, image: context.renameLotImage }));
 }
 
 async function createShopifyDraft(this: LotConfigurationContext, overrides: DraftOverrides, previewToken: string): Promise<BindingResult>;
@@ -139,7 +141,7 @@ async function createShopifyDraft(this: LotConfigurationContext, input: DraftOve
       throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
     }
     const savedLot = this.lots.find(candidate => candidate.id === this.currentLotId);
-    if (!savedLot || !shopifySavedLotFieldsMatch({ name: savedLot.name, externalSku: savedLot.externalSku }, { name: this.renameLotName, externalSku: this.renameLotExternalSku })) {
+    if (!savedLot || !shopifySavedLotFieldsMatch({ name: savedLot.name, externalSku: savedLot.externalSku, image: savedLot.image }, { name: this.renameLotName, externalSku: this.renameLotExternalSku, image: this.renameLotImage })) {
       throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
     }
     const normalized = normalizeDraftCreateMutation({
@@ -239,7 +241,7 @@ export const shopifyEditorMethods = {
     const normalizedOverrides = overrides == null ? null : normalizeDraftOverrides(overrides);
     if (overrides != null && !normalizedOverrides) throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
     const savedLot = this.lots.find(candidate => candidate.id === this.currentLotId);
-    if (savedLot && this.currentLotType === "bulk" && !shopifySavedLotFieldsMatch({ name: savedLot.name, externalSku: savedLot.externalSku }, { name: this.renameLotName, externalSku: this.renameLotExternalSku })) {
+    if (savedLot && this.currentLotType === "bulk" && !shopifySavedLotFieldsMatch({ name: savedLot.name, externalSku: savedLot.externalSku, image: savedLot.image }, { name: this.renameLotName, externalSku: this.renameLotExternalSku, image: this.renameLotImage })) {
       throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
     }
     if (!canCreateShopifyDraft(this)) throw new ShopifyUiError(null, "none", "configShopifyDraftNotAvailable");

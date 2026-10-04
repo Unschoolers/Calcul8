@@ -242,5 +242,6 @@
   "configShopifyRetainAttemptHint": "This pending operation will be kept. Reopen the manager to recover it before making other changes.",
   "configShopifyKeepEditing": "Keep editing",
   "configShopifyDiscard": "Discard changes",
-  "configShopifyBack": "Back"
+  "configShopifyBack": "Back",
+  "configShopifyImagePermissionRequired": "Reconnect Shopify to allow product image uploads. Your inventory image is already saved."
 }

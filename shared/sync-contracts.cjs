@@ -143,11 +143,25 @@ function toSyncSinglesPurchaseDtos(value) {
   return value.map((entry) => normalizeSyncSinglesPurchaseDto(entry)).filter((entry) => entry != null);
 }
 
+/** Only bounded raster data URLs are persisted for lot uploads. */
+function normalizeSyncLotImage(value) {
+  if (typeof value !== "string") return undefined;
+  const image = value.trim();
+  if (!image || image.length > 213400) return undefined;
+  const match = /^data:image\/(jpeg|png|webp);base64,((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$/.exec(image);
+  if (!match || !match[2]) return undefined;
+  const payload = match[2];
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  return payload.length * 3 / 4 - padding <= 160000 ? image : undefined;
+}
+
 function normalizeSyncLotDto(value) {
   if (!isSyncEntityRecord(value)) return null;
   const id = normalizeEntityId(value.id);
   if (id == null) return null;
   const lot = { id };
+  const image = normalizeSyncLotImage(value.image);
+  if (image) lot.image = image;
   const name = cleanString(value.name);
   if (name) lot.name = name;
   const lotType = normalizeLotType(value.lotType);
@@ -620,6 +634,7 @@ module.exports = {
   normalizeSyncSystemPricingDefaultsDto,
   normalizeSyncLivePricingDto,
   normalizeSyncLotDto,
+  normalizeSyncLotImage,
   normalizeSyncSaleDto,
   normalizeSyncSinglesPurchaseDto,
   normalizeSyncWheelConfigDto,

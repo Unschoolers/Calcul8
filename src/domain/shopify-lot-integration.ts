@@ -35,9 +35,11 @@ export type ShopifyLotIntegrationProps = {
   };
   lot: {
     type: LotType;
-    saved?: { name: string; externalSku?: string };
+    saved?: { name: string; externalSku?: string; image?: string };
     draftName: string;
     draftSku: string;
+    draftImage?: string;
+    imageBusy?: boolean;
     boxesPurchased: number;
     packsPerBox: number;
     sales: Sale[];

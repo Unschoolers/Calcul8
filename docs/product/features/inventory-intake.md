@@ -1,6 +1,6 @@
 # Inventory Intake
 
-Updated: 2026-06-09
+Updated: 2026-10-04
 
 ## Seller Problem
 
@@ -8,10 +8,12 @@ Sellers need fast mobile intake while sourcing or preparing a show. Calcul8 alre
 
 ## Current Repo Capabilities
 
-- `Lot` already supports bulk and singles lots, costs, quantities, purchase date, shipping/tax, currency, fee profile, external SKU, target profit, and system pricing defaults.
+- `Lot` already supports bulk and singles lots, costs, quantities, purchase date, shipping/tax, currency, fee profile, an optional inventory image, external SKU, target profit, and system pricing defaults.
 - `SinglesPurchaseEntry` already supports item, card number, external SKU, image, condition, language, cost, currency, quantity, market value, and market value currency.
 - Singles CSV import, row editor, catalog search, image upload/compression, live singles selection, and wheel singles deduction already exist.
 - Live pricing already uses cost/market value to suggest profitable prices.
+- Personal/workspace sync preserves optional lot images. Create/Edit inventory supports upload, preview, replacement, and removal; selector rows and the current inventory header show thumbnails with icon fallback.
+- Lot images use the existing item compression limits (640 px longest edge, 160 KB maximum), remain independent of sales channels, and are saved only with the inventory form. Shopify draft creation copies the saved image through a staged upload; linking existing products preserves their Shopify media. Image-only edits require saving inventory before creating a Shopify draft.
 - Workspace sync already handles lot and singles purchase changes.
 
 ## V1 Behavior

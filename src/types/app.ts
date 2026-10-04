@@ -365,6 +365,7 @@ export interface SystemPricingDefaults extends FeeProfileFields {
 
 export interface Lot extends LotSetup {
   id: number;
+  image?: string;
   name: string;
   isComplete?: boolean;
   lotType?: LotType;
@@ -727,6 +728,10 @@ export interface AppState extends LotSetup {
   isHydratingLotConfig: boolean;
   lotHydrationRevision: number;
   newLotName: string;
+  newLotImage: string;
+  newLotImageBusy: boolean;
+  renameLotImage: string;
+  renameLotImageBusy: boolean;
   renameLotName: string;
   renameLotWhatnotVertical: WhatnotVertical | null;
   renameLotExternalSku: string;

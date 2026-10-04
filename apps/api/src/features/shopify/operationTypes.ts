@@ -14,7 +14,7 @@ export type DetailsAttempt = ShopifyOperationIdentity & {
 export type CreateAttempt = ShopifyOperationIdentity & {
   kind: "create"; handle: string; ownershipHash: string;
   request?: DraftCreateMutation;
-  payload: { title: string; price: string; currency: string; sku: string; quantity: number; locationId: string; locationName: string; variantTitle: "Booster box" };
+  payload: { image?: string; title: string; price: string; currency: string; sku: string; quantity: number; locationId: string; locationName: string; variantTitle: "Booster box" };
   status: "prepared" | "unknown" | "created" | "mapped" | "failed";
   ids?: { productId: string; variantId: string; inventoryItemId: string };
 };

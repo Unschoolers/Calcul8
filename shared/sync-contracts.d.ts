@@ -37,6 +37,7 @@ export interface SyncSinglesPurchaseDto {
 
 export interface SyncLotDto {
   id: number;
+  image?: string;
   name?: string;
   lotType?: SyncLotType;
   singlesCatalogSource?: SyncSinglesCatalogSource;
@@ -298,3 +299,5 @@ export function toSyncSaleDtos(value: unknown): SyncSaleDto[];
 export function toSyncSalesByLotDto(value: unknown): SyncSalesByLotDto;
 export function toSyncSinglesPurchaseDtos(value: unknown): SyncSinglesPurchaseDto[];
 export function toSyncWheelConfigDtos(value: unknown): SyncWheelConfigDto[];
+
+export function normalizeSyncLotImage(value: unknown): string | undefined;

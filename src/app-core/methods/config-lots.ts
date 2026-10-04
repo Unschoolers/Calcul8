@@ -235,6 +235,7 @@ export const configLotMethods = {
   },
 
   createNewLot(): void {
+    if (this.newLotImageBusy) return;
     const name = (this.newLotName || "").trim();
     if (!name) return this.notify("Please enter a lot name", "warning");
     if (this.lots.some((p) => p.name === name)) return this.notify("A lot with this name already exists", "warning");
@@ -246,6 +247,7 @@ export const configLotMethods = {
       lots: this.lots,
       currentLotId: this.currentLotId,
       newLotName: name,
+      newLotImage: this.newLotImage,
       newLotType: normalizeLotType(this.newLotType),
       newLotCatalogSource: this.newLotCatalogSource,
       newLotWhatnotVertical: this.newLotWhatnotVertical,
@@ -261,6 +263,7 @@ export const configLotMethods = {
     this.loadLot();
     queueWorkspaceConfigSyncPush(this);
     this.newLotName = "";
+    this.newLotImage = "";
     this.newLotType = nextLotType;
     this.newLotCatalogSource = nextLotCatalogSource;
     this.newLotWhatnotVertical = null;

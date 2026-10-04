@@ -35,6 +35,7 @@ export {
   normalizeSyncGameSessionDto,
   normalizeSyncLivePricingDto,
   normalizeSyncLotDto,
+  normalizeSyncLotImage,
   normalizeSyncMetadataDto,
   normalizeSyncSaleDto,
   normalizeSyncSinglesPurchaseDto,

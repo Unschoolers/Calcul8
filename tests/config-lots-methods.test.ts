@@ -1113,3 +1113,34 @@ test("deleteCurrentLot allows empty cloud overwrite when deleting the final lot"
   assert.equal((ctx.lots as Array<{ id: number }>).length, 0);
   assert.deepEqual((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls[0], [true, { allowEmptyOverwrite: true }]);
 });
+
+const lotImage = "data:image/jpeg;base64,/9j/2Q==";
+test("lot images are staged independently of Shopify, saved without renaming, and removable", async () => {
+  const lot = makeLot({ image: lotImage });
+  const ctx = createContext({ lots: [lot], currentLotId: lot.id, shopifyConnectionStatus: "disconnected" });
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  assert.equal(ctx.renameLotImage, lotImage);
+  ctx.renameLotImage = "data:image/png;base64,iVBORw==";
+  configLotMethods.closeRenameLotModal.call(ctx as never);
+  assert.equal(lot.image, lotImage);
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  ctx.renameLotImage = "data:image/png;base64,iVBORw==";
+  await configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.image, "data:image/png;base64,iVBORw==");
+  ctx.getCurrentSetup = () => configLotMethods.getCurrentSetup.call(ctx as never);
+  configLotMethods.autoSaveSetup.call(ctx as never);
+  assert.equal(lot.image, "data:image/png;base64,iVBORw==", "pricing autosave must preserve the image");
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  ctx.renameLotImage = "";
+  await configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.image, undefined);
+});
+test("creating a lot stores only its own image and clears the next draft", () => {
+  const ctx = createContext({ newLotName: "New", newLotImage: lotImage, getCurrentSetup: () => configLotMethods.getCurrentSetup.call(ctx as never) });
+  configLotMethods.createNewLot.call(ctx as never);
+  assert.equal((ctx.lots as Lot[]).at(-1)?.image, lotImage);
+  assert.equal(ctx.newLotImage, "");
+  ctx.newLotName = "Next"; ctx.newLotWhatnotVertical = "tcg";
+  configLotMethods.createNewLot.call(ctx as never);
+  assert.equal((ctx.lots as Lot[]).at(-1)?.image, undefined);
+});

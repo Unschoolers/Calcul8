@@ -148,3 +148,17 @@ describe("mobile lot switcher", () => {
     expect(capabilities.showNewLotModal).toBe(true);
   });
 });
+
+test("lot thumbnails remain visible when filtering and keep the completion badge", async () => {
+  const image = "data:image/jpeg;base64,/9j/2Q==";
+  renderSwitcher({ lotItems: [{ ...lot(1, "My Hero Academia"), image, completionIcon: "mdi-check-circle" }, lot(2, "Kaiju No. 8")] });
+  const trigger = screen.getByRole("button", { name: "Current inventory: My Hero Academia" });
+  expect(trigger.querySelector("img")).toHaveAttribute("src", image);
+  await fireEvent.click(trigger);
+  const option = screen.getByRole("option", { name: /My Hero Academia/ });
+  expect(option.querySelector("img")).toHaveAttribute("src", image);
+  expect(option.querySelector(".lot-selector-icon-stack__badge")).toBeTruthy();
+  await fireEvent.error(option.querySelector("img")!);
+  expect(option.querySelector("img")).toBeNull();
+  expect(option.querySelector(".mdi-cube-outline")).toBeTruthy();
+});

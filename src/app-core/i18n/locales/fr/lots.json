@@ -7,6 +7,13 @@
   "lotNameLabel": "Nom de l'inventaire",
   "newLotTitle": "Nouvel inventaire",
   "itemCatalogAutocompleteDisabledHelp": "Mode manuel : tapez vos propres noms d'items. L'autocomplétion du catalogue est désactivée pour cet inventaire.",
-  "itemCatalogAutocompleteEnabledHelp": "Les suggestions d'autocomplétion utilisent le catalogue choisi."
+  "itemCatalogAutocompleteEnabledHelp": "Les suggestions d'autocomplétion utilisent le catalogue choisi.",
+  "lotImageLabel": "Image de l’inventaire (facultative)",
+  "lotImageHint": "Affichée à côté du nom de l’inventaire.",
+  "lotImageAdd": "Ajouter une image",
+  "lotImageReplace": "Remplacer l’image",
+  "lotImageRemove": "Retirer l’image",
+  "lotImageInvalidType": "Choisissez une photo ou une image matricielle.",
+  "lotImageTooLarge": "Cette image reste trop volumineuse après compression. Essayez une image plus petite.",
+  "lotImageReadError": "Impossible de lire cette image. Essayez un fichier JPG, PNG ou WebP."
 }
-

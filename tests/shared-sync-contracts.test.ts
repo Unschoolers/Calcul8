@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
@@ -356,5 +357,18 @@ test("game session round trips preserve the original pending sale identity in bo
     const restored = normalize(JSON.parse(JSON.stringify(session)));
     assert.deepEqual(restored.wheelPendingInventoryIssues[0].pendingSale, sale);
     assert.equal(restored.wheelPendingInventoryIssues[0].pendingSaleLotId, 7);
+  }
+});
+
+test("lot images survive frontend and API snapshot normalization without Shopify", async () => {
+  const api = createRequire(import.meta.url)("../apps/api/src/shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
+  const image = "data:image/jpeg;base64,/9j/2Q==";
+  const input = { id: 42, name: "Box", image, shopifyEnabled: false };
+  const front = toSyncLotDtos([input]);
+  assert.equal(front[0]?.image, image);
+  assert.equal(api.normalizeSyncLotDto(JSON.parse(JSON.stringify(front[0])))?.image, image);
+  for (const invalid of ["javascript:alert(1)", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/jpeg;base64," + "A".repeat(220000), { src: image }]) {
+    assert.equal(toSyncLotDtos([{ ...input, image: invalid }])[0]?.image, undefined);
+    assert.equal(api.normalizeSyncLotDto({ ...input, image: invalid })?.image, undefined);
   }
 });
