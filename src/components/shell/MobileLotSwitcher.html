@@ -23,8 +23,10 @@
       </span>
       <span class="mobile-lot-switcher__subtitle">{{ lotSummarySubtitle }}</span>
     </span>
-    <shopify-link-indicator v-if="selectedLotItem?.shopifyLink" :link="selectedLotItem.shopifyLink" :t="t" />
-    <v-icon class="mobile-lot-switcher__chevron" size="20" aria-hidden="true">mdi-chevron-down</v-icon>
+    <span class="mobile-lot-switcher__trailing">
+      <shopify-link-indicator v-if="selectedLotItem?.shopifyLink" :link="selectedLotItem.shopifyLink" :t="t" />
+      <v-icon class="mobile-lot-switcher__chevron" size="20" aria-hidden="true">mdi-chevron-down</v-icon>
+    </span>
   </button>
 
   <v-bottom-sheet v-model="isOpen" inset content-class="mobile-lot-sheet-overlay">

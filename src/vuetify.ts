@@ -1,10 +1,12 @@
 import { createVuetify } from "vuetify";
 import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
+import { SHOPIFY_ICON_PATH } from "./icons/shopify.ts";
 
 export const vuetify = createVuetify({
   components,
   directives,
+  icons: { aliases: { shopify: [SHOPIFY_ICON_PATH] } },
   theme: {
     defaultTheme: "unionArenaDark",
     themes: {

@@ -12,7 +12,7 @@ const label = computed(() => [
 
 <template>
   <span class="shopify-link-indicator" :class="{ 'shopify-link-indicator--stale': link.stale }" role="img" :aria-label="label" :title="label">
-    <v-icon icon="mdi-shopify" size="18" aria-hidden="true" />
+    <v-icon icon="$shopify" size="18" aria-hidden="true" />
     <v-icon v-if="link.attention" icon="mdi-alert-circle-outline" size="14" color="warning" aria-hidden="true" />
   </span>
 </template>

@@ -156,7 +156,7 @@
     linear-gradient(155deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.9));
   --app-expressive-panel-bg: rgba(var(--v-theme-surface), 0.82);
   --app-expressive-border: rgba(var(--v-theme-secondary), 0.22);
-  --app-dialog-card-bg: var(--app-surface-card-bg);
+  --app-dialog-card-bg: rgb(var(--v-theme-surface));
   --app-section-card-bg: var(--app-surface-card-bg);
   --app-summary-panel-bg: var(--app-surface-card-bg);
   --app-empty-state-bg: var(--app-surface-card-bg);

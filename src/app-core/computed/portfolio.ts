@@ -100,6 +100,7 @@ export const portfolioComputed: PortfolioComputedObject = {
     const preset = normalizePortfolioDashboardPreset(this.portfolioDashboardPreset);
     const typedLots = this.lots.filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter));
     const summaryByLotId = getPortfolioPerformanceSummaries(this, typedLots);
+    const linksByLotId = new Map((this.lotItems ?? []).map(item => [item.value, item.shopifyLink]));
     return buildLotOptionItems(
       typedLots
         .filter((lot) => {
@@ -108,6 +109,7 @@ export const portfolioComputed: PortfolioComputedObject = {
         })
         .map((lot) => ({
           ...lot,
+          shopifyLink: linksByLotId.get(lot.id),
           isComplete: lotIsSoldOut(summaryByLotId.get(lot.id) ?? { soldPacks: 0, totalPacks: 0 })
         })),
       this.preferredLanguage
@@ -374,7 +376,6 @@ export const portfolioComputed: PortfolioComputedObject = {
     return this.allLotPerformance.length > 0;
   }
 };
-
 
 
 

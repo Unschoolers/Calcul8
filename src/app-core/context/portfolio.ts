@@ -1,3 +1,4 @@
+import type { LotOptionItem } from "../shared/lot-option-items.ts";
 import type {
   AppState,
   LotPerformanceSummary,
@@ -22,16 +23,7 @@ import type {
 } from "./runtime.ts";
 
 export interface PortfolioComputedState {
-  portfolioLotFilterItems: Array<{
-    title: string;
-    value: number;
-    subtitle: string;
-    lotType: "bulk" | "singles";
-    isComplete: boolean;
-    symbolIcon: string;
-    completionIcon: string | null;
-    groupLabel?: string | null;
-  }>;
+  portfolioLotFilterItems: LotOptionItem[];
   portfolioSelectedLotIds: number[];
   portfolioForecastScenarios: Array<{
     id: "item" | "box" | "rtyh";
@@ -112,7 +104,7 @@ type PortfolioState = Pick<
 
 export type PortfolioContext = PortfolioState &
   PortfolioComputedState &
-  Pick<CommerceComputedState, "whatnotFeeSummary"> &
+  Pick<CommerceComputedState, "whatnotFeeSummary" | "lotItems"> &
   Pick<CommerceMethodState, "getAllSalesByLotId" | "getSalesCacheEntry" | "getSalesStorageKey" | "loadSalesForLotId" | "initSalesChart"> &
   PortfolioMethodState &
   Pick<AppVueContext, "$nextTick"> &

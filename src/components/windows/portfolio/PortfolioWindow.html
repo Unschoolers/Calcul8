@@ -94,6 +94,7 @@
                                 {{ portfolioLotFilterPrimaryItem()?.completionIcon || portfolioLotFilterPrimaryItem()?.symbolIcon || 'mdi-bookmark-outline' }}
                               </v-icon>
                               {{ portfolioLotFilterPrimaryLabel() }}
+                              <shopify-link-indicator v-if="portfolioLotFilterPrimaryItem()?.shopifyLink" :link="portfolioLotFilterPrimaryItem().shopifyLink" :t="t" class="ml-1" />
                             </v-chip>
                             <v-chip
                               v-if="portfolioLotFilterRemainingCount() > 0"
@@ -141,6 +142,7 @@
                                 {{ resolvePortfolioLotFilterItem(item).subtitle }}
                               </v-list-item-subtitle>
                               <template #append>
+                                <shopify-link-indicator v-if="resolvePortfolioLotFilterItem(item).shopifyLink" :link="resolvePortfolioLotFilterItem(item).shopifyLink" :t="t" class="mr-2" />
                                 <v-icon
                                   v-if="portfolioLotFilterItemSelected(resolvePortfolioLotFilterItem(item).value)"
                                   size="14"
