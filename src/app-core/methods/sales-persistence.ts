@@ -73,6 +73,22 @@ export function persistSaleLocally(
   }
 }
 
+function rollbackLocalSaleMutation(
+  context: SalesPersistenceContext,
+  pendingSale: Sale,
+  priorSale: Sale | undefined,
+  priorIndex: number
+): void {
+  const currentIndex = context.sales.findIndex((sale) => sale.id === pendingSale.id && sale === pendingSale);
+  if (currentIndex < 0) return;
+  const nextSales = [...context.sales];
+  nextSales.splice(currentIndex, 1, ...(priorSale ? [priorSale] : []));
+  context.sales = nextSales;
+  if (priorSale && !nextSales.some((sale) => sale.id === priorSale.id)) {
+    nextSales.splice(Math.min(Math.max(priorIndex, 0), nextSales.length), 0, priorSale);
+  }
+}
+
 export function saveSaleAuthoritatively(
   context: SalesPersistenceContext,
   params: {
@@ -132,12 +148,7 @@ export function saveSaleAuthoritatively(
             deps.cacheSales(context, lotId, latestSales);
             persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
           } catch (error) {
-            return {
-              kind: "failure",
-              error: error instanceof Error ? error : new Error(String(error)),
-              stage: "cache",
-              cloudConfirmed: true
-            };
+            return { kind: "conflict", latestState: "loaded", cacheFailure: error };
           }
         }
         if (context.currentLotId === lotId) {
@@ -145,6 +156,12 @@ export function saveSaleAuthoritatively(
           deps.refreshCharts(context);
         }
         return { kind: "conflict", latestState: latestSales ? "loaded" : "unavailable" };
+      }
+      if (error instanceof CachePersistenceError && context.currentLotId === lotId
+        && (params.editingSaleId === null
+          ? context.editingSale == null
+          : context.editingSale?.id === params.editingSaleId)) {
+        context.cancelSale();
       }
       return {
         kind: "failure",
@@ -196,11 +213,23 @@ export function saveSaleWithPersistence(
   }
 ): Promise<PersistenceOutcome> {
   if (!params.lotId || !deps.canUseAuthoritativeApi()) {
+    const capturedScopeIsCurrent = captureWorkspaceScopeGuard(context);
+    const capturedLotId = context.currentLotId;
+    const priorSale = params.editingSaleId == null
+      ? undefined
+      : context.sales.find((sale) => sale.id === params.editingSaleId);
+    const priorIndex = priorSale ? context.sales.indexOf(priorSale) : params.editingIndex;
     return (async (): Promise<PersistenceOutcome> => {
       try {
         deps.persistLocally(context, params.pendingSale, params.editingIndex);
         const localOutcome = await deps.saveLocalSales(context);
-        if (localOutcome.kind !== "confirmed") return localOutcome;
+        if (!capturedScopeIsCurrent() || context.currentLotId !== capturedLotId) {
+          return { kind: "skipped", reason: "stale-scope" };
+        }
+        if (localOutcome.kind !== "confirmed") {
+          rollbackLocalSaleMutation(context, params.pendingSale, priorSale, priorIndex);
+          return localOutcome;
+        }
         context.cancelSale();
         deps.refreshCharts(context);
         return {
@@ -210,6 +239,10 @@ export function saveSaleWithPersistence(
           cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
         };
       } catch (error) {
+        if (!capturedScopeIsCurrent() || context.currentLotId !== capturedLotId) {
+          return { kind: "skipped", reason: "stale-scope" };
+        }
+        rollbackLocalSaleMutation(context, params.pendingSale, priorSale, priorIndex);
         return { kind: "failure", error, stage: "local" };
       }
     })();
@@ -243,12 +276,27 @@ export function deleteSaleWithPersistence(
     () => {
       const currentLotId = context.currentLotId;
       const sale = context.sales.find((entry) => entry.id === saleId) ?? null;
-      if (!currentLotId || !sale || !deps.canUseAuthoritativeApi()) {
+      if (!sale) {
+        resolve({ kind: "skipped", reason: "not-found" });
+        return;
+      }
+      if (!currentLotId || !deps.canUseAuthoritativeApi()) {
+        const isCurrentScope = captureWorkspaceScopeGuard(context);
+        const originalIndex = sale ? context.sales.indexOf(sale) : -1;
         void (async () => {
           try {
             context.sales = removeById(context.sales, saleId);
             const localOutcome = await context.saveSalesToStorage();
+            if (!isCurrentScope() || context.currentLotId !== currentLotId) {
+              resolve({ kind: "skipped", reason: "stale-scope" });
+              return;
+            }
             if (localOutcome.kind !== "confirmed") {
+              if (sale && !context.sales.some((entry) => entry.id === saleId)) {
+                const nextSales = [...context.sales];
+                nextSales.splice(Math.min(Math.max(originalIndex, 0), nextSales.length), 0, sale);
+                context.sales = nextSales;
+              }
               resolve(localOutcome);
               return;
             }
@@ -260,12 +308,26 @@ export function deleteSaleWithPersistence(
               cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
             });
           } catch (error) {
+            if (!isCurrentScope() || context.currentLotId !== currentLotId) {
+              resolve({ kind: "skipped", reason: "stale-scope" });
+              return;
+            }
+            if (sale && !context.sales.some((entry) => entry.id === saleId)) {
+              const nextSales = [...context.sales];
+              nextSales.splice(Math.min(Math.max(originalIndex, 0), nextSales.length), 0, sale);
+              context.sales = nextSales;
+            }
             resolve({ kind: "failure", error, stage: "local" });
           }
         })();
         return;
       }
       const lotId = currentLotId;
+      const confirmedSale = sale;
+      if (!confirmedSale) {
+        resolve({ kind: "skipped", reason: "not-found" });
+        return;
+      }
       const isCurrentScope = captureWorkspaceScopeGuard(context);
       const initialSales = [...context.sales];
 
@@ -277,7 +339,7 @@ export function deleteSaleWithPersistence(
         }
         mutationState.deletingSaleIds.add(saleId);
         try {
-          await deps.deleteSale(context, lotId, saleId, sale.version ?? 0);
+          await deps.deleteSale(context, lotId, saleId, confirmedSale.version ?? 0);
           if (!isCurrentScope()) {
             resolve({ kind: "skipped", reason: "stale-scope" });
             return;
@@ -312,12 +374,7 @@ export function deleteSaleWithPersistence(
                 deps.cacheSales(context, lotId, latestSales);
                 persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
               } catch (cacheError) {
-                resolve({
-                  kind: "failure",
-                  error: cacheError instanceof Error ? cacheError : new Error(String(cacheError)),
-                  stage: "cache",
-                  cloudConfirmed: true
-                });
+                resolve({ kind: "conflict", latestState: "loaded", cacheFailure: cacheError });
                 return;
               }
             }

@@ -7,11 +7,12 @@ export type PersistenceOutcome =
     }
   | {
       kind: "skipped";
-      reason: "offline" | "auth" | "unavailable" | "duplicate" | "stale-scope" | "no-lot" | "not-ready" | "cancelled";
+      reason: "offline" | "auth" | "unavailable" | "duplicate" | "stale-scope" | "no-lot" | "not-ready" | "cancelled" | "not-found";
     }
   | {
       kind: "conflict";
       latestState: "loaded" | "unavailable";
+      cacheFailure?: unknown;
     }
   | {
       kind: "failure";

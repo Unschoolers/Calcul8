@@ -63,15 +63,23 @@ function notifySalesPersistenceOutcome(
   if (outcome.kind === "conflict") {
     context.notify(
       action === "save"
-        ? "Sales changed in the cloud. Pulled latest sales and canceled your save."
-        : "Sales changed in the cloud. Pulled latest sales instead of deleting.",
+        ? outcome.cacheFailure !== undefined
+          ? "Sales changed in the cloud and latest sales were loaded, but the local cache could not be updated. Your save was canceled."
+          : outcome.latestState === "loaded"
+          ? "Sales changed in the cloud. Latest sales were loaded and your save was canceled."
+          : "Sales changed in the cloud, but latest sales could not be loaded. Your save was not applied."
+        : outcome.cacheFailure !== undefined
+          ? "Sales changed in the cloud and latest sales were loaded, but the local cache could not be updated. The sale was not deleted."
+          : outcome.latestState === "loaded"
+          ? "Sales changed in the cloud. Latest sales were loaded instead of deleting."
+          : "Sales changed in the cloud, but latest sales could not be loaded. The sale was not deleted.",
       "warning"
     );
     return;
   }
   if (outcome.kind !== "failure") return;
   const message = outcome.cloudConfirmed
-    ? `The cloud ${action === "save" ? "saved" : "deleted"} this sale, but the local cache could not be updated. Refresh sales before retrying.`
+    ? `The sale was ${action === "save" ? "saved" : "deleted"} in the cloud, but the local cache could not be updated. Refresh sales to update this view.`
     : outcome.error instanceof Error && outcome.error.message.trim()
       ? outcome.error.message
       : `Failed to ${action} sale.`;
@@ -297,7 +305,7 @@ export const salesMethods = {
       saveAuthoritatively: saveSaleAuthoritatively
     });
     notifySalesPersistenceOutcome(this, outcome, "save");
-    if (provisionalSnapshotDeferred) {
+    if (provisionalSnapshotDeferred && (outcome.kind === "confirmed" || (outcome.kind === "failure" && outcome.cloudConfirmed === true))) {
       this.notify("Sale saved, but Whatnot history is incomplete. Change the sale price or date after history loads to refresh its net revenue estimate.", "warning");
     }
     return outcome;

@@ -127,6 +127,8 @@ function createContext(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cacheAuthoritativeSalesMock.mockReset();
+  cacheAuthoritativeSalesMock.mockImplementation(() => undefined);
   canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
   vi.stubGlobal("HTMLCanvasElement", MockHtmlCanvasElement as unknown as typeof HTMLCanvasElement);
   vi.stubGlobal("localStorage", {
@@ -366,7 +368,40 @@ test("saveSale cancels the stale editor and reloads latest sales on authoritativ
   assert.equal(cancelSale.mock.calls.length, 1);
   assert.equal(initSalesChart.mock.calls.length, 1);
   assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
-    "Sales changed in the cloud. Pulled latest sales and canceled your save.",
+    "Sales changed in the cloud. Latest sales were loaded and your save was canceled.",
+    "warning"
+  ]);
+});
+
+test("save conflict does not claim latest sales loaded when recovery fetch is unavailable", async () => {
+  const existing = { id: 11, type: "box", quantity: 1, packsCount: 1, buyerShipping: 0, price: 10, date: "2026-03-08", version: 1 };
+  const ctx = createContext({ editingSale: existing, sales: [existing] });
+  saveAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
+  fetchAuthoritativeSalesMock.mockResolvedValue(null);
+
+  const outcome = await salesMethods.saveSale.call(ctx as never);
+
+  assert.deepEqual(outcome, { kind: "conflict", latestState: "unavailable" });
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Sales changed in the cloud, but latest sales could not be loaded. Your save was not applied.",
+    "warning"
+  ]);
+});
+
+test("save conflict reports cache failure without claiming the cloud mutation succeeded", async () => {
+  const existing = { id: 11, type: "box", quantity: 1, packsCount: 1, buyerShipping: 0, price: 10, date: "2026-03-08", version: 1 };
+  const ctx = createContext({ editingSale: existing, sales: [existing] });
+  saveAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
+  fetchAuthoritativeSalesMock.mockResolvedValue([{ id: 11, type: "box", quantity: 1, price: 12, date: "2026-03-08" }]);
+  cacheAuthoritativeSalesMock.mockImplementation(() => { throw new Error("quota exceeded"); });
+
+  const outcome = await salesMethods.saveSale.call(ctx as never);
+
+  assert.equal(outcome.kind, "conflict");
+  assert.equal(outcome.kind === "conflict" && outcome.cacheFailure instanceof Error, true);
+  assert.equal("cloudConfirmed" in outcome, false);
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Sales changed in the cloud and latest sales were loaded, but the local cache could not be updated. Your save was canceled.",
     "warning"
   ]);
 });
@@ -405,7 +440,7 @@ test("deleteSale reloads latest sales on authoritative conflict", async () => {
   assert.equal(deleteAuthoritativeSaleMock.mock.calls.length, 1);
   assert.deepEqual(ctx.sales, latestSales);
   assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
-    "Sales changed in the cloud. Pulled latest sales instead of deleting.",
+    "Sales changed in the cloud. Latest sales were loaded instead of deleting.",
     "warning"
   ]);
 });
