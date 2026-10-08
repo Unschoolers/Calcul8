@@ -81,6 +81,28 @@ test("manager binding action uses the current version and refreshes scoped lot i
   expect(state.refreshShopifyBindings).toHaveBeenCalledOnce();
 });
 
+test("draft preview rejects unsaved lot fields before contacting Shopify", async () => {
+  const state = context({ renameLotName: "Unsaved inventory name" });
+
+  await expect(callEditorMethod("loadShopifyDraftPreview", state)).rejects.toThrow("configShopifyDraftStalePreview");
+
+  expect(apiCall).not.toHaveBeenCalled();
+});
+
+test("binding response from an older connection generation is rejected and keeps its retry identity", async () => {
+  const state = context({ shopifyEditBindingVersion: "binding-v1" });
+  apiCall.mockResolvedValue(response({
+    listing: listing({ version: "binding-v2" }), bindingVersion: "binding-v2",
+    shop: "store-a.myshopify.com", generation: 2
+  }));
+
+  await expect(callEditorMethod("applyShopifyBinding", state, "unlink")).rejects.toThrow("configShopifyErrorConnectionChanged");
+
+  expect(state.shopifyEditPendingBindingMutation).toMatchObject({ generation: 3, action: "unlink" });
+  expect(state.shopifyEditOperationId).toBe(state.shopifyEditPendingBindingMutation?.mutationId);
+  expect(state.shopifyEditListing).toBeNull();
+});
+
 test("partial product detail retry repeats the original operation and exact payload until both fields are confirmed", async () => {
   const state = context({ shopifyEditListing: listing(), shopifyEditBindingVersion: "binding-v1" });
   const firstResult: ProductDetailsResult = {

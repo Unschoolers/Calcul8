@@ -10,10 +10,14 @@ import { createShopifyEditorClient } from "../src/app-core/methods/ui/shopify/sh
 test("Shopify editor endpoints share authenticated transport and preserve mutation retry policy", async () => {
   const context = {} as Parameters<typeof createShopifyEditorClient>[0];
   const client = createShopifyEditorClient(context);
-  const init = { method: "POST", body: JSON.stringify({ mutationId: "stable-1" }) };
+  const payload = { mutationId: "stable-1" };
   request.mockResolvedValue(new Response(null, { status: 200 }));
 
-  await client.post("binding", init, { retryUnsafeMethods: true });
+  await client.post("binding", payload, { retryUnsafeMethods: true });
 
-  expect(request).toHaveBeenCalledWith(context, "/integrations/shopify/products/binding", init, { retryUnsafeMethods: true });
+  expect(request).toHaveBeenCalledWith(context, "/integrations/shopify/products/binding", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }, { retryUnsafeMethods: true });
 });
