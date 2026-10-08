@@ -173,8 +173,8 @@ test("lot vertical round-trips through web and API sync DTOs and invalid values 
     { id: 23 }
   ];
   assert.deepEqual(toSyncLotDtos(input), expected);
-  const { createRequire } = await import("node:module");
-  const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs");
+  const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
+  const api = createRequire(import.meta.url)("../apps/api/src/shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
   assert.deepEqual(commonJs.toSyncLotDtos(input), expected);
 });
 
@@ -347,12 +347,12 @@ test("shared sync contracts preserve required multi-lot pending selections", () 
   }]);
 });
 
-test("game session round trips preserve the original pending sale identity in both codecs", async () => {
-  const { createRequire } = await import("node:module");
-  const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs");
+test("game session round trips preserve the original pending sale identity in browser, root and API codecs", async () => {
+  const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
+  const api = createRequire(import.meta.url)("../apps/api/src/shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
   const sale = { id: 777, type: "wheel", quantity: 2, packsCount: 2, price: 12,
     buyerShipping: 0, date: "2026-09-14", linkedWheelId: 1, winningTierId: "t1", netRevenue: 10 };
-  for (const normalize of [normalizeSyncGameSessionDto, commonJs.normalizeSyncGameSessionDto]) {
+  for (const normalize of [normalizeSyncGameSessionDto, commonJs.normalizeSyncGameSessionDto, api.normalizeSyncGameSessionDto]) {
     const session = normalize({ wheelPendingInventoryIssues: [{ slotTier: "t1", selectedLotId: 7, pendingSaleLotId: 7, pendingSale: sale }] });
     const restored = normalize(JSON.parse(JSON.stringify(session)));
     assert.deepEqual(restored.wheelPendingInventoryIssues[0].pendingSale, sale);
@@ -370,5 +370,33 @@ test("lot images survive frontend and API snapshot normalization without Shopify
   for (const invalid of ["javascript:alert(1)", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/jpeg;base64," + "A".repeat(220000), { src: image }]) {
     assert.equal(toSyncLotDtos([{ ...input, image: invalid }])[0]?.image, undefined);
     assert.equal(api.normalizeSyncLotDto({ ...input, image: invalid })?.image, undefined);
+  }
+});
+
+
+test("all sync entry points discard malformed pending sales without losing inventory issues", () => {
+  const require = createRequire(import.meta.url);
+  const codecs = [normalizeSyncGameSessionDto,
+    (require("../shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts")).normalizeSyncGameSessionDto,
+    (require("../apps/api/src/shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts")).normalizeSyncGameSessionDto];
+  for (const normalize of codecs) {
+    for (const pending of [null, [], { pendingSale: { id: "bad", type: "wheel" }, pendingSaleLotId: 7 },
+      { pendingSale: { id: 77, type: "pack" }, pendingSaleLotId: 7 },
+      { pendingSale: { id: 77, type: "wheel" }, pendingSaleLotId: "bad" }]) {
+      const restored = normalize({ wheelPendingInventoryIssues: [pending] }, 999);
+      const issue = restored.wheelPendingInventoryIssues[0];
+      if (pending === null || Array.isArray(pending)) assert.equal(issue, undefined);
+      else {
+        assert.equal(issue?.pendingSale, undefined);
+        assert.equal(issue?.pendingSaleLotId, undefined);
+        assert.equal(issue?.slotDeductionType, "none");
+      }
+    }
+    const normalized = normalize({ wheelPendingInventoryIssues: [{ pendingSale: {
+      id: "77", type: "wheel", mutationId: " retry-77 ", unknown: "drop"
+    }, pendingSaleLotId: "7" }] }, 999);
+    assert.deepEqual(normalized.wheelPendingInventoryIssues[0]?.pendingSale,
+      { id: 77, type: "wheel", mutationId: "retry-77" });
+    assert.equal(normalized.wheelPendingInventoryIssues[0]?.pendingSaleLotId, 7);
   }
 });

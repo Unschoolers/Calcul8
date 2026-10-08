@@ -1,1 +1,1 @@
-export * from "./game-public-session-contracts";
+export * from "./game-public-session-contracts.js";

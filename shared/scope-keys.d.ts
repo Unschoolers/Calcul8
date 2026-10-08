@@ -1,6 +1,6 @@
+// Generated from shared/contracts/scope-keys.ts. Run npm run shared:generate.
 export type ScopeType = "user" | "workspace";
-
-export function buildEntitlementScopeKey(scopeType: ScopeType, scopeId: string): string | null;
-export function buildEntitlementDocumentId(scopeType: ScopeType, scopeId: string): string | null;
-export function buildSyncScopePartitionKey(scopeType: ScopeType, scopeId: string): string | null;
-export function buildLegacyUserEntitlementDocumentId(userId: string): string;
+export declare function buildEntitlementScopeKey(scopeType: ScopeType, scopeId: string): string | null;
+export declare function buildEntitlementDocumentId(scopeType: ScopeType, scopeId: string): string | null;
+export declare function buildSyncScopePartitionKey(scopeType: ScopeType, scopeId: string): string | null;
+export declare function buildLegacyUserEntitlementDocumentId(userId: string): string;

@@ -1,1 +1,1 @@
-export * from "./whatnot-import-contracts";
+export * from "./whatnot-import-contracts.js";

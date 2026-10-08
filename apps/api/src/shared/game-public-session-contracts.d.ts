@@ -1,1 +1,1 @@
-export * from "../../../../shared/game-public-session-contracts";
+export * from "./game-public-session-contracts.cjs";
