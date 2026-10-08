@@ -1,12 +1,15 @@
 import { fireEvent, screen } from "@testing-library/vue";
 import { expect, test, vi } from "vitest";
-import { defineComponent, reactive } from "vue";
+import { defineComponent, provide, reactive } from "vue";
+import { appOptions } from "../../src/app.ts";
+import { appMethods } from "../../src/app-core/methods/index.ts";
 import { createInitialState } from "../../src/app-core/state.ts";
 import {
   beginShopifyBindingsRequest,
   isCurrentShopifyBindingsRequest,
   resetIntegrationScopeState
 } from "../../src/app-core/feature-state/integration-state.ts";
+import { featureStatePortsKey, useFeatureStatePorts } from "../../src/app-core/feature-state/feature-state-ports.ts";
 import { resetActiveSales } from "../../src/app-core/feature-state/sales-state.ts";
 import { renderWithApp } from "./render.ts";
 
@@ -70,4 +73,46 @@ test("mounted Whatnot scope reset clears transient integration state through its
   expect(state.whatnotReviewBatchId).toBeNull();
   expect(state.showWhatnotReviewDialog).toBe(false);
   expect(isCurrentShopifyBindingsRequest(state, request)).toBe(false);
+});
+
+test("the composition root injects feature owners and mounted writes stay shared with compatibility fields", async () => {
+  const state = reactive(createInitialState());
+  Object.assign(state, appMethods);
+  const injected = appOptions.provide.call(state as never);
+  const featureStatePorts = injected[featureStatePortsKey];
+  const Child = defineComponent({
+    setup() {
+      const owners = useFeatureStatePorts();
+      return { salesOwner: owners.sales, gameSessionOwner: owners.gameSession };
+    },
+    template: `
+      <button aria-label="record through owner" @click="recordSale()">record</button>
+      <button aria-label="update game owner" @click="recordSpin()">spin</button>
+    `,
+    methods: {
+      recordSale() {
+        (this.salesOwner.sales as Array<{ id: string }>).push({ id: "owner-sale" });
+      },
+      recordSpin() {
+        this.gameSessionOwner.wheelTotalSpins = 4;
+      }
+    }
+  });
+  const Harness = defineComponent({
+    components: { Child },
+    setup() {
+      provide(featureStatePortsKey, featureStatePorts);
+      return { state };
+    },
+    template: `<Child />`
+  });
+
+  renderWithApp(Harness);
+  await fireEvent.click(screen.getByRole("button", { name: "record through owner" }));
+  await fireEvent.click(screen.getByRole("button", { name: "update game owner" }));
+  expect(state.sales.map((sale) => sale.id)).toEqual(["owner-sale"]);
+  expect(state.wheelTotalSpins).toBe(4);
+  expect(state.salesFeatureState?.sales).toBe(state.sales);
+  expect(featureStatePorts.integrations).toBe(state.integrationFeatureState);
+  expect(featureStatePorts.gameSession).toBe(state.gameSessionFeatureState);
 });

@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from "./storageKeys.ts";
 import { attachFeatureStateAliases } from "./feature-state/owner-aliases.ts";
 import { createSalesFeatureState, SALES_FEATURE_STATE_KEYS } from "./feature-state/sales-state.ts";
 import { createIntegrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS } from "./feature-state/integration-state.ts";
+import { createGameSessionFeatureState, GAME_SESSION_FEATURE_STATE_KEYS } from "./feature-state/game-session-state.ts";
 
 function getLocalTodayDate(): string {
   const date = new Date();
@@ -50,6 +51,7 @@ export function createInitialState(): AppState {
   const systemPricingDefaults = createDefaultSystemPricingDefaults(hasProAccess ? 15 : 0);
   const salesFeatureState = createSalesFeatureState(todayDate);
   const integrationFeatureState = createIntegrationFeatureState(todayDate);
+  const gameSessionFeatureState = createGameSessionFeatureState();
 
   const state: AppState = {
     hasProAccess,
@@ -241,39 +243,9 @@ export function createInitialState(): AppState {
     wheelConfigs: [],
     activeWheelConfigId: null,
     wheelRealtimeApplyRevision: 0,
-    activeWheelSlots: [],
-    wheelPreviewSlots: [],
-    wheelInventoryWarning: "",
-    wheelShowSeed: false,
-    wheelFairnessHistoryOpen: false,
-    wheelHighlightedSlotIndex: -1,
-    wheelSpinning: false,
-    wheelCurrentAngle: 0,
-    wheelTotalSpins: 0,
-    wheelSpinCounts: [],
-    wheelLastResult: "",
-    wheelSessionUpdatedAt: 0,
-    wheelSessionLotSelections: {},
-    wheelPendingInventoryIssues: [],
-    wheelSessionNetRevenue: null,
-    wheelSessionCostAdjustment: 0,
-    wheelFairnessHistory: [],
-    wheelChaseTallyHistory: [],
-    wheelGridLayoutSeed: "",
-    wheelGridReveals: [],
-    wheelPreviewSpinCounts: [],
-    wheelPreviewTotalSpins: 0,
-    wheelPreviewFairnessHistory: [],
-    wheelPreviewChaseTallyHistory: [],
-    wheelPreviewGridLayoutSeed: "",
-    wheelPreviewGridReveals: [],
-    wheelLastResultColor: "rgb(var(--v-theme-primary))",
-    wheelSpinHash: "",
-    wheelSpinSeed: "",
-    wheelSpinClientSeed: "",
-    wheelSpinVerificationUrl: "",
-    wheelSpinAlgorithm: ""
+    ...gameSessionFeatureState
   };
   attachFeatureStateAliases(state, "salesFeatureState", salesFeatureState, SALES_FEATURE_STATE_KEYS);
-  return attachFeatureStateAliases(state, "integrationFeatureState", integrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS);
+  attachFeatureStateAliases(state, "integrationFeatureState", integrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS);
+  return attachFeatureStateAliases(state, "gameSessionFeatureState", gameSessionFeatureState, GAME_SESSION_FEATURE_STATE_KEYS);
 }
