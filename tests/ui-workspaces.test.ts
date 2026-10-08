@@ -22,6 +22,7 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: vi.fn((app: unknown, path: string, init: RequestInit) =>
     fetchWithRetryMock(`https://api.example.test${path}`, init)
   ),
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));

@@ -15,6 +15,7 @@ const {
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -24,6 +25,7 @@ vi.mock("../src/app-core/auth/index.ts", () => ({
 }));
 
 import { uiWhatnotMethods } from "../src/app-core/methods/ui/whatnot/whatnot.ts";
+import { fetchWhatnotJson } from "../src/app-core/methods/ui/whatnot/whatnot-http.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -64,6 +66,20 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+test("Whatnot transport cancellation is handled without a user error notification", async () => {
+  const app = {
+    googleAuthEpoch: 0,
+    hasProAccess: false,
+    notify: vi.fn()
+  };
+  fetchAuthenticatedApiResponseMock.mockRejectedValueOnce(new DOMException("Aborted", "AbortError"));
+
+  const result = await fetchWhatnotJson(app as never, "/integrations/whatnot/status", { method: "GET" }, "Failed to load status.");
+
+  assert.deepEqual(result, { ok: false });
+  assert.equal(app.notify.mock.calls.length, 0);
 });
 
 test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots after import", async () => {

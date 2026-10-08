@@ -1,7 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { BindingSummary } from "../shared/shopify-product-manager.ts";
 const { fetchAuthenticatedApiResponse } = vi.hoisted(() => ({ fetchAuthenticatedApiResponse: vi.fn() }));
-vi.mock("../src/app-core/methods/ui/common/api-client.ts", () => ({ fetchAuthenticatedApiResponse }));
+vi.mock("../src/app-core/methods/ui/common/api-client.ts", () => ({
+  fetchAuthenticatedApiResponse,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError"
+}));
 import { shopifyBindingMethods, shopifyBindingsScopeKey } from "../src/app-core/methods/ui/shopify/shopify-bindings.ts";
 const summary: BindingSummary = { scopeKey: "u:42", shop: "a.myshopify.com", generation: 2, complete: true, connected: true, generatedAt: "2026-10-03T00:00:00Z", bindings: [{ lotId: 7, mode: "linked", version: "v1" }] };
 function context() { return { activeScopeType: "personal", activeWorkspaceId: null as string | null, googleAuthEpoch: 1, shopifyConnectionStatus: "connected", shopifyConnectionShop: summary.shop, shopifyBindingsSummary: null as BindingSummary | null, shopifyBindingsStatus: "idle", shopifyBindingsStale: false, shopifyBindingsScope: "" }; }

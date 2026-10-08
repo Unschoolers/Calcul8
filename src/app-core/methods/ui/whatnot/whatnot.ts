@@ -24,7 +24,8 @@ export const uiWhatnotMethods = {
       },
       "Failed to load Whatnot status.",
       {
-        expireAuthOn401: false
+        expireAuthOn401: false,
+        retryUnsafeMethods: true
       }
     );
     if (!result.ok) {

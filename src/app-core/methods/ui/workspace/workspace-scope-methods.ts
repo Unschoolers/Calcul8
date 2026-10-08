@@ -139,7 +139,8 @@ export const uiWorkspaceScopeMethods = {
             OPERATION_IN_PROGRESS: translateAppMessage(this.preferredLanguage, "workspaceCreateInProgressNotice"),
             IDEMPOTENCY_MISMATCH: translateAppMessage(this.preferredLanguage, "workspaceCreateMismatchNotice"),
             RECOVERY_CONFLICT: translateAppMessage(this.preferredLanguage, "workspaceCreateRecoveryConflictNotice")
-          }
+          },
+          retryUnsafeMethods: true
         }
       );
       if (!createResult.ok) return;

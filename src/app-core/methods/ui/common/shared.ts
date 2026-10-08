@@ -3,6 +3,7 @@ import "../auth/google-identity-global.ts";
 export {
     fetchAuthenticatedApiResponse,
     fetchWithRetry,
+    isApiRequestAborted,
     resolveApiBaseUrl
 } from "./api-client.ts";
 export type { FetchRetryOptions } from "./api-client.ts";

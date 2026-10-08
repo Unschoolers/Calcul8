@@ -87,7 +87,7 @@ function isRetryableStatus(status: number): boolean {
 }
 
 function isRetryableError(error: unknown): boolean {
-  return error instanceof TypeError;
+  return error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError");
 }
 
 function canRetryRequest(method: string | undefined, allowUnsafeRetry: boolean): boolean {
@@ -95,7 +95,11 @@ function canRetryRequest(method: string | undefined, allowUnsafeRetry: boolean):
 }
 
 function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+  return (error instanceof DOMException || error instanceof Error) && error.name === "AbortError";
+}
+
+export function isApiRequestAborted(error: unknown): boolean {
+  return isAbortError(error);
 }
 
 function waitForCallerOrShared<T>(shared: Promise<T>, signal?: AbortSignal): Promise<T> {
@@ -180,7 +184,11 @@ export async function fetchWithRetry(
     attempt += 1;
 
     const controller = new AbortController();
-    const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    const timeoutId = globalThis.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
     const forwardAbort = (): void => controller.abort();
     callerSignal?.addEventListener("abort", forwardAbort, { once: true });
     const requestHeaders = new Headers(init.headers ?? {});
@@ -196,6 +204,8 @@ export async function fetchWithRetry(
         credentials: init.credentials ?? "include",
         signal: controller.signal
       });
+      throwIfAborted(callerSignal);
+      if (timedOut) throw new DOMException("The request timed out.", "TimeoutError");
       const responseCsrfToken = (response.headers.get("x-csrf-token") || "").trim();
       if (responseCsrfToken) {
         setStoredCsrfToken(responseCsrfToken);
@@ -212,7 +222,8 @@ export async function fetchWithRetry(
       await response.body?.cancel().catch(() => undefined);
       await sleep(delayMs, callerSignal);
     } catch (error) {
-      if (callerSignal?.aborted || isAbortError(error)) throw createAbortError();
+      if (callerSignal?.aborted || (isAbortError(error) && !timedOut)) throw createAbortError();
+      if (timedOut) error = new DOMException("The request timed out.", "TimeoutError");
       if (!isRetryableError(error) || attempt >= permittedAttempts) {
         throw error;
       }

@@ -1,7 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 const { fetchAuthenticatedApiResponse } = vi.hoisted(() => ({ fetchAuthenticatedApiResponse: vi.fn() }));
-vi.mock("../src/app-core/methods/ui/common/api-client.ts", () => ({ fetchAuthenticatedApiResponse }));
+vi.mock("../src/app-core/methods/ui/common/api-client.ts", () => ({
+  fetchAuthenticatedApiResponse,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError"
+}));
 
 import { uiShopifyMethods } from "../src/app-core/methods/ui/shopify/shopify.ts";
 import { resetShopifySignedOutState } from "../src/app-core/methods/ui/shopify/shopify-state.ts";

@@ -1,10 +1,6 @@
 import type { WorkspaceApiContext } from "../../../context/workspace.ts";
-import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
-import {
-  buildSessionHeaders,
-  getStoredGoogleIdToken,
-  hasAuthSignal
-} from "../../../auth/index.ts";
+import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
+import { getStoredGoogleIdToken, hasAuthSignal } from "../../../auth/index.ts";
 import { bootstrapServerSessionStatus } from "../auth/auth-session.ts";
 import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
 
@@ -19,7 +15,7 @@ export async function fetchWorkspaceJson(
   path: string,
   init: RequestInit,
   fallbackMessage: string,
-  options: { errorMessagesByCode?: Readonly<Record<string, string>> } = {}
+  options: { errorMessagesByCode?: Readonly<Record<string, string>>; retryUnsafeMethods?: boolean } = {}
 ): Promise<{ ok: true; response: Response; body: unknown } | { ok: false; handled: true }> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
@@ -32,16 +28,14 @@ export async function fetchWorkspaceJson(
     return { ok: false, handled: true };
   }
 
-  const requestUrl = `${baseUrl}${path}`;
-  const buildRequestInit = (): RequestInit => ({
-    ...init,
-    headers: buildSessionHeaders(init.headers as Record<string, string> | undefined)
-  });
-
   let response: Response;
   try {
-    response = await fetchWithRetry(requestUrl, buildRequestInit());
+    response = await fetchAuthenticatedApiResponse(app, path, init, {
+      expireAuthOn401: false,
+      retryUnsafeMethods: options.retryUnsafeMethods
+    });
   } catch (error) {
+    if (isApiRequestAborted(error)) return { ok: false, handled: true };
     const message = error instanceof Error ? error.message : "";
     const isOfflineFailure =
       message.includes("Failed to fetch")
@@ -61,8 +55,17 @@ export async function fetchWorkspaceJson(
     const bootstrapToken = getStoredGoogleIdToken();
     if (bootstrapToken) {
       const bootstrapResult = await bootstrapServerSessionStatus(app, baseUrl);
+      if (init.signal?.aborted) return { ok: false, handled: true };
       if (bootstrapResult.ok) {
-        response = await fetchWithRetry(requestUrl, buildRequestInit());
+        try {
+          response = await fetchAuthenticatedApiResponse(app, path, init, {
+            expireAuthOn401: false,
+            retryUnsafeMethods: options.retryUnsafeMethods
+          });
+        } catch (error) {
+          if (isApiRequestAborted(error)) return { ok: false, handled: true };
+          throw error;
+        }
         if (response.status !== 401) {
           return await parseWorkspaceJsonResponse(response);
         }

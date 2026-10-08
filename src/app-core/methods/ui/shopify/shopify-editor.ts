@@ -4,7 +4,7 @@ import { ShopifyErrorCode, ShopifyUiError, shopifyResponseUiError, shopifyUiErro
 import { isShopifyStockObservation, type ShopifyStockObservation } from "../../../../../shared/shopify-stock.ts";
 import { normalizeBindingMutation, normalizeDraftCreateMutation, normalizeDraftOverrides, normalizeProductDetailsMutation, type BindingAction, type BindingMutation, type BindingResult, type DraftCreateMutation, type DraftOverrides, type ProductDetailsDraft, type ProductDetailsMutation, type ProductDetailsResult } from "../../../../../shared/shopify-product-manager.ts";
 import type { ConfigLotMethodImplementation, LotConfigurationContext } from "../../../context/commerce.ts";
-import { fetchAuthenticatedApiResponse } from "../common/api-client.ts";
+import { fetchAuthenticatedApiResponse, isApiRequestAborted } from "../common/api-client.ts";
 
 const shopifyEditSearchTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
 const shopifyDraftPreviewCache = new WeakMap<object, ShopifyDraftPreview>();
@@ -176,7 +176,7 @@ async function createShopifyDraft(this: LotConfigurationContext, input: DraftOve
     const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/create", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...shopifyEditScopeBody(this), ...mutation })
-    });
+    }, { retryUnsafeMethods: true });
     if (!response.ok) {
       const error = await shopifyResponseUiError(response, this.t, "configShopifyDraftCreateError", "configShopifyDraftStalePreview");
       definitivePreClaimFailure = response.status === 400 || error.code === ShopifyErrorCode.PREVIEW_STALE;
@@ -213,6 +213,7 @@ async function createShopifyDraft(this: LotConfigurationContext, input: DraftOve
     await refreshSummaryAfterSuccess(this);
     return legacyCall ? undefined : result;
   } catch (error) {
+    if (isApiRequestAborted(error)) throw error;
     if (definitivePreClaimFailure && shopifyEditRequestIsCurrent(this, captured)) {
       this.shopifyEditPendingCreateMutation = null;
       if (!this.shopifyEditPendingBindingMutation && !this.shopifyEditPendingDetailsMutation) {
@@ -259,7 +260,7 @@ export const shopifyEditorMethods = {
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: captured.lotId, manager: true,
           expectedVersion: this.shopifyEditBindingVersion, generation: this.shopifyEditGeneration ?? 0,
           ...(normalizedOverrides ? { overrides: normalizedOverrides } : {}) })
-      });
+      }, { retryUnsafeMethods: true });
       if (!shopifyEditRequestIsCurrent(this, captured)) throw new ShopifyUiError(ShopifyErrorCode.PREVIEW_STALE, "refresh", "configShopifyDraftStalePreview");
       if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyDraftPreviewError", "configShopifyDraftStalePreview");
       const payload = await response.json() as { preview?: unknown };
@@ -271,6 +272,7 @@ export const shopifyEditorMethods = {
       shopifyDraftPreviewCache.set(this, payload.preview);
       return payload.preview;
     } catch (error) {
+      if (isApiRequestAborted(error)) throw error;
       if (shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyDraftPreviewError");
         this.shopifyEditRecovery = shopifyUiErrorRecovery(error);
@@ -317,7 +319,7 @@ export const shopifyEditorMethods = {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/binding", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), ...mutation })
-      });
+      }, { retryUnsafeMethods: true });
       if (!response.ok) {
         const error = await shopifyResponseUiError(response, this.t, "configShopifyLinkError");
         definitiveNoWrite = response.status === 400 || error.code === ShopifyErrorCode.VARIANT_ALREADY_BOUND || error.code === ShopifyErrorCode.LOCATION_REQUIRED;
@@ -342,6 +344,7 @@ export const shopifyEditorMethods = {
       await refreshSummaryAfterSuccess(this);
       return result;
     } catch (error) {
+      if (isApiRequestAborted(error)) throw error;
       if (shopifyEditRequestIsCurrent(this, captured)) {
         if (definitiveNoWrite) {
           this.shopifyEditPendingBindingMutation = null;
@@ -420,7 +423,7 @@ export const shopifyEditorMethods = {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/details", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), ...mutation })
-      });
+      }, { retryUnsafeMethods: true });
       if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyDetailsSaveError");
       const payload = await response.json() as unknown;
       if (!isRecord(payload) || !isRecord(payload.outcome) || !["confirmed", "pending", "unknown"].includes(String(payload.outcome.title)) ||
@@ -445,6 +448,7 @@ export const shopifyEditorMethods = {
       }
       return result;
     } catch (error) {
+      if (isApiRequestAborted(error)) throw error;
       const detailsChanged = error instanceof ShopifyUiError && error.code === ShopifyErrorCode.DETAILS_CHANGED;
       if (detailsChanged && shopifyEditRequestIsCurrent(this, captured)) {
         this.shopifyEditPendingDetailsMutation = null;
@@ -499,7 +503,7 @@ export const shopifyEditorMethods = {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/stock", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId })
-      });
+      }, { retryUnsafeMethods: true });
       if (!shopifyEditRequestIsCurrent(this, captured) || this.shopifyEditListing?.variantId !== listing.variantId || this.shopifyEditListing.locationId !== listing.locationId) {
         throw new ShopifyUiError(null, "refresh", "configShopifyStockStaleRequest");
       }
@@ -527,7 +531,7 @@ export const shopifyEditorMethods = {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/listing", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId, manager: true })
-      });
+      }, { retryUnsafeMethods: true });
       if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifyListingLoadError");
       const payload = await response.json() as { listing?: ShopifyEditListing | null; bindingVersion?: string | null; generation?: number; shop?: string | null;
         pendingCreateMutation?: unknown; pendingDetailsMutation?: unknown; detailsOutcome?: ProductDetailsResult["outcome"] };
@@ -566,6 +570,7 @@ export const shopifyEditorMethods = {
           }
         }
       } catch (error) {
+        if (isApiRequestAborted(error)) return;
         if (shopifyEditRequestIsCurrent(this, captured)) {
           this.shopifyEditListingStatus = "error";
           this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyListingLoadError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "listing";
@@ -667,7 +672,7 @@ export const shopifyEditorMethods = {
         const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/search", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...shopifyEditScopeBody(this), query, ...(loadMore && this.shopifyEditSearchCursor ? { after: this.shopifyEditSearchCursor } : {}) })
-        });
+        }, { retryUnsafeMethods: true });
         if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifySearchError");
         const page = await response.json() as { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
         if (!shopifyEditRequestIsCurrent(this, captured)) return;
@@ -681,6 +686,7 @@ export const shopifyEditorMethods = {
           this.shopifyEditErrorOperation = "search";
         }
       } catch (error) {
+        if (isApiRequestAborted(error)) return;
         if (shopifyEditRequestIsCurrent(this, captured)) { this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifySearchError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "search"; }
       } finally {
         if (shopifyEditRequestIsOwned(this, captured)) this.shopifyEditLoading = false;

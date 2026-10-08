@@ -47,6 +47,7 @@ export async function requestJson(
   fallbackMessage: string,
   options: {
     expireAuthOn401?: boolean;
+    retryUnsafeMethods?: boolean;
   } = {}
 ): Promise<unknown> {
   const baseUrl = resolveApiBaseUrl();

@@ -1,6 +1,6 @@
 import type { ShopifyBindingMethodImplementation } from "../../../context/shopify.ts";
 import { isBindingSummary } from "../../../../domain/shopify-binding-summary.ts";
-import { fetchAuthenticatedApiResponse } from "../common/api-client.ts";
+import { fetchAuthenticatedApiResponse, isApiRequestAborted } from "../common/api-client.ts";
 
 type Scope = { googleAuthEpoch: number; activeScopeType: string; activeWorkspaceId: string | null };
 export const shopifyBindingsScopeKey = (context: Scope): string => `${context.googleAuthEpoch}:${context.activeScopeType}:${context.activeWorkspaceId ?? ""}`;
@@ -28,7 +28,7 @@ export const shopifyBindingMethods = {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/bindings", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(this.activeScopeType === "workspace" ? { workspaceId: this.activeWorkspaceId } : {})
-      }, { expireAuthOn401: false });
+      }, { expireAuthOn401: false, retryUnsafeMethods: true });
       if (!response.ok) throw new Error("Shopify bindings unavailable");
       const payload: unknown = await response.json();
       if (!current()) return;
@@ -38,8 +38,9 @@ export const shopifyBindingMethods = {
         (this.shopifyConnectionShop && summary.shop !== this.shopifyConnectionShop)) throw new Error("Incomplete or mismatched Shopify bindings");
       this.shopifyBindingsSummary = summary; this.shopifyBindingsStatus = "loaded";
       this.shopifyBindingsStale = !summary.connected || this.shopifyConnectionStatus !== "connected";
-    } catch {
+    } catch (error) {
       if (!current()) return;
+      if (isApiRequestAborted(error)) return;
       this.shopifyBindingsStatus = "error"; this.shopifyBindingsStale = Boolean(this.shopifyBindingsSummary);
     } finally {
       if (requests.get(this) === token) requests.delete(this);

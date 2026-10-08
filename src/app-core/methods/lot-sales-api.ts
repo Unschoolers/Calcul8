@@ -254,7 +254,8 @@ export async function saveAuthoritativeSale(
         mutationId: sale.type === "wheel" && baseVersion === 0 ? `wheel-sale:${sale.id}` : createMutationId("sale")
       })
     },
-    "Failed to save sale."
+    "Failed to save sale.",
+    { retryUnsafeMethods: true }
   ) as SaleResponse | null;
 
   const savedSale = normalizeSale(body?.sale);
@@ -284,7 +285,8 @@ export async function deleteAuthoritativeSale(
         mutationId: createMutationId("sale-delete")
       })
     },
-    "Failed to delete sale."
+    "Failed to delete sale.",
+    { retryUnsafeMethods: true }
   );
 }
 

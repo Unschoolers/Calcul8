@@ -3,7 +3,7 @@ import type {
   WhatnotHttpContext,
   WhatnotScopeContext
 } from "../../../context/whatnot.ts";
-import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
+import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
 
 export function canManageWhatnot(
   app: Pick<WhatnotConnectionContext, "activeScopeType" | "isCurrentWorkspaceOwner">
@@ -27,6 +27,7 @@ export async function fetchWhatnotJson(
   fallbackMessage: string,
   options: {
     expireAuthOn401?: boolean;
+    retryUnsafeMethods?: boolean;
     errorMessagesByCode?: Readonly<Record<string, string>>;
   } = {}
 ): Promise<{ ok: true; body: unknown } | { ok: false }> {
@@ -36,7 +37,13 @@ export async function fetchWhatnotJson(
     return { ok: false };
   }
 
-  const response = await fetchAuthenticatedApiResponse(app, path, init, options);
+  let response: Response;
+  try {
+    response = await fetchAuthenticatedApiResponse(app, path, init, options);
+  } catch (error) {
+    if (isApiRequestAborted(error)) return { ok: false };
+    throw error;
+  }
 
   if (response.status === 401) {
     if (options.expireAuthOn401 !== false) {
