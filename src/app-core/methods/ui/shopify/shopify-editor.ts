@@ -4,7 +4,8 @@ import { ShopifyErrorCode, ShopifyUiError, shopifyResponseUiError, shopifyUiErro
 import { isShopifyStockObservation, type ShopifyStockObservation } from "../../../../../shared/shopify-stock.ts";
 import { normalizeBindingMutation, normalizeDraftCreateMutation, normalizeDraftOverrides, normalizeProductDetailsMutation, type BindingAction, type BindingMutation, type BindingResult, type DraftCreateMutation, type DraftOverrides, type ProductDetailsDraft, type ProductDetailsMutation, type ProductDetailsResult } from "../../../../../shared/shopify-product-manager.ts";
 import type { ConfigLotMethodImplementation, LotConfigurationContext } from "../../../context/commerce.ts";
-import { fetchAuthenticatedApiResponse, isApiRequestAborted } from "../common/api-client.ts";
+import { isApiRequestAborted } from "../common/api-client.ts";
+import { createShopifyEditorClient } from "./shopify-editor-client.ts";
 
 const shopifyEditSearchTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
 const shopifyDraftPreviewCache = new WeakMap<object, ShopifyDraftPreview>();
@@ -173,7 +174,7 @@ async function createShopifyDraft(this: LotConfigurationContext, input: DraftOve
     revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
   let definitivePreClaimFailure = false;
   try {
-    const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/create", {
+    const response = await createShopifyEditorClient(this).post("create", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...shopifyEditScopeBody(this), ...mutation })
     }, { retryUnsafeMethods: true });
@@ -255,7 +256,7 @@ export const shopifyEditorMethods = {
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
-      const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/create-preview", {
+      const response = await createShopifyEditorClient(this).post("createPreview", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: captured.lotId, manager: true,
           expectedVersion: this.shopifyEditBindingVersion, generation: this.shopifyEditGeneration ?? 0,
@@ -316,7 +317,7 @@ export const shopifyEditorMethods = {
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     let definitiveNoWrite = false;
     try {
-      const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/binding", {
+      const response = await createShopifyEditorClient(this).post("binding", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), ...mutation })
       }, { retryUnsafeMethods: true });
@@ -420,7 +421,7 @@ export const shopifyEditorMethods = {
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
       revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
-      const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/details", {
+      const response = await createShopifyEditorClient(this).post("details", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), ...mutation })
       }, { retryUnsafeMethods: true });
@@ -500,7 +501,7 @@ export const shopifyEditorMethods = {
       }
       const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId,
         revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
-      const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/stock", {
+      const response = await createShopifyEditorClient(this).post("stock", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId })
       }, { retryUnsafeMethods: true });
@@ -534,7 +535,7 @@ export const shopifyEditorMethods = {
     this.shopifyEditRequestRevision += 1;
     const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
     try {
-      const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/listing", {
+      const response = await createShopifyEditorClient(this).post("listing", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId, manager: true })
       }, { retryUnsafeMethods: true });
@@ -683,7 +684,7 @@ export const shopifyEditorMethods = {
       this.shopifyEditRequestRevision += 1;
       const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
       try {
-        const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/search", {
+        const response = await createShopifyEditorClient(this).post("search", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...shopifyEditScopeBody(this), query, ...(loadMore && this.shopifyEditSearchCursor ? { after: this.shopifyEditSearchCursor } : {}) })
         }, { retryUnsafeMethods: true });
