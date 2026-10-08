@@ -176,6 +176,7 @@ test("lot vertical round-trips through web and API sync DTOs and invalid values 
   const commonJs = createRequire(import.meta.url)("../shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
   const api = createRequire(import.meta.url)("../apps/api/src/shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts");
   assert.deepEqual(commonJs.toSyncLotDtos(input), expected);
+  assert.deepEqual(api.toSyncLotDtos(input), expected);
 });
 
 test("Shopify lot opt-in preserves both boolean values across sync runtimes", async () => {

@@ -3,15 +3,20 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// API-only installs (including deployment builds) also have the pinned compiler.
-const require = createRequire(import.meta.url);
+// Standalone API/realtime CI installs also provide a compatible compiler.
+const compilerLocations = [import.meta.url,
+  new URL("../apps/api/package.json", import.meta.url),
+  new URL("../apps/realtime/package.json", import.meta.url)];
 let ts;
-try {
-  ts = require("typescript");
-} catch (error) {
-  if (error.code !== "MODULE_NOT_FOUND") throw error;
-  ts = createRequire(new URL("../apps/api/package.json", import.meta.url))("typescript");
+for (const location of compilerLocations) {
+  try {
+    ts = createRequire(location)("typescript");
+    break;
+  } catch (error) {
+    if (error.code !== "MODULE_NOT_FOUND") throw error;
+  }
 }
+if (!ts) throw new Error("Install root, API or realtime dev dependencies before generating shared contracts.");
 
 const args = process.argv.slice(2);
 const rootIndex = args.indexOf("--root");
@@ -22,10 +27,10 @@ const check = args.includes("--check");
 const contracts = [
   { name: "box-inventory", api: true },
   { name: "game-public-session-contracts", api: true },
-  { name: "scope-keys", api: false },
+  { name: "scope-keys", api: true },
   { name: "sync-contracts", api: true },
   { name: "whatnot-import-contracts", api: true },
-  { name: "workspace-realtime-rooms", api: false }
+  { name: "workspace-realtime-rooms", realtime: true }
 ];
 const sourceFiles = contracts.map(({ name }) => path.join(root, "shared/contracts", `${name}.ts`));
 const compilerOptions = {
@@ -52,7 +57,8 @@ if (diagnostics.length) {
 }
 program.emit(undefined, (file, body) => declarations.set(path.basename(file), body));
 const outputs = new Map();
-for (const { name, api } of contracts) {
+for (const { name, api, realtime } of contracts) {
+  const serviceTargets = [api ? "api" : null, realtime ? "realtime" : null].filter(Boolean);
   const source = readFileSync(path.join(root, "shared/contracts", `${name}.ts`), "utf8");
   const banner = `// Generated from shared/contracts/${name}.ts. Run npm run shared:generate.\n`;
   for (const [suffix, module] of [["mjs", ts.ModuleKind.ESNext], ["cjs", ts.ModuleKind.CommonJS]]) {
@@ -60,7 +66,9 @@ for (const { name, api } of contracts) {
       ...compilerOptions, declaration: false, emitDeclarationOnly: false, module
     } }).outputText;
     outputs.set(`shared/${name}.${suffix}`, banner + body);
-    if (api && suffix === "cjs") outputs.set(`apps/api/src/shared/${name}.cjs`, banner + body);
+    if (suffix === "cjs") {
+      for (const service of serviceTargets) outputs.set(`apps/${service}/src/shared/${name}.cjs`, banner + body);
+    }
   }
   const declaration = declarations.get(`${name}.d.ts`);
   if (!declaration) throw new Error(`Compiler did not emit declarations for ${name}`);
@@ -68,10 +76,10 @@ for (const { name, api } of contracts) {
   for (const suffix of ["d.mts", "d.cts"]) {
     outputs.set(`shared/${name}.${suffix}`, `export * from "./${name}.js";\n`);
   }
-  if (api) {
+  for (const service of serviceTargets) {
     // Local declarations keep both runtime and type consumers isolated from the web tree.
-    outputs.set(`apps/api/src/shared/${name}.d.cts`, banner + declaration);
-    outputs.set(`apps/api/src/shared/${name}.d.ts`, `export * from "./${name}.cjs";\n`);
+    outputs.set(`apps/${service}/src/shared/${name}.d.cts`, banner + declaration);
+    outputs.set(`apps/${service}/src/shared/${name}.d.ts`, `export * from "./${name}.cjs";\n`);
   }
 }
 const stale = [];

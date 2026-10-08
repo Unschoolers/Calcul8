@@ -24,3 +24,21 @@ test("scope key helpers reject blank ids", () => {
   assert.equal(buildEntitlementDocumentId("workspace", "   "), null);
   assert.equal(buildSyncScopePartitionKey("user", " "), null);
 });
+
+
+test("API scope ids preserve nullish normalization for falsy external inputs", () => {
+  for (const [input, expected] of [[0, "0"], [false, "false"], [NaN, "NaN"], [" padded ", "padded"]] as const) {
+    assert.equal(buildEntitlementScopeKey("user", input), `user:${expected}`);
+    assert.equal(buildEntitlementScopeKey("workspace", input), `ws:${expected}`);
+    assert.equal(buildEntitlementDocumentId("user", input), `entitlement:user:${expected}`);
+    assert.equal(buildSyncScopePartitionKey("user", input), `u:${expected}`);
+    assert.equal(buildSyncScopePartitionKey("workspace", input), `ws:${expected}`);
+    assert.equal(buildLegacyUserEntitlementDocumentId(input), `entitlement:${expected}`);
+  }
+  for (const input of [null, undefined, "", "   "]) {
+    assert.equal(buildEntitlementScopeKey("user", input), null);
+    assert.equal(buildEntitlementDocumentId("workspace", input), null);
+    assert.equal(buildSyncScopePartitionKey("user", input), null);
+    assert.equal(buildLegacyUserEntitlementDocumentId(input), "entitlement:");
+  }
+});

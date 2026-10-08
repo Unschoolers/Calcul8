@@ -70,7 +70,7 @@ jobs:
             esac
 
             case "${file}" in
-              apps/realtime/*|shared/*|apps/realtime/package.json|apps/realtime/package-lock.json|package.json|package-lock.json|.github/workflows/ci.yml)
+              apps/realtime/*|shared/*|apps/realtime/package.json|apps/realtime/package-lock.json|package.json|package-lock.json|scripts/generate-shared-contracts.mjs|.github/workflows/ci.yml)
                 realtime=true
                 ;;
             esac

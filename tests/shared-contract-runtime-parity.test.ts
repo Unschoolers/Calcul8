@@ -7,9 +7,11 @@ import * as scopes from "../shared/scope-keys.mjs";
 import * as sync from "../shared/sync-contracts.mjs";
 import * as whatnot from "../shared/whatnot-import-contracts.mjs";
 import * as rooms from "../shared/workspace-realtime-rooms.mjs";
+import * as apiScopes from "../apps/api/src/lib/scopeKeys";
+import * as realtimeRooms from "../apps/realtime/src/workspace-realtime-rooms";
 
 type Case = { method: string; args: unknown[]; expected: unknown };
-const contracts: { name: string; browser: Record<string, unknown>; api?: boolean; cases: Case[] }[] = [
+const contracts: { name: string; browser: Record<string, unknown>; api?: boolean; service?: Record<string, unknown>; cases: Case[] }[] = [
   { name: "box-inventory", browser: boxes, api: true, cases: [
     { method: "calculateSealedBoxInventory", args: [{ boxesPurchased: 3, packsPerBox: 10 }, [{ type: "pack", quantity: 2, packsCount: 2 }]],
       expected: { sealedBoxes: 2, openedBoxes: 1, loosePacks: 8, valid: true } },
@@ -19,7 +21,7 @@ const contracts: { name: string; browser: Record<string, unknown>; api?: boolean
   { name: "game-public-session-contracts", browser: games, api: true, cases: [
     { method: "normalizeGamePublicSessionSnapshot", args: [null, 999], expected: null }
   ] },
-  { name: "scope-keys", browser: scopes, cases: [
+  { name: "scope-keys", browser: scopes, api: true, service: apiScopes, cases: [
     { method: "buildEntitlementScopeKey", args: ["workspace", " team-42 "], expected: "ws:team-42" },
     { method: "buildSyncScopePartitionKey", args: ["user", " alice "], expected: "u:alice" },
     { method: "buildEntitlementDocumentId", args: ["user", ""], expected: null }
@@ -34,7 +36,7 @@ const contracts: { name: string; browser: Record<string, unknown>; api?: boolean
       expected: { externalOrderId: "order-1", externalOrderItemId: "item-1", externalSaleId: "order-1:item-1", title: "Cards", quantity: 2, price: 4.5, buyerShipping: 0, date: "2026-09-14", orderStatus: "COMPLETED" } },
     { method: "normalizeWhatnotImportDecision", args: [null], expected: null }
   ] },
-  { name: "workspace-realtime-rooms", browser: rooms, cases: [
+  { name: "workspace-realtime-rooms", browser: rooms, service: realtimeRooms, cases: [
     { method: "buildWorkspaceLotRealtimeRoom", args: ["team-42", 7], expected: "workspace:team-42:lot:7" },
     { method: "buildGamePublicSessionRealtimeRoom", args: [" ABC123 "], expected: "wheel-public:abc123" },
     { method: "parseWorkspacePresenceRealtimeRoom", args: ["workspace:team-42:presence"], expected: "team-42" },
@@ -43,10 +45,11 @@ const contracts: { name: string; browser: Record<string, unknown>; api?: boolean
 ];
 
 for (const contract of contracts) {
-  test(`${contract.name} browser, root CommonJS and available API entry points agree`, () => {
+  test(`${contract.name} browser, root CommonJS and available service entry points agree`, () => {
     const require = createRequire(import.meta.url);
     const codecs = [contract.browser, require(`../shared/${contract.name}.cjs`) as Record<string, unknown>];
     if (contract.api) codecs.push(require(`../apps/api/src/shared/${contract.name}.cjs`) as Record<string, unknown>);
+    if (contract.service) codecs.push(contract.service);
     for (const codec of codecs) {
       assert.deepEqual(Object.keys(codec).sort(), Object.keys(contract.browser).sort());
       for (const fixture of contract.cases) {
