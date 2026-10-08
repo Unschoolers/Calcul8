@@ -132,7 +132,7 @@ export function saveSaleAuthoritatively(
             deps.cacheSales(context, lotId, latestSales);
             persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
           } catch (error) {
-            throw new CachePersistenceError(error);
+            return { kind: "failure", error, stage: "cache", cloudConfirmed: true };
           }
         }
         if (context.currentLotId === lotId) {
@@ -239,18 +239,25 @@ export function deleteSaleWithPersistence(
       const currentLotId = context.currentLotId;
       const sale = context.sales.find((entry) => entry.id === saleId) ?? null;
       if (!currentLotId || !sale || !deps.canUseAuthoritativeApi()) {
-        try {
-          context.sales = removeById(context.sales, saleId);
-          deps.refreshCharts(context);
-          resolve({
-            kind: "confirmed",
-            persistence: "local",
-            cache: "saved",
-            cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
-          });
-        } catch (error) {
-          resolve({ kind: "failure", error, stage: "local" });
-        }
+        void (async () => {
+          try {
+            context.sales = removeById(context.sales, saleId);
+            const localOutcome = await context.saveSalesToStorage();
+            if (localOutcome.kind !== "confirmed") {
+              resolve(localOutcome);
+              return;
+            }
+            deps.refreshCharts(context);
+            resolve({
+              kind: "confirmed",
+              persistence: "local",
+              cache: "saved",
+              cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
+            });
+          } catch (error) {
+            resolve({ kind: "failure", error, stage: "local" });
+          }
+        })();
         return;
       }
       const lotId = currentLotId;
@@ -296,8 +303,13 @@ export function deleteSaleWithPersistence(
             }
             if (latestSales) {
               replaceRootLotSales(context, lotId, latestSales);
-              deps.cacheSales(context, lotId, latestSales);
-              persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
+              try {
+                deps.cacheSales(context, lotId, latestSales);
+                persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
+              } catch (cacheError) {
+                resolve({ kind: "failure", error: cacheError, stage: "cache", cloudConfirmed: true });
+                return;
+              }
             }
             resolve({ kind: "conflict", latestState: latestSales ? "loaded" : "unavailable" });
             return;
@@ -313,7 +325,8 @@ export function deleteSaleWithPersistence(
           mutationState.release();
         }
       })();
-    }
+    },
+    () => resolve({ kind: "skipped", reason: "cancelled" })
   ));
 }
 

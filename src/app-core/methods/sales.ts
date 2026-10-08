@@ -71,7 +71,7 @@ function notifySalesPersistenceOutcome(
   }
   if (outcome.kind !== "failure") return;
   const message = outcome.cloudConfirmed
-    ? "The cloud saved this sale, but the local cache could not be updated. Refresh sales before retrying."
+    ? `The cloud ${action === "save" ? "saved" : "deleted"} this sale, but the local cache could not be updated. Refresh sales before retrying.`
     : outcome.error instanceof Error && outcome.error.message.trim()
       ? outcome.error.message
       : `Failed to ${action} sale.`;
