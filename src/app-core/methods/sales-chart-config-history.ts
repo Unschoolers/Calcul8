@@ -7,6 +7,7 @@ import {
   calculateSaleNetRevenue,
 } from "../../domain/calculations.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
+import { calculateSaleConsumption } from "../../domain/box-inventory.ts";
 import type {
   Lot,
   Sale
@@ -131,7 +132,8 @@ export function buildPortfolioHistoryChartConfig(params: {
       if (!saleDate) continue;
       const netRevenue = calculateSaleNetRevenue(sale, lotFromMap.sellingTaxPercent, lotFromMap);
       netByDate.set(saleDate, (netByDate.get(saleDate) ?? 0) + netRevenue);
-      const soldUnits = Math.max(0, Number(sale.packsCount) || 0);
+      const consumption = calculateSaleConsumption(lot, sale);
+      const soldUnits = consumption.valid ? consumption.units : 0;
       if (soldUnits > 0) {
         soldByDate.set(saleDate, (soldByDate.get(saleDate) ?? 0) + soldUnits);
       }

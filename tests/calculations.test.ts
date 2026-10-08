@@ -32,6 +32,7 @@ import {
     calculateTotalPacks,
     calculateTotalRevenue,
     calculateTotalSpots,
+    getSaleProfitPreview,
     createForecastProjectionFromUnitPrice,
     createForecastScenarioFromProjection,
     createForecastScenarioFromUnitPrice
@@ -481,11 +482,15 @@ test("calculatePortfolioSellThroughTimeline trims the leading zero baseline but 
     lots: [
       {
         id: 1706745600000,
-        purchaseDate: "2026-02-01"
+        purchaseDate: "2026-02-01",
+        lotType: "bulk" as const,
+        packsPerBox: 10
       },
       {
         id: 1740787200000,
-        purchaseDate: "2026-03-01"
+        purchaseDate: "2026-03-01",
+        lotType: "bulk" as const,
+        packsPerBox: 10
       }
     ],
     allLotPerformance: [
@@ -499,7 +504,7 @@ test("calculatePortfolioSellThroughTimeline trims the leading zero baseline but 
       }
     ],
     salesByLotId: new Map([
-      [1706745600000, [{ date: "2026-02-10", packsCount: 2 }]],
+      [1706745600000, [{ date: "2026-02-10", type: "pack" as const, quantity: 2, packsCount: 2 }]],
       [1740787200000, []]
     ]),
     todayDate: "2026-03-10"
@@ -543,6 +548,37 @@ test("calculateSaleProfit allocates bulk lot cost per sold pack", () => {
 
   const expectedNet = calculateNetFromGross(160, 15, 0, 1);
   assert.equal(profit, expectedNet - 80);
+});
+
+test("Shopify box sales consume the same units and cost as equivalent manual box sales", () => {
+  const lot: Lot = {
+    id: 501, name: "Sealed case", lotType: "bulk", boxPriceCost: 100, boxesPurchased: 1,
+    packsPerBox: 10, costInputMode: "perBox", currency: "CAD", sellingCurrency: "CAD",
+    exchangeRate: 1.4, purchaseDate: "2026-03-01", purchaseShippingCost: 0,
+    purchaseTaxPercent: 0, sellingTaxPercent: 0, sellingShippingPerOrder: 0,
+    includeTax: false, spotPrice: 0, boxPriceSell: 100, packPrice: 10, targetProfitPercent: 0,
+    feeProfilePreset: "none", platformFeePercent: 0, additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only", fixedFeePerOrder: 0
+  };
+  const shopifySale: Sale = { id: 1, type: "box", quantity: 1, packsCount: 0, price: 100, buyerShipping: 0, date: "2026-03-02" };
+  const manualSale: Sale = { ...shopifySale, id: 2, packsCount: 10 };
+  const shopifySummary = calculateLotPerformanceSummary(lot, [shopifySale], 1.4);
+  const manualSummary = calculateLotPerformanceSummary(lot, [manualSale], 1.4);
+  const saleProfit = (sale: Sale) => calculateSaleProfit({
+    sale, lotType: "bulk", packsPerBox: lot.packsPerBox, sellingTaxPercent: lot.sellingTaxPercent,
+    totalCaseCost: 100, totalPacks: 10, purchaseCurrency: "CAD", sellingCurrency: "CAD", exchangeRate: 1.4
+  });
+  const salePreview = (sale: Sale) => getSaleProfitPreview({
+    sale, lotType: "bulk", packsPerBox: lot.packsPerBox, sellingTaxPercent: lot.sellingTaxPercent,
+    totalCaseCost: 100, totalPacks: 10, purchaseCurrency: "CAD", sellingCurrency: "CAD", exchangeRate: 1.4
+  });
+
+  assert.equal(shopifySummary.soldPacks, 10);
+  assert.equal(shopifySummary.soldPacks, manualSummary.soldPacks);
+  assert.equal(calculateSalesProgress(shopifySummary.soldPacks, shopifySummary.totalPacks), 100);
+  assert.equal(calculateSalesProgress(shopifySummary.soldPacks, shopifySummary.totalPacks), calculateSalesProgress(manualSummary.soldPacks, manualSummary.totalPacks));
+  assert.equal(saleProfit(shopifySale), saleProfit(manualSale));
+  assert.deepEqual(salePreview(shopifySale), salePreview(manualSale));
 });
 
 test("calculateSaleProfit uses converted cost basis for linked singles sales", () => {

@@ -1,6 +1,7 @@
 import { DEFAULT_FEE_PROFILE_FIELDS } from "../constants.ts";
 import { getTodayDate, resolveLotBusinessDate, toDateOnly } from "../shared/lot-dates.ts";
 import type { Lot, Sale } from "../types/app.ts";
+import { calculateSaleConsumption } from "./box-inventory.ts";
 import {
   calculateSaleNetRevenue,
   type FeeProfileInput
@@ -87,9 +88,9 @@ export function calculateSparklineGradient(
 }
 
 export function calculatePortfolioSellThroughTimeline(params: {
-  lots: Array<Pick<Lot, "id" | "purchaseDate" | "createdAt">>;
+  lots: Array<Pick<Lot, "id" | "purchaseDate" | "createdAt" | "lotType" | "packsPerBox">>;
   allLotPerformance: Array<Pick<{ lotId: number; totalPacks: number }, "lotId" | "totalPacks">>;
-  salesByLotId: Map<number, Array<Pick<Sale, "date" | "packsCount">>>;
+  salesByLotId: Map<number, Array<Pick<Sale, "date" | "type" | "quantity" | "packsCount">>>;
   todayDate?: string;
 }): PortfolioSellThroughPoint[] {
   const performanceByLotId = new Map(
@@ -110,7 +111,8 @@ export function calculatePortfolioSellThroughTimeline(params: {
     for (const sale of sales) {
       const saleDate = toDateOnly(sale.date);
       if (!saleDate) continue;
-      const soldUnits = Math.max(0, Number(sale.packsCount) || 0);
+      const consumption = calculateSaleConsumption(lot, sale);
+      const soldUnits = consumption.valid ? consumption.units : 0;
       if (soldUnits <= 0) continue;
       soldByDate.set(saleDate, (soldByDate.get(saleDate) ?? 0) + soldUnits);
     }

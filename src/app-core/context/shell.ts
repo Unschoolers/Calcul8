@@ -49,6 +49,7 @@ export type BaseUiContext = Pick<
   | "exchangeRate"
   | "fixedFeePerOrder"
   | "platformFeePercent"
+  | "packsPerBox"
   | "portfolioChartView"
   | "portfolioReportExpandedLotIds"
   | "preferredLanguage"

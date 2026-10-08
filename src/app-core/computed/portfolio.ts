@@ -314,6 +314,7 @@ export const portfolioComputed: PortfolioComputedObject = {
           return sum + calculateSaleProfit({
             sale,
             lotType: getLotType(lot),
+            packsPerBox: lot.packsPerBox,
             sellingTaxPercent: lot.sellingTaxPercent,
             totalCaseCost: summary.totalCost,
             totalPacks: summary.totalPacks,

@@ -1,4 +1,5 @@
 import { getSinglesSoldQuantityForEntry } from "../../../../app-core/methods/sales-core.ts";
+import { calculateSaleConsumption } from "../../../../domain/box-inventory.ts";
 import type { CommerceContext, CommerceMethodState } from "../../../../app-core/context/commerce.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
@@ -69,7 +70,8 @@ export function getRemainingPacksForWheelLot(
   if (!lot) return 0;
   const totalPacks = Math.max(0, (Number(lot.boxesPurchased) || 0) * (Number(lot.packsPerBox) || 0));
   const soldPacks = getLotSales(context, lotId).reduce((sum, sale) => {
-    return sum + Math.max(0, Math.floor(Number(sale.packsCount) || 0));
+    const consumption = calculateSaleConsumption(lot, sale);
+    return sum + (consumption.valid ? consumption.units : 0);
   }, 0);
   return Math.max(0, totalPacks - soldPacks);
 }

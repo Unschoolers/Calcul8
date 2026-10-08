@@ -8,6 +8,21 @@ export type InventorySale = {
     quantity: number;
     packsCount: number;
 };
+export type SaleConsumptionLot = Partial<BoxLot> & {
+    lotType?: "bulk" | "singles";
+};
+export type SaleConsumptionInput = InventorySale & {
+    singlesItems?: readonly {
+        quantity: number;
+    }[];
+};
+export type SaleConsumption = {
+    units: number;
+    sealedBoxes: number;
+    openedPacks: number;
+    valid: boolean;
+    error?: "invalid_lot" | "invalid_sale";
+};
 export type SealedBoxInventory = {
     sealedBoxes: number;
     openedBoxes: number;
@@ -21,6 +36,8 @@ export type BoxOpeningEvent = {
     openedAt: string | null;
     precision: "instant" | "date" | "unknown";
 };
+/** Resolve the physical inventory represented by a persisted sale without changing its stored shape. */
+declare function calculateSaleConsumption(lot: SaleConsumptionLot, sale: SaleConsumptionInput): SaleConsumption;
 declare function calculateSealedBoxInventory(lot: BoxLot, sales: readonly InventorySale[]): SealedBoxInventory;
 declare function deriveBoxOpeningEvents(lot: BoxLot, sales: readonly (InventorySale & {
     id?: number;
@@ -34,4 +51,4 @@ declare function deriveBoxOpeningEvents(lot: BoxLot, sales: readonly (InventoryS
     events: [];
     error: "invalid_lot" | "invalid_sale" | "oversold";
 };
-export { calculateSealedBoxInventory, deriveBoxOpeningEvents };
+export { calculateSaleConsumption, calculateSealedBoxInventory, deriveBoxOpeningEvents };

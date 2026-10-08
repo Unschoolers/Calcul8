@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import assert from "node:assert/strict";
-import { calculateSealedBoxInventory, deriveBoxOpeningEvents } from "../src/domain/box-inventory.ts";
+import { calculateSaleConsumption, calculateSealedBoxInventory, deriveBoxOpeningEvents } from "../src/domain/box-inventory.ts";
 import type { Sale } from "../src/types/app.ts";
 
 type InventorySale = Pick<Sale, "type" | "quantity" | "packsCount">;
@@ -17,7 +17,24 @@ describe("sealed box inventory", () => {
 
   it("counts box sales only as sealed boxes, despite their packsCount", () => {
     expect(calculateSealedBoxInventory(lot, [box(1)])).toMatchObject({ valid: true, sealedBoxes: 2, openedBoxes: 0, loosePacks: 0 });
+    expect(calculateSealedBoxInventory(lot, [{ type: "box", quantity: 1, packsCount: 0 }])).toEqual(
+      calculateSealedBoxInventory(lot, [box(1)])
+    );
     expect(calculateSealedBoxInventory(lot, [box(1), pack(11)])).toMatchObject({ valid: true, sealedBoxes: 0, openedBoxes: 2, loosePacks: 9 });
+  });
+
+  it("normalizes box, pack, wheel, RTYH, and singles consumption with lot context", () => {
+    expect(calculateSaleConsumption({ ...lot, lotType: "bulk" }, { type: "box", quantity: 2, packsCount: 0 }))
+      .toMatchObject({ units: 20, sealedBoxes: 2, openedPacks: 0, valid: true });
+    expect(calculateSaleConsumption({ ...lot, lotType: "bulk" }, { type: "pack", quantity: 2, packsCount: 2 }))
+      .toMatchObject({ units: 2, sealedBoxes: 0, openedPacks: 2, valid: true });
+    expect(calculateSaleConsumption({ ...lot, lotType: "bulk" }, { type: "wheel", quantity: 1, packsCount: 4 }))
+      .toMatchObject({ units: 4, openedPacks: 4, valid: true });
+    expect(calculateSaleConsumption({ ...lot, lotType: "bulk" }, { type: "rtyh", quantity: 1, packsCount: 6 }))
+      .toMatchObject({ units: 6, openedPacks: 6, valid: true });
+    expect(calculateSaleConsumption({ ...lot, lotType: "singles" }, {
+      type: "wheel", quantity: 1, packsCount: 0, singlesItems: [{ quantity: 2 }, { quantity: 3 }]
+    })).toMatchObject({ units: 5, sealedBoxes: 0, openedPacks: 0, valid: true });
   });
 
   it("includes RTYH and wheel consumption, regardless of sale quantity", () => {

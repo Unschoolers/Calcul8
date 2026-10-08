@@ -3,6 +3,7 @@ import {
   type BuyerQuickViewSummary
 } from "../../../app-core/computed/buyer-quick-view.ts";
 import type { Lot, Sale, SinglesPurchaseEntry } from "../../../types/app.ts";
+import { calculateSaleConsumption } from "../../../domain/box-inventory.ts";
 import type { AppKpiItem } from "../../ui/AppKpiGrid.ts";
 import { useSalesWindowPorts } from "./salesWindowPorts.ts";
 
@@ -52,7 +53,11 @@ function formatSalesKpiDate(vm: Record<string, unknown>, value: string): string 
   return value;
 }
 
-function saleUnits(sale: Sale): number {
+function saleUnits(sale: Sale, lot?: Pick<Lot, "lotType" | "packsPerBox">): number {
+  if (lot) {
+    const consumption = calculateSaleConsumption(lot, sale);
+    if (consumption.valid) return consumption.units;
+  }
   return Math.max(0, Number(sale.packsCount ?? sale.quantity) || 0);
 }
 
@@ -68,14 +73,14 @@ function saleGrossRevenue(sale: Sale): number {
   return price * Math.max(1, Number(sale.quantity) || 1);
 }
 
-function topBuyerSummary(sales: Sale[]): { name: string; units: number; gross: number } | null {
+function topBuyerSummary(sales: Sale[], lot?: Pick<Lot, "lotType" | "packsPerBox">): { name: string; units: number; gross: number } | null {
   const buyers = new Map<string, { name: string; units: number; gross: number }>();
   for (const sale of sales) {
     const name = String(sale.customer || "").trim();
     if (!name) continue;
     const key = name.toLocaleLowerCase();
     const current = buyers.get(key) ?? { name, units: 0, gross: 0 };
-    current.units += saleUnits(sale);
+    current.units += saleUnits(sale, lot);
     current.gross += saleGrossRevenue(sale);
     buyers.set(key, current);
   }
@@ -269,7 +274,8 @@ export const SalesWindowDefinition = {
       const soldPercent = totalItems > 0 ? (soldBasis / totalItems) * 100 : 0;
       const kpis: AppKpiItem[] = [];
       const lastSale = sales[0];
-      const topBuyer = topBuyerSummary(sales);
+      const lot = { lotType: this.currentLotType, packsPerBox: Number(this.packsPerBox) || 0 } as Pick<Lot, "lotType" | "packsPerBox">;
+      const topBuyer = topBuyerSummary(sales, lot);
 
       kpis.push({
         id: "revenue",
@@ -323,7 +329,7 @@ export const SalesWindowDefinition = {
         label: resolveSalesTranslation(this, "salesKpiLastSaleLabel", "Last sale"),
         value: lastSale ? formatSalesKpiDate(this, lastSale.date) : resolveSalesTranslation(this, "salesKpiNoSalesValue", "None"),
         meta: lastSale
-          ? `${formatSalesKpiUnits(this, saleUnits(lastSale))} ${resolveSalesTranslation(this, saleUnits(lastSale) === 1 ? "salesKpiItemNetMeta" : "salesKpiItemsNetMeta", saleUnits(lastSale) === 1 ? "item net" : "items net")} $${formatSalesKpiCurrency(this, saleNetRevenue(lastSale))}`
+          ? `${formatSalesKpiUnits(this, saleUnits(lastSale, lot))} ${resolveSalesTranslation(this, saleUnits(lastSale, lot) === 1 ? "salesKpiItemNetMeta" : "salesKpiItemsNetMeta", saleUnits(lastSale, lot) === 1 ? "item net" : "items net")} $${formatSalesKpiCurrency(this, saleNetRevenue(lastSale))}`
           : resolveSalesTranslation(this, "salesKpiNoSalesMeta", "Record a sale to start tracking"),
         icon: "mdi-calendar-clock",
         tone: "neutral"

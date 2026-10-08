@@ -13,6 +13,8 @@ import * as realtimeRooms from "../apps/realtime/src/workspace-realtime-rooms";
 type Case = { method: string; args: unknown[]; expected: unknown };
 const contracts: { name: string; browser: Record<string, unknown>; api?: boolean; service?: Record<string, unknown>; cases: Case[] }[] = [
   { name: "box-inventory", browser: boxes, api: true, cases: [
+    { method: "calculateSaleConsumption", args: [{ packsPerBox: 10, lotType: "bulk" }, { type: "box", quantity: 1, packsCount: 0 }],
+      expected: { units: 10, sealedBoxes: 1, openedPacks: 0, valid: true } },
     { method: "calculateSealedBoxInventory", args: [{ boxesPurchased: 3, packsPerBox: 10 }, [{ type: "pack", quantity: 2, packsCount: 2 }]],
       expected: { sealedBoxes: 2, openedBoxes: 1, loosePacks: 8, valid: true } },
     { method: "calculateSealedBoxInventory", args: [{ boxesPurchased: -1, packsPerBox: 10 }, []],

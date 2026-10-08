@@ -1,4 +1,5 @@
 import { DEFAULT_VALUES } from "../constants.ts";
+import { calculateSaleConsumption } from "./box-inventory.ts";
 import { isSinglesLot } from "../shared/lot-types.ts";
 import type {
   Lot,
@@ -123,8 +124,16 @@ export function calculateTotalSpots(
   return boxes * spots;
 }
 
-export function calculateSoldPacksCount(sales: Sale[]): number {
-  return sales.reduce((sum, sale) => sum + (sale.packsCount || 0), 0);
+export function calculateSoldPacksCount(
+  sales: Sale[],
+  lot?: Pick<Lot, "lotType" | "packsPerBox">
+): number {
+  return sales.reduce((sum, sale) => {
+    const consumption = lot
+      ? calculateSaleConsumption(lot, sale)
+      : { units: sale.packsCount || 0, valid: true };
+    return sum + (consumption.valid ? consumption.units : 0);
+  }, 0);
 }
 
 export function calculateSalesProgress(soldPacksCount: number, totalPacks: number): number {
@@ -171,7 +180,7 @@ export function calculateLotPerformanceSummary(
   const totalPacks = isSinglesLotType
     ? (singlesTotalCostInSellingCurrency > 0 ? singlesTotals.totalQuantity : 0)
     : calculateTotalPacks(lot.boxesPurchased, lot.packsPerBox, 16);
-  const soldPacks = calculateSoldPacksCount(sales);
+  const soldPacks = calculateSoldPacksCount(sales, lot);
   const totalCost = isSinglesLotType
     ? singlesTotalCostInSellingCurrency
     : calculateTotalCaseCost({

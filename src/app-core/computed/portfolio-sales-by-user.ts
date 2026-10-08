@@ -220,6 +220,7 @@ export function buildPortfolioSalesByUserChartData(params: {
           : calculateSaleProfit({
             sale,
             lotType: getLotType(lot),
+            packsPerBox: lot.packsPerBox,
             sellingTaxPercent: lot.sellingTaxPercent,
             totalCaseCost: lotSummary.totalCost,
             totalPacks: lotSummary.totalPacks,
@@ -289,6 +290,7 @@ export function buildPortfolioSalesByUserDrilldownRows(params: {
       const profit = calculateSaleProfit({
         sale,
         lotType: getLotType(lot),
+        packsPerBox: lot.packsPerBox,
         sellingTaxPercent: lot.sellingTaxPercent,
         totalCaseCost: lotSummary.totalCost,
         totalPacks: lotSummary.totalPacks,

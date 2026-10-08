@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { easeOutQuart } from "../src/app-core/shared/game-spin.ts";
-import { getWheelTierInventoryMeta } from "../src/components/windows/game/services/wheelSaleSupport.ts";
+import { getRemainingPacksForWheelLot, getWheelTierInventoryMeta } from "../src/components/windows/game/services/wheelSaleSupport.ts";
 import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/game/services/wheelDefaults.ts";
 import { seedToIndex } from "../src/components/windows/game/services/wheelFairnessLayout.ts";
 import { computeExpectedMargin } from "../src/components/windows/game/services/wheelPricing.ts";
@@ -859,6 +859,15 @@ test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => 
   assert.match(singlesMeta?.text || "", /1 item left/i);
   assert.equal(packsMeta?.warning, true);
   assert.match(packsMeta?.text || "", /1 item left/i);
+});
+
+test("wheel availability consumes Shopify box rows using lot pack size", () => {
+  const context = {
+    currentLotId: 42,
+    lots: [{ id: 42, lotType: "bulk", boxesPurchased: 2, packsPerBox: 10 }],
+    sales: [{ id: 1, type: "box", quantity: 1, packsCount: 0, price: 100, buyerShipping: 0, date: "2026-03-01" }]
+  } as never;
+  assert.equal(getRemainingPacksForWheelLot(context, 42), 10);
 });
 
 
