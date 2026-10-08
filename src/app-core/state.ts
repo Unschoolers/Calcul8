@@ -6,6 +6,8 @@ import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
 import { STORAGE_KEYS } from "./storageKeys.ts";
+import { attachFeatureStateAliases } from "./feature-state/owner-aliases.ts";
+import { createSalesFeatureState, SALES_FEATURE_STATE_KEYS } from "./feature-state/sales-state.ts";
 
 function getLocalTodayDate(): string {
   const date = new Date();
@@ -45,8 +47,9 @@ export function createInitialState(): AppState {
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
   const defaultFeeProfile = getFeeProfilePreset("whatnot");
   const systemPricingDefaults = createDefaultSystemPricingDefaults(hasProAccess ? 15 : 0);
+  const salesFeatureState = createSalesFeatureState(todayDate);
 
-  return {
+  const state: AppState = {
     hasProAccess,
     preferredLanguage,
     guidedOnboardingStatus: "idle",
@@ -181,32 +184,7 @@ export function createInitialState(): AppState {
     showProfitCalculator: false,
 
     // Sales tracking
-    sales: [],
-    salesByLotId: new Map(),
-    showAddSaleModal: false,
-    editingSale: null,
-    newSale: {
-      type: "pack",
-      quantity: null,
-      packsCount: null,
-      singlesPurchaseEntryId: null,
-      singlesItems: [
-        {
-          lineId: 1,
-          singlesPurchaseEntryId: null,
-          quantity: 1,
-          price: null
-        }
-      ],
-      price: 0,
-      customer: "",
-      memo: "",
-      buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
-      date: todayDate
-    },
-
-    salesChart: null,
-    chartView: "sparkline",
+    ...salesFeatureState,
     portfolioChart: null,
     portfolioSalesByUserChart: null,
     lotSearchQuery: "",
@@ -282,7 +260,6 @@ export function createInitialState(): AppState {
     syncStatusResetTimeoutId: null,
     workspaceRealtimeStatus: "idle",
     offlineReconnectIntervalId: null,
-    salesCacheEpoch: 0,
     whatnotFeeDateOnly: todayDate,
     whatnotConnectionStatus: "unconfigured",
     shopifyBindingsSummary: null,
@@ -363,4 +340,5 @@ export function createInitialState(): AppState {
     wheelSpinVerificationUrl: "",
     wheelSpinAlgorithm: ""
   };
+  return attachFeatureStateAliases(state, "salesFeatureState", salesFeatureState, SALES_FEATURE_STATE_KEYS);
 }

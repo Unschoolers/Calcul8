@@ -601,6 +601,10 @@ export interface BuyerProfilePendingMutation {
 }
 
 export interface AppState extends LotSetup {
+  /** Focused owners are assembled by the composition root; legacy field names remain reactive aliases. */
+  salesFeatureState?: Record<string, unknown>;
+  integrationFeatureState?: Record<string, unknown>;
+  gameSessionFeatureState?: Record<string, unknown>;
   hasProAccess: boolean;
   preferredLanguage: string;
   guidedOnboardingStatus: GuidedOnboardingStatus;

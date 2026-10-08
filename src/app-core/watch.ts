@@ -15,6 +15,7 @@ import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/wo
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { scheduleTabPrewarm } from "./tab-prewarm.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
+import { resetActiveSales } from "./feature-state/sales-state.ts";
 
 const TAB_SALES_FRESHNESS_DELAY_MS = 500;
 const TAB_CHART_SETTLE_DELAY_MS = 250;
@@ -296,14 +297,7 @@ export const appWatch: AppWatchObject = {
     if (!newVal) {
       stopWorkspaceRealtime(this);
       this.currentTab = "config";
-      this.sales = [];
-      if (this.salesChart) {
-        const maybeDestroy = (this.salesChart as { destroy?: () => void }).destroy;
-        if (typeof maybeDestroy === "function") {
-          maybeDestroy.call(this.salesChart);
-        }
-        this.salesChart = null;
-      }
+      resetActiveSales(this);
       return;
     }
 
