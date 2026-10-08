@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { getStoredCsrfToken } from "../src/app-core/auth/index.ts";
+import { getStoredCsrfToken, setStoredCsrfToken } from "../src/app-core/auth/index.ts";
 import { fetchAuthenticatedApiResponse, fetchWithRetry } from "../src/app-core/methods/ui/common/api-client.ts";
 
 afterEach(() => {
@@ -71,6 +71,30 @@ test("fetchWithRetry keeps CSRF headers and stores the rotated session token", a
   const requestHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
   assert.equal(requestHeaders.get("x-csrf-token"), "csrf-old");
   assert.equal(getStoredCsrfToken(), "csrf-next");
+});
+
+test("fetchWithRetry preserves response metadata while linking the streamed body to caller abort", async () => {
+  const controller = new AbortController();
+  const response = new Response(new ReadableStream<Uint8Array>({
+    start(streamController) {
+      streamController.enqueue(new TextEncoder().encode("{"));
+    }
+  }), { status: 206, statusText: "Partial Content", headers: { "x-result": "kept" } });
+  Object.defineProperty(response, "url", { value: "https://api.example.test/resource" });
+  Object.defineProperty(response, "redirected", { value: true });
+  const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(response);
+  vi.stubGlobal("fetch", fetchMock);
+
+  const linked = await fetchWithRetry("https://api.example.test/resource", { signal: controller.signal }, { maxAttempts: 1 });
+
+  assert.equal(linked.status, 206);
+  assert.equal(linked.statusText, "Partial Content");
+  assert.equal(linked.headers.get("x-result"), "kept");
+  assert.equal(linked.url, response.url);
+  assert.equal(linked.redirected, true);
+  const readBody = linked.json();
+  controller.abort();
+  await assert.rejects(readBody, (error: unknown) => error instanceof DOMException && error.name === "AbortError");
 });
 
 test("fetchWithRetry does not retry unsafe writes without an explicit idempotent policy", async () => {
@@ -192,7 +216,48 @@ test("an aborted caller waiting for shared auth refresh does not cancel other ca
   }
 });
 
-test("an unsafe authenticated request is not replayed after refresh without an explicit policy", async () => {
+test("an unsafe authenticated request is replayed after a successful 401 refresh", async () => {
+  const originalStorage = (globalThis as { localStorage?: Storage }).localStorage;
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) }
+  });
+  setStoredCsrfToken("csrf-mutation");
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  let protectedCalls = 0;
+  const fetchMock = vi.fn<typeof fetch>(async input => {
+    if (String(input).endsWith("/auth/refresh")) {
+      return new Response(JSON.stringify({ userId: "user-1" }), { status: 200 });
+    }
+    protectedCalls += 1;
+    return new Response(protectedCalls === 1 ? "unauthorized" : "ok", { status: protectedCalls === 1 ? 401 : 200 });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const response = await fetchAuthenticatedApiResponse(
+      { googleAuthEpoch: 0, hasProAccess: false } as never,
+      "/mutate",
+      { method: "POST", headers: new Headers([["x-mutation-tag", "mutation-1"]]), body: JSON.stringify({ mutationId: "mutation-1" }) }
+    );
+    assert.equal(response.status, 200);
+    assert.equal(protectedCalls, 2);
+    const protectedRequestCalls = fetchMock.mock.calls.filter(([input]) => !String(input).endsWith("/auth/refresh"));
+    assert.equal(protectedRequestCalls[0]?.[1]?.headers instanceof Headers, true);
+    for (const [, init] of protectedRequestCalls) {
+      assert.equal(new Headers(init?.headers).get("x-mutation-tag"), "mutation-1");
+      assert.equal(new Headers(init?.headers).get("x-csrf-token"), "csrf-mutation");
+    }
+    const protectedBodies = protectedRequestCalls.map(([, init]) => init?.body);
+    assert.deepEqual(protectedBodies, [JSON.stringify({ mutationId: "mutation-1" }), JSON.stringify({ mutationId: "mutation-1" })]);
+    assert.equal(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/auth/refresh")).length, 1);
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: originalStorage });
+  }
+});
+
+test("an unsafe authenticated request can replay after caller-provided credential bootstrap", async () => {
   const originalStorage = (globalThis as { localStorage?: Storage }).localStorage;
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
@@ -201,24 +266,47 @@ test("an unsafe authenticated request is not replayed after refresh without an e
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
   let protectedCalls = 0;
   const fetchMock = vi.fn<typeof fetch>(async input => {
-    if (String(input).endsWith("/auth/refresh")) {
-      return new Response(JSON.stringify({ userId: "user-1" }), { status: 200 });
-    }
+    if (String(input).endsWith("/auth/refresh")) return new Response("unauthorized", { status: 401 });
     protectedCalls += 1;
-    return new Response("unauthorized", { status: 401 });
+    return new Response("{}", { status: protectedCalls === 1 ? 401 : 200 });
   });
   vi.stubGlobal("fetch", fetchMock);
+  const bootstrapAuthOn401 = vi.fn(async () => true);
+  const app = { googleAuthEpoch: 0, hasProAccess: false };
 
   try {
-    const response = await fetchAuthenticatedApiResponse(
-      { googleAuthEpoch: 0, hasProAccess: false } as never,
-      "/mutate",
-      { method: "POST", body: JSON.stringify({ mutationId: "mutation-1" }) }
-    );
-    assert.equal(response.status, 401);
-    assert.equal(protectedCalls, 1);
-    assert.equal(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/auth/refresh")).length, 1);
+    const response = await fetchAuthenticatedApiResponse(app as never, "/workspaces", {
+      method: "POST",
+      headers: [["x-bootstrap-tag", "mutation-2"]],
+      body: JSON.stringify({ mutationId: "mutation-2" })
+    }, { expireAuthOn401: false, bootstrapAuthOn401 });
+
+    assert.equal(response.status, 200);
+    assert.equal(bootstrapAuthOn401.mock.calls.length, 1);
+    assert.equal(protectedCalls, 2);
+    const protectedCallsWithHeaders = fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/workspaces"));
+    assert.equal(new Headers(protectedCallsWithHeaders[0]?.[1]?.headers).get("x-bootstrap-tag"), "mutation-2");
+    assert.equal(new Headers(protectedCallsWithHeaders[1]?.[1]?.headers).get("x-bootstrap-tag"), "mutation-2");
+    assert.equal(app.googleAuthEpoch, 0);
   } finally {
     Object.defineProperty(globalThis, "localStorage", { configurable: true, value: originalStorage });
   }
+});
+
+test("caller abort cancels a response body read after fetch has returned headers", async () => {
+  const controller = new AbortController();
+  let bodyCancelled = false;
+  const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(new Response(new ReadableStream<Uint8Array>({
+    start() {},
+    cancel() { bodyCancelled = true; }
+  }), { status: 200 })));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const response = await fetchWithRetry("https://api.example.test/stream", { method: "GET", signal: controller.signal });
+  const reading = response.json();
+  const rejected = assert.rejects(reading, (error: unknown) => error instanceof DOMException && error.name === "AbortError");
+  controller.abort();
+
+  await rejected;
+  assert.equal(bodyCancelled, true);
 });

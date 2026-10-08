@@ -1,12 +1,14 @@
 import {
-    buildSessionHeaders,
     getStoredCsrfToken,
     setStoredSessionUserId,
     setStoredCsrfToken
 } from "../../../auth/index.ts";
 import type { AuthEntitlementSessionContext } from "../../../context/entitlements.ts";
 import { STORAGE_KEYS } from "../../../storageKeys.ts";
+import { isApiNetworkFailure, isApiRequestAborted } from "../../../shared/api-error-message.ts";
 import { handleExpiredAuth } from "../entitlements/entitlement-cache.ts";
+
+export { isApiNetworkFailure, isApiRequestAborted } from "../../../shared/api-error-message.ts";
 
 export interface FetchRetryOptions {
   maxAttempts?: number;
@@ -94,14 +96,6 @@ function canRetryRequest(method: string | undefined, allowUnsafeRetry: boolean):
   return !isUnsafeMethod(method) || allowUnsafeRetry;
 }
 
-function isAbortError(error: unknown): boolean {
-  return (error instanceof DOMException || error instanceof Error) && error.name === "AbortError";
-}
-
-export function isApiRequestAborted(error: unknown): boolean {
-  return isAbortError(error);
-}
-
 function waitForCallerOrShared<T>(shared: Promise<T>, signal?: AbortSignal): Promise<T> {
   throwIfAborted(signal);
   if (!signal) return shared;
@@ -117,6 +111,75 @@ function waitForCallerOrShared<T>(shared: Promise<T>, signal?: AbortSignal): Pro
     );
     if (signal.aborted) onAbort();
   });
+}
+
+function linkResponseBodyToCaller(
+  response: Response,
+  callerSignal: AbortSignal | undefined,
+  requestController: AbortController,
+  removeRequestAbortListener: () => void
+): { response: Response; keepCallerListener: boolean } {
+  if (!callerSignal || !response.body) return { response, keepCallerListener: false };
+
+  const reader = response.body.getReader();
+  let outputController: ReadableStreamDefaultController<Uint8Array> | null = null;
+  let finished = false;
+  const cleanup = (): void => {
+    if (finished) return;
+    finished = true;
+    callerSignal.removeEventListener("abort", onAbort);
+    removeRequestAbortListener();
+  };
+  const onAbort = (): void => {
+    if (finished) return;
+    requestController.abort();
+    cleanup();
+    void reader.cancel(createAbortError()).catch(() => undefined);
+    outputController?.error(createAbortError());
+  };
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      outputController = controller;
+      callerSignal.addEventListener("abort", onAbort, { once: true });
+      if (callerSignal.aborted) onAbort();
+    },
+    pull(controller) {
+      if (finished) return;
+      return reader.read().then(({ done, value }) => {
+        if (finished) return;
+        if (done) {
+          cleanup();
+          controller.close();
+          return;
+        }
+        controller.enqueue(value);
+      }, error => {
+        if (finished) return;
+        cleanup();
+        controller.error(error);
+      });
+    },
+    cancel(reason) {
+      if (!finished) {
+        cleanup();
+        return reader.cancel(reason);
+      }
+    }
+  });
+  const linkedResponse = new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+  Object.defineProperties(linkedResponse, {
+    url: { value: response.url },
+    redirected: { value: response.redirected },
+    type: { value: response.type }
+  });
+  return {
+    response: linkedResponse,
+    keepCallerListener: !finished
+  };
 }
 
 function parseRetryAfterMs(headers: Headers): number | null {
@@ -183,6 +246,11 @@ export async function fetchWithRetry(
     throwIfAborted(callerSignal);
     attempt += 1;
 
+    const requestHeaders = new Headers(init.headers ?? {});
+    const csrfToken = getStoredCsrfToken();
+    if (isUnsafeMethod(init.method) && csrfToken && !requestHeaders.has("x-csrf-token")) {
+      requestHeaders.set("x-csrf-token", csrfToken);
+    }
     const controller = new AbortController();
     let timedOut = false;
     const timeoutId = globalThis.setTimeout(() => {
@@ -190,12 +258,9 @@ export async function fetchWithRetry(
       controller.abort();
     }, timeoutMs);
     const forwardAbort = (): void => controller.abort();
+    const removeRequestAbortListener = (): void => callerSignal?.removeEventListener("abort", forwardAbort);
+    let keepCallerListener = false;
     callerSignal?.addEventListener("abort", forwardAbort, { once: true });
-    const requestHeaders = new Headers(init.headers ?? {});
-    const csrfToken = getStoredCsrfToken();
-    if (isUnsafeMethod(init.method) && csrfToken && !requestHeaders.has("x-csrf-token")) {
-      requestHeaders.set("x-csrf-token", csrfToken);
-    }
 
     try {
       const response = await fetch(input, {
@@ -212,7 +277,9 @@ export async function fetchWithRetry(
       }
 
       if (!isRetryableStatus(response.status) || attempt >= permittedAttempts) {
-        return response;
+        const linkedResponse = linkResponseBodyToCaller(response, callerSignal, controller, removeRequestAbortListener);
+        keepCallerListener = linkedResponse.keepCallerListener;
+        return linkedResponse.response;
       }
 
       const retryAfterMs = parseRetryAfterMs(response.headers);
@@ -222,7 +289,7 @@ export async function fetchWithRetry(
       await response.body?.cancel().catch(() => undefined);
       await sleep(delayMs, callerSignal);
     } catch (error) {
-      if (callerSignal?.aborted || (isAbortError(error) && !timedOut)) throw createAbortError();
+      if (callerSignal?.aborted || (isApiRequestAborted(error) && !timedOut)) throw createAbortError();
       if (timedOut) error = new DOMException("The request timed out.", "TimeoutError");
       if (!isRetryableError(error) || attempt >= permittedAttempts) {
         throw error;
@@ -232,7 +299,7 @@ export async function fetchWithRetry(
       await sleep(Math.min(maxRetryDelayMs, exponentialDelayMs + jitterMs), callerSignal);
     } finally {
       globalThis.clearTimeout(timeoutId);
-      callerSignal?.removeEventListener("abort", forwardAbort);
+      if (!keepCallerListener) removeRequestAbortListener();
     }
   }
 }
@@ -255,7 +322,7 @@ export async function fetchAuthenticatedApiResponse(
 
   const buildRequestInit = (): RequestInit => ({
     ...init,
-    headers: buildSessionHeaders(init.headers as Record<string, string> | undefined)
+    headers: new Headers(init.headers ?? {})
   });
 
   const response = await fetchWithRetry(requestUrl, buildRequestInit(), options);
@@ -266,7 +333,9 @@ export async function fetchAuthenticatedApiResponse(
       refreshed = await waitForCallerOrShared(options.bootstrapAuthOn401(init.signal ?? undefined), init.signal ?? undefined);
     }
     if (refreshed) {
-      if (!canRetryRequest(init.method, options.retryUnsafeMethods ?? false)) return response;
+      // A 401 is an explicit auth denial. Replay it once after recovery even
+      // for mutations; ambiguous failures still require an explicit policy.
+      await response.body?.cancel().catch(() => undefined);
       const retryResponse = await fetchWithRetry(requestUrl, buildRequestInit(), options);
       if (retryResponse.status !== 401) {
         return retryResponse;
