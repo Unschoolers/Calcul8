@@ -45,9 +45,8 @@ export function createSyncSession(
     baseUrl,
     isCurrentScope(): boolean {
       if (app.googleAuthEpoch !== authEpoch) return false;
-      if (options.scopeOverride) return true;
-      return getWorkspaceScopeRevision(app) === scopeRevision
-        && resolveSyncScopeContext(app).scopeKey === scope.scopeKey;
+      if (getWorkspaceScopeRevision(app) !== scopeRevision) return false;
+      return Boolean(options.scopeOverride) || resolveSyncScopeContext(app).scopeKey === scope.scopeKey;
     },
     markOffline(): void {
       app.isOffline = true;

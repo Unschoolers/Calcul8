@@ -28,7 +28,6 @@ export async function handleSyncPushConflict({
   if (lastSyncedPayloadHash && lastSyncedPayloadHash === attemptedPayloadSignature) {
     console.info("[whatfees] Cloud sync push conflict: pulling latest clean state");
     const pullOutcome = await app.pullCloudSync();
-    if (!pullOutcome) return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
     return pullOutcome.kind === "confirmed"
       ? { kind: "confirmed", persistence: "cloud", cache: pullOutcome.cache, cloud: "confirmed" }
       : { kind: "conflict", latestState: "unavailable" };

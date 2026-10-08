@@ -79,6 +79,7 @@ export async function performCloudSyncPull(
     console.info("[whatfees] Cloud sync pulled", { version: parsedSnapshot.version });
     return { kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" };
   } catch (error) {
+    if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
     if (!deps.isOnline()) {
       session.markOffline();
       deps.setSyncStatusError(app);

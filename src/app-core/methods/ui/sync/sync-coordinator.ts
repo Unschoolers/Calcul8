@@ -63,9 +63,12 @@ async function drainSyncQueue(
       try {
         outcome = await performCloudSyncPull(session, { forceApply });
       } catch (error) {
-        deps.setSyncStatusError(app);
-        console.warn("[whatfees] Cloud sync pull coordinator error", error);
-        outcome = { kind: "failure", error, stage: "sync" };
+        if (!session.isCurrentScope()) outcome = { kind: "skipped", reason: "stale-scope" };
+        else {
+          deps.setSyncStatusError(app);
+          console.warn("[whatfees] Cloud sync pull coordinator error", error);
+          outcome = { kind: "failure", error, stage: "sync" };
+        }
       } finally {
         state.activeOperation = null;
       }
@@ -86,9 +89,12 @@ async function drainSyncQueue(
     try {
       outcome = await performCloudSyncPush(session, force, { allowEmptyOverwrite, treatConflictAsSuccess });
     } catch (error) {
-      deps.setSyncStatusError(app);
-      console.warn("[whatfees] Cloud sync push coordinator error", error);
-      outcome = { kind: "failure", error, stage: "sync" };
+      if (!session.isCurrentScope()) outcome = { kind: "skipped", reason: "stale-scope" };
+      else {
+        deps.setSyncStatusError(app);
+        console.warn("[whatfees] Cloud sync push coordinator error", error);
+        outcome = { kind: "failure", error, stage: "sync" };
+      }
     } finally {
       state.activeOperation = null;
     }

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync/sync-apply.ts";
 import { getSyncScopeKey, resolveSyncScopeContext, toSyncScopeContext } from "../src/app-core/methods/ui/sync/sync-scope.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
+import { setActiveWorkspaceScope } from "../src/app-core/workspace-scope.ts";
 
 const {
   handleExpiredAuthMock,
@@ -83,7 +84,7 @@ function createApp(): any {
     getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
     loadLot: vi.fn(),
     notify: vi.fn(),
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" } as const)),
     stopCloudSyncScheduler: vi.fn(),
     handleWorkspaceAccessLost: vi.fn(async () => undefined),
     googleAuthEpoch: 0,
@@ -390,6 +391,7 @@ test("runCloudSyncPush keeps local edits intact on stale-version conflict", asyn
   app.pullCloudSync = vi.fn(async () => {
     app.lots = [{ id: 2, name: "Cloud lot that should not be auto-applied" }];
     app.wheelConfigs = [];
+    return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" } as const;
   });
   const requestCloudSyncPush = vi.fn().mockResolvedValue({
     ok: false,
@@ -538,6 +540,76 @@ test("runCloudSyncPush does not handle an access denial after the active workspa
   assert.equal(app.handleWorkspaceAccessLost.mock.calls.length, 0);
   assert.equal(pushOutcome.kind, "skipped");
   if (pushOutcome.kind === "skipped") assert.equal(pushOutcome.reason, "stale-scope");
+});
+
+test("a rejected push after auth changes settles stale without changing sync status", async () => {
+  const app = createApp();
+  const request = createDeferred<Response>();
+  const setSyncStatusError = vi.fn((target: ReturnType<typeof createApp>) => { target.syncStatus = "error"; });
+  const result = runCloudSyncPush(app, true, {
+    requestCloudSyncPush: () => request.promise,
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "auth-stale",
+    startSyncStatus: (target) => { target.syncStatus = "syncing"; },
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError,
+    hasStorageItem: () => true
+  });
+
+  app.googleAuthEpoch += 1;
+  request.reject(new Error("request aborted"));
+  assert.deepEqual(await result, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(setSyncStatusError.mock.calls.length, 0);
+  assert.equal(app.syncStatus, "syncing");
+  assert.equal(app.startOfflineReconnectScheduler.mock.calls.length, 0);
+});
+
+test("a rejected pull after workspace switch settles stale without changing new workspace status", async () => {
+  const app = createApp();
+  app.activeScopeType = "workspace";
+  app.activeWorkspaceId = "ws-before";
+  const request = createDeferred<Response>();
+  const setSyncStatusError = vi.fn((target: ReturnType<typeof createApp>) => { target.syncStatus = "error"; });
+  const result = runCloudSyncPull(app, {
+    requestCloudSyncPull: () => request.promise,
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "workspace-stale",
+    parseCloudSnapshot: vi.fn(),
+    shouldApplyCloudSnapshot: vi.fn(),
+    applyCloudSnapshotToLocal: vi.fn(),
+    startSyncStatus: (target) => { target.syncStatus = "syncing"; },
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError
+  });
+
+  setActiveWorkspaceScope(app, "workspace", "ws-after");
+  app.syncStatus = "idle";
+  request.reject(new Error("request aborted"));
+  assert.deepEqual(await result, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(setSyncStatusError.mock.calls.length, 0);
+  assert.equal(app.syncStatus, "idle");
+  assert.equal(app.startOfflineReconnectScheduler.mock.calls.length, 0);
+});
+
+test("a workspace seed override becomes stale after the workspace scope revision changes", async () => {
+  const app = createApp();
+  const request = createDeferred<Response>();
+  const result = runCloudSyncPush(app, true, {
+    requestCloudSyncPush: () => request.promise,
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "seed-stale",
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn(),
+    hasStorageItem: () => true
+  }, {
+    scopeOverride: { scopeType: "workspace", workspaceId: "ws-seed" },
+    treatConflictAsSuccess: true
+  });
+
+  setActiveWorkspaceScope(app, "workspace", "ws-current");
+  request.reject(new Error("seed request aborted"));
+  assert.deepEqual(await result, { kind: "skipped", reason: "stale-scope" });
 });
 
 test("sync scope helpers normalize personal and workspace scope keys", () => {
@@ -1202,7 +1274,7 @@ test("runCloudSyncPush skips upload and pulls cloud when local storage was clear
       date: "2026-03-09"
     }
   ];
-  const pullCloudSyncMock = vi.fn(async () => undefined);
+  const pullCloudSyncMock = vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" } as const));
   app.pullCloudSync = pullCloudSyncMock;
 
   await runCloudSyncPush(app, false, {
