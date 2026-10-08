@@ -8,7 +8,7 @@ export type InventorySale = {
     quantity: number;
     packsCount: number;
 };
-export type SaleConsumptionLot = Partial<BoxLot> & {
+export type SaleConsumptionLot = Pick<BoxLot, "packsPerBox"> & {
     lotType?: "bulk" | "singles";
 };
 export type SaleConsumptionInput = InventorySale & {

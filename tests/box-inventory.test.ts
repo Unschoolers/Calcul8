@@ -37,6 +37,14 @@ describe("sealed box inventory", () => {
     })).toMatchObject({ units: 5, sealedBoxes: 0, openedPacks: 0, valid: true });
   });
 
+  it("rejects Shopify box consumption when runtime lot context cannot provide a pack size", () => {
+    const callWithUntrustedContext = calculateSaleConsumption as unknown as (lot: unknown, sale: unknown) => unknown;
+    expect(callWithUntrustedContext({ lotType: "bulk" }, { type: "box", quantity: 1, packsCount: 0 }))
+      .toMatchObject({ units: 0, valid: false, error: "invalid_lot" });
+    expect(calculateSaleConsumption({ packsPerBox: 0, lotType: "bulk" }, { type: "box", quantity: 1, packsCount: 0 }))
+      .toMatchObject({ units: 0, valid: false, error: "invalid_lot" });
+  });
+
   it("includes RTYH and wheel consumption, regardless of sale quantity", () => {
     const sales: InventorySale[] = [
       { type: "rtyh", quantity: 1, packsCount: 6 },

@@ -294,6 +294,7 @@ test("workflow: imported singles flow into linked sales profit and final lot mar
   const saleProfit = calculateSaleProfit({
     sale: sales[0]!,
     lotType: "singles",
+    packsPerBox: lot.packsPerBox,
     sellingTaxPercent: 15,
     totalCaseCost: 0,
     totalPacks: 0,

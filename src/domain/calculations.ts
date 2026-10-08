@@ -126,12 +126,10 @@ export function calculateTotalSpots(
 
 export function calculateSoldPacksCount(
   sales: Sale[],
-  lot?: Pick<Lot, "lotType" | "packsPerBox">
+  lot: Pick<Lot, "lotType" | "packsPerBox">
 ): number {
   return sales.reduce((sum, sale) => {
-    const consumption = lot
-      ? calculateSaleConsumption(lot, sale)
-      : { units: sale.packsCount || 0, valid: true };
+    const consumption = calculateSaleConsumption(lot, sale);
     return sum + (consumption.valid ? consumption.units : 0);
   }, 0);
 }

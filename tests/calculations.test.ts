@@ -537,6 +537,7 @@ test("calculateSaleProfit allocates bulk lot cost per sold pack", () => {
       date: "2026-03-01"
     },
     lotType: "bulk",
+    packsPerBox: 16,
     sellingTaxPercent: 15,
     totalCaseCost: 100,
     totalPacks: 20,
@@ -594,6 +595,7 @@ test("calculateSaleProfit uses converted cost basis for linked singles sales", (
       date: "2026-03-01"
     },
     lotType: "singles",
+    packsPerBox: 1,
     sellingTaxPercent: 15,
     totalCaseCost: 0,
     totalPacks: 0,
@@ -627,6 +629,7 @@ test("calculateSaleProfit sums multi-line singles basis and ignores unlinked lin
       date: "2026-03-01"
     },
     lotType: "singles",
+    packsPerBox: 1,
     sellingTaxPercent: 15,
     totalCaseCost: 0,
     totalPacks: 0,
@@ -785,7 +788,7 @@ test("sales aggregates and status are calculated correctly", () => {
   ];
 
   assert.equal(calculateTotalPacks(2, 16, 16), 32);
-  assert.equal(calculateSoldPacksCount(sales), 18);
+  assert.equal(calculateSoldPacksCount(sales, { lotType: "bulk", packsPerBox: 16 }), 18);
   assert.equal(calculateSalesProgress(18, 32), 56.25);
 
   const revenue = calculateTotalRevenue(sales, 15);

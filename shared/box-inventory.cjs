@@ -15,6 +15,16 @@ function calculateSaleConsumption(lot, sale) {
     if (!Number.isSafeInteger(sale.quantity) || sale.quantity < 0 || !Number.isSafeInteger(sale.packsCount) || sale.packsCount < 0) {
         return invalidConsumption("invalid_sale");
     }
+    if (sale.type === "box") {
+        if (!Number.isSafeInteger(lot.packsPerBox) || lot.packsPerBox <= 0)
+            return invalidConsumption("invalid_lot");
+        // Manual/historical box rows already carry their sold pack count. Shopify rows
+        // intentionally persist zero, so derive only that missing physical count.
+        const units = sale.packsCount > 0 ? sale.packsCount : sale.quantity * lot.packsPerBox;
+        if (!Number.isSafeInteger(units))
+            return invalidConsumption("invalid_sale");
+        return { units, sealedBoxes: sale.quantity, openedPacks: 0, valid: true };
+    }
     if (lot.lotType === "singles") {
         let units = sale.quantity;
         if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
@@ -29,19 +39,7 @@ function calculateSaleConsumption(lot, sale) {
         }
         return { units, sealedBoxes: 0, openedPacks: 0, valid: true };
     }
-    if (sale.type === "box" && lot.packsPerBox !== undefined) {
-        if (!Number.isSafeInteger(lot.packsPerBox) || lot.packsPerBox <= 0)
-            return invalidConsumption("invalid_lot");
-        // Manual/historical box rows already carry their sold pack count. Shopify rows
-        // intentionally persist zero, so derive only that missing physical count.
-        const units = sale.packsCount > 0 ? sale.packsCount : sale.quantity * lot.packsPerBox;
-        if (!Number.isSafeInteger(units))
-            return invalidConsumption("invalid_sale");
-        return { units, sealedBoxes: sale.quantity, openedPacks: 0, valid: true };
-    }
-    return sale.type === "box"
-        ? { units: sale.packsCount, sealedBoxes: sale.quantity, openedPacks: 0, valid: true }
-        : { units: sale.packsCount, sealedBoxes: 0, openedPacks: sale.packsCount, valid: true };
+    return { units: sale.packsCount, sealedBoxes: 0, openedPacks: sale.packsCount, valid: true };
 }
 function calculateSealedBoxInventory(lot, sales) {
     const { boxesPurchased, packsPerBox } = lot;

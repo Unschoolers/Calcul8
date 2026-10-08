@@ -53,12 +53,9 @@ function formatSalesKpiDate(vm: Record<string, unknown>, value: string): string 
   return value;
 }
 
-function saleUnits(sale: Sale, lot?: Pick<Lot, "lotType" | "packsPerBox">): number {
-  if (lot) {
-    const consumption = calculateSaleConsumption(lot, sale);
-    if (consumption.valid) return consumption.units;
-  }
-  return Math.max(0, Number(sale.packsCount ?? sale.quantity) || 0);
+function saleUnits(sale: Sale, lot: Pick<Lot, "lotType" | "packsPerBox">): number {
+  const consumption = calculateSaleConsumption(lot, sale);
+  return consumption.valid ? consumption.units : 0;
 }
 
 function saleNetRevenue(sale: Sale): number {
@@ -73,7 +70,7 @@ function saleGrossRevenue(sale: Sale): number {
   return price * Math.max(1, Number(sale.quantity) || 1);
 }
 
-function topBuyerSummary(sales: Sale[], lot?: Pick<Lot, "lotType" | "packsPerBox">): { name: string; units: number; gross: number } | null {
+function topBuyerSummary(sales: Sale[], lot: Pick<Lot, "lotType" | "packsPerBox">): { name: string; units: number; gross: number } | null {
   const buyers = new Map<string, { name: string; units: number; gross: number }>();
   for (const sale of sales) {
     const name = String(sale.customer || "").trim();

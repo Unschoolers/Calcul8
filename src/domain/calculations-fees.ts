@@ -577,7 +577,7 @@ export function calculateProfitForListing(
 export function calculateSaleProfit(params: {
   sale: Sale;
   lotType: LotType;
-  packsPerBox?: number;
+  packsPerBox: number;
   sellingTaxPercent: number;
   totalCaseCost: number;
   totalPacks: number;
@@ -615,7 +615,7 @@ export function calculateSaleProfit(params: {
 export function getSaleProfitPreview(params: {
   sale: Sale;
   lotType: LotType;
-  packsPerBox?: number;
+  packsPerBox: number;
   sellingTaxPercent: number;
   totalCaseCost: number;
   totalPacks: number;
