@@ -2,6 +2,7 @@ import type { WorkspaceUiHelperContext } from "../../../context/workspace.ts";
 import type { WorkspaceSummary } from "../../../../types/app.ts";
 import { getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_KEYS } from "../../../storageKeys.ts";
 import { resolveWorkspaceScopeContext, setActiveWorkspaceScope, sortWorkspacesByName } from "../../../workspace-scope.ts";
+import { handleBackgroundPersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
 
 type WorkspaceApiError = {
   code?: unknown;
@@ -179,7 +180,8 @@ export async function applyWorkspaceScope(
   loadScopedAppState(app);
 
   if (options.pullFromCloud !== false && options.getGoogleIdToken()) {
-    await app.pullCloudSync();
+    const outcome = await app.pullCloudSync();
+    handleBackgroundPersistenceOutcome(outcome, "Workspace scope pull");
   }
 }
 

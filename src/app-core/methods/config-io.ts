@@ -231,12 +231,17 @@ export const configIoMethods = {
         importedSnapshot = parseCloudSnapshot(responsePayload.snapshot);
         applyImportedSnapshot(importedSnapshot);
       }
-      await this.pullCloudSync(true);
+      const syncOutcome = await this.pullCloudSync(true);
       if (importedSnapshot) {
         // The import response is the explicit admin overwrite; a stale follow-up pull must not win.
         applyImportedSnapshot(importedSnapshot);
       }
-      this.notify(`Imported cloud sync data from user ${sourceUserId}.`, "success");
+      this.notify(
+        syncOutcome.kind === "confirmed"
+          ? `Imported cloud sync data from user ${sourceUserId}.`
+          : `Imported data from user ${sourceUserId}, but cloud sync was not confirmed (${syncOutcome.kind}).`,
+        syncOutcome.kind === "confirmed" ? "success" : "warning"
+      );
       await hydrateImportedAuthoritativeSales(this);
     } catch (error) {
       console.warn("Failed to import sync data from source user:", error);

@@ -80,7 +80,7 @@ function createContext() {
     loadLot: vi.fn(),
     notify: vi.fn(),
     pushCloudSync: vi.fn(),
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     handleWorkspaceAccessLost: vi.fn(async () => undefined)
   };
 }
@@ -439,7 +439,7 @@ test("pushCloudSync skips upload and pulls cloud when local storage was cleared 
       date: "2026-03-09"
     }
   ];
-  const pullCloudSyncMock = vi.fn(async () => undefined);
+  const pullCloudSyncMock = vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" }));
   ctx.pullCloudSync = pullCloudSyncMock;
 
   await uiSyncMethods.pushCloudSync.call(ctx, false);
@@ -466,7 +466,7 @@ test("pushCloudSync throttles repeated recovery pulls after local storage reset"
       date: "2026-03-09"
     }
   ];
-  const pullCloudSyncMock = vi.fn(async () => undefined);
+  const pullCloudSyncMock = vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" }));
   ctx.pullCloudSync = pullCloudSyncMock;
 
   const dateNowSpy = vi.spyOn(Date, "now");
@@ -499,7 +499,7 @@ test("pushCloudSync pulls first when scoped local data is corrupt", async () => 
   errorSpy.mockRestore();
 });
 
-test("pullCloudSync handles workspace access loss using the scope resolved at request time", async () => {
+test("pullCloudSync skips a workspace response after the active scope changes", async () => {
   const ctx = createContext();
   ctx.activeScopeType = "workspace";
   ctx.activeWorkspaceId = "team-42";
@@ -535,7 +535,5 @@ test("pullCloudSync handles workspace access loss using the scope resolved at re
 
   await pullPromise;
 
-  assert.equal(ctx.handleWorkspaceAccessLost.mock.calls.length, 1);
-  const accessLostCalls = ctx.handleWorkspaceAccessLost.mock.calls as unknown as Array<[string]>;
-  assert.equal(accessLostCalls[0]?.[0], "team-42");
+  assert.equal(ctx.handleWorkspaceAccessLost.mock.calls.length, 0);
 });

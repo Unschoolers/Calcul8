@@ -147,6 +147,12 @@ function createContext(overrides: Ctx = {}): Ctx {
     formatDate: (value: string) => `D:${value}`,
     loadSalesForLotId: vi.fn().mockReturnValue([]),
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`,
+    saveSalesToStorage: vi.fn(async () => ({
+      kind: "confirmed",
+      persistence: "local",
+      cache: "saved",
+      cloud: "unavailable"
+    })),
     askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm()),
     notify: vi.fn(),
     cancelSale: vi.fn(),
@@ -346,7 +352,7 @@ test("saveSale persists customer data with the sale", () => {
   assert.equal((ctx.sales as Sale[])[0]?.customer, "Jamie");
 });
 
-test("deleteSale confirms and refreshes charts for current tab", () => {
+test("deleteSale confirms and refreshes charts for current tab after persistence", async () => {
   const ctx = createContext({
     sales: [
       {
@@ -368,7 +374,7 @@ test("deleteSale confirms and refreshes charts for current tab", () => {
     ]
   });
 
-  salesMethods.deleteSale.call(ctx as never, 1);
+  await salesMethods.deleteSale.call(ctx as never, 1);
   assert.equal((ctx.sales as Sale[]).length, 1);
   assert.equal((ctx.initSalesChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
@@ -1003,7 +1009,7 @@ test("saveSale stores RTYH packsCount and normalizes invalid date", () => {
   assert.equal(saved.date, "2026-02-21");
 });
 
-test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", () => {
+test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", async () => {
   const initPortfolioChart = vi.fn();
   const initSalesChart = vi.fn();
   const nextTick = vi.fn((cb: () => void) => cb());
@@ -1023,7 +1029,7 @@ test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", 
     }
   });
 
-  salesMethods.saveSale.call(ctx as never);
+  await salesMethods.saveSale.call(ctx as never);
 
   assert.equal(nextTick.mock.calls.length, 1);
   assert.equal(initPortfolioChart.mock.calls.length, 1);

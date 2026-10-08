@@ -27,6 +27,7 @@ import type { ScopedApiContext } from "./api.ts";
 import type { SyncMethodState } from "./sync.ts";
 import type { WorkspaceComputedState } from "./workspace.ts";
 import type { WhatnotFeePeriodSummary } from "../shared/whatnot-fee-summary.ts";
+import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
 import type {
   BindingAction,
   BindingMutation,
@@ -199,7 +200,7 @@ export interface CommerceMethodState {
   onPurchaseConfigChange(): void;
   calculatePriceForUnits(units: number, targetNetRevenue: number): number;
   loadSalesFromStorage(): void;
-  saveSalesToStorage(): void;
+  saveSalesToStorage(): Promise<PersistenceOutcome>;
   openAddSaleModal(saleType?: SaleType): void;
   openConvertLiveSinglesSaleModal(lines: SinglesSaleLine[], options?: { buyerShipping?: number; memo?: string; date?: string }): void;
   onNewSaleTypeChange(type: SaleType): void;
@@ -210,9 +211,9 @@ export interface CommerceMethodState {
   onSinglesSaleLineQuantityChange(lineIndex: number, value?: number | string | null): void;
   onSinglesSaleLinePriceChange(): void;
   getSinglesSaleLineMaxQuantity(lineIndex: number): number | null;
-  saveSale(): void;
+  saveSale(): Promise<PersistenceOutcome>;
   editSale(sale: Sale): void;
-  deleteSale(id: number): void;
+  deleteSale(id: number): Promise<PersistenceOutcome>;
   cancelSale(): void;
   initSalesChart(): void;
   toggleChartView(): void;
@@ -352,7 +353,9 @@ export type SalesChartRefreshContext =
 
 export type SalesPersistenceContext = SalesAuthoritativePersistenceContext &
   SalesLocalMutationContext &
+  Pick<AppState, "newSale"> &
   SalesChartRefreshContext &
+  Pick<CommerceMethodState, "saveSalesToStorage"> &
   Pick<RuntimeMethodState, "notify" | "askConfirmation">;
 
 export type LotStorageContext = Pick<
@@ -655,6 +658,7 @@ export type SalesMethodContext = SalesChartContext &
   Pick<CommerceMethodState,
     | "calculatePriceForUnits"
     | "cancelSale"
+    | "saveSalesToStorage"
   > &
   Pick<RuntimeMethodState, "askConfirmation">;
 

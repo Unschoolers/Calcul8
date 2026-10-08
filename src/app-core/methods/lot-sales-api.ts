@@ -116,7 +116,7 @@ function persistSalesCache(
     persistSalesCacheToStorage(app, lotId, sales);
     replaceRootLotSales(app, lotId, sales);
   } catch {
-    // Ignore cache write failures.
+    // Non-mutation fetches keep their existing best-effort cache behavior.
   }
 }
 
@@ -293,5 +293,6 @@ export function cacheAuthoritativeSales(
   lotId: number,
   sales: Sale[]
 ): void {
-  persistSalesCache(app, lotId, sales);
+  persistSalesCacheToStorage(app, lotId, sales);
+  replaceRootLotSales(app, lotId, sales);
 }

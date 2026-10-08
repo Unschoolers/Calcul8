@@ -135,6 +135,7 @@ export function createInitialState(): AppState {
     confirmText: "",
     confirmColor: "error",
     confirmAction: null,
+    confirmCancelAction: null,
     showSystemConfigurationDialog: false,
     systemPricingDefaults,
     liveSinglesManualIds: [],

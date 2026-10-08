@@ -2,21 +2,24 @@ import type { SyncPushResponseBody } from "./sync-network.ts";
 import type { SyncPushOptions } from "./sync-service.ts";
 import type { SyncSession } from "./sync-session.ts";
 import { recoverFromLocalSyncCacheReset } from "./sync-storage-reset-recovery.ts";
+import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
 
 export async function performCloudSyncPush(
   session: SyncSession,
   force = false,
   options: SyncPushOptions = {}
-): Promise<void> {
+): Promise<PersistenceOutcome> {
   const { app, deps, scope, baseUrl } = session;
-  if (!baseUrl) return;
+  let cloudWriteConfirmed = false;
+  if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
+  if (!baseUrl) return { kind: "skipped", reason: "unavailable" };
   if (!deps.isOnline()) {
     session.markOffline();
-    return;
+    return { kind: "skipped", reason: "offline" };
   }
 
   if (recoverFromLocalSyncCacheReset(session)) {
-    return;
+    return { kind: "skipped", reason: "not-ready" };
   }
 
   const clientVersion = session.getStoredClientVersion();
@@ -26,12 +29,13 @@ export async function performCloudSyncPush(
   }
   const payloadSignature = session.getPayloadSignature(syncPayload);
   if (!force && app.lastSyncedPayloadHash === payloadSignature) {
-    return;
+    return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
   }
   deps.startSyncStatus(app);
 
   try {
     const response = await session.requestPush(syncPayload);
+    if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
 
     if (response.status === 401) {
       deps.handleExpiredAuth(app);
@@ -40,22 +44,21 @@ export async function performCloudSyncPush(
       }
       deps.setSyncStatusError(app);
       console.warn("[whatfees] Cloud sync skipped: auth expired");
-      return;
+      return { kind: "skipped", reason: "auth" };
     }
     if (response.status === 403 && scope.scopeType === "workspace") {
       deps.setSyncStatusError(app);
       await session.handleWorkspaceAccessLost();
-      return;
+      return { kind: "failure", error: new Error("Workspace access was lost."), stage: "sync", status: 403 };
     }
     if (response.status === 409) {
-      await deps.handlePushConflict({
+      return await deps.handlePushConflict({
         app,
         deps,
         scope,
         options,
         attemptedPayloadSignature: payloadSignature
       });
-      return;
     }
 
     if (!response.ok) {
@@ -64,10 +67,12 @@ export async function performCloudSyncPush(
         status: response.status,
         statusText: response.statusText
       });
-      return;
+      return { kind: "failure", error: new Error(`Cloud sync push failed: ${response.statusText}`), stage: "sync", status: response.status };
     }
 
+    cloudWriteConfirmed = true;
     const body = (await response.json()) as SyncPushResponseBody;
+    if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
     const serverVersion = Number(body.version);
     if (Number.isFinite(serverVersion)) {
       session.setStoredClientVersion(serverVersion);
@@ -75,11 +80,22 @@ export async function performCloudSyncPush(
     session.setLastSyncedPayloadHash(payloadSignature);
     deps.setSyncStatusSuccess(app);
     console.info("[whatfees] Cloud sync pushed");
+    return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
   } catch (error) {
+    if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
     if (!deps.isOnline()) {
       session.markOffline();
+      deps.setSyncStatusError(app);
+      console.warn("[whatfees] Cloud sync push skipped while offline", error);
+      return { kind: "skipped", reason: "offline" };
     }
     deps.setSyncStatusError(app);
     console.warn("[whatfees] Cloud sync push error", error);
+    return {
+      kind: "failure",
+      error,
+      stage: cloudWriteConfirmed ? "cache" : "sync",
+      ...(cloudWriteConfirmed ? { cloudConfirmed: true as const } : {})
+    };
   }
 }

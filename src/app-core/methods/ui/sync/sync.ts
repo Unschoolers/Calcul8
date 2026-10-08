@@ -7,8 +7,8 @@ import {
 } from "./sync-service.ts";
 
 export const uiSyncMethods = {
-  async pullCloudSync(forceApply = false): Promise<void> {
-    await runCloudSyncPull(this, {}, { forceApply });
+  async pullCloudSync(forceApply = false) {
+    return runCloudSyncPull(this, {}, { forceApply });
   },
 
   startCloudSyncScheduler(): void {
@@ -22,8 +22,8 @@ export const uiSyncMethods = {
   async pushCloudSync(
     force = false,
     options: { allowEmptyOverwrite?: boolean } = {}
-  ): Promise<void> {
-    await runCloudSyncPush(this, force, {}, options);
+  ) {
+    return runCloudSyncPush(this, force, {}, options);
   }
 } satisfies SyncMethodImplementation;
 

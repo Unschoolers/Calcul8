@@ -2,6 +2,8 @@ import type { Lot } from "../../types/app.ts";
 import { getSalesCacheStatusKey, getScopedLastLotStorageKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import { getDeleteLotConfirmationText } from "./config-lot-crud.ts";
+import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
+import { voidBackgroundPersistence } from "../shared/persistence-outcomes.ts";
 
 export type DeleteLotContext = {
   currentLotId: number | null;
@@ -16,7 +18,7 @@ export type DeleteLotContext = {
     action: () => void
   ): void;
   notify(message: string, color?: string): void;
-  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<unknown> | void;
+  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<PersistenceOutcome>;
 };
 
 export function deleteCurrentLotWithPersistence(
@@ -66,9 +68,9 @@ export function deleteCurrentLotWithPersistence(
       context.saveLotsToStorage();
       context.currentLotId = null;
       context.notify("Lot deleted", "info");
-      void context.pushCloudSync(true, {
+      voidBackgroundPersistence(context.pushCloudSync(true, {
         allowEmptyOverwrite: context.lots.length === 0
-      });
+      }), "Lot deletion sync");
     }
   );
 }

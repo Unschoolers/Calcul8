@@ -19,6 +19,7 @@ import {
 } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
+import type { PersistenceOutcome } from "../../../../app-core/shared/persistence-outcomes.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
 import { getWheelController } from "../services/gameSessionState.ts";
@@ -49,7 +50,7 @@ type GameConfigContext = WheelSessionContext
   & {
     isGoogleSignedIn?: boolean;
     isOffline: boolean;
-    pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
+    pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<PersistenceOutcome>;
     canApplyWheelConfig: boolean;
     currentLotCostPerPack: number;
     hasPendingWheelChanges: boolean;
