@@ -115,7 +115,7 @@ function parseConfirmBody(rawBody: unknown): {
         }
       }
       const saleTypeRaw = String(decision.saleType ?? "").trim();
-      if (decision.saleType != null && (!saleTypeRaw || !WHATNOT_CONFIRMATION_SALE_TYPES.includes(saleTypeRaw))) {
+      if (decision.saleType != null && (!saleTypeRaw || !WHATNOT_CONFIRMATION_SALE_TYPES.some((candidate) => candidate === saleTypeRaw))) {
         throw new HttpError(400, "Field 'saleType' must be pack, box, or rtyh.");
       }
       const saleType: WhatnotMappedSaleType | undefined =

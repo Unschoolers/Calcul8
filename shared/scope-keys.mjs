@@ -1,29 +1,29 @@
+// Generated from shared/contracts/scope-keys.ts. Run npm run shared:generate.
 function normalizeScopeId(raw) {
-  return String(raw || "").trim();
+    return String(raw || "").trim();
 }
-
 export function buildEntitlementScopeKey(scopeType, scopeId) {
-  const normalizedScopeId = normalizeScopeId(scopeId);
-  if (!normalizedScopeId) return null;
-  return scopeType === "workspace"
-    ? `ws:${normalizedScopeId}`
-    : `user:${normalizedScopeId}`;
+    const normalizedScopeId = normalizeScopeId(scopeId);
+    if (!normalizedScopeId)
+        return null;
+    return scopeType === "workspace"
+        ? `ws:${normalizedScopeId}`
+        : `user:${normalizedScopeId}`;
 }
-
 export function buildEntitlementDocumentId(scopeType, scopeId) {
-  const scopeKey = buildEntitlementScopeKey(scopeType, scopeId);
-  if (!scopeKey) return null;
-  return `entitlement:${scopeKey}`;
+    const scopeKey = buildEntitlementScopeKey(scopeType, scopeId);
+    if (!scopeKey)
+        return null;
+    return `entitlement:${scopeKey}`;
 }
-
 export function buildSyncScopePartitionKey(scopeType, scopeId) {
-  const normalizedScopeId = normalizeScopeId(scopeId);
-  if (!normalizedScopeId) return null;
-  return scopeType === "workspace"
-    ? `ws:${normalizedScopeId}`
-    : `u:${normalizedScopeId}`;
+    const normalizedScopeId = normalizeScopeId(scopeId);
+    if (!normalizedScopeId)
+        return null;
+    return scopeType === "workspace"
+        ? `ws:${normalizedScopeId}`
+        : `u:${normalizedScopeId}`;
 }
-
 export function buildLegacyUserEntitlementDocumentId(userId) {
-  return `entitlement:${normalizeScopeId(userId)}`;
+    return `entitlement:${normalizeScopeId(userId)}`;
 }

@@ -1,1 +1,1 @@
-export * from "../../../../shared/box-inventory";
+export * from "./box-inventory.cjs";

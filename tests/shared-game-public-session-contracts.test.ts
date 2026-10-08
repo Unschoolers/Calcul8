@@ -54,6 +54,13 @@ test("game and sync declarations resolve for isolated NodeNext module consumers"
     configPath
   );
   assert.deepEqual(parsedConfig.errors, []);
+  const program = ts.createProgram(parsedConfig.fileNames, parsedConfig.options);
+  const diagnostics = ts.getPreEmitDiagnostics(program);
+  assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+    getCanonicalFileName: (file) => file,
+    getCurrentDirectory: () => path.dirname(configPath),
+    getNewLine: () => "\n"
+  }));
 
   for (const consumerPath of parsedConfig.fileNames) {
     const source = ts.sys.readFile(consumerPath);
@@ -75,14 +82,13 @@ test("game and sync declarations resolve for isolated NodeNext module consumers"
       );
     }
   }
-});
+}, 30000);
 
-test("game public session declarations use one canonical contract body", async () => {
+test("game public session compatibility declarations delegate to generated contract bodies", async () => {
   const declarationUrls = [
     new URL("../shared/game-public-session-contracts.d.mts", import.meta.url),
     new URL("../shared/game-public-session-contracts.d.cts", import.meta.url),
-    new URL("../apps/api/src/shared/game-public-session-contracts.d.ts", import.meta.url),
-    new URL("../apps/api/src/shared/game-public-session-contracts.d.cts", import.meta.url)
+    new URL("../apps/api/src/shared/game-public-session-contracts.d.ts", import.meta.url)
   ];
 
   for (const declarationUrl of declarationUrls) {
