@@ -8,12 +8,13 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p .",
+    "build": "node ../../scripts/generate-shared-contracts.mjs --check && npm run build:runtime",
     "start": "node --env-file=.env.local dist/index.js",
     "start:dev": "npm run build && node --env-file=.env.local dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "verify": "npm run build && npm run test"
+    "verify": "npm run build && npm run test",
+    "build:runtime": "tsc -p ."
   },
   "dependencies": {
     "ws": "^8.18.0"

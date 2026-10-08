@@ -5,7 +5,8 @@ COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci
 
 COPY src ./src
-RUN npm run build && npm prune --omit=dev
+# Full-checkout CI validates generated contracts before this isolated container build.
+RUN npm run build:runtime && npm prune --omit=dev
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runtime
 WORKDIR /app

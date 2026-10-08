@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/realtime/**"
       - "shared/**"
+      - "scripts/generate-shared-contracts.mjs"
       - "scripts/smoke-realtime.mjs"
       - "package.json"
       - "package-lock.json"
