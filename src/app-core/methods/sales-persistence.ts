@@ -1,4 +1,5 @@
 import type { Sale } from "../../types/app.ts";
+import { toRaw } from "vue";
 import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
 import type {
   SalesAuthoritativePersistenceContext,
@@ -79,7 +80,8 @@ function rollbackLocalSaleMutation(
   priorSale: Sale | undefined,
   priorIndex: number
 ): void {
-  const currentIndex = context.sales.findIndex((sale) => sale.id === pendingSale.id && sale === pendingSale);
+  const pendingSaleIdentity = toRaw(pendingSale);
+  const currentIndex = context.sales.findIndex((sale) => sale.id === pendingSale.id && toRaw(sale) === pendingSaleIdentity);
   if (currentIndex < 0) return;
   const nextSales = [...context.sales];
   nextSales.splice(currentIndex, 1, ...(priorSale ? [priorSale] : []));
@@ -87,6 +89,16 @@ function rollbackLocalSaleMutation(
   if (priorSale && !nextSales.some((sale) => sale.id === priorSale.id)) {
     nextSales.splice(Math.min(Math.max(priorIndex, 0), nextSales.length), 0, priorSale);
   }
+}
+
+function captureSaleDraftGuard(context: SalesPersistenceContext): () => boolean {
+  const contextWithDraft = context as SalesPersistenceContext & { newSale: object };
+  const originatingDraft = toRaw(contextWithDraft.newSale);
+  const originatingEditingSale = context.editingSale ? toRaw(context.editingSale) : null;
+  return () => toRaw(contextWithDraft.newSale) === originatingDraft
+    && (originatingEditingSale === null
+      ? context.editingSale === null
+      : context.editingSale !== null && toRaw(context.editingSale) === originatingEditingSale);
 }
 
 export function saveSaleAuthoritatively(
@@ -109,6 +121,7 @@ export function saveSaleAuthoritatively(
   if (!lotId) return Promise.resolve({ kind: "skipped", reason: "no-lot" });
   if (!deps.canUseAuthoritativeApi()) return Promise.resolve({ kind: "skipped", reason: "unavailable" });
   const isCurrentScope = captureWorkspaceScopeGuard(context);
+  const isOriginatingDraft = captureSaleDraftGuard(context);
   const initialSales = [...context.sales];
 
   return (async (): Promise<PersistenceOutcome> => {
@@ -133,7 +146,7 @@ export function saveSaleAuthoritatively(
         throw new CachePersistenceError(error instanceof Error ? error : new Error(String(error)));
       }
       if (context.currentLotId === lotId) {
-        context.cancelSale();
+        if (isOriginatingDraft()) context.cancelSale();
         deps.refreshCharts(context);
       }
       return { kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" };
@@ -152,15 +165,12 @@ export function saveSaleAuthoritatively(
           }
         }
         if (context.currentLotId === lotId) {
-          context.cancelSale();
+          if (isOriginatingDraft()) context.cancelSale();
           deps.refreshCharts(context);
         }
         return { kind: "conflict", latestState: latestSales ? "loaded" : "unavailable" };
       }
-      if (error instanceof CachePersistenceError && context.currentLotId === lotId
-        && (params.editingSaleId === null
-          ? context.editingSale == null
-          : context.editingSale?.id === params.editingSaleId)) {
+      if (error instanceof CachePersistenceError && context.currentLotId === lotId && isOriginatingDraft()) {
         context.cancelSale();
       }
       return {
@@ -213,6 +223,7 @@ export function saveSaleWithPersistence(
   }
 ): Promise<PersistenceOutcome> {
   if (!params.lotId || !deps.canUseAuthoritativeApi()) {
+    const isOriginatingDraft = captureSaleDraftGuard(context);
     const capturedScopeIsCurrent = captureWorkspaceScopeGuard(context);
     const capturedLotId = context.currentLotId;
     const priorSale = params.editingSaleId == null
@@ -230,7 +241,7 @@ export function saveSaleWithPersistence(
           rollbackLocalSaleMutation(context, params.pendingSale, priorSale, priorIndex);
           return localOutcome;
         }
-        context.cancelSale();
+        if (isOriginatingDraft()) context.cancelSale();
         deps.refreshCharts(context);
         return {
           kind: "confirmed",

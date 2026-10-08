@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
+import { reactive, toRaw } from "vue";
 import type { Sale } from "../src/types/app.ts";
 import type { PersistenceOutcome } from "../src/app-core/shared/persistence-outcomes.ts";
 import {
@@ -99,6 +100,41 @@ test("cloud-confirmed save closes only the originating editor when cache persist
   assert.equal(outcome.kind === "failure" && outcome.cloudConfirmed, true);
   assert.equal((context.cancelSale as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.sales as Sale[])[0]?.price, 30);
+});
+
+test("cloud-confirmed cache failure does not cancel a newer reactive add-sale draft", async () => {
+  const save = deferred<Sale>();
+  const initialDraft = { type: "pack" as const, quantity: 1, price: 25, buyerShipping: 0, date: "2026-03-17" };
+  const newerDraft = { ...initialDraft, price: 40 };
+  const cancelSale = vi.fn();
+  const context = reactive(createContext({
+    currentLotId: 1,
+    sales: [],
+    newSale: initialDraft,
+    editingSale: null,
+    cancelSale
+  })) as ReturnType<typeof createContext> & { newSale: typeof initialDraft };
+  const result = saveSaleAuthoritatively(context as never, {
+    lotId: 1,
+    pendingSale: makeSale({ id: 67, price: 25 }),
+    editingSaleId: null,
+    baseVersion: 0
+  }, {
+    canUseAuthoritativeApi: () => true,
+    saveSale: () => save.promise,
+    fetchSales: vi.fn(),
+    cacheSales: () => { throw new Error("quota exceeded"); },
+    refreshCharts: vi.fn()
+  });
+
+  context.newSale = newerDraft;
+  save.resolve(makeSale({ id: 67, price: 25 }));
+  const outcome = await result;
+
+  assert.equal(outcome.kind, "failure");
+  assert.equal(outcome.kind === "failure" && outcome.cloudConfirmed, true);
+  assert.equal(cancelSale.mock.calls.length, 0);
+  assert.equal(context.newSale.price, 40);
 });
 
 test("conflict recovery retains conflict semantics when caching fetched state fails", async () => {
@@ -234,6 +270,74 @@ test("local save cache failure rolls back only its mutation so retry does not du
   assert.deepEqual((context.sales as Sale[]).map((sale) => sale.id), [18]);
   assert.equal((await saveSaleWithPersistence(context as never, request, deps)).kind, "confirmed");
   assert.deepEqual((context.sales as Sale[]).map((sale) => sale.id), [18, 23]);
+});
+
+test.each(["add", "edit"] as const)("Vue reactive local %s rolls back and can be retried", async (mode) => {
+  const original = makeSale({ id: 62, price: 10 });
+  const unrelated = makeSale({ id: 63, price: 15 });
+  const pending = makeSale({ id: mode === "add" ? 64 : 62, price: 25 });
+  const context = reactive(createContext({
+    currentLotId: null,
+    sales: mode === "add" ? [unrelated] : [original, unrelated],
+    editingSale: mode === "edit" ? original : null
+  })) as ReturnType<typeof createContext>;
+  let writes = 0;
+  const deps = {
+    canUseAuthoritativeApi: () => false,
+    persistLocally: persistSaleLocally,
+    saveLocalSales: async () => {
+      writes += 1;
+      return writes === 1
+        ? { kind: "failure", error: new Error("quota exceeded"), stage: "local" } as const
+        : { kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" } as const;
+    },
+    refreshCharts: vi.fn(),
+    saveAuthoritatively: vi.fn()
+  };
+  const request = {
+    lotId: null,
+    pendingSale: pending,
+    editingSaleId: mode === "edit" ? original.id : null,
+    editingIndex: mode === "edit" ? 0 : -1,
+    baseVersion: 0
+  };
+
+  assert.equal((await saveSaleWithPersistence(context as never, request, deps)).kind, "failure");
+  assert.deepEqual(context.sales.map((sale) => sale.id), mode === "add" ? [63] : [62, 63]);
+  if (mode === "edit") assert.equal(toRaw(context.sales[0]), original);
+
+  assert.equal((await saveSaleWithPersistence(context as never, request, deps)).kind, "confirmed");
+  assert.deepEqual(context.sales.map((sale) => sale.id), mode === "add" ? [63, 64] : [62, 63]);
+  assert.equal(context.sales.find((sale) => sale.id === pending.id)?.price, 25);
+});
+
+test("Vue reactive rollback preserves a newer concurrent replacement with the same sale ID", async () => {
+  const pending = makeSale({ id: 65, price: 25 });
+  const replacement = makeSale({ id: 65, price: 40 });
+  const localSave = deferred<PersistenceOutcome>();
+  const context = reactive(createContext({
+    currentLotId: null,
+    sales: [makeSale({ id: 66 })]
+  })) as ReturnType<typeof createContext>;
+  const result = saveSaleWithPersistence(context as never, {
+    lotId: null,
+    pendingSale: pending,
+    editingSaleId: null,
+    editingIndex: -1,
+    baseVersion: 0
+  }, {
+    canUseAuthoritativeApi: () => false,
+    persistLocally: persistSaleLocally,
+    saveLocalSales: () => localSave.promise,
+    refreshCharts: vi.fn(),
+    saveAuthoritatively: vi.fn()
+  });
+
+  context.sales[1] = replacement;
+  localSave.resolve({ kind: "failure", error: new Error("quota exceeded"), stage: "local" });
+  assert.equal((await result).kind, "failure");
+  assert.deepEqual(context.sales.map((sale) => sale.id), [66, 65]);
+  assert.equal(context.sales[1]?.price, 40);
 });
 
 test("local save finishing after a lot switch settles stale without touching the new lot", async () => {
