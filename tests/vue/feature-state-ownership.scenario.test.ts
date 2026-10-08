@@ -9,7 +9,7 @@ import {
   isCurrentShopifyBindingsRequest,
   resetIntegrationScopeState
 } from "../../src/app-core/feature-state/integration-state.ts";
-import { featureStatePortsKey, useFeatureStatePorts } from "../../src/app-core/feature-state/feature-state-ports.ts";
+import { featureStatePortsKey, useFeatureStatePorts, type FeatureStatePorts } from "../../src/app-core/feature-state/feature-state-ports.ts";
 import { resetActiveSales } from "../../src/app-core/feature-state/sales-state.ts";
 import { renderWithApp } from "./render.ts";
 
@@ -79,7 +79,7 @@ test("the composition root injects feature owners and mounted writes stay shared
   const state = reactive(createInitialState());
   Object.assign(state, appMethods);
   const injected = appOptions.provide.call(state as never);
-  const featureStatePorts = injected[featureStatePortsKey];
+  const featureStatePorts = injected[featureStatePortsKey] as FeatureStatePorts;
   const Child = defineComponent({
     setup() {
       const owners = useFeatureStatePorts();
@@ -91,7 +91,7 @@ test("the composition root injects feature owners and mounted writes stay shared
     `,
     methods: {
       recordSale() {
-        (this.salesOwner.sales as Array<{ id: string }>).push({ id: "owner-sale" });
+        this.salesOwner.sales.push({ id: 999 } as never);
       },
       recordSpin() {
         this.gameSessionOwner.wheelTotalSpins = 4;
@@ -110,7 +110,7 @@ test("the composition root injects feature owners and mounted writes stay shared
   renderWithApp(Harness);
   await fireEvent.click(screen.getByRole("button", { name: "record through owner" }));
   await fireEvent.click(screen.getByRole("button", { name: "update game owner" }));
-  expect(state.sales.map((sale) => sale.id)).toEqual(["owner-sale"]);
+  expect(state.sales.map((sale) => sale.id)).toEqual([999]);
   expect(state.wheelTotalSpins).toBe(4);
   expect(state.salesFeatureState?.sales).toBe(state.sales);
   expect(featureStatePorts.integrations).toBe(state.integrationFeatureState);
