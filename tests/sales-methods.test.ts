@@ -147,6 +147,12 @@ function createContext(overrides: Ctx = {}): Ctx {
     formatDate: (value: string) => `D:${value}`,
     loadSalesForLotId: vi.fn().mockReturnValue([]),
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`,
+    saveSalesToStorage: vi.fn(async () => ({
+      kind: "confirmed",
+      persistence: "local",
+      cache: "saved",
+      cloud: "unavailable"
+    })),
     askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm()),
     notify: vi.fn(),
     cancelSale: vi.fn(),
@@ -1003,7 +1009,7 @@ test("saveSale stores RTYH packsCount and normalizes invalid date", () => {
   assert.equal(saved.date, "2026-02-21");
 });
 
-test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", () => {
+test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", async () => {
   const initPortfolioChart = vi.fn();
   const initSalesChart = vi.fn();
   const nextTick = vi.fn((cb: () => void) => cb());
@@ -1023,7 +1029,7 @@ test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", 
     }
   });
 
-  salesMethods.saveSale.call(ctx as never);
+  await salesMethods.saveSale.call(ctx as never);
 
   assert.equal(nextTick.mock.calls.length, 1);
   assert.equal(initPortfolioChart.mock.calls.length, 1);

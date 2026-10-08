@@ -112,8 +112,12 @@ function persistSalesCache(
   lotId: number,
   sales: Sale[]
 ): void {
-  persistSalesCacheToStorage(app, lotId, sales);
-  replaceRootLotSales(app, lotId, sales);
+  try {
+    persistSalesCacheToStorage(app, lotId, sales);
+    replaceRootLotSales(app, lotId, sales);
+  } catch {
+    // Non-mutation fetches keep their existing best-effort cache behavior.
+  }
 }
 
 export async function fetchAuthoritativeSales(
@@ -289,5 +293,6 @@ export function cacheAuthoritativeSales(
   lotId: number,
   sales: Sale[]
 ): void {
-  persistSalesCache(app, lotId, sales);
+  persistSalesCacheToStorage(app, lotId, sales);
+  replaceRootLotSales(app, lotId, sales);
 }

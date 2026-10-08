@@ -38,7 +38,7 @@ test("persistSaleLocally appends or replaces then cancels the draft", () => {
   });
   persistSaleLocally(appendContext as never, makeSale({ id: 2 }), -1);
   assert.deepEqual((appendContext.sales as Sale[]).map((sale) => sale.id), [2]);
-  assert.equal((appendContext.cancelSale as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((appendContext.cancelSale as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 
   const existing = makeSale({ id: 3 });
   const editContext = createContext({
@@ -145,7 +145,7 @@ test("deleteSaleWithPersistence deletes locally when api is unavailable", () => 
   assert.equal(refreshCharts.mock.calls.length, 1);
 });
 
-test("saveSaleWithPersistence chooses local or authoritative flow based on lot/api availability", () => {
+test("saveSaleWithPersistence waits for durable local storage before confirming", async () => {
   const localContext = createContext({
     currentLotId: null
   });
@@ -153,7 +153,8 @@ test("saveSaleWithPersistence chooses local or authoritative flow based on lot/a
   const refreshCharts = vi.fn();
   const saveAuthoritatively = vi.fn();
 
-  saveSaleWithPersistence(localContext as never, {
+  const saveLocalSales = vi.fn(async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" } as const));
+  const localPromise = saveSaleWithPersistence(localContext as never, {
     lotId: null,
     pendingSale: makeSale({ id: 7 }),
     editingSaleId: null,
@@ -162,12 +163,18 @@ test("saveSaleWithPersistence chooses local or authoritative flow based on lot/a
   }, {
     canUseAuthoritativeApi: () => true,
     persistLocally,
+    saveLocalSales,
     refreshCharts,
     saveAuthoritatively
   });
 
+  const localOutcome = await localPromise;
+
   assert.equal(persistLocally.mock.calls.length, 1);
+  assert.equal(saveLocalSales.mock.calls.length, 1);
   assert.equal(refreshCharts.mock.calls.length, 1);
+  assert.equal(localOutcome.kind, "confirmed");
+  assert.equal((localContext.cancelSale as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal(saveAuthoritatively.mock.calls.length, 0);
 
   const authoritativeContext = createContext({
@@ -182,9 +189,30 @@ test("saveSaleWithPersistence chooses local or authoritative flow based on lot/a
   }, {
     canUseAuthoritativeApi: () => true,
     persistLocally: vi.fn(),
+    saveLocalSales: vi.fn(async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" } as const)),
     refreshCharts: vi.fn(),
     saveAuthoritatively
   });
 
   assert.equal(saveAuthoritatively.mock.calls.length, 1);
+});
+
+test("failed local cache save keeps the sale draft open and reports failure", async () => {
+  const context = createContext();
+  const outcome = await saveSaleWithPersistence(context as never, {
+    lotId: null,
+    pendingSale: makeSale({ id: 23 }),
+    editingSaleId: null,
+    editingIndex: -1,
+    baseVersion: 0
+  }, {
+    canUseAuthoritativeApi: () => false,
+    persistLocally: vi.fn(),
+    saveLocalSales: vi.fn(async () => ({ kind: "failure", error: new Error("quota exceeded"), stage: "local" } as const)),
+    refreshCharts: vi.fn(),
+    saveAuthoritatively: vi.fn()
+  });
+
+  assert.deepEqual(outcome, { kind: "failure", error: new Error("quota exceeded"), stage: "local" });
+  assert.equal((context.cancelSale as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });

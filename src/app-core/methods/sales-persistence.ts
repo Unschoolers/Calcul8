@@ -71,8 +71,6 @@ export function persistSaleLocally(
   } else {
     context.sales = upsertById(context.sales, sale);
   }
-
-  context.cancelSale();
 }
 
 export function saveSaleAuthoritatively(
@@ -176,6 +174,7 @@ export function saveSaleWithPersistence(
   deps: {
     canUseAuthoritativeApi(): boolean;
     persistLocally(context: SalesLocalMutationContext, sale: Sale, editingIndex: number): void;
+    saveLocalSales(context: SalesPersistenceContext): Promise<PersistenceOutcome>;
     refreshCharts(context: SalesChartRefreshContext): void;
     saveAuthoritatively(context: SalesPersistenceContext, request: {
       lotId: number | null;
@@ -186,23 +185,29 @@ export function saveSaleWithPersistence(
   } = {
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
     persistLocally: persistSaleLocally,
+    saveLocalSales: (context) => context.saveSalesToStorage(),
     refreshCharts: refreshChartsForCurrentTab,
     saveAuthoritatively: saveSaleAuthoritatively
   }
 ): Promise<PersistenceOutcome> {
   if (!params.lotId || !deps.canUseAuthoritativeApi()) {
-    try {
-      deps.persistLocally(context, params.pendingSale, params.editingIndex);
-      deps.refreshCharts(context);
-      return Promise.resolve({
-        kind: "confirmed",
-        persistence: "local",
-        cache: "saved",
-        cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
-      });
-    } catch (error) {
-      return Promise.resolve({ kind: "failure", error, stage: "local" });
-    }
+    return (async (): Promise<PersistenceOutcome> => {
+      try {
+        deps.persistLocally(context, params.pendingSale, params.editingIndex);
+        const localOutcome = await deps.saveLocalSales(context);
+        if (localOutcome.kind !== "confirmed") return localOutcome;
+        context.cancelSale();
+        deps.refreshCharts(context);
+        return {
+          kind: "confirmed",
+          persistence: "local",
+          cache: "saved",
+          cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
+        };
+      } catch (error) {
+        return { kind: "failure", error, stage: "local" };
+      }
+    })();
   }
 
   return deps.saveAuthoritatively(context, {

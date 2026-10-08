@@ -292,6 +292,7 @@ export const salesMethods = {
     }, {
       canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
       persistLocally: persistSaleLocally,
+      saveLocalSales: (context) => context.saveSalesToStorage(),
       refreshCharts: refreshChartsForCurrentTab,
       saveAuthoritatively: saveSaleAuthoritatively
     });

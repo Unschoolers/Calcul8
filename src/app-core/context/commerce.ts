@@ -354,6 +354,7 @@ export type SalesChartRefreshContext =
 export type SalesPersistenceContext = SalesAuthoritativePersistenceContext &
   SalesLocalMutationContext &
   SalesChartRefreshContext &
+  Pick<CommerceMethodState, "saveSalesToStorage"> &
   Pick<RuntimeMethodState, "notify" | "askConfirmation">;
 
 export type LotStorageContext = Pick<
@@ -656,6 +657,7 @@ export type SalesMethodContext = SalesChartContext &
   Pick<CommerceMethodState,
     | "calculatePriceForUnits"
     | "cancelSale"
+    | "saveSalesToStorage"
   > &
   Pick<RuntimeMethodState, "askConfirmation">;
 
