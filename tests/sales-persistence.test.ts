@@ -127,13 +127,20 @@ test("cache failure after cloud confirmation is reported without making the clou
   assert.equal(outcome.cloudConfirmed, true);
 });
 
-test("deleteSaleWithPersistence deletes locally when api is unavailable", () => {
+test("deleteSaleWithPersistence waits for local cache confirmation when api is unavailable", async () => {
   const refreshCharts = vi.fn();
+  const localSave = deferred<{
+    kind: "confirmed";
+    persistence: "local";
+    cache: "saved";
+    cloud: "unavailable";
+  }>();
   const context = createContext({
-    sales: [makeSale({ id: 5 })]
+    sales: [makeSale({ id: 5 })],
+    saveSalesToStorage: vi.fn(() => localSave.promise)
   });
 
-  deleteSaleWithPersistence(context as never, 5, {
+  const result = deleteSaleWithPersistence(context as never, 5, {
     canUseAuthoritativeApi: () => false,
     deleteSale: vi.fn(),
     fetchSales: vi.fn(),
@@ -142,7 +149,32 @@ test("deleteSaleWithPersistence deletes locally when api is unavailable", () => 
   });
 
   assert.equal((context.sales as Sale[]).length, 0);
+  assert.equal(refreshCharts.mock.calls.length, 0);
+  let completed = false;
+  void result.then(() => { completed = true; });
+  await Promise.resolve();
+  assert.equal(completed, false);
+  localSave.resolve({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" });
+  assert.deepEqual(await result, { kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" });
   assert.equal(refreshCharts.mock.calls.length, 1);
+});
+
+test("deleteSaleWithPersistence resolves an explicit skipped outcome when confirmation is cancelled", async () => {
+  const context = createContext({
+    sales: [makeSale({ id: 5 })],
+    askConfirmation: vi.fn((_options, _confirm, cancel: () => void) => cancel())
+  });
+
+  const outcome = await deleteSaleWithPersistence(context as never, 5, {
+    canUseAuthoritativeApi: () => true,
+    deleteSale: vi.fn(),
+    fetchSales: vi.fn(),
+    cacheSales: vi.fn(),
+    refreshCharts: vi.fn()
+  });
+
+  assert.deepEqual(outcome, { kind: "skipped", reason: "cancelled" });
+  assert.equal((context.sales as Sale[]).length, 1);
 });
 
 test("saveSaleWithPersistence waits for durable local storage before confirming", async () => {

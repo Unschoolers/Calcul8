@@ -3,6 +3,7 @@ import { getSyncCoordinatorState } from "./sync-coordinator.ts";
 import type { SyncServiceContext } from "../../../context/sync.ts";
 import type { SyncPushOptions, SyncServiceDeps } from "./sync-service.ts";
 import { resolveSyncScopeContext, toSyncScopeContext, type SyncScopeContext } from "./sync-scope.ts";
+import { getWorkspaceScopeRevision } from "../../../workspace-scope.ts";
 import type { SyncPayload } from "./sync-payload.ts";
 
 export type SyncSession = {
@@ -11,6 +12,7 @@ export type SyncSession = {
   scope: SyncScopeContext;
   state: SyncCoordinatorState;
   baseUrl: string;
+  isCurrentScope(): boolean;
   markOffline(): void;
   getStoredClientVersion(): number;
   setStoredClientVersion(version: number): void;
@@ -29,7 +31,10 @@ export function createSyncSession(
   options: SyncPushOptions = {}
 ): SyncSession {
   const scope = options.scopeOverride ? toSyncScopeContext(options.scopeOverride) : resolveSyncScopeContext(app);
-  const state = getSyncCoordinatorState(app as object, scope.scopeKey);
+  const authEpoch = app.googleAuthEpoch;
+  const scopeRevision = getWorkspaceScopeRevision(app);
+  const coordinatorKey = JSON.stringify([scope.scopeKey, authEpoch, scopeRevision]);
+  const state = getSyncCoordinatorState(app as object, coordinatorKey);
   const baseUrl = deps.resolveApiBaseUrl();
 
   return {
@@ -38,6 +43,12 @@ export function createSyncSession(
     scope,
     state,
     baseUrl,
+    isCurrentScope(): boolean {
+      if (app.googleAuthEpoch !== authEpoch) return false;
+      if (options.scopeOverride) return true;
+      return getWorkspaceScopeRevision(app) === scopeRevision
+        && resolveSyncScopeContext(app).scopeKey === scope.scopeKey;
+    },
     markOffline(): void {
       app.isOffline = true;
       app.startOfflineReconnectScheduler();

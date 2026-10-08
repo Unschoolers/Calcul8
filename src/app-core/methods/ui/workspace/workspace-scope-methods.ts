@@ -159,7 +159,7 @@ export const uiWorkspaceScopeMethods = {
         workspaceId: createdWorkspaceId
       });
 
-      await runCloudSyncPush(
+      const seedOutcome = await runCloudSyncPush(
         this,
         true,
         {
@@ -175,6 +175,18 @@ export const uiWorkspaceScopeMethods = {
           treatConflictAsSuccess: true
         }
       );
+
+      if (seedOutcome.kind === "failure" && !seedOutcome.cloudConfirmed) {
+        this.notify("Workspace was created, but its data could not be synchronized. Retry the workspace setup before continuing.", "error");
+        return;
+      }
+      if (seedOutcome.kind === "skipped") {
+        this.notify("Workspace was created, but its data sync was skipped. Check your connection and retry.", "warning");
+        return;
+      }
+      if (seedOutcome.kind === "failure" && seedOutcome.cloudConfirmed) {
+        this.notify("Workspace data reached the cloud, but local sync metadata could not be saved.", "warning");
+      }
 
       this.newWorkspaceName = "";
       this.newWorkspaceIdempotencyKey = "";

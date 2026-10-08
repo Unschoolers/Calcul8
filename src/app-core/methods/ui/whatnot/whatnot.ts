@@ -319,12 +319,19 @@ export const uiWhatnotMethods = {
       resetWhatnotReviewState(this);
       resetWhatnotCsvImportState(this);
       await this.refreshWhatnotStatus();
-      await this.pullCloudSync();
+      const syncOutcome = await this.pullCloudSync();
       await refreshAffectedWhatnotSales(this, affectedLotIds);
-      this.notify(
-        `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
-        "success"
-      );
+      if (syncOutcome.kind === "confirmed") {
+        this.notify(
+          `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
+          "success"
+        );
+      } else {
+        this.notify(
+          `Whatnot import completed, but cloud sync was not confirmed (${syncOutcome.kind}).`,
+          "warning"
+        );
+      }
     } finally {
       this.isConfirmingWhatnotImport = false;
     }

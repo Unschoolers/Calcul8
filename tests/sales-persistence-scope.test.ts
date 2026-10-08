@@ -39,6 +39,7 @@ function createContext() {
     getSalesStorageKey(lotId) { return getSalesStorageKey(lotId, getActiveStorageScope(this)); },
     askConfirmation: (_options, confirm) => confirm(),
     cancelSale: vi.fn(),
+    saveSalesToStorage: vi.fn(async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" } as const)),
     notify: vi.fn(),
     initSalesChart: vi.fn(),
     initPortfolioChart: vi.fn(),

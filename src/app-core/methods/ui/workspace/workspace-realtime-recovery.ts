@@ -74,8 +74,9 @@ async function performWorkspaceRealtimeCatchUp(app: WorkspaceRealtimeContext): P
       return;
     }
 
-    await app.pullCloudSync();
-    markRecoveredThenConnected(app);
+    const outcome = await app.pullCloudSync();
+    if (outcome.kind === "confirmed") markRecoveredThenConnected(app);
+    else setWorkspaceRealtimeStatus(app, "stale");
   } catch {
     setWorkspaceRealtimeStatus(app, "stale");
   }

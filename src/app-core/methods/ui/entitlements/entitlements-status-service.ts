@@ -3,6 +3,7 @@ import type {
   EntitlementStatusContext,
   TargetProfitAccessContext
 } from "../../../context/entitlements.ts";
+import { handleBackgroundPersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
 import {
   applyEntitlementState,
   type EntitlementApiResponse,
@@ -158,7 +159,7 @@ export async function syncEntitlementStatus(
         hasProAccess: cached.hasProAccess,
         updatedAt: cached.updatedAt
       });
-      await app.pullCloudSync();
+      handleBackgroundPersistenceOutcome(await app.pullCloudSync(), "Entitlement startup pull");
       return;
     }
 
@@ -202,7 +203,7 @@ export async function syncEntitlementStatus(
         updatedAt: entitlementPayload.updatedAt
       });
 
-      await app.pullCloudSync();
+      handleBackgroundPersistenceOutcome(await app.pullCloudSync(), "Entitlement refresh pull");
     } catch (error) {
       if (!resolvedDeps.isOnline()) {
         app.isOffline = true;

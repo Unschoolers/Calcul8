@@ -1,6 +1,9 @@
 import { performCloudSyncPull } from "./sync-pull.ts";
 import { performCloudSyncPush } from "./sync-push.ts";
 import type { SyncSession } from "./sync-session.ts";
+import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+
+type Completion = (outcome: PersistenceOutcome) => void;
 
 export type SyncCoordinatorState = {
   drainPromise: Promise<void> | null;
@@ -11,6 +14,9 @@ export type SyncCoordinatorState = {
   pendingPushForce: boolean;
   pendingPushAllowEmptyOverwrite: boolean;
   pendingPushTreatConflictAsSuccess: boolean;
+  pendingPullCompletions: Completion[];
+  activePullCompletions: Completion[];
+  pendingPushCompletions: Completion[];
 };
 
 const syncCoordinatorStateByApp = new WeakMap<object, Map<string, SyncCoordinatorState>>();
@@ -32,7 +38,10 @@ export function getSyncCoordinatorState(app: object, scopeKey: string): SyncCoor
       pendingPush: false,
       pendingPushForce: false,
       pendingPushAllowEmptyOverwrite: false,
-      pendingPushTreatConflictAsSuccess: false
+      pendingPushTreatConflictAsSuccess: false,
+      pendingPullCompletions: [],
+      activePullCompletions: [],
+      pendingPushCompletions: []
     };
     scopeStates.set(scopeKey, state);
   }
@@ -48,15 +57,19 @@ async function drainSyncQueue(
       const forceApply = state.pendingPullForceApply;
       state.pendingPull = false;
       state.pendingPullForceApply = false;
+      state.activePullCompletions = state.pendingPullCompletions.splice(0);
       state.activeOperation = "pull";
+      let outcome: PersistenceOutcome;
       try {
-        await performCloudSyncPull(session, { forceApply });
+        outcome = await performCloudSyncPull(session, { forceApply });
       } catch (error) {
         deps.setSyncStatusError(app);
         console.warn("[whatfees] Cloud sync pull coordinator error", error);
+        outcome = { kind: "failure", error, stage: "sync" };
       } finally {
         state.activeOperation = null;
       }
+      for (const complete of state.activePullCompletions.splice(0)) complete(outcome);
       continue;
     }
 
@@ -67,15 +80,19 @@ async function drainSyncQueue(
     state.pendingPushForce = false;
     state.pendingPushAllowEmptyOverwrite = false;
     state.pendingPushTreatConflictAsSuccess = false;
+    const completions = state.pendingPushCompletions.splice(0);
     state.activeOperation = "push";
+    let outcome: PersistenceOutcome;
     try {
-      await performCloudSyncPush(session, force, { allowEmptyOverwrite, treatConflictAsSuccess });
+      outcome = await performCloudSyncPush(session, force, { allowEmptyOverwrite, treatConflictAsSuccess });
     } catch (error) {
       deps.setSyncStatusError(app);
       console.warn("[whatfees] Cloud sync push coordinator error", error);
+      outcome = { kind: "failure", error, stage: "sync" };
     } finally {
       state.activeOperation = null;
     }
+    for (const complete of completions) complete(outcome);
   }
 }
 
@@ -90,9 +107,7 @@ export function scheduleSyncDrain(session: SyncSession): Promise<void> {
       await drainSyncQueue(session);
     } finally {
       state.drainPromise = null;
-      if (state.pendingPull || state.pendingPush) {
-        void scheduleSyncDrain(session);
-      }
+      if (state.pendingPull || state.pendingPush) void scheduleSyncDrain(session);
     }
   })();
 

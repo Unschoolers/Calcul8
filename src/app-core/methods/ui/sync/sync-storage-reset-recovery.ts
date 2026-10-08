@@ -7,6 +7,7 @@ import type { SyncServiceContext } from "../../../context/sync.ts";
 import type { SyncServiceDeps } from "./sync-service.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
 import { hasStorageReadFailure } from "../../../storage-health.ts";
+import { voidBackgroundPersistence } from "../../../shared/persistence-outcomes.ts";
 
 const STORAGE_RESET_RECOVERY_COOLDOWN_MS = 30_000;
 
@@ -51,7 +52,7 @@ export function recoverFromLocalSyncCacheReset(
 
   console.warn("[whatfees] Cloud sync push skipped: local cache reset detected, pulling first");
   if (shouldAttemptStorageResetRecovery(app, deps)) {
-    void app.pullCloudSync();
+    voidBackgroundPersistence(app.pullCloudSync(), "Sync cache recovery pull");
   }
   return true;
 }

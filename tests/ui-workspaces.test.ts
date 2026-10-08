@@ -119,7 +119,7 @@ function createContext() {
     isCurrentWorkspaceOwner: false,
     preferredLanguage: "en",
     notify: vi.fn(),
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     loadLotsFromStorage: vi.fn(),
     loadWheelFromStorage: vi.fn(),
     loadLot: vi.fn(),
@@ -142,7 +142,7 @@ function createContext() {
 beforeEach(() => {
   vi.clearAllMocks();
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  runCloudSyncPushMock.mockResolvedValue(undefined);
+  runCloudSyncPushMock.mockResolvedValue({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" });
   createSyncPayloadMock.mockReturnValue({ lots: [], salesByLot: {}, workspaceId: "ws_1" });
 
   const historyReplaceState = vi.fn();

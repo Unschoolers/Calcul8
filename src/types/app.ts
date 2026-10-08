@@ -684,6 +684,7 @@ export interface AppState extends LotSetup {
   confirmText: string;
   confirmColor: UiColor;
   confirmAction: (() => void) | null;
+  confirmCancelAction: (() => void) | null;
   showSystemConfigurationDialog: boolean;
   systemPricingDefaults: SystemPricingDefaults;
   liveSinglesManualIds: number[];

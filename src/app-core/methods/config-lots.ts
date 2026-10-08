@@ -5,6 +5,7 @@ import type {
   LotConfigurationContext
 } from "../context/commerce.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { voidBackgroundPersistence } from "../shared/persistence-outcomes.ts";
 import { getLotType, isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import {
@@ -143,7 +144,7 @@ export const configLotMethods = {
       this.livePricingHydrationStatus = "idle";
       this.livePricingHydratedLotId = null;
       this.autoSaveSetup();
-      void this.pushCloudSync();
+      voidBackgroundPersistence(this.pushCloudSync(), "Lot configuration sync");
       this.notify("Live prices saved to config", "success");
       return;
     }

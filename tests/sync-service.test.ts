@@ -121,7 +121,7 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
     json: async () => ({})
   });
 
-  await runCloudSyncPush(app, false, {
+  const outcome = await runCloudSyncPush(app, false, {
     requestCloudSyncPush,
     createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
     getSyncPayloadSignature: () => "sig",
@@ -140,12 +140,13 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
   assert.equal(handleExpiredAuthMock.mock.calls.length, 1);
   assert.equal(app.stopCloudSyncScheduler.mock.calls.length, 1);
   assert.equal(app.syncStatus, "error");
+  assert.deepEqual(outcome, { kind: "skipped", reason: "auth" });
 });
 
 test("runCloudSyncPull marks the app offline and schedules reconnect when already offline", async () => {
   const app = createApp();
 
-  await runCloudSyncPull(app, {
+  const outcome = await runCloudSyncPull(app, {
     isOnline: () => false,
     requestCloudSyncPull: vi.fn(),
     startSyncStatus: vi.fn(),
@@ -155,6 +156,7 @@ test("runCloudSyncPull marks the app offline and schedules reconnect when alread
 
   assert.equal(app.isOffline, true);
   assert.equal(app.startOfflineReconnectScheduler.mock.calls.length, 1);
+  assert.deepEqual(outcome, { kind: "skipped", reason: "offline" });
 });
 
 test("runCloudSyncPull recovers the coordinator after an unexpected setup error", async () => {
@@ -253,10 +255,64 @@ test("runCloudSyncPull shares one in-flight request across overlapping callers",
     json: async () => ({})
   });
 
-  await Promise.all([first, second]);
+  const outcomes = await Promise.all([first, second]);
 
   assert.equal(requestCloudSyncPull.mock.calls.length, 1);
   assert.equal(app.syncStatus, "success");
+  assert.deepEqual(outcomes.map((outcome) => outcome.kind), ["confirmed", "confirmed"]);
+});
+
+test("push cache failure reports a confirmed cloud write without requesting it again", async () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => "1",
+    setItem: () => { throw new Error("quota exceeded"); },
+    removeItem: vi.fn()
+  });
+  const app = createApp();
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+
+  const outcome = await runCloudSyncPush(app, true, {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig",
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(outcome.kind, "failure");
+  assert.equal(outcome.stage, "cache");
+  assert.equal(outcome.cloudConfirmed, true);
+});
+
+test("pull apply failure reports that cloud data was received but local persistence failed", async () => {
+  const app = createApp();
+  const outcome = await runCloudSyncPull(app, {
+    requestCloudSyncPull: vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ snapshot: { lots: [], salesByLot: {}, wheelConfigs: [], version: 2 } })
+    }),
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig",
+    parseCloudSnapshot: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null, version: 2, hasData: true }),
+    shouldApplyCloudSnapshot: () => true,
+    applyCloudSnapshotToLocal: () => { throw new Error("quota exceeded"); },
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(outcome.kind, "failure");
+  assert.equal(outcome.stage, "cache");
+  assert.equal(outcome.cloudConfirmed, true);
 });
 
 test("runCloudSyncPush reports manual recovery on stale-version conflict", async () => {
@@ -447,7 +503,7 @@ test("runCloudSyncPush can treat scoped seed conflicts as success", async () => 
   assert.equal(app.syncStatus, "success");
 });
 
-test("runCloudSyncPush handles workspace access loss using the resolved session scope", async () => {
+test("runCloudSyncPush does not handle an access denial after the active workspace changes", async () => {
   const app = createApp();
   app.activeScopeType = "workspace";
   app.activeWorkspaceId = "ws_original";
@@ -477,10 +533,11 @@ test("runCloudSyncPush handles workspace access loss using the resolved session 
     json: async () => ({})
   });
 
-  await pushPromise;
+  const pushOutcome = await pushPromise;
 
-  assert.equal(app.handleWorkspaceAccessLost.mock.calls.length, 1);
-  assert.equal(app.handleWorkspaceAccessLost.mock.calls[0]?.[0], "ws_original");
+  assert.equal(app.handleWorkspaceAccessLost.mock.calls.length, 0);
+  assert.equal(pushOutcome.kind, "skipped");
+  if (pushOutcome.kind === "skipped") assert.equal(pushOutcome.reason, "stale-scope");
 });
 
 test("sync scope helpers normalize personal and workspace scope keys", () => {
@@ -564,10 +621,12 @@ test("runCloudSyncPush waits for an in-flight pull before pushing", async () => 
   });
   await flushMicrotasks();
 
-  await Promise.all([pullPromise, pushPromise]);
+  const [pullOutcome, pushOutcome] = await Promise.all([pullPromise, pushPromise]);
 
   assert.equal(requestCloudSyncPull.mock.calls.length, 1);
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(pullOutcome.kind, "confirmed");
+  assert.equal(pushOutcome.kind, "confirmed");
 });
 
 test("runCloudSyncPull does not block a later push in a different scope", async () => {
@@ -633,10 +692,12 @@ test("runCloudSyncPull does not block a later push in a different scope", async 
     json: async () => ({ version: 4 })
   });
 
-  await Promise.all([pullPromise, pushPromise]);
+  const [pullOutcome, pushOutcome] = await Promise.all([pullPromise, pushPromise]);
 
   assert.equal(requestCloudSyncPull.mock.calls.length, 1);
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.deepEqual(pullOutcome, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(pushOutcome.kind, "confirmed");
 });
 
 test("runCloudSyncPush collapses overlapping push requests and reruns once with the latest state", async () => {
@@ -703,10 +764,88 @@ test("runCloudSyncPush collapses overlapping push requests and reruns once with 
     json: async () => ({ version: 4 })
   });
 
-  await Promise.all([first, second, third]);
+  const outcomes = await Promise.all([first, second, third]);
 
   assert.equal(requestCloudSyncPush.mock.calls.length, 2);
   assert.equal(app.syncStatus, "success");
+  assert.deepEqual(outcomes.map((outcome) => outcome.kind), ["confirmed", "confirmed", "confirmed"]);
+});
+
+test("failed push resolves its caller and still drains a later queued push", async () => {
+  const app = createApp();
+  const firstPush = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<Record<string, never>>;
+  }>();
+  const requestCloudSyncPush = vi.fn()
+    .mockReturnValueOnce(firstPush.promise)
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ version: 4 })
+    });
+  const deps = {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "queued-signature",
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  };
+
+  const failedRequest = runCloudSyncPush(app, true, deps);
+  const queuedRequest = runCloudSyncPush(app, true, deps);
+  firstPush.resolve({ ok: false, status: 503, statusText: "Unavailable", json: async () => ({}) });
+
+  const [failedOutcome, queuedOutcome] = await Promise.all([failedRequest, queuedRequest]);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 2);
+  assert.deepEqual(failedOutcome, {
+    kind: "failure",
+    error: new Error("Cloud sync push failed: Unavailable"),
+    stage: "sync",
+    status: 503
+  });
+  assert.equal(queuedOutcome.kind, "confirmed");
+});
+
+test("a request from a new auth epoch does not join the previous in-flight sync", async () => {
+  const app = createApp();
+  const oldRequest = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ version: number }>;
+  }>();
+  const requestCloudSyncPush = vi.fn()
+    .mockReturnValueOnce(oldRequest.promise)
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ version: 5 })
+    });
+  const deps = {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "auth-epoch-signature",
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  };
+
+  const oldSession = runCloudSyncPush(app, true, deps);
+  app.googleAuthEpoch += 1;
+  const newSession = runCloudSyncPush(app, true, deps);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 2);
+
+  oldRequest.resolve({ ok: true, status: 200, statusText: "OK", json: async () => ({ version: 4 }) });
+  const [oldOutcome, newOutcome] = await Promise.all([oldSession, newSession]);
+
+  assert.deepEqual(oldOutcome, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(newOutcome.kind, "confirmed");
 });
 
 test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed destructive syncs", async () => {

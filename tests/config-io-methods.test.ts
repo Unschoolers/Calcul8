@@ -105,7 +105,7 @@ function createImportContext(overrides: Record<string, unknown> = {}) {
     saveWheelConfigsToStorage: vi.fn(),
     saveSystemPricingDefaultsToStorage: vi.fn(),
     loadLot: vi.fn(),
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     notify: vi.fn(),
     canUseAdminLotSyncTools: configIoMethods.canUseAdminLotSyncTools,
     ...overrides

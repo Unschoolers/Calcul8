@@ -100,7 +100,7 @@ test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots 
     }));
 
   const refreshWhatnotStatus = vi.fn(async () => undefined);
-  const pullCloudSync = vi.fn(async () => undefined);
+  const pullCloudSync = vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" }));
   const notify = vi.fn();
 
   const context = {
@@ -229,7 +229,7 @@ test("confirmWhatnotImportBatch guards duplicate requests and retains frozen dec
     }],
     isConfirmingWhatnotImport: false,
     whatnotConfirmationRetryPayload: null,
-    pullCloudSync: vi.fn(),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     refreshWhatnotStatus: vi.fn(),
     currentLotId: 7,
     sales: [],
@@ -318,7 +318,7 @@ test("discardWhatnotReviewBatch clears the staged batch and refreshes Whatnot st
     showWhatnotReviewDialog: true,
     whatnotCallbackStatus: null,
     whatnotCallbackMessage: "",
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     currentLotId: 0,
     sales: [],
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,

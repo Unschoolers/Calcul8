@@ -173,7 +173,7 @@ function createApp(overrides: Record<string, any> = {}): any {
     }>,
     wheelCurrentAngle: 0,
     wheelLastResultColor: "",
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     hydrateBuyerProfiles: vi.fn(async () => undefined),
     handleWorkspaceAccessLost: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,

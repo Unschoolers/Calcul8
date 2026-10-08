@@ -7,7 +7,7 @@ export type PersistenceOutcome =
     }
   | {
       kind: "skipped";
-      reason: "offline" | "auth" | "unavailable" | "duplicate" | "stale-scope" | "no-lot" | "not-ready";
+      reason: "offline" | "auth" | "unavailable" | "duplicate" | "stale-scope" | "no-lot" | "not-ready" | "cancelled";
     }
   | {
       kind: "conflict";
@@ -25,6 +25,7 @@ export function handleBackgroundPersistenceOutcome(
   outcome: PersistenceOutcome,
   operation: string
 ): void {
+  if (!outcome) return;
   if (outcome.kind === "failure") {
     console.warn(`[whatfees] ${operation} failed`, {
       error: outcome.error,

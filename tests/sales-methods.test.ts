@@ -352,7 +352,7 @@ test("saveSale persists customer data with the sale", () => {
   assert.equal((ctx.sales as Sale[])[0]?.customer, "Jamie");
 });
 
-test("deleteSale confirms and refreshes charts for current tab", () => {
+test("deleteSale confirms and refreshes charts for current tab after persistence", async () => {
   const ctx = createContext({
     sales: [
       {
@@ -374,7 +374,7 @@ test("deleteSale confirms and refreshes charts for current tab", () => {
     ]
   });
 
-  salesMethods.deleteSale.call(ctx as never, 1);
+  await salesMethods.deleteSale.call(ctx as never, 1);
   assert.equal((ctx.sales as Sale[]).length, 1);
   assert.equal((ctx.initSalesChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
