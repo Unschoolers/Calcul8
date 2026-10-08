@@ -8,6 +8,7 @@ import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defa
 import { STORAGE_KEYS } from "./storageKeys.ts";
 import { attachFeatureStateAliases } from "./feature-state/owner-aliases.ts";
 import { createSalesFeatureState, SALES_FEATURE_STATE_KEYS } from "./feature-state/sales-state.ts";
+import { createIntegrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS } from "./feature-state/integration-state.ts";
 
 function getLocalTodayDate(): string {
   const date = new Date();
@@ -48,6 +49,7 @@ export function createInitialState(): AppState {
   const defaultFeeProfile = getFeeProfilePreset("whatnot");
   const systemPricingDefaults = createDefaultSystemPricingDefaults(hasProAccess ? 15 : 0);
   const salesFeatureState = createSalesFeatureState(todayDate);
+  const integrationFeatureState = createIntegrationFeatureState(todayDate);
 
   const state: AppState = {
     hasProAccess,
@@ -221,33 +223,7 @@ export function createInitialState(): AppState {
     renameLotWhatnotVertical: null,
     renameLotExternalSku: "",
     renameLotShopifyEnabled: false,
-    shopifyEditListing: null,
-    shopifyEditSearchQuery: "",
-    shopifyEditSearchResults: [],
-    shopifyEditSearchCursor: null,
-    shopifyEditSearchHasMore: false,
-    shopifyEditSearchCompleted: false,
-    shopifyEditSelectedVariantId: null,
-    shopifyEditSelectedLocationId: null,
-    shopifyEditLoading: false,
-    shopifyEditSaving: false,
-    shopifyEditError: null,
-    shopifyEditRecovery: "none",
-    shopifyEditErrorOperation: null,
-    shopifyEditRequestRevision: 0,
-    shopifyEditListingStatus: "idle",
-    shopifyEditSessionAuthEpoch: null,
-    shopifyEditSessionScope: "",
-    shopifyEditSessionLotId: null,
-    shopifyEditBindingVersion: null,
-    shopifyEditGeneration: null,
-    shopifyEditOperationId: null,
-    shopifyEditPendingOwnerScope: null,
-    shopifyEditPendingBindingMutation: null,
-    shopifyEditPendingDetailsMutation: null,
-    shopifyEditPendingCreateMutation: null,
-    shopifyEditDetailsOutcome: null,
-    shopifyEditManagerOpen: false,
+    ...integrationFeatureState,
     newLotType: "bulk",
     newLotCatalogSource: resolveDefaultSinglesCatalogSourceFromEnv(),
     newLotWhatnotVertical: null,
@@ -260,48 +236,6 @@ export function createInitialState(): AppState {
     syncStatusResetTimeoutId: null,
     workspaceRealtimeStatus: "idle",
     offlineReconnectIntervalId: null,
-    whatnotFeeDateOnly: todayDate,
-    whatnotConnectionStatus: "unconfigured",
-    shopifyBindingsSummary: null,
-    shopifyBindingsStatus: "idle",
-    shopifyBindingsStale: false,
-    shopifyBindingsScope: "",
-    shopifyConnectionStatus: "unconfigured",
-    shopifyConnectionShop: null,
-    shopifyLastSyncedAt: null,
-    shopifySyncError: null,
-    shopifyShopDraft: "",
-    showShopifyConnectDialog: false,
-    whatnotSyncStatus: "idle",
-    whatnotConnectionSummary: null,
-    showWhatnotReviewDialog: false,
-    showWhatnotCsvImportDialog: false,
-    whatnotCsvRawInput: "",
-    whatnotCsvSellerAccountId: "",
-    whatnotCsvHeaders: [],
-    whatnotCsvRows: [],
-    whatnotCsvMapExternalSaleId: null,
-    whatnotCsvMapOrderId: null,
-    whatnotCsvMapOrderItemId: null,
-    whatnotCsvMapSellerAccountId: null,
-    whatnotCsvMapTitle: null,
-    whatnotCsvMapListingTitle: null,
-    whatnotCsvMapBuyerName: null,
-    whatnotCsvMapOrderPlacedAt: null,
-    whatnotCsvMapOriginalItemPrice: null,
-    whatnotCsvMapSku: null,
-    whatnotCsvMapProductCategory: null,
-    whatnotCsvMapQuantity: null,
-    whatnotCsvMapPrice: null,
-    whatnotCsvMapBuyerShipping: null,
-    whatnotCsvMapDate: null,
-    whatnotCsvMapOrderStatus: null,
-    whatnotReviewBatchId: null,
-    whatnotReviewRows: [],
-    isConfirmingWhatnotImport: false,
-    whatnotConfirmationRetryPayload: null,
-    whatnotCallbackStatus: null,
-    whatnotCallbackMessage: "",
 
     // Wheel
     wheelConfigs: [],
@@ -340,5 +274,6 @@ export function createInitialState(): AppState {
     wheelSpinVerificationUrl: "",
     wheelSpinAlgorithm: ""
   };
-  return attachFeatureStateAliases(state, "salesFeatureState", salesFeatureState, SALES_FEATURE_STATE_KEYS);
+  attachFeatureStateAliases(state, "salesFeatureState", salesFeatureState, SALES_FEATURE_STATE_KEYS);
+  return attachFeatureStateAliases(state, "integrationFeatureState", integrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS);
 }
