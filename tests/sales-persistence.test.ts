@@ -21,6 +21,12 @@ function createContext(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -50,7 +56,7 @@ test("saveSaleAuthoritatively saves, caches, cancels, and refreshes", async () =
     cancelSale: vi.fn()
   });
 
-  saveSaleAuthoritatively(context as never, {
+  const outcome = await saveSaleAuthoritatively(context as never, {
     lotId: 1,
     pendingSale: makeSale({ id: 2, price: 25 }),
     editingSaleId: null,
@@ -68,6 +74,57 @@ test("saveSaleAuthoritatively saves, caches, cancels, and refreshes", async () =
   assert.deepEqual((context.sales as Sale[]).map((sale) => sale.id), [1, 2]);
   assert.equal((context.cancelSale as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal(refreshCharts.mock.calls.length, 1);
+  assert.deepEqual(outcome, { kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" });
+});
+
+test("authoritative sale save stays pending until cloud confirmation", async () => {
+  const save = deferred<Sale>();
+  const context = createContext();
+  const savePromise = saveSaleAuthoritatively(context as never, {
+    lotId: 1,
+    pendingSale: makeSale({ id: 21 }),
+    editingSaleId: null,
+    baseVersion: 0
+  }, {
+    canUseAuthoritativeApi: () => true,
+    saveSale: () => save.promise,
+    fetchSales: vi.fn(),
+    cacheSales: vi.fn(),
+    refreshCharts: vi.fn()
+  });
+
+  let completed = false;
+  void savePromise.then(() => { completed = true; });
+  await Promise.resolve();
+  assert.equal(completed, false);
+  assert.deepEqual(context.sales, []);
+  save.resolve(makeSale({ id: 21 }));
+  assert.deepEqual(await savePromise, { kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" });
+  assert.deepEqual((context.sales as Sale[]).map((sale) => sale.id), [21]);
+});
+
+test("cache failure after cloud confirmation is reported without making the cloud save retryable", async () => {
+  const saveSale = vi.fn(async () => makeSale({ id: 22 }));
+  const cacheSales = vi.fn(() => { throw new Error("quota exceeded"); });
+  const context = createContext();
+
+  const outcome = await saveSaleAuthoritatively(context as never, {
+    lotId: 1,
+    pendingSale: makeSale({ id: 22 }),
+    editingSaleId: null,
+    baseVersion: 0
+  }, {
+    canUseAuthoritativeApi: () => true,
+    saveSale,
+    fetchSales: vi.fn(),
+    cacheSales,
+    refreshCharts: vi.fn()
+  });
+
+  assert.equal(saveSale.mock.calls.length, 1);
+  assert.equal(outcome.kind, "failure");
+  assert.equal(outcome.stage, "cache");
+  assert.equal(outcome.cloudConfirmed, true);
 });
 
 test("deleteSaleWithPersistence deletes locally when api is unavailable", () => {
@@ -85,7 +142,6 @@ test("deleteSaleWithPersistence deletes locally when api is unavailable", () => 
   });
 
   assert.equal((context.sales as Sale[]).length, 0);
-  assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Sale deleted");
   assert.equal(refreshCharts.mock.calls.length, 1);
 });
 

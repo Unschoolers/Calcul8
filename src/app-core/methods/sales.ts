@@ -6,6 +6,7 @@ import type {
     WheelConfig
 } from "../../types/app.ts";
 import type { SalesMethodImplementation } from "../context/commerce.ts";
+import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
 import { getScopedWheelConfigsStorageKey } from "../storageKeys.ts";
 import { captureWorkspaceScopeGuard, getActiveStorageScope } from "../workspace-scope.ts";
 import { getTodayDate } from "./config-shared.ts";
@@ -54,6 +55,29 @@ import {
   markStorageWriteFailure
 } from "../storage-health.ts";
 
+function notifySalesPersistenceOutcome(
+  context: { notify(message: string, color?: string): void },
+  outcome: PersistenceOutcome,
+  action: "save" | "delete"
+): void {
+  if (outcome.kind === "conflict") {
+    context.notify(
+      action === "save"
+        ? "Sales changed in the cloud. Pulled latest sales and canceled your save."
+        : "Sales changed in the cloud. Pulled latest sales instead of deleting.",
+      "warning"
+    );
+    return;
+  }
+  if (outcome.kind !== "failure") return;
+  const message = outcome.cloudConfirmed
+    ? "The cloud saved this sale, but the local cache could not be updated. Refresh sales before retrying."
+    : outcome.error instanceof Error && outcome.error.message.trim()
+      ? outcome.error.message
+      : `Failed to ${action} sale.`;
+  context.notify(message, "error");
+}
+
 export const salesMethods = {
   loadSalesFromStorage(): void {
     if (!this.currentLotId) return;
@@ -86,8 +110,8 @@ export const salesMethods = {
     );
   },
 
-  saveSalesToStorage(): void {
-    if (!this.currentLotId) return;
+  saveSalesToStorage(): Promise<PersistenceOutcome> {
+    if (!this.currentLotId) return Promise.resolve({ kind: "skipped", reason: "no-lot" });
 
     const scope = getActiveStorageScope(this);
     const storageKey = this.getSalesStorageKey(this.currentLotId);
@@ -96,11 +120,13 @@ export const salesMethods = {
       // Keep the root cache in sync without reassigning `sales` from inside the `sales` watcher.
       cacheRootLotSales(this, this.currentLotId, this.sales);
       clearStorageWriteFailure(this, scope, storageKey);
+      return Promise.resolve({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" });
     } catch (error) {
       console.error("Failed to save sales:", error);
       if (markStorageWriteFailure(this, scope, storageKey)) {
         this.notify("Could not save sales. Storage may be full.", "error");
       }
+      return Promise.resolve({ kind: "failure", error, stage: "local" });
     }
   },
 
@@ -154,7 +180,7 @@ export const salesMethods = {
     syncSinglesSaleDraftSummary(this);
   },
 
-  saveSale(): void {
+  async saveSale(): Promise<PersistenceOutcome> {
     type ActivePricingSnapshot = Partial<Pick<Lot,
       "feeProfilePreset" | "platformFeePercent" | "additionalFeePercent" | "additionalFeeAppliesTo"
       | "fixedFeePerOrder" | "whatnotVertical" | "sellingTaxPercent" | "sellingCurrency" | "exchangeRate"
@@ -187,7 +213,7 @@ export const salesMethods = {
     });
     if (saveResult.ok === false) {
       this.notify(saveResult.message, saveResult.color);
-      return;
+      return { kind: "failure", error: new Error(saveResult.message), stage: "local" };
     }
 
     const pendingSale = saveResult.sale;
@@ -214,7 +240,7 @@ export const salesMethods = {
       if (missingLotIds.length > 0 && !this.isOffline && canUseAuthoritativeSalesLiveApi()) {
         hydrateMissingWhatnotScopeSales(this);
         this.notify("Sales history is still loading. Your sale was not saved; try again when history finishes loading.", "warning");
-        return;
+        return { kind: "skipped", reason: "not-ready" };
       }
       let salesByLotId = new Map<number, Sale[]>();
       try {
@@ -257,7 +283,7 @@ export const salesMethods = {
     const currentLotId = this.currentLotId;
     const editingSaleId = this.editingSale?.id ?? null;
     const baseVersion = this.editingSale?.version ?? 0;
-    saveSaleWithPersistence(this, {
+    const outcome = await saveSaleWithPersistence(this, {
       lotId: currentLotId,
       pendingSale,
       editingSaleId,
@@ -269,17 +295,22 @@ export const salesMethods = {
       refreshCharts: refreshChartsForCurrentTab,
       saveAuthoritatively: saveSaleAuthoritatively
     });
+    notifySalesPersistenceOutcome(this, outcome, "save");
     if (provisionalSnapshotDeferred) {
       this.notify("Sale saved, but Whatnot history is incomplete. Change the sale price or date after history loads to refresh its net revenue estimate.", "warning");
     }
+    return outcome;
   },
 
   editSale(sale: Sale): void {
     editSaleDraft(this, sale);
   },
 
-  deleteSale(id: number): void {
-    deleteSaleWithPersistence(this, id);
+  async deleteSale(id: number): Promise<PersistenceOutcome> {
+    const outcome = await deleteSaleWithPersistence(this, id);
+    if (outcome.kind === "confirmed") this.notify("Sale deleted", "info");
+    else notifySalesPersistenceOutcome(this, outcome, "delete");
+    return outcome;
   },
 
   cancelSale(): void {

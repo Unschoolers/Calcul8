@@ -112,12 +112,8 @@ function persistSalesCache(
   lotId: number,
   sales: Sale[]
 ): void {
-  try {
-    persistSalesCacheToStorage(app, lotId, sales);
-    replaceRootLotSales(app, lotId, sales);
-  } catch {
-    // Ignore cache write failures.
-  }
+  persistSalesCacheToStorage(app, lotId, sales);
+  replaceRootLotSales(app, lotId, sales);
 }
 
 export async function fetchAuthoritativeSales(

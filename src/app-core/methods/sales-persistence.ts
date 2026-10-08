@@ -1,4 +1,5 @@
 import type { Sale } from "../../types/app.ts";
+import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
 import type {
   SalesAuthoritativePersistenceContext,
   SalesChartRefreshContext,
@@ -89,61 +90,78 @@ export function saveSaleAuthoritatively(
     cacheSales: cacheAuthoritativeSales,
     refreshCharts: refreshChartsForCurrentTab
   }
-): void {
+): Promise<PersistenceOutcome> {
   const lotId = params.lotId;
-  if (!lotId || !deps.canUseAuthoritativeApi()) {
-    return;
-  }
+  if (!lotId) return Promise.resolve({ kind: "skipped", reason: "no-lot" });
+  if (!deps.canUseAuthoritativeApi()) return Promise.resolve({ kind: "skipped", reason: "unavailable" });
   const isCurrentScope = captureWorkspaceScopeGuard(context);
   const initialSales = [...context.sales];
 
-  void (async () => {
+  return (async (): Promise<PersistenceOutcome> => {
     const mutationState = getSaleMutationState(context, lotId);
     if (mutationState.isSavingSale) {
-      return;
+      return { kind: "skipped", reason: "duplicate" };
     }
     mutationState.isSavingSale = true;
     try {
       const savedSale = await deps.saveSale(context, lotId, params.pendingSale, params.baseVersion);
-      if (!isCurrentScope()) return;
+      if (!isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
       const sales = upsertById(
         context.currentLotId === lotId ? context.sales : getRootLotSales(context, lotId) ?? initialSales,
         savedSale,
         params.editingSaleId != null ? [params.editingSaleId] : []
       );
       replaceRootLotSales(context, lotId, sales);
-      deps.cacheSales(context, lotId, sales);
-      persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(sales));
+      try {
+        deps.cacheSales(context, lotId, sales);
+        persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(sales));
+      } catch (error) {
+        throw new CachePersistenceError(error);
+      }
       if (context.currentLotId === lotId) {
         context.cancelSale();
         deps.refreshCharts(context);
       }
+      return { kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" };
     } catch (error) {
-      if (!isCurrentScope()) return;
+      if (!isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
       if (error instanceof SalesLiveApiError && error.status === 409) {
         const latestSales = await deps.fetchSales(context, lotId).catch(() => null);
-        if (!isCurrentScope()) return;
+        if (!isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
         if (latestSales) {
           replaceRootLotSales(context, lotId, latestSales);
-          deps.cacheSales(context, lotId, latestSales);
-          persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
+          try {
+            deps.cacheSales(context, lotId, latestSales);
+            persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
+          } catch (error) {
+            throw new CachePersistenceError(error);
+          }
         }
         if (context.currentLotId === lotId) {
           context.cancelSale();
           deps.refreshCharts(context);
-          context.notify("Sales changed in the cloud. Pulled latest sales and canceled your save.", "warning");
         }
-        return;
+        return { kind: "conflict", latestState: latestSales ? "loaded" : "unavailable" };
       }
-      const message = error instanceof Error && error.message.trim()
-        ? error.message
-        : "Failed to save sale.";
-      if (context.currentLotId === lotId) context.notify(message, "error");
+      return {
+        kind: "failure",
+        error,
+        stage: error instanceof CachePersistenceError ? "cache" : "cloud",
+        ...(error instanceof CachePersistenceError ? { cloudConfirmed: true as const } : {})
+      };
     } finally {
       mutationState.isSavingSale = false;
       mutationState.release();
     }
   })();
+}
+
+class CachePersistenceError extends Error {
+  constructor(error: unknown) {
+    super("Cloud save was confirmed, but the local sales cache could not be updated.");
+    this.name = "CachePersistenceError";
+    Object.defineProperty(this, "cause", { value: error, configurable: true });
+  }
 }
 
 export function saveSaleWithPersistence(
@@ -164,21 +182,30 @@ export function saveSaleWithPersistence(
       pendingSale: Sale;
       editingSaleId: number | null;
       baseVersion: number;
-    }): void;
+    }): Promise<PersistenceOutcome>;
   } = {
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
     persistLocally: persistSaleLocally,
     refreshCharts: refreshChartsForCurrentTab,
     saveAuthoritatively: saveSaleAuthoritatively
   }
-): void {
+): Promise<PersistenceOutcome> {
   if (!params.lotId || !deps.canUseAuthoritativeApi()) {
-    deps.persistLocally(context, params.pendingSale, params.editingIndex);
-    deps.refreshCharts(context);
-    return;
+    try {
+      deps.persistLocally(context, params.pendingSale, params.editingIndex);
+      deps.refreshCharts(context);
+      return Promise.resolve({
+        kind: "confirmed",
+        persistence: "local",
+        cache: "saved",
+        cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
+      });
+    } catch (error) {
+      return Promise.resolve({ kind: "failure", error, stage: "local" });
+    }
   }
 
-  deps.saveAuthoritatively(context, {
+  return deps.saveAuthoritatively(context, {
     lotId: params.lotId,
     pendingSale: params.pendingSale,
     editingSaleId: params.editingSaleId,
@@ -196,8 +223,8 @@ export function deleteSaleWithPersistence(
     cacheSales: cacheAuthoritativeSales,
     refreshCharts: refreshChartsForCurrentTab
   }
-): void {
-  context.askConfirmation(
+): Promise<PersistenceOutcome> {
+  return new Promise((resolve) => context.askConfirmation(
     {
       title: "Delete Sale?",
       text: "This action cannot be undone.",
@@ -207,9 +234,18 @@ export function deleteSaleWithPersistence(
       const currentLotId = context.currentLotId;
       const sale = context.sales.find((entry) => entry.id === saleId) ?? null;
       if (!currentLotId || !sale || !deps.canUseAuthoritativeApi()) {
-        context.sales = removeById(context.sales, saleId);
-        context.notify("Sale deleted", "info");
-        deps.refreshCharts(context);
+        try {
+          context.sales = removeById(context.sales, saleId);
+          deps.refreshCharts(context);
+          resolve({
+            kind: "confirmed",
+            persistence: "local",
+            cache: "saved",
+            cloud: typeof navigator !== "undefined" && navigator.onLine === false ? "skipped-offline" : "unavailable"
+          });
+        } catch (error) {
+          resolve({ kind: "failure", error, stage: "local" });
+        }
         return;
       }
       const lotId = currentLotId;
@@ -219,48 +255,60 @@ export function deleteSaleWithPersistence(
       void (async () => {
         const mutationState = getSaleMutationState(context, lotId);
         if (mutationState.deletingSaleIds.has(saleId)) {
+          resolve({ kind: "skipped", reason: "duplicate" });
           return;
         }
         mutationState.deletingSaleIds.add(saleId);
         try {
           await deps.deleteSale(context, lotId, saleId, sale.version ?? 0);
-          if (!isCurrentScope()) return;
+          if (!isCurrentScope()) {
+            resolve({ kind: "skipped", reason: "stale-scope" });
+            return;
+          }
           const sales = removeById(
             context.currentLotId === lotId ? context.sales : getRootLotSales(context, lotId) ?? initialSales,
             saleId
           );
           replaceRootLotSales(context, lotId, sales);
-          deps.cacheSales(context, lotId, sales);
-          persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(sales));
-          if (context.currentLotId === lotId) {
-            context.notify("Sale deleted", "info");
-            deps.refreshCharts(context);
+          try {
+            deps.cacheSales(context, lotId, sales);
+            persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(sales));
+          } catch (error) {
+            throw new CachePersistenceError(error);
           }
+          if (context.currentLotId === lotId) deps.refreshCharts(context);
+          resolve({ kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" });
         } catch (error) {
-          if (!isCurrentScope()) return;
+          if (!isCurrentScope()) {
+            resolve({ kind: "skipped", reason: "stale-scope" });
+            return;
+          }
           if (error instanceof SalesLiveApiError && error.status === 409) {
             const latestSales = await deps.fetchSales(context, lotId).catch(() => null);
-            if (!isCurrentScope()) return;
+            if (!isCurrentScope()) {
+              resolve({ kind: "skipped", reason: "stale-scope" });
+              return;
+            }
             if (latestSales) {
               replaceRootLotSales(context, lotId, latestSales);
               deps.cacheSales(context, lotId, latestSales);
               persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
             }
-            if (context.currentLotId === lotId) {
-              context.notify("Sales changed in the cloud. Pulled latest sales instead of deleting.", "warning");
-            }
+            resolve({ kind: "conflict", latestState: latestSales ? "loaded" : "unavailable" });
             return;
           }
-          const message = error instanceof Error && error.message.trim()
-            ? error.message
-            : "Failed to delete sale.";
-          if (context.currentLotId === lotId) context.notify(message, "error");
+          resolve({
+            kind: "failure",
+            error,
+            stage: error instanceof CachePersistenceError ? "cache" : "cloud",
+            ...(error instanceof CachePersistenceError ? { cloudConfirmed: true as const } : {})
+          });
         } finally {
           mutationState.deletingSaleIds.delete(saleId);
           mutationState.release();
         }
       })();
     }
-  );
+  ));
 }
 
