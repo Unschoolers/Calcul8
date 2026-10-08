@@ -779,7 +779,7 @@ test("createMutationId uses crypto when available and falls back otherwise", () 
   assert.match(fallbackMutationId, /^sale:\d+:[0-9a-f]+$/);
 });
 
-test("cacheAuthoritativeSales ignores storage failures", () => {
+test("cacheAuthoritativeSales exposes storage failures to mutation callers", () => {
   const setItem = vi.fn(() => {
     throw new Error("quota");
   });
@@ -790,7 +790,7 @@ test("cacheAuthoritativeSales ignores storage failures", () => {
     clear: vi.fn()
   });
 
-  cacheAuthoritativeSales(createApp(), 12, [{
+  assert.throws(() => cacheAuthoritativeSales(createApp(), 12, [{
     id: 1,
     type: "pack",
     quantity: 1,
@@ -798,7 +798,7 @@ test("cacheAuthoritativeSales ignores storage failures", () => {
     price: 1,
     buyerShipping: 0,
     date: "2026-03-17"
-  }]);
+  }]), /quota/);
 
   assert.equal(setItem.mock.calls.length, 1);
 });

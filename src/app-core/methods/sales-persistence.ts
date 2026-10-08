@@ -114,7 +114,7 @@ export function saveSaleAuthoritatively(
         deps.cacheSales(context, lotId, sales);
         persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(sales));
       } catch (error) {
-        throw new CachePersistenceError(error);
+        throw new CachePersistenceError(error instanceof Error ? error : new Error(String(error)));
       }
       if (context.currentLotId === lotId) {
         context.cancelSale();
@@ -132,7 +132,12 @@ export function saveSaleAuthoritatively(
             deps.cacheSales(context, lotId, latestSales);
             persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
           } catch (error) {
-            return { kind: "failure", error, stage: "cache", cloudConfirmed: true };
+            return {
+              kind: "failure",
+              error: error instanceof Error ? error : new Error(String(error)),
+              stage: "cache",
+              cloudConfirmed: true
+            };
           }
         }
         if (context.currentLotId === lotId) {
@@ -155,7 +160,7 @@ export function saveSaleAuthoritatively(
 }
 
 class CachePersistenceError extends Error {
-  constructor(error: unknown) {
+  constructor(error: Error) {
     super("Cloud save was confirmed, but the local sales cache could not be updated.");
     this.name = "CachePersistenceError";
     Object.defineProperty(this, "cause", { value: error, configurable: true });
@@ -286,7 +291,7 @@ export function deleteSaleWithPersistence(
             deps.cacheSales(context, lotId, sales);
             persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(sales));
           } catch (error) {
-            throw new CachePersistenceError(error);
+            throw new CachePersistenceError(error instanceof Error ? error : new Error(String(error)));
           }
           if (context.currentLotId === lotId) deps.refreshCharts(context);
           resolve({ kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" });
@@ -307,7 +312,12 @@ export function deleteSaleWithPersistence(
                 deps.cacheSales(context, lotId, latestSales);
                 persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
               } catch (cacheError) {
-                resolve({ kind: "failure", error: cacheError, stage: "cache", cloudConfirmed: true });
+                resolve({
+                  kind: "failure",
+                  error: cacheError instanceof Error ? cacheError : new Error(String(cacheError)),
+                  stage: "cache",
+                  cloudConfirmed: true
+                });
                 return;
               }
             }

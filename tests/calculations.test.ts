@@ -2246,7 +2246,7 @@ test("saveSale is blocked when paywall is locked", () => {
   assert.equal(notified, "Pro access required to add or update sales");
 });
 
-test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", () => {
+test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", async () => {
   const scenarios = [
     {
       draft: { type: "pack", quantity: 3, packsCount: null, expectedPacks: 3 },
@@ -2280,12 +2280,13 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
       notify() {
         // noop
       },
+      saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
       cancelSale() {
         cancelCalled = true;
       }
     } as any;
 
-    salesMethods.saveSale.call(context);
+    await salesMethods.saveSale.call(context);
 
     assert.equal(context.sales.length, 1);
     assert.equal(context.sales[0]?.packsCount, scenario.draft.expectedPacks);
@@ -2405,7 +2406,7 @@ test("manual Whatnot date edits exclude the old date and retain provenance after
   assert.equal(context.sales[0].netRevenue, 960); // Old-date sale is removed before deriving Standard (4%).
 });
 
-test("offline save defers a tier snapshot while scoped sales are missing and snapshots after history arrives", () => {
+test("offline save defers a tier snapshot while scoped sales are missing and snapshots after history arrives", async () => {
   const lot = {
     id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "whatnot", whatnotVertical: "coins",
     sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 8,
@@ -2421,10 +2422,11 @@ test("offline save defers a tier snapshot while scoped sales are missing and sna
     newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
     getAllSalesByLotId: () => scopedSales,
     getSalesCacheEntry: (lotId: number) => ({ status: cacheStatus.get(lotId), sales: scopedSales.get(lotId) || [] }),
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "skipped-offline" }),
     notify(message: string) { warnings.push(message); }, cancelSale() { this.editingSale = null; }, initSalesChart() {}
   };
 
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   const saved = context.sales[0] as Sale;
   assert.equal(saved.wasWhatnotSale, true);
   assert.equal(saved.netRevenue, undefined);
@@ -2434,7 +2436,7 @@ test("offline save defers a tier snapshot while scoped sales are missing and sna
   cacheStatus.set(2, "loaded");
   context.editingSale = saved;
   context.newSale = { ...context.newSale, price: 1100 };
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   assert.equal(context.sales[0].netRevenue, 1061.5);
 });
 

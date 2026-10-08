@@ -360,10 +360,7 @@ test("saveSale cancels the stale editor and reloads latest sales on authoritativ
   saveAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
   fetchAuthoritativeSalesMock.mockResolvedValue(latestSales);
 
-  salesMethods.saveSale.call(ctx as never);
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await salesMethods.saveSale.call(ctx as never);
 
   assert.deepEqual(ctx.sales, latestSales);
   assert.equal(cancelSale.mock.calls.length, 1);
@@ -403,10 +400,7 @@ test("deleteSale reloads latest sales on authoritative conflict", async () => {
   deleteAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
   fetchAuthoritativeSalesMock.mockResolvedValue(latestSales);
 
-  salesMethods.deleteSale.call(ctx as never, 1);
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await salesMethods.deleteSale.call(ctx as never, 1);
 
   assert.equal(deleteAuthoritativeSaleMock.mock.calls.length, 1);
   assert.deepEqual(ctx.sales, latestSales);
