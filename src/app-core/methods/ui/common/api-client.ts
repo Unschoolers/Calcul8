@@ -244,6 +244,7 @@ export async function fetchAuthenticatedApiResponse(
   options: {
     expireAuthOn401?: boolean;
     retryUnsafeMethods?: boolean;
+    bootstrapAuthOn401?: (signal?: AbortSignal) => Promise<boolean>;
   } = {}
 ): Promise<Response> {
   const baseUrl = resolveApiBaseUrl();
@@ -259,19 +260,22 @@ export async function fetchAuthenticatedApiResponse(
 
   const response = await fetchWithRetry(requestUrl, buildRequestInit(), options);
 
-  if (response.status === 401 && options.expireAuthOn401 !== false) {
-    const refreshed = await waitForCallerOrShared(refreshAuthSessionSingleFlight(baseUrl), init.signal ?? undefined);
+  if (response.status === 401 && (options.expireAuthOn401 !== false || options.bootstrapAuthOn401)) {
+    let refreshed = await waitForCallerOrShared(refreshAuthSessionSingleFlight(baseUrl), init.signal ?? undefined);
+    if (!refreshed && options.bootstrapAuthOn401) {
+      refreshed = await waitForCallerOrShared(options.bootstrapAuthOn401(init.signal ?? undefined), init.signal ?? undefined);
+    }
     if (refreshed) {
       if (!canRetryRequest(init.method, options.retryUnsafeMethods ?? false)) return response;
       const retryResponse = await fetchWithRetry(requestUrl, buildRequestInit(), options);
       if (retryResponse.status !== 401) {
         return retryResponse;
       }
-      handleExpiredAuth(app);
+      if (options.expireAuthOn401 !== false) handleExpiredAuth(app);
       return retryResponse;
     }
 
-    handleExpiredAuth(app);
+    if (options.expireAuthOn401 !== false) handleExpiredAuth(app);
   }
 
   return response;

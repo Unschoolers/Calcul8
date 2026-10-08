@@ -29,10 +29,18 @@ export async function fetchWorkspaceJson(
   }
 
   let response: Response;
+  let bootstrapUnavailable = false;
   try {
     response = await fetchAuthenticatedApiResponse(app, path, init, {
       expireAuthOn401: false,
-      retryUnsafeMethods: options.retryUnsafeMethods
+      retryUnsafeMethods: options.retryUnsafeMethods,
+      ...(getStoredGoogleIdToken() ? {
+        bootstrapAuthOn401: async (signal) => {
+          const result = await bootstrapServerSessionStatus(app, baseUrl, signal);
+          bootstrapUnavailable = !result.ok && !result.authExpired;
+          return result.ok;
+        }
+      } : {})
     });
   } catch (error) {
     if (isApiRequestAborted(error)) return { ok: false, handled: true };
@@ -52,30 +60,8 @@ export async function fetchWorkspaceJson(
   }
 
   if (response.status === 401) {
-    const bootstrapToken = getStoredGoogleIdToken();
-    if (bootstrapToken) {
-      const bootstrapResult = await bootstrapServerSessionStatus(app, baseUrl);
-      if (init.signal?.aborted) return { ok: false, handled: true };
-      if (bootstrapResult.ok) {
-        try {
-          response = await fetchAuthenticatedApiResponse(app, path, init, {
-            expireAuthOn401: false,
-            retryUnsafeMethods: options.retryUnsafeMethods
-          });
-        } catch (error) {
-          if (isApiRequestAborted(error)) return { ok: false, handled: true };
-          throw error;
-        }
-        if (response.status !== 401) {
-          return await parseWorkspaceJsonResponse(response);
-        }
-      }
-
-      if (!bootstrapResult.authExpired) {
-        return { ok: false, handled: true };
-      }
-    }
-
+    if (init.signal?.aborted) return { ok: false, handled: true };
+    if (bootstrapUnavailable) return { ok: false, handled: true };
     handleExpiredAuth(app);
     app.notify("Your sign-in expired. Please sign in again.", "warning");
     return { ok: false, handled: true };
