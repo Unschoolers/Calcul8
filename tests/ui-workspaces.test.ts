@@ -40,6 +40,7 @@ const {
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchWithRetry: fetchWithRetryMock,
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
+  isApiNetworkFailure: (error: unknown) => error instanceof TypeError,
   isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock

@@ -89,6 +89,7 @@ export const uiShopifyMethods = {
     if (this.activeScopeType === "workspace" && !this.isCurrentWorkspaceOwner) return;
     const mutation = beginMutation(this); if (!mutation) return;
     const { current, release } = mutation;
+    const previousStatus = this.shopifyConnectionStatus;
     const shop = this.shopifyShopDraft.trim().toLowerCase(); if (!validShop(shop)) { release(); return; }
     this.shopifyConnectionStatus = "connecting";
     try {
@@ -98,13 +99,17 @@ export const uiShopifyMethods = {
       if (url.origin !== `https://${shop}` || url.pathname !== "/admin/oauth/authorize") throw new Error("Invalid Shopify authorization URL");
       if (!current()) return;
       this.shopifyShopDraft = ""; this.shopifyConnectionStatus = "disconnected"; window.location.assign(url.toString());
-    } catch (error) { if (current() && !isApiRequestAborted(error)) this.shopifyConnectionStatus = "error"; }
+    } catch (error) {
+      if (!current()) return;
+      this.shopifyConnectionStatus = isApiRequestAborted(error) ? previousStatus : "error";
+    }
     finally { release(); }
   },
   async disconnectShopify(): Promise<void> {
     if (this.activeScopeType === "workspace" && !this.isCurrentWorkspaceOwner) return;
     const mutation = beginMutation(this); if (!mutation) return;
     const { current, release } = mutation;
+    const previousStatus = this.shopifyConnectionStatus;
     this.shopifyConnectionStatus = "connecting";
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/disconnect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(scopeBody(this)) });
@@ -112,7 +117,10 @@ export const uiShopifyMethods = {
       if (!current()) return;
       this.shopifyConnectionStatus = "disconnected"; this.shopifyConnectionShop = null; this.shopifyLastSyncedAt = null; this.shopifySyncError = null; this.showShopifyConnectDialog = false;
       void this.refreshShopifyBindings?.();
-    } catch { if (current()) this.shopifyConnectionStatus = "error"; }
+    } catch (error) {
+      if (!current()) return;
+      this.shopifyConnectionStatus = isApiRequestAborted(error) ? previousStatus : "error";
+    }
     finally { release(); }
   }
 } satisfies ShopifyMethodImplementation;

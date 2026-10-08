@@ -1,5 +1,5 @@
 import type { WorkspaceApiContext } from "../../../context/workspace.ts";
-import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
+import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiNetworkFailure, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
 import { getStoredGoogleIdToken, hasAuthSignal } from "../../../auth/index.ts";
 import { bootstrapServerSessionStatus } from "../auth/auth-session.ts";
 import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
@@ -44,14 +44,8 @@ export async function fetchWorkspaceJson(
     });
   } catch (error) {
     if (isApiRequestAborted(error)) return { ok: false, handled: true };
-    const message = error instanceof Error ? error.message : "";
-    const isOfflineFailure =
-      message.includes("Failed to fetch")
-      || message.includes("NetworkError")
-      || message.includes("Load failed")
-      || message.includes("fetch");
     app.notify(
-      isOfflineFailure
+      isApiNetworkFailure(error)
         ? "You're offline. Workspace data will refresh when the connection returns."
         : fallbackMessage,
       "warning"
@@ -68,18 +62,31 @@ export async function fetchWorkspaceJson(
   }
 
   if (!response.ok) {
-    app.notify(await parseWorkspaceApiError(response, fallbackMessage, options.errorMessagesByCode), "error");
+    let message: string;
+    try {
+      message = await parseWorkspaceApiError(response, fallbackMessage, options.errorMessagesByCode);
+    } catch (error) {
+      if (isApiRequestAborted(error)) return { ok: false, handled: true };
+      throw error;
+    }
+    app.notify(message, "error");
     return { ok: false, handled: true };
   }
 
-  return await parseWorkspaceJsonResponse(response);
+  try {
+    return await parseWorkspaceJsonResponse(response);
+  } catch (error) {
+    if (isApiRequestAborted(error)) return { ok: false, handled: true };
+    throw error;
+  }
 }
 
 async function parseWorkspaceJsonResponse(response: Response): Promise<{ ok: true; response: Response; body: unknown }> {
   let body: unknown = null;
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (isApiRequestAborted(error)) throw error;
     body = null;
   }
 

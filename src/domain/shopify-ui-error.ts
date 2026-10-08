@@ -1,4 +1,5 @@
 import { ShopifyErrorCode, shopifyErrorCodeSet, type ShopifyErrorCode as Code } from "../../shared/shopify-errors.ts";
+import { parseApiErrorEnvelope } from "../app-core/shared/api-error-message.ts";
 
 export { ShopifyErrorCode };
 export type Recovery = "retry" | "refresh" | "reconnect" | "none";
@@ -21,10 +22,11 @@ export class ShopifyUiError extends Error {
   constructor(readonly code: Code | null, readonly recovery: Recovery, readonly messageKey: string) { super(messageKey); this.name = "ShopifyUiError"; }
 }
 export async function shopifyResponseUiError(response: Response | null, t: Translator, fallbackKey: string, conflictKey = "configShopifyConflictError"): Promise<ShopifyUiError> {
-  let status = 0, code: string | undefined;
+  let status = 0, code: string | null = null;
   if (response) {
-    status = response.status;
-    try { const body: unknown = await response.clone().json(); if (body && typeof body === "object" && "code" in body && typeof body.code === "string") code = body.code; } catch { /* malformed response is safely ignored */ }
+    const error = await parseApiErrorEnvelope(response, "");
+    status = error.status;
+    code = error.code;
   }
   if (code && shopifyErrorCodeSet.has(code)) {
     const definition = definitions[code as Code];

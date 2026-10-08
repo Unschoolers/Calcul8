@@ -19,6 +19,8 @@ export const shopifyBindingMethods = {
     }
     if (this.shopifyConnectionShop && this.shopifyBindingsSummary?.shop !== this.shopifyConnectionShop) this.shopifyBindingsSummary = null;
     const shop = this.shopifyConnectionShop;
+    const previousStatus = this.shopifyBindingsStatus;
+    const previousStale = this.shopifyBindingsStale;
     const token = {}; requests.set(this, token);
     this.shopifyBindingsStatus = "loading";
     this.shopifyBindingsStale = Boolean(this.shopifyBindingsSummary);
@@ -40,7 +42,11 @@ export const shopifyBindingMethods = {
       this.shopifyBindingsStale = !summary.connected || this.shopifyConnectionStatus !== "connected";
     } catch (error) {
       if (!current()) return;
-      if (isApiRequestAborted(error)) return;
+      if (isApiRequestAborted(error)) {
+        this.shopifyBindingsStatus = previousStatus;
+        this.shopifyBindingsStale = previousStale;
+        return;
+      }
       this.shopifyBindingsStatus = "error"; this.shopifyBindingsStale = Boolean(this.shopifyBindingsSummary);
     } finally {
       if (requests.get(this) === token) requests.delete(this);

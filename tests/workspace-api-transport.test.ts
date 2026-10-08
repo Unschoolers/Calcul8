@@ -9,6 +9,7 @@ const { fetchAuthenticatedApiResponseMock, resolveApiBaseUrlMock } = vi.hoisted(
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
   handleExpiredAuth: vi.fn(),
+  isApiNetworkFailure: (error: unknown) => error instanceof TypeError,
   isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -56,4 +57,16 @@ test("workspace creation marks its stable idempotency-key request retry-safe", a
 
   assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[2]?.body, JSON.stringify({ idempotencyKey: "workspace-create-1" }));
   assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3]?.retryUnsafeMethods, true);
+});
+
+test("workspace body cancellation is handled without returning stale success or notifying", async () => {
+  const app = { notify: vi.fn() };
+  const response = new Response("{}");
+  Object.defineProperty(response, "json", { value: async () => { throw new DOMException("Aborted", "AbortError"); } });
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(response);
+
+  const result = await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Failed to load workspaces.");
+
+  assert.deepEqual(result, { ok: false, handled: true });
+  assert.equal(app.notify.mock.calls.length, 0);
 });

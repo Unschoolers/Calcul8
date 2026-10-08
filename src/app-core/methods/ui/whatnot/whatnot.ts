@@ -29,6 +29,7 @@ export const uiWhatnotMethods = {
       }
     );
     if (!result.ok) {
+      if ("aborted" in result) return;
       this.whatnotConnectionSummary = null;
       this.whatnotConnectionStatus = "error";
       return;
@@ -43,6 +44,7 @@ export const uiWhatnotMethods = {
       return;
     }
 
+    const previousStatus = this.whatnotConnectionStatus;
     this.whatnotConnectionStatus = "connecting";
     const result = await fetchWhatnotJson(
       this,
@@ -57,6 +59,10 @@ export const uiWhatnotMethods = {
       "Failed to start Whatnot connection."
     );
     if (!result.ok) {
+      if ("aborted" in result) {
+        this.whatnotConnectionStatus = previousStatus;
+        return;
+      }
       this.whatnotConnectionStatus = "error";
       return;
     }
@@ -102,6 +108,7 @@ export const uiWhatnotMethods = {
       return;
     }
 
+    const previousStatus = this.whatnotSyncStatus;
     this.whatnotSyncStatus = "syncing";
     const result = await fetchWhatnotJson(
       this,
@@ -116,6 +123,10 @@ export const uiWhatnotMethods = {
       "Failed to sync Whatnot sales."
     );
     if (!result.ok) {
+      if ("aborted" in result) {
+        this.whatnotSyncStatus = previousStatus;
+        return;
+      }
       this.whatnotSyncStatus = "error";
       return;
     }

@@ -78,7 +78,45 @@ test("Whatnot transport cancellation is handled without a user error notificatio
 
   const result = await fetchWhatnotJson(app as never, "/integrations/whatnot/status", { method: "GET" }, "Failed to load status.");
 
-  assert.deepEqual(result, { ok: false });
+  assert.deepEqual(result, { ok: false, aborted: true });
+  assert.equal(app.notify.mock.calls.length, 0);
+});
+
+test("Whatnot response body cancellation remains distinct from request failure", async () => {
+  const app = { googleAuthEpoch: 0, hasProAccess: false, notify: vi.fn() };
+  const response = new Response("{}");
+  Object.defineProperty(response, "json", { value: async () => { throw new DOMException("Aborted", "AbortError"); } });
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(response);
+
+  const result = await fetchWhatnotJson(app as never, "/integrations/whatnot/status", { method: "GET" }, "Failed to load status.");
+
+  assert.deepEqual(result, { ok: false, aborted: true });
+  assert.equal(app.notify.mock.calls.length, 0);
+});
+
+test("Whatnot cancellation preserves connection and sync statuses", async () => {
+  const app = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: false,
+    isCurrentWorkspaceOwner: true,
+    notify: vi.fn(),
+    whatnotConnectionStatus: "connected",
+    whatnotConnectionSummary: { connected: true },
+    whatnotSyncStatus: "success"
+  };
+  fetchAuthenticatedApiResponseMock.mockRejectedValue(new DOMException("Aborted", "AbortError"));
+
+  await uiWhatnotMethods.refreshWhatnotStatus.call(app as never);
+  assert.equal(app.whatnotConnectionStatus, "connected");
+  assert.deepEqual(app.whatnotConnectionSummary, { connected: true });
+
+  await uiWhatnotMethods.connectWhatnot.call(app as never);
+  assert.equal(app.whatnotConnectionStatus, "connected");
+
+  await uiWhatnotMethods.syncWhatnotSales.call(app as never);
+  assert.equal(app.whatnotSyncStatus, "success");
   assert.equal(app.notify.mock.calls.length, 0);
 });
 

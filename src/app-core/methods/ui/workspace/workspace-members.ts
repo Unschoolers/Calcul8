@@ -1,7 +1,7 @@
 import type { WorkspaceMembershipContext } from "../../../context/workspace.ts";
 import type { WorkspaceMember } from "../../../../types/app.ts";
 import { hasAuthSignal } from "../../../auth/index.ts";
-import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "../common/shared.ts";
+import { fetchAuthenticatedApiResponse, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
 import { parseApiErrorMessage } from "../../../shared/api-error-message.ts";
 
 type WorkspaceMembersResponse = {
@@ -111,14 +111,20 @@ export async function loadWorkspaceMembers(
     }
 
     if (!response.ok) {
-      app.notify(await parseApiErrorMessage(response, "Failed to load workspace members."), "error");
+      try {
+        app.notify(await parseApiErrorMessage(response, "Failed to load workspace members."), "error");
+      } catch (error) {
+        if (isApiRequestAborted(error)) return false;
+        throw error;
+      }
       return false;
     }
 
     let body: unknown = null;
     try {
       body = await response.json();
-    } catch {
+    } catch (error) {
+      if (isApiRequestAborted(error)) return false;
       body = null;
     }
 

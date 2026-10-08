@@ -41,6 +41,7 @@ import {
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
 } from "../src/app-core/methods/sales-live-api.ts";
+import { requestJson } from "../src/app-core/methods/entity-api-shared.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
@@ -927,4 +928,15 @@ test("wheel creation retries send the same mutation identity", async () => {
   const requests = fetchAuthenticatedApiResponseMock.mock.calls.map(call => JSON.parse(String((call[2] as RequestInit).body)));
   assert.deepEqual(requests.map(body => body.mutationId), ["wheel-sale:777", "wheel-sale:777"]);
   assert.deepEqual(requests.map(body => body.baseVersion), [0, 0]);
+});
+
+test("entity JSON readers propagate body abort instead of reporting successful null data", async () => {
+  const response = new Response("{}");
+  Object.defineProperty(response, "json", { value: async () => { throw new DOMException("Aborted", "AbortError"); } });
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(response);
+
+  await assert.rejects(
+    requestJson(createApp(), "/sales", { method: "GET" }, "Failed to load sales."),
+    (error: unknown) => error instanceof DOMException && error.name === "AbortError"
+  );
 });

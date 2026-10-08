@@ -521,13 +521,19 @@ export const shopifyEditorMethods = {
     if (this.shopifyEditListingStatus === "loading" || this.shopifyConnectionStatus !== "connected" ||
       !shopifyEditSessionIsCurrent(this) || this.currentLotType === "singles") return;
     clearPendingShopifyAttempts(this, shopifyEditOwnerScope(this));
-      this.shopifyEditListingStatus = "loading";
-      this.shopifyEditError = null;
-      this.shopifyEditRecovery = "none";
-      this.shopifyEditErrorOperation = null;
-      this.shopifyEditRequestRevision += 1;
-      const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
-      try {
+    const previousListingStatus = this.shopifyEditListingStatus;
+    const previousErrorState = {
+      error: this.shopifyEditError,
+      recovery: this.shopifyEditRecovery,
+      operation: this.shopifyEditErrorOperation
+    };
+    this.shopifyEditListingStatus = "loading";
+    this.shopifyEditError = null;
+    this.shopifyEditRecovery = "none";
+    this.shopifyEditErrorOperation = null;
+    this.shopifyEditRequestRevision += 1;
+    const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
+    try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/listing", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...shopifyEditScopeBody(this), lotId: this.currentLotId, manager: true })
@@ -570,7 +576,15 @@ export const shopifyEditorMethods = {
           }
         }
       } catch (error) {
-        if (isApiRequestAborted(error)) return;
+        if (isApiRequestAborted(error)) {
+          if (shopifyEditRequestIsCurrent(this, captured)) {
+            this.shopifyEditListingStatus = previousListingStatus;
+            this.shopifyEditError = previousErrorState.error;
+            this.shopifyEditRecovery = previousErrorState.recovery;
+            this.shopifyEditErrorOperation = previousErrorState.operation;
+          }
+          return;
+        }
         if (shopifyEditRequestIsCurrent(this, captured)) {
           this.shopifyEditListingStatus = "error";
           this.shopifyEditError = shopifyEditErrorText(error, this.t, "configShopifyListingLoadError"); this.shopifyEditRecovery = shopifyUiErrorRecovery(error); this.shopifyEditErrorOperation = "listing";
