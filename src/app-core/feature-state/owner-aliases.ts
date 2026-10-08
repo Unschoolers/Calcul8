@@ -12,19 +12,23 @@ type FeatureOwner = Record<string, unknown>;
 export function attachFeatureStateAliases<T extends AppState>(
   root: T,
   ownerKey: FeatureStateKey,
-  owner: FeatureOwner,
+  owner: object,
   keys: readonly string[]
 ): T {
-  (root as T & Record<FeatureStateKey, FeatureOwner>)[ownerKey] = owner;
+  Object.defineProperty(root, ownerKey, {
+    configurable: true,
+    enumerable: true,
+    value: owner
+  });
   for (const key of keys) {
     Object.defineProperty(root, key, {
       configurable: true,
       enumerable: true,
       get(this: T & Record<FeatureStateKey, FeatureOwner>) {
-        return this[ownerKey][key];
+        return (this[ownerKey] as unknown as FeatureOwner)[key];
       },
       set(this: T & Record<FeatureStateKey, FeatureOwner>, value: unknown) {
-        this[ownerKey][key] = value;
+        (this[ownerKey] as unknown as FeatureOwner)[key] = value;
       }
     });
   }

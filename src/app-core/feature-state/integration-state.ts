@@ -1,4 +1,4 @@
-import type { AppState } from "../../types/app.ts";
+import type { AppState, IntegrationFeatureOwner } from "../../types/app.ts";
 
 export const INTEGRATION_FEATURE_STATE_KEYS = [
   "whatnotFeeDateOnly", "whatnotConnectionStatus", "whatnotSyncStatus", "whatnotConnectionSummary",
@@ -20,7 +20,7 @@ export const INTEGRATION_FEATURE_STATE_KEYS = [
   "shopifyEditPendingCreateMutation", "shopifyEditDetailsOutcome", "shopifyEditManagerOpen"
 ] as const satisfies readonly (keyof AppState)[];
 
-export type IntegrationFeatureState = Pick<AppState, (typeof INTEGRATION_FEATURE_STATE_KEYS)[number]>;
+export type IntegrationFeatureState = IntegrationFeatureOwner;
 
 const shopifyBindingsRequests = new WeakMap<object, object>();
 

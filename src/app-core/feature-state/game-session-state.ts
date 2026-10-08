@@ -1,4 +1,4 @@
-import type { GameSessionStateContext } from "../context/game.ts";
+import type { GameSessionOwner } from "../../types/app.ts";
 
 export const GAME_SESSION_FEATURE_STATE_KEYS = [
   "wheelSpinning", "activeWheelSlots", "wheelPreviewSlots", "wheelInventoryWarning", "wheelShowSeed",
@@ -9,9 +9,9 @@ export const GAME_SESSION_FEATURE_STATE_KEYS = [
   "wheelPreviewSpinCounts", "wheelPreviewTotalSpins", "wheelPreviewFairnessHistory", "wheelPreviewChaseTallyHistory",
   "wheelLastResultColor", "wheelSpinHash", "wheelSpinSeed", "wheelSpinClientSeed", "wheelSpinVerificationUrl",
   "wheelSpinAlgorithm"
-] as const satisfies readonly (keyof GameSessionStateContext)[];
+] as const satisfies readonly (keyof GameSessionOwner)[];
 
-export type GameSessionFeatureState = GameSessionStateContext;
+export type GameSessionFeatureState = GameSessionOwner;
 
 export function createGameSessionFeatureState(): GameSessionFeatureState {
   return {

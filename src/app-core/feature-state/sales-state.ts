@@ -1,11 +1,11 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { AppState, NewSaleDraft } from "../../types/app.ts";
+import type { AppState, NewSaleDraft, SalesFeatureOwner } from "../../types/app.ts";
 
 export const SALES_FEATURE_STATE_KEYS = [
   "sales", "salesByLotId", "showAddSaleModal", "editingSale", "newSale", "salesChart", "chartView", "salesCacheEpoch"
 ] as const satisfies readonly (keyof AppState)[];
 
-export type SalesFeatureState = Pick<AppState, (typeof SALES_FEATURE_STATE_KEYS)[number]>;
+export type SalesFeatureState = SalesFeatureOwner;
 
 function createNewSaleDraft(todayDate: string): NewSaleDraft {
   return {
