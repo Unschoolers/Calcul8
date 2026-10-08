@@ -56,6 +56,7 @@ test("saveSaleAuthoritatively saves, caches, cancels, and refreshes", async () =
   const refreshCharts = vi.fn();
   const context = createContext({
     sales: [makeSale({ id: 1, price: 10 })],
+    newSale: { type: "pack", quantity: 1, packsCount: null, price: 10, buyerShipping: 0, date: "2026-03-17" },
     cancelSale: vi.fn()
   });
 
@@ -135,6 +136,51 @@ test("cloud-confirmed cache failure does not cancel a newer reactive add-sale dr
   assert.equal(outcome.kind === "failure" && outcome.cloudConfirmed, true);
   assert.equal(cancelSale.mock.calls.length, 0);
   assert.equal(context.newSale.price, 40);
+});
+
+test("cloud confirmation preserves an add-sale draft edited in place while the request is pending", async () => {
+  const save = deferred<Sale>();
+  const draft = {
+    type: "singles" as const,
+    quantity: 1,
+    packsCount: null,
+    price: 25,
+    buyerShipping: 0,
+    date: "2026-03-17",
+    singlesItems: [{ lineId: 1, singlesPurchaseEntryId: null, quantity: 1, price: 25 }]
+  };
+  const cancelSale = vi.fn();
+  const context = reactive(createContext({
+    currentLotId: 1,
+    sales: [],
+    newSale: draft,
+    editingSale: null,
+    cancelSale
+  })) as ReturnType<typeof createContext> & { newSale: typeof draft };
+  const result = saveSaleAuthoritatively(context as never, {
+    lotId: 1,
+    pendingSale: makeSale({ id: 68, price: 25 }),
+    editingSaleId: null,
+    baseVersion: 0
+  }, {
+    canUseAuthoritativeApi: () => true,
+    saveSale: () => save.promise,
+    fetchSales: vi.fn(),
+    cacheSales: vi.fn(),
+    refreshCharts: vi.fn()
+  });
+
+  context.newSale.price = 40;
+  context.newSale.quantity = 2;
+  context.newSale.singlesItems[0]!.quantity = 3;
+  save.resolve(makeSale({ id: 68, price: 25 }));
+  const outcome = await result;
+
+  assert.deepEqual(outcome, { kind: "confirmed", persistence: "cloud", cache: "saved", cloud: "confirmed" });
+  assert.equal(cancelSale.mock.calls.length, 0);
+  assert.equal(context.newSale.price, 40);
+  assert.equal(context.newSale.quantity, 2);
+  assert.equal(context.newSale.singlesItems[0]?.quantity, 3);
 });
 
 test("conflict recovery retains conflict semantics when caching fetched state fails", async () => {

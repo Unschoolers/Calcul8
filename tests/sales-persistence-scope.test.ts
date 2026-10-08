@@ -36,6 +36,18 @@ function createContext() {
     sales,
     salesByLotId: new Map([[1, sales]]),
     editingSale: null,
+    newSale: {
+      type: "pack",
+      quantity: null,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      singlesItems: [],
+      price: 0,
+      customer: "",
+      memo: "",
+      buyerShipping: 0,
+      date: "2026-03-17"
+    },
     getSalesStorageKey(lotId) { return getSalesStorageKey(lotId, getActiveStorageScope(this)); },
     askConfirmation: (_options, confirm) => confirm(),
     cancelSale: vi.fn(),

@@ -353,6 +353,7 @@ export type SalesChartRefreshContext =
 
 export type SalesPersistenceContext = SalesAuthoritativePersistenceContext &
   SalesLocalMutationContext &
+  Pick<AppState, "newSale"> &
   SalesChartRefreshContext &
   Pick<CommerceMethodState, "saveSalesToStorage"> &
   Pick<RuntimeMethodState, "notify" | "askConfirmation">;

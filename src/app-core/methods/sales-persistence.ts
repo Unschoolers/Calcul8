@@ -92,10 +92,11 @@ function rollbackLocalSaleMutation(
 }
 
 function captureSaleDraftGuard(context: SalesPersistenceContext): () => boolean {
-  const contextWithDraft = context as SalesPersistenceContext & { newSale: object };
-  const originatingDraft = toRaw(contextWithDraft.newSale);
+  const originatingDraft = toRaw(context.newSale);
+  const originatingDraftSnapshot = JSON.stringify(originatingDraft);
   const originatingEditingSale = context.editingSale ? toRaw(context.editingSale) : null;
-  return () => toRaw(contextWithDraft.newSale) === originatingDraft
+  return () => toRaw(context.newSale) === originatingDraft
+    && JSON.stringify(toRaw(context.newSale)) === originatingDraftSnapshot
     && (originatingEditingSale === null
       ? context.editingSale === null
       : context.editingSale !== null && toRaw(context.editingSale) === originatingEditingSale);
