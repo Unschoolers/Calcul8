@@ -1,4 +1,5 @@
 import { DEFAULT_FEE_PROFILE_FIELDS, DEFAULT_VALUES, TAX_RATES } from "../constants.ts";
+import { calculateSaleConsumption } from "./box-inventory.ts";
 import { normalizeLotType } from "../shared/lot-types.ts";
 import type {
     AdditionalFeeAppliesTo,
@@ -576,6 +577,7 @@ export function calculateProfitForListing(
 export function calculateSaleProfit(params: {
   sale: Sale;
   lotType: LotType;
+  packsPerBox: number;
   sellingTaxPercent: number;
   totalCaseCost: number;
   totalPacks: number;
@@ -605,13 +607,15 @@ export function calculateSaleProfit(params: {
   }
 
   const costPerPack = params.totalPacks > 0 ? (params.totalCaseCost / params.totalPacks) : 0;
-  const allocatedCost = (params.sale.packsCount || 0) * costPerPack;
+  const consumption = calculateSaleConsumption({ lotType: normalizeLotType(params.lotType), packsPerBox: params.packsPerBox }, params.sale);
+  const allocatedCost = (consumption.valid ? consumption.units : 0) * costPerPack;
   return netRevenue - allocatedCost;
 }
 
 export function getSaleProfitPreview(params: {
   sale: Sale;
   lotType: LotType;
+  packsPerBox: number;
   sellingTaxPercent: number;
   totalCaseCost: number;
   totalPacks: number;
@@ -677,7 +681,8 @@ export function getSaleProfitPreview(params: {
   }
 
   const costPerPack = params.totalPacks > 0 ? (params.totalCaseCost / params.totalPacks) : 0;
-  const allocatedCost = (params.sale.packsCount || 0) * costPerPack;
+  const consumption = calculateSaleConsumption({ lotType: normalizeLotType(params.lotType), packsPerBox: params.packsPerBox }, params.sale);
+  const allocatedCost = (consumption.valid ? consumption.units : 0) * costPerPack;
   const value = netRevenue - allocatedCost;
   const quantity = Number(params.sale.quantity) || 0;
   return {

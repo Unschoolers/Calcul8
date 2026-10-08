@@ -94,6 +94,7 @@ export const uiBaseMethods = {
     return calculateSaleProfitValue({
       sale,
       lotType: this.currentLotType,
+      packsPerBox: this.packsPerBox,
       sellingTaxPercent: this.sellingTaxPercent,
       totalCaseCost: this.totalCaseCost,
       totalPacks: this.totalPacks,
@@ -109,6 +110,7 @@ export const uiBaseMethods = {
     return getSaleProfitPreviewValue({
       sale,
       lotType: this.currentLotType,
+      packsPerBox: this.packsPerBox,
       sellingTaxPercent: this.sellingTaxPercent,
       totalCaseCost: this.totalCaseCost,
       totalPacks: this.totalPacks,

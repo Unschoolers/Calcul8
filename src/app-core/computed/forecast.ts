@@ -100,7 +100,7 @@ export const forecastComputed: Pick<
     if (this.currentLotType === "singles") {
       const trackedInventoryTotal = Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
       const soldCardsFromAllSales = Array.isArray(this.sales)
-        ? Math.max(0, calculateSoldPacksCount(this.sales))
+        ? Math.max(0, calculateSoldPacksCount(this.sales, { lotType: this.currentLotType, packsPerBox: this.packsPerBox }))
         : 0;
       return Math.max(trackedInventoryTotal, soldCardsFromAllSales);
     }
@@ -210,7 +210,10 @@ export const forecastComputed: Pick<
   },
 
   soldPacksCount(): number {
-    return calculateSoldPacksCount(Array.isArray(this.sales) ? this.sales : []);
+    return calculateSoldPacksCount(Array.isArray(this.sales) ? this.sales : [], {
+      lotType: this.currentLotType,
+      packsPerBox: this.packsPerBox
+    });
   },
 
   totalRevenue(): number {

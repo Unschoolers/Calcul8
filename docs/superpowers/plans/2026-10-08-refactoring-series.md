@@ -9,7 +9,7 @@
 
 ## Global Constraints
 
-- Use GPT-6.1 Sol implementation subagents. No worker may delegate further.
+- Use Luna for bounded implementation and tests by default; reserve GPT-6.1 Sol for complex design decisions or focused reviews. This reflects the user's later cost preference. No worker may delegate further.
 - Work in order 1 through 10. At least one meaningful implementation commit per item; use multiple focused commits for larger work.
 - Open a PR after the item works. The controller independently validates after PR creation and resolves findings before advancing.
 - Stack each branch and PR on the preceding validated branch. Do not merge or push to main.
