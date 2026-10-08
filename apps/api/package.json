@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p .",
+    "build": "node ../../scripts/generate-shared-contracts.mjs --check && tsc -p .",
     "clean": "rimraf dist",
     "start": "func start",
     "start:build": "npm run build && func start",

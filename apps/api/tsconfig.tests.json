@@ -67,6 +67,7 @@
     "src/lib/realtime.test.ts",
     "src/lib/scopeKeys.test.ts",
     "src/lib/stripe.test.ts",
+    "src/lib/syncContracts.test.ts",
     "src/lib/syncDiff.test.ts",
     "src/lib/syncSafety.test.ts",
     "src/lib/syncScope.test.ts",

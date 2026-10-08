@@ -64,7 +64,7 @@ jobs:
             esac
 
             case "${file}" in
-              apps/api/*|shared/*|apps/api/package.json|apps/api/package-lock.json|package.json|package-lock.json|.github/workflows/ci.yml)
+              apps/api/*|shared/*|apps/api/package.json|apps/api/package-lock.json|package.json|package-lock.json|scripts/generate-shared-contracts.mjs|.github/workflows/ci.yml)
                 api=true
                 ;;
             esac

@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/patch-index-bootstrap.mjs && node scripts/stamp-sw-version.mjs",
-    "build:prod": "vite build && node scripts/patch-index-bootstrap.mjs && node scripts/stamp-sw-version.mjs && node scripts/obfuscate.mjs",
+    "build": "npm run shared:check && vite build && node scripts/patch-index-bootstrap.mjs && node scripts/stamp-sw-version.mjs",
+    "build:prod": "npm run shared:check && vite build && node scripts/patch-index-bootstrap.mjs && node scripts/stamp-sw-version.mjs && node scripts/obfuscate.mjs",
     "preview": "vite preview",
     "docs:c4": "node scripts/serve-structurizr-local.mjs",
     "docs:c4:inspect": "node scripts/inspect-structurizr-local.mjs",
@@ -30,7 +30,7 @@
     "security:scan": "node scripts/security-scan.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:tests:web": "tsc -p tsconfig.tests.web.json --noEmit",
-    "verify:checks": "node scripts/run-parallel.mjs --task security::npm run security:scan --task test::npm run test --task vue::npm run test:vue --task typecheck::npm run typecheck",
+    "verify:checks": "node scripts/run-parallel.mjs --task shared::npm run shared:check --task security::npm run security:scan --task test::npm run test --task vue::npm run test:vue --task typecheck::npm run typecheck",
     "verify": "npm run verify:checks && npm run build",
     "verify:api": "npm --prefix apps/api run verify",
     "verify:realtime": "npm --prefix apps/realtime run verify",
@@ -52,7 +52,9 @@
     "realtime:install": "npm --prefix apps/realtime install",
     "realtime:build": "npm --prefix apps/realtime run build",
     "realtime:start": "npm --prefix apps/realtime run start:dev",
-    "realtime:bootstrap": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/bootstrap-realtime.ps1"
+    "realtime:bootstrap": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/bootstrap-realtime.ps1",
+    "shared:generate": "node scripts/generate-shared-contracts.mjs",
+    "shared:check": "node scripts/generate-shared-contracts.mjs --check"
   },
   "repository": {
     "type": "git",

@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/api/**"
       - "shared/**"
+      - "scripts/generate-shared-contracts.mjs"
       - "package.json"
       - "package-lock.json"
       - "apps/api/package-lock.json"
