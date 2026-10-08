@@ -11,6 +11,7 @@ import {
 } from "../../src/app-core/feature-state/integration-state.ts";
 import { featureStatePortsKey, useFeatureStatePorts, type FeatureStatePorts } from "../../src/app-core/feature-state/feature-state-ports.ts";
 import { resetActiveSales } from "../../src/app-core/feature-state/sales-state.ts";
+import { getWheelController, resetGameSessionOwner } from "../../src/components/windows/game/services/gameSessionState.ts";
 import { renderWithApp } from "./render.ts";
 
 test("mounted sales state aliases share one reactive owner and reset with chart disposal", async () => {
@@ -115,4 +116,53 @@ test("the composition root injects feature owners and mounted writes stay shared
   expect(state.salesFeatureState?.sales).toBe(state.sales);
   expect(featureStatePorts.integrations).toBe(state.integrationFeatureState);
   expect(featureStatePorts.gameSession).toBe(state.gameSessionFeatureState);
+});
+
+test("mounted production game resets operate on the injected owner and preserve preview/live isolation", async () => {
+  const state = reactive(createInitialState());
+  const owner = state.gameSessionFeatureState!;
+  const events: string[] = [];
+  const Harness = defineComponent({
+    setup() {
+      return { state };
+    },
+    template: `
+      <button aria-label="reset preview" @click="resetPreview()">preview</button>
+      <button aria-label="reset live" @click="resetLive()">live</button>
+    `,
+    methods: {
+      resetPreview() {
+        return resetGameSessionOwner(this.state as never, "preview", [], {
+          persist: () => { events.push("persist:preview"); },
+          publish: () => { events.push("publish:preview"); }
+        }, false);
+      },
+      resetLive() {
+        return resetGameSessionOwner(this.state as never, "live", [], {
+          persist: () => { events.push("persist:live"); },
+          publish: () => { events.push("publish:live"); }
+        }, false);
+      }
+    }
+  });
+
+  owner.wheelTotalSpins = 7;
+  owner.wheelSpinCounts = [7];
+  owner.wheelPreviewTotalSpins = 3;
+  owner.wheelPreviewSpinCounts = [3];
+  renderWithApp(Harness);
+
+  await fireEvent.click(screen.getByRole("button", { name: "reset preview" }));
+  expect(getWheelController(state)).toBe(owner);
+  expect(state.wheelPreviewTotalSpins).toBe(0);
+  expect(state.wheelPreviewSpinCounts).toEqual([]);
+  expect(state.wheelTotalSpins).toBe(7);
+  expect(state.gameSessionFeatureState?.wheelTotalSpins).toBe(7);
+  expect(events).toEqual(["persist:preview"]);
+
+  await fireEvent.click(screen.getByRole("button", { name: "reset live" }));
+  expect(state.wheelTotalSpins).toBe(0);
+  expect(state.gameSessionFeatureState?.wheelTotalSpins).toBe(0);
+  expect(state.wheelSpinCounts).toEqual([]);
+  expect(events).toEqual(["persist:preview", "persist:live", "publish:live"]);
 });
