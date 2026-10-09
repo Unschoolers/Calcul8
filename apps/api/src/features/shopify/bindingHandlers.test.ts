@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/auth", async importOriginal => ({ ...await importOriginal<typeof import("../../lib/auth")>(), resolveUserId: mocks.actor }));
 vi.mock("../../lib/http", () => ({ executeHttpHandler: async (_request: unknown, _context: unknown, options: { operation: (input: { config: unknown }) => unknown }) => options.operation({ config: {} }), jsonResponse: (_req: unknown, _cfg: unknown, status: number, jsonBody: unknown) => ({ status, jsonBody }) }));
-vi.mock("../whatnot/serviceCore", () => ({ resolveWhatnotScope: mocks.scope }));
+vi.mock("../../lib/scopeAuthorization", () => ({ resolveScopeAuthorization: async (...args: unknown[]) => { const scope = await mocks.scope(...args); return { allowed: true, scope, connectionScopeKey: scope.connectionScopeKey ?? scope.partitionKey }; } }));
 vi.mock("../../lib/cosmos/shopifyRepository", () => ({ getShopifyConnection: mocks.connection }));
 vi.mock("../../lib/cosmos/syncSnapshotRepository", () => ({ getEffectiveSyncSnapshot: mocks.snapshot }));
 vi.mock("../../lib/cosmos/shopifyListingRepository", () => ({ createShopifyListingStore: () => ({ get: mocks.get, list: mocks.list, put: mocks.put }) }));

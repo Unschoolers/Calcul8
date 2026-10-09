@@ -3,7 +3,7 @@ import type { HttpRequest, InvocationContext } from "@azure/functions";
 const mocks = vi.hoisted(() => ({ actor: vi.fn(), scope: vi.fn(), identity: vi.fn(), list: vi.fn() }));
 vi.mock("../../lib/auth", async original => ({ ...await original<typeof import("../../lib/auth")>(), resolveUserId: mocks.actor }));
 vi.mock("../../lib/http", () => ({ executeHttpHandler: async (_r: unknown, _c: unknown, options: { operation: (c: { config: unknown }) => unknown }) => options.operation({ config: {} }), jsonResponse: (_r: unknown, _c: unknown, status: number, jsonBody: unknown) => ({ status, jsonBody }) }));
-vi.mock("../whatnot/serviceCore", () => ({ resolveWhatnotScope: mocks.scope }));
+vi.mock("../../lib/scopeAuthorization", () => ({ resolveScopeAuthorization: async (...args: unknown[]) => { const scope = await mocks.scope(...args); return { allowed: true, scope, connectionScopeKey: scope.connectionScopeKey ?? scope.partitionKey }; } }));
 vi.mock("../../lib/cosmos/shopifyRepository", () => ({ getShopifyConnectionIdentity: mocks.identity }));
 vi.mock("../../lib/cosmos/shopifyListingRepository", () => ({ createShopifyListingStore: () => ({ list: mocks.list }) }));
 import { shopifyBindingSummary } from "./bindingSummaryHandlers";

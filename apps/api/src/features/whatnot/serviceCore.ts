@@ -4,9 +4,9 @@ import {
   consumeWhatnotOAuthState,
   replaceWhatnotConnectionIfUnchanged
 } from "../../lib/cosmos/whatnotRepository";
-import { getWorkspaceMembership, hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { refreshWhatnotAccessToken } from "../../lib/whatnot";
 import { resolveSyncScope } from "../../lib/syncScopeResolution";
+import { resolveScopeAuthorization } from "../../lib/scopeAuthorization";
 import type {
   ApiConfig,
   WhatnotConnectionDocument,
@@ -53,43 +53,22 @@ export function normalizeId(raw: unknown): string {
   return String(raw ?? "").trim();
 }
 
-function getWhatnotConnectionScopeKey(scope: ReturnType<typeof resolveSyncScope>): string {
-  return scope.scopeType === "workspace" ? scope.partitionKey : scope.actorUserId;
-}
-
 export async function resolveWhatnotScope(
   config: ApiConfig,
   actorUserId: string,
   workspaceId: string | undefined,
   requireOwner = false
 ): Promise<ResolvedWhatnotScope> {
-  const syncScope = resolveSyncScope(actorUserId, workspaceId);
-  const connectionScopeKey = getWhatnotConnectionScopeKey(syncScope);
-
-  if (syncScope.scopeType === "workspace") {
-    const hasActiveWorkspaceAccess = await hasWorkspaceMembership(config, actorUserId, syncScope.scopeId);
-    if (!hasActiveWorkspaceAccess) {
-      throw new HttpError(403, "User is not a member of this workspace.");
-    }
-    if (!requireOwner) {
-      return {
-        ...syncScope,
-        connectionScopeKey
-      };
-    }
-
-    const membership = await getWorkspaceMembership(config, actorUserId, syncScope.scopeId);
-    if (!membership || membership.status === "disabled" || membership.status === "removed") {
-      throw new HttpError(403, "User is not a member of this workspace.");
-    }
-    if (requireOwner && membership.role !== "owner") {
-      throw new HttpError(403, "Only workspace owner can manage Whatnot integration.");
-    }
+  const authorization = await resolveScopeAuthorization(config, actorUserId, workspaceId, requireOwner);
+  if (!authorization.allowed) {
+    const message = authorization.denialCode === "workspace_owner_required"
+      ? "Only workspace owner can manage Whatnot integration."
+      : "User is not a member of this workspace.";
+    throw new HttpError(403, message, authorization.denialCode);
   }
-
   return {
-    ...syncScope,
-    connectionScopeKey
+    ...authorization.scope,
+    connectionScopeKey: authorization.connectionScopeKey
   };
 }
 
