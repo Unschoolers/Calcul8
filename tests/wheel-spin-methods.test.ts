@@ -145,6 +145,36 @@ test("spinWheelInternal publishes spectator animation during the spin and clears
   assert.equal(vm._gameSpectatorSpinAnimation, null);
 });
 
+test("spinWheelInternal resolves only after the wheel animation and landing effect complete", async () => {
+  vi.spyOn(performance, "now").mockReturnValue(0);
+  const callbacks: FrameRequestCallback[] = [];
+  vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) => {
+    callbacks.push(callback);
+    return callbacks.length;
+  }) as typeof requestAnimationFrame);
+  const vm = createSpinVm("config");
+  let completed = false;
+  const spinning = wheelSpinMethods.spinWheelInternal.call(vm as never, true).then(() => {
+    completed = true;
+  });
+
+  try {
+    await vi.waitFor(() => assert.equal(callbacks.length, 1));
+    await Promise.resolve();
+    assert.equal(completed, false);
+    assert.equal(vm.wheelSpinning, true);
+
+    callbacks.shift()?.(10_000);
+    await spinning;
+
+    assert.equal(completed, true);
+    assert.equal(vm.wheelSpinning, false);
+    assert.equal(vm.landOnSlot.mock.calls.length, 1);
+  } finally {
+    while (callbacks.length) callbacks.shift()?.(10_000);
+  }
+});
+
 test("runWheelAutoPreviewAnimation spins visually without recording preview proof or result", async () => {
   stubFinishedAnimation();
   const vm = createSpinVm("config");

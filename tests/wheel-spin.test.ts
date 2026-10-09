@@ -280,21 +280,29 @@ test("spinWheelInternal avoids reactive angle updates between mobile animation f
   });
 
   try {
-    await GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
+    const spinning = GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(rafCallbacks.length, 1);
 
     rafCallbacks.shift()?.(16);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(vm.wheelCurrentAngle, 0);
     assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
     rafCallbacks.shift()?.(24);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(vm.wheelCurrentAngle, 0);
     assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
     rafCallbacks.shift()?.(50);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(vm.wheelCurrentAngle, 0);
     assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 2);
     assert.match(centerIcon.style.transform, /^rotate\(/);
+
+    rafCallbacks.shift()?.(10_000);
+    await spinning;
+    assert.equal(vm.wheelSpinning, false);
   } finally {
     vi.unstubAllGlobals();
   }

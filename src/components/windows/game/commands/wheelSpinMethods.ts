@@ -326,6 +326,7 @@ export const wheelSpinMethods = {
     let spinFrameId: number | undefined;
     let spinCompleted = false;
     let visibilityChangeHandler: (() => void) | undefined;
+    let runAnimationFrame: FrameRequestCallback;
     const cleanupSpinLoop = () => {
       spinCompleted = true;
       if (visibilityChangeHandler && typeof document !== "undefined") {
@@ -334,7 +335,7 @@ export const wheelSpinMethods = {
       }
     };
     const scheduleSpinFrame = () => {
-      spinFrameId = requestAnimationFrame(tick);
+      spinFrameId = requestAnimationFrame(runAnimationFrame);
     };
 
     const tick = async (now: number) => {
@@ -419,19 +420,32 @@ export const wheelSpinMethods = {
       vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     };
 
-    if (typeof document !== "undefined") {
-      visibilityChangeHandler = () => {
-        if (document.visibilityState !== "visible" || spinCompleted) return;
-        if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
-          cancelAnimationFrame(spinFrameId);
-          spinFrameId = undefined;
-        }
-        void tick(performance.now());
+    const animationComplete = new Promise<void>((resolve, reject) => {
+      runAnimationFrame = (now: number) => {
+        void tick(now).then(() => {
+          if (spinCompleted) resolve();
+        }, reject);
       };
-      document.addEventListener("visibilitychange", visibilityChangeHandler);
-    }
 
-    scheduleSpinFrame();
+      if (typeof document !== "undefined") {
+        visibilityChangeHandler = () => {
+          if (document.visibilityState !== "visible" || spinCompleted) return;
+          if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
+            cancelAnimationFrame(spinFrameId);
+            spinFrameId = undefined;
+          }
+          runAnimationFrame(performance.now());
+        };
+        document.addEventListener("visibilitychange", visibilityChangeHandler);
+      }
+
+      if (typeof requestAnimationFrame === "function") {
+        scheduleSpinFrame();
+      } else {
+        runAnimationFrame(startTime + duration);
+      }
+    });
+    await animationComplete;
   },
 
   recordPreviewSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {
