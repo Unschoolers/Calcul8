@@ -23,7 +23,7 @@ import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
 import { gameComputeds } from "./gameComputeds.ts";
 import {
-    createGameWindowState, getWheelController,
+    createGameController, createGameWindowState, getWheelController,
     type GameWindowThis
 } from "./gameControllerState.ts";
 import { useGameCoordinatorPorts } from "./gameCoordinatorPorts.ts";
@@ -120,6 +120,7 @@ export const gameWindowDefinition = {
   },
   provide(this: GameWindowThis) {
     return {
+      gameController: createGameController(this),
       gameCtx: this
     };
   },

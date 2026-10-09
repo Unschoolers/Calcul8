@@ -127,6 +127,30 @@ export type GameCommandPorts = {
 export type GameCommandContext = GameWindowHostState & GameCommandPorts;
 export type GameWindowThis = GameCommandContext;
 
+export type GameControllerCommands = Pick<
+  GameCommandPorts,
+  "spinWheel" | "revealMysteryGridCell" | "requestWheelSessionEnd"
+>;
+
+/** Explicit game boundary shared with nested game components. */
+export type GameController = {
+  session: WheelControllerState;
+  view: GameWindowThis;
+  commands: GameControllerCommands;
+};
+
+export function createGameController(view: GameWindowThis): GameController {
+  return {
+    session: getWheelController(view),
+    view,
+    commands: {
+      spinWheel: (...args) => view.spinWheel(...args),
+      revealMysteryGridCell: (...args) => view.revealMysteryGridCell(...args),
+      requestWheelSessionEnd: (...args) => view.requestWheelSessionEnd(...args)
+    }
+  };
+}
+
 export { createWheelControllerState, ensureWheelControllerState, getWheelController };
 export type { WheelControllerState };
 
