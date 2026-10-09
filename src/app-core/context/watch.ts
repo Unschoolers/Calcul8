@@ -31,6 +31,7 @@ import type {
 
 export type ScopeWatchContext = WorkspaceRealtimeContext &
   Pick<AppState, "salesCacheEpoch" | "googleAuthEpoch" | "hasProAccess"> &
+  Pick<AppState, "shopifyBindingsSummary" | "shopifyBindingsStatus" | "shopifyBindingsStale" | "shopifyBindingsScope"> &
   Pick<CommerceMethodState, "getSalesCacheEntry"> &
   WhatnotTransientStateContext &
   Pick<AuthComputedState, "isGoogleSignedIn"> &

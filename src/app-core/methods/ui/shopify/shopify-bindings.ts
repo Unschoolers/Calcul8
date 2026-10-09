@@ -1,14 +1,18 @@
 import type { ShopifyBindingMethodImplementation } from "../../../context/shopify.ts";
 import { isBindingSummary } from "../../../../domain/shopify-binding-summary.ts";
 import { fetchAuthenticatedApiResponse, isApiRequestAborted } from "../common/api-client.ts";
+import {
+  beginShopifyBindingsRequest,
+  finishShopifyBindingsRequest,
+  invalidateShopifyBindingsRequest,
+  isCurrentShopifyBindingsRequest
+} from "../../../feature-state/integration-state.ts";
 
 type Scope = { googleAuthEpoch: number; activeScopeType: string; activeWorkspaceId: string | null };
 export const shopifyBindingsScopeKey = (context: Scope): string => `${context.googleAuthEpoch}:${context.activeScopeType}:${context.activeWorkspaceId ?? ""}`;
-const requests = new WeakMap<object, object>();
-
 export const shopifyBindingMethods = {
   resetShopifyBindings(): void {
-    requests.delete(this);
+    invalidateShopifyBindingsRequest(this);
     this.shopifyBindingsSummary = null; this.shopifyBindingsStatus = "idle";
     this.shopifyBindingsStale = false; this.shopifyBindingsScope = "";
   },
@@ -21,10 +25,10 @@ export const shopifyBindingMethods = {
     const shop = this.shopifyConnectionShop;
     const previousStatus = this.shopifyBindingsStatus;
     const previousStale = this.shopifyBindingsStale;
-    const token = {}; requests.set(this, token);
+    const token = {}; beginShopifyBindingsRequest(this, token);
     this.shopifyBindingsStatus = "loading";
     this.shopifyBindingsStale = Boolean(this.shopifyBindingsSummary);
-    const current = () => scope === shopifyBindingsScopeKey(this) && requests.get(this) === token &&
+    const current = () => scope === shopifyBindingsScopeKey(this) && isCurrentShopifyBindingsRequest(this, token) &&
       !(this.shopifyConnectionShop && this.shopifyConnectionShop !== shop);
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/products/bindings", {
@@ -49,7 +53,7 @@ export const shopifyBindingMethods = {
       }
       this.shopifyBindingsStatus = "error"; this.shopifyBindingsStale = Boolean(this.shopifyBindingsSummary);
     } finally {
-      if (requests.get(this) === token) requests.delete(this);
+      finishShopifyBindingsRequest(this, token);
     }
   }
 } satisfies ShopifyBindingMethodImplementation;

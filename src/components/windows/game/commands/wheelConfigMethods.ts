@@ -22,12 +22,11 @@ import type { GameCoordinatorContext } from "../../../../app-core/context/game.t
 import type { PersistenceOutcome } from "../../../../app-core/shared/persistence-outcomes.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
-import { getWheelController } from "../services/gameSessionState.ts";
+import { getWheelController, resetLoadedGameSessionOwner } from "../services/gameSessionState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { cloneGameConfig, createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
   clearWheelProofState,
-  resetLoadedTierPrizeGameState,
   type WheelSessionContext
 } from "../services/wheelSessionState.ts";
 import { createDefaultTier } from "../services/wheelDefaults.ts";
@@ -68,11 +67,7 @@ type GameConfigContext = WheelSessionContext
   };
 
 function resetLoadedGame(context: GameConfigContext, clearSlots: boolean): void {
-  resetLoadedTierPrizeGameState(
-    context,
-    getWheelController(context),
-    clearSlots
-  );
+  resetLoadedGameSessionOwner(context, clearSlots);
 }
 
 function clearQueuedWheelConfigSync(context: GameConfigContext): void {

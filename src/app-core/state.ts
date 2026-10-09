@@ -6,6 +6,10 @@ import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
 import { STORAGE_KEYS } from "./storageKeys.ts";
+import { attachFeatureStateAliases } from "./feature-state/owner-aliases.ts";
+import { createSalesFeatureState, SALES_FEATURE_STATE_KEYS } from "./feature-state/sales-state.ts";
+import { createIntegrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS } from "./feature-state/integration-state.ts";
+import { createGameSessionFeatureState, GAME_SESSION_FEATURE_STATE_KEYS } from "./feature-state/game-session-state.ts";
 
 function getLocalTodayDate(): string {
   const date = new Date();
@@ -45,8 +49,11 @@ export function createInitialState(): AppState {
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
   const defaultFeeProfile = getFeeProfilePreset("whatnot");
   const systemPricingDefaults = createDefaultSystemPricingDefaults(hasProAccess ? 15 : 0);
+  const salesFeatureState = createSalesFeatureState(todayDate);
+  const integrationFeatureState = createIntegrationFeatureState(todayDate);
+  const gameSessionFeatureState = createGameSessionFeatureState();
 
-  return {
+  const state: AppState = {
     hasProAccess,
     preferredLanguage,
     guidedOnboardingStatus: "idle",
@@ -181,32 +188,7 @@ export function createInitialState(): AppState {
     showProfitCalculator: false,
 
     // Sales tracking
-    sales: [],
-    salesByLotId: new Map(),
-    showAddSaleModal: false,
-    editingSale: null,
-    newSale: {
-      type: "pack",
-      quantity: null,
-      packsCount: null,
-      singlesPurchaseEntryId: null,
-      singlesItems: [
-        {
-          lineId: 1,
-          singlesPurchaseEntryId: null,
-          quantity: 1,
-          price: null
-        }
-      ],
-      price: 0,
-      customer: "",
-      memo: "",
-      buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
-      date: todayDate
-    },
-
-    salesChart: null,
-    chartView: "sparkline",
+    ...salesFeatureState,
     portfolioChart: null,
     portfolioSalesByUserChart: null,
     lotSearchQuery: "",
@@ -243,33 +225,7 @@ export function createInitialState(): AppState {
     renameLotWhatnotVertical: null,
     renameLotExternalSku: "",
     renameLotShopifyEnabled: false,
-    shopifyEditListing: null,
-    shopifyEditSearchQuery: "",
-    shopifyEditSearchResults: [],
-    shopifyEditSearchCursor: null,
-    shopifyEditSearchHasMore: false,
-    shopifyEditSearchCompleted: false,
-    shopifyEditSelectedVariantId: null,
-    shopifyEditSelectedLocationId: null,
-    shopifyEditLoading: false,
-    shopifyEditSaving: false,
-    shopifyEditError: null,
-    shopifyEditRecovery: "none",
-    shopifyEditErrorOperation: null,
-    shopifyEditRequestRevision: 0,
-    shopifyEditListingStatus: "idle",
-    shopifyEditSessionAuthEpoch: null,
-    shopifyEditSessionScope: "",
-    shopifyEditSessionLotId: null,
-    shopifyEditBindingVersion: null,
-    shopifyEditGeneration: null,
-    shopifyEditOperationId: null,
-    shopifyEditPendingOwnerScope: null,
-    shopifyEditPendingBindingMutation: null,
-    shopifyEditPendingDetailsMutation: null,
-    shopifyEditPendingCreateMutation: null,
-    shopifyEditDetailsOutcome: null,
-    shopifyEditManagerOpen: false,
+    ...integrationFeatureState,
     newLotType: "bulk",
     newLotCatalogSource: resolveDefaultSinglesCatalogSourceFromEnv(),
     newLotWhatnotVertical: null,
@@ -282,85 +238,14 @@ export function createInitialState(): AppState {
     syncStatusResetTimeoutId: null,
     workspaceRealtimeStatus: "idle",
     offlineReconnectIntervalId: null,
-    salesCacheEpoch: 0,
-    whatnotFeeDateOnly: todayDate,
-    whatnotConnectionStatus: "unconfigured",
-    shopifyBindingsSummary: null,
-    shopifyBindingsStatus: "idle",
-    shopifyBindingsStale: false,
-    shopifyBindingsScope: "",
-    shopifyConnectionStatus: "unconfigured",
-    shopifyConnectionShop: null,
-    shopifyLastSyncedAt: null,
-    shopifySyncError: null,
-    shopifyShopDraft: "",
-    showShopifyConnectDialog: false,
-    whatnotSyncStatus: "idle",
-    whatnotConnectionSummary: null,
-    showWhatnotReviewDialog: false,
-    showWhatnotCsvImportDialog: false,
-    whatnotCsvRawInput: "",
-    whatnotCsvSellerAccountId: "",
-    whatnotCsvHeaders: [],
-    whatnotCsvRows: [],
-    whatnotCsvMapExternalSaleId: null,
-    whatnotCsvMapOrderId: null,
-    whatnotCsvMapOrderItemId: null,
-    whatnotCsvMapSellerAccountId: null,
-    whatnotCsvMapTitle: null,
-    whatnotCsvMapListingTitle: null,
-    whatnotCsvMapBuyerName: null,
-    whatnotCsvMapOrderPlacedAt: null,
-    whatnotCsvMapOriginalItemPrice: null,
-    whatnotCsvMapSku: null,
-    whatnotCsvMapProductCategory: null,
-    whatnotCsvMapQuantity: null,
-    whatnotCsvMapPrice: null,
-    whatnotCsvMapBuyerShipping: null,
-    whatnotCsvMapDate: null,
-    whatnotCsvMapOrderStatus: null,
-    whatnotReviewBatchId: null,
-    whatnotReviewRows: [],
-    isConfirmingWhatnotImport: false,
-    whatnotConfirmationRetryPayload: null,
-    whatnotCallbackStatus: null,
-    whatnotCallbackMessage: "",
 
     // Wheel
     wheelConfigs: [],
     activeWheelConfigId: null,
     wheelRealtimeApplyRevision: 0,
-    activeWheelSlots: [],
-    wheelPreviewSlots: [],
-    wheelInventoryWarning: "",
-    wheelShowSeed: false,
-    wheelFairnessHistoryOpen: false,
-    wheelHighlightedSlotIndex: -1,
-    wheelSpinning: false,
-    wheelCurrentAngle: 0,
-    wheelTotalSpins: 0,
-    wheelSpinCounts: [],
-    wheelLastResult: "",
-    wheelSessionUpdatedAt: 0,
-    wheelSessionLotSelections: {},
-    wheelPendingInventoryIssues: [],
-    wheelSessionNetRevenue: null,
-    wheelSessionCostAdjustment: 0,
-    wheelFairnessHistory: [],
-    wheelChaseTallyHistory: [],
-    wheelGridLayoutSeed: "",
-    wheelGridReveals: [],
-    wheelPreviewSpinCounts: [],
-    wheelPreviewTotalSpins: 0,
-    wheelPreviewFairnessHistory: [],
-    wheelPreviewChaseTallyHistory: [],
-    wheelPreviewGridLayoutSeed: "",
-    wheelPreviewGridReveals: [],
-    wheelLastResultColor: "rgb(var(--v-theme-primary))",
-    wheelSpinHash: "",
-    wheelSpinSeed: "",
-    wheelSpinClientSeed: "",
-    wheelSpinVerificationUrl: "",
-    wheelSpinAlgorithm: ""
+    ...gameSessionFeatureState
   };
+  attachFeatureStateAliases(state, "salesFeatureState", salesFeatureState, SALES_FEATURE_STATE_KEYS);
+  attachFeatureStateAliases(state, "integrationFeatureState", integrationFeatureState, INTEGRATION_FEATURE_STATE_KEYS);
+  return attachFeatureStateAliases(state, "gameSessionFeatureState", gameSessionFeatureState, GAME_SESSION_FEATURE_STATE_KEYS);
 }

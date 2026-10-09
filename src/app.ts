@@ -81,6 +81,7 @@ import {
   whatnotDialogPortsKey,
   type WhatnotDialogPorts
 } from "./components/windows/whatnot/whatnotDialogPorts.ts";
+import { createFeatureStatePorts, featureStatePortsKey } from "./app-core/feature-state/feature-state-ports.ts";
 import type { AppState } from "./types/app.ts";
 
 export const appOptions = {
@@ -109,9 +110,10 @@ export const appOptions = {
     LotImageEditor
   },
   data: createInitialState,
-  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds">) {
+  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds" | "salesFeatureState" | "integrationFeatureState" | "gameSessionFeatureState">) {
     return {
       [buyerProfilePortsKey]: createBuyerProfilePorts(this),
+      [featureStatePortsKey]: createFeatureStatePorts(this),
       [commerceDialogPortsKey]: createCommerceDialogPorts(this),
       [configWindowPortsKey]: createConfigWindowPorts(this),
       [gameCoordinatorPortsKey]: createGameCoordinatorPorts(this),

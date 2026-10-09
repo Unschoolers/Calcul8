@@ -7,7 +7,7 @@ import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import type { GameBroadcastContext, GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 import type { Lot, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
-import { getWheelController } from "../services/gameSessionState.ts";
+import { getWheelController, resetGameSessionOwner } from "../services/gameSessionState.ts";
 import {
   readGameSession,
   writeGameSession,
@@ -28,7 +28,6 @@ import {
   getWheelTierLotContext,
   mergeWheelSessionRootFallback,
   recordWheelSessionFairness,
-  runWheelSessionReset,
   setWheelResultState,
   type WheelSessionContext
 } from "../services/wheelSessionState.ts";
@@ -177,7 +176,7 @@ export const wheelSessionMethods = {
     this.stopWheelAutospin?.();
     const controller = getWheelController(this);
     const previewSlots = ((controller.wheelPreviewSlots || controller.activeWheelSlots) as WheelSlot[]);
-    void runWheelSessionReset(this, controller, "preview", previewSlots, {
+    void resetGameSessionOwner(this, "preview", previewSlots, {
       persist: () => this.saveWheelSession?.(),
       publish: () => this.publishGameSpectatorSessionSnapshot?.()
     });
@@ -390,7 +389,7 @@ export const wheelSessionMethods = {
     const resetController = getWheelController(this);
     const slots = resetController.activeWheelSlots as WheelSlot[];
     this.wheelSessionUpdatedAt = Date.now();
-    void runWheelSessionReset(this, resetController, "live", slots, {
+    void resetGameSessionOwner(this, "live", slots, {
       persist: () => this.saveWheelSession(),
       publish: async () => {
         await Promise.all([
