@@ -92,6 +92,7 @@ export const searchShopifyController = {
       const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
       try {
         const lifecycle = shopifyEditSearchLifecycle(this);
+        const pageResult: { current: { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } } | null } = { current: null };
         await lifecycle.execute(query, async (_query, signal) => {
         const response = await createShopifyEditorClient(this).post("search", {
           ...shopifyEditScopeBody(this), query, ...(loadMore && this.shopifyEditSearchCursor ? { after: this.shopifyEditSearchCursor } : {})
@@ -99,12 +100,13 @@ export const searchShopifyController = {
         if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifySearchError");
         const page = await response.json() as { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
         if (!shopifyEditRequestIsCurrent(this, captured)) return [];
-        return [page];
+        pageResult.current = page;
+        return page.variants;
         });
         if (!shopifyEditRequestIsCurrent(this, captured)) return;
         const lifecycleState = lifecycle.snapshot();
         if (lifecycleState.phase === "error") throw lifecycleState.error;
-        const page = lifecycleState.results[0] as { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } } | undefined;
+        const page = pageResult.current;
         if (!page) return;
         this.shopifyEditSearchResults = loadMore ? [...this.shopifyEditSearchResults, ...page.variants] : page.variants;
         this.shopifyEditSearchHasMore = page.pageInfo.hasNextPage;
