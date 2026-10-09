@@ -1,6 +1,7 @@
 import { resolveApiBaseUrl } from "../../../app-core/methods/ui/common/shared.ts";
 import { isSinglesLot } from "../../../app-core/shared/lot-types.ts";
 import { normalizeSinglesCatalogSource } from "../../../app-core/shared/singles-catalog-source.ts";
+import { AsyncSearchLifecycle, type AsyncSearchState } from "../../../app-core/shared/async-search-lifecycle.ts";
 import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import {
     createSinglesCardImageCacheKey,
@@ -69,6 +70,25 @@ type SinglesCatalogSearchContext = {
   requestSinglesCardSuggestions(query: string, signal?: AbortSignal): Promise<SinglesCardSuggestion[]>;
   ensureSinglesCatalogFilterOptions(): Promise<void>;
 };
+
+const singlesSearchLifecycles = new WeakMap<object, AsyncSearchLifecycle<SinglesCardSuggestion>>();
+function singlesSearchLifecycle(context: SinglesCatalogSearchContext): AsyncSearchLifecycle<SinglesCardSuggestion> {
+  let lifecycle = singlesSearchLifecycles.get(context);
+  if (!lifecycle) {
+    lifecycle = new AsyncSearchLifecycle<SinglesCardSuggestion>((state: AsyncSearchState<SinglesCardSuggestion>) => {
+      context.singlesItemSearchLoading = state.phase === "debouncing" || state.phase === "loading";
+      if (state.phase === "results" || state.phase === "empty" || state.phase === "error" || state.phase === "idle") {
+        context.singlesItemSuggestions = state.results;
+        context.singlesItemMenuOpen = state.phase === "results" && state.results.length > 0;
+      }
+      if (state.phase === "error") console.warn("Failed to fetch card suggestions", state.error);
+      context.singlesItemSearchTimerId = null;
+      context.singlesItemSearchAbortController = null;
+    });
+    singlesSearchLifecycles.set(context, lifecycle);
+  }
+  return lifecycle;
+}
 
 function resolveSinglesLot(context: SinglesCatalogSearchContext): Record<string, unknown> | null {
   if (!context.currentLotId) return null;
@@ -270,13 +290,16 @@ export const singlesCatalogSearchMethods = {
   },
 
   cancelSinglesItemSearch(this: SinglesCatalogSearchContext): void {
+    const legacyTimer = this.singlesItemSearchTimerId;
+    const legacyController = this.singlesItemSearchAbortController;
+    singlesSearchLifecycle(this).clear();
     this.singlesItemSearchRequestSeq = Number(this.singlesItemSearchRequestSeq || 0) + 1;
-    if (this.singlesItemSearchTimerId) {
-      clearTimeout(this.singlesItemSearchTimerId);
+    if (legacyTimer) {
+      clearTimeout(legacyTimer);
       this.singlesItemSearchTimerId = null;
     }
-    if (this.singlesItemSearchAbortController) {
-      this.singlesItemSearchAbortController.abort();
+    if (legacyController) {
+      legacyController.abort();
       this.singlesItemSearchAbortController = null;
     }
   },
@@ -426,10 +449,10 @@ export const singlesCatalogSearchMethods = {
     this.singlesItemSuggestions = [];
     this.singlesItemMenuOpen = true;
     this.singlesItemSearchLoading = true;
-    this.singlesItemSearchTimerId = setTimeout(() => {
-      this.singlesItemSearchTimerId = null;
-      void this.fetchSinglesItemSuggestions(query);
-    }, SINGLES_CARD_SEARCH_DEBOUNCE_MS);
+    singlesSearchLifecycle(this).schedule(query, SINGLES_CARD_SEARCH_DEBOUNCE_MS, async (scheduledQuery) => {
+      await this.fetchSinglesItemSuggestions(scheduledQuery);
+      return [];
+    });
   },
 
   async fetchSinglesItemSuggestions(this: SinglesCatalogSearchContext, query: string): Promise<void> {
@@ -449,32 +472,8 @@ export const singlesCatalogSearchMethods = {
       return;
     }
 
-    const requestSeq = this.singlesItemSearchRequestSeq + 1;
-    this.singlesItemSearchRequestSeq = requestSeq;
-    const controller = new AbortController();
-    this.singlesItemSearchAbortController = controller;
-    this.singlesItemSearchLoading = true;
-
-    try {
-      const suggestions = await this.requestSinglesCardSuggestions(query, controller.signal);
-      if (this.singlesItemSearchRequestSeq !== requestSeq) return;
-      this.singlesItemSuggestions = suggestions;
-      this.singlesItemMenuOpen = suggestions.length > 0;
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      console.warn("Failed to fetch card suggestions", error);
-      if (this.singlesItemSearchRequestSeq === requestSeq) {
-        this.singlesItemSuggestions = [];
-        this.singlesItemMenuOpen = false;
-      }
-    } finally {
-      if (this.singlesItemSearchAbortController === controller) {
-        this.singlesItemSearchAbortController = null;
-      }
-      if (this.singlesItemSearchRequestSeq === requestSeq) {
-        this.singlesItemSearchLoading = false;
-      }
-    }
+    await singlesSearchLifecycle(this).execute(query, (activeQuery, signal) =>
+      this.requestSinglesCardSuggestions(activeQuery, signal));
   },
 
   setCurrentSinglesCatalogSource(this: SinglesCatalogSearchContext, nextValue: SinglesCatalogSource): void {
