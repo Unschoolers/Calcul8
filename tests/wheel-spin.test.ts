@@ -311,6 +311,13 @@ test("spinWheelInternal avoids reactive angle updates between mobile animation f
     saveWheelSession: vi.fn()
   };
 
+  vi.mocked(resolveWheelFairnessSpin).mockResolvedValueOnce({
+    resultIndex: 0,
+    hash: "animation-hash",
+    seed: "animation-seed",
+    layoutHash: "animation-layout-hash"
+  });
+
   vi.stubGlobal("performance", { now: () => 0 });
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
     rafCallbacks.push(cb);
