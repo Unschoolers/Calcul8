@@ -35,6 +35,15 @@ export type GameWindowHostState = GameHostState
   wheelSessionMarginDisplay: string;
   expectedMarginColor: string;
   wheelSessionMarginColor: string;
+  wheelStageTitle: string;
+  wheelStageSlotsLabel: string;
+  wheelStageSpinPriceLabel: string;
+  wheelPresentationToggleTitle: string;
+  wheelSoundToggleTitle: string;
+  wheelMotionToggleTitle: string;
+  gameSpectatorActionLabel: string;
+  wheelConfigItems: Array<{ title: string; value: number }>;
+  wheelStageSummaryCards: Array<{ id: string; label: string; value: string; valueClass?: string; valueStyle?: string; meta: string }>;
   wheelSpinBlockedReason: string;
   wheelHasRequiredLotSelection: boolean;
   wheelIsMysteryGrid: boolean;
@@ -126,6 +135,12 @@ export type GameCommandPorts = {
   focusWheelInspector(tab: "config" | "session" | "history"): void;
   addTier(): void;
   closeWheelInspector(): void;
+  openWheelCreateDialog(): void;
+  openWheelManageDialog(): void;
+  toggleWheelSound(): void;
+  toggleWheelReducedMotion(): void;
+  handleWheelModeChange(nextMode: "config" | "live"): void;
+  openGameSpectatorDialog(): void;
   isWheelMobileViewport(): boolean;
 };
 
@@ -136,6 +151,8 @@ export type GameControllerCommands = Pick<
   GameCommandPorts,
   "spinWheel" | "revealMysteryGridCell" | "requestWheelSessionEnd" | "requestWheelReset"
   | "focusWheelInspector" | "addTier" | "closeWheelInspector"
+  | "openWheelCreateDialog" | "openWheelManageDialog" | "toggleWheelSound"
+  | "toggleWheelReducedMotion" | "handleWheelModeChange" | "openGameSpectatorDialog"
 >;
 
 /** Explicit game boundary shared with nested game components. */
@@ -156,7 +173,13 @@ export function createGameController(view: GameWindowThis): GameController {
       requestWheelReset: (...args) => view.requestWheelReset(...args),
       focusWheelInspector: (...args) => view.focusWheelInspector(...args),
       addTier: (...args) => view.addTier(...args),
-      closeWheelInspector: (...args) => view.closeWheelInspector(...args)
+      closeWheelInspector: (...args) => view.closeWheelInspector(...args),
+      openWheelCreateDialog: (...args) => view.openWheelCreateDialog(...args),
+      openWheelManageDialog: (...args) => view.openWheelManageDialog(...args),
+      toggleWheelSound: (...args) => view.toggleWheelSound(...args),
+      toggleWheelReducedMotion: (...args) => view.toggleWheelReducedMotion(...args),
+      handleWheelModeChange: (...args) => view.handleWheelModeChange(...args),
+      openGameSpectatorDialog: (...args) => view.openGameSpectatorDialog(...args)
     }
   };
 }

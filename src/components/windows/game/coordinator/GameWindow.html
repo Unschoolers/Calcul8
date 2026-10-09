@@ -16,7 +16,7 @@
     <!-- SPINNER PANEL -->
     <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
         <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
-            <wheel-stage-topbar :ctx="getWindowComponentContext()"></wheel-stage-topbar>
+            <wheel-stage-topbar></wheel-stage-topbar>
 
             <div v-if="wheelIsBracketBattle" class="game-stage-overlay-surface">
                 <bracket-battle-panel
@@ -31,7 +31,7 @@
             </div>
 
             <template v-else>
-            <wheel-stage-summary :ctx="getWindowComponentContext()"></wheel-stage-summary>
+            <wheel-stage-summary></wheel-stage-summary>
 
             <div
                 v-if="wheelIsMysteryGrid"
