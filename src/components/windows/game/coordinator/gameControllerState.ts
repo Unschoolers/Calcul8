@@ -121,6 +121,7 @@ export type GameCommandPorts = {
   refreshWheelCanvas(): void;
   openWheelInspector(tab: "config" | "session" | "history"): void;
   requestWheelSessionEnd(): void;
+  requestWheelReset(): void;
   isWheelMobileViewport(): boolean;
 };
 
@@ -129,7 +130,7 @@ export type GameWindowThis = GameCommandContext;
 
 export type GameControllerCommands = Pick<
   GameCommandPorts,
-  "spinWheel" | "revealMysteryGridCell" | "requestWheelSessionEnd"
+  "spinWheel" | "revealMysteryGridCell" | "requestWheelSessionEnd" | "requestWheelReset"
 >;
 
 /** Explicit game boundary shared with nested game components. */
@@ -146,7 +147,8 @@ export function createGameController(view: GameWindowThis): GameController {
     commands: {
       spinWheel: (...args) => view.spinWheel(...args),
       revealMysteryGridCell: (...args) => view.revealMysteryGridCell(...args),
-      requestWheelSessionEnd: (...args) => view.requestWheelSessionEnd(...args)
+      requestWheelSessionEnd: (...args) => view.requestWheelSessionEnd(...args),
+      requestWheelReset: (...args) => view.requestWheelReset(...args)
     }
   };
 }

@@ -1,54 +1,43 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
-import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import {
   buildWheelSessionViewModel,
   type WheelSessionViewModel
 } from "../services/wheelSessionViewModel.ts";
 
-type PanelContext = Record<string, unknown>;
+type PanelContext = { game: GameController };
 
 export const WheelSessionPanel = {
   name: "WheelSessionPanel",
-  props: {
-    ctx: gameContextProp
-  },
   methods: {
     t(this: PanelContext, key: string, params?: Record<string, string | number | null | undefined>): string {
-      const source = getGameContextSource(this);
-      return typeof source.t === "function"
-        ? (source.t as (translationKey: string, values?: typeof params) => string)(key, params)
-        : translateAppMessage(String(source.preferredLanguage ?? ""), key, params);
+      const view = this.game.view;
+      return typeof view.t === "function"
+        ? view.t(key, params)
+        : translateAppMessage(String(view.preferredLanguage ?? ""), key, params);
     },
     openWheelResetDialog(this: PanelContext): void {
-      const source = getGameContextSource(this);
-      if (typeof source.requestWheelReset === "function") {
-        (source.requestWheelReset as () => void)();
-      } else {
-        source.wheelConfirmAction = "reset";
-        source.wheelConfirmDialog = true;
-      }
+      this.game.commands.requestWheelReset();
     },
     requestWheelSessionEnd(this: PanelContext): void {
-      const source = getGameContextSource(this);
-      if (typeof source.requestWheelSessionEnd === "function") {
-        (source.requestWheelSessionEnd as () => void)();
-      }
+      this.game.commands.requestWheelSessionEnd();
     }
   },
   computed: {
     wheelSessionPanelModel(this: PanelContext): WheelSessionViewModel {
-      return buildWheelSessionViewModel(getGameContextSource(this));
+      return buildWheelSessionViewModel(this.game.view);
     },
     wheelSessionPanelMode(this: PanelContext): string {
-      return String(getGameContextSource(this).wheelMode || "config");
+      return String(this.game.view.wheelMode || "config");
     },
     wheelSessionPanelEndingSession(this: PanelContext): boolean {
-      return Boolean(getGameContextSource(this).wheelEndingSession);
+      return Boolean(this.game.view.wheelEndingSession);
     },
     wheelSessionPanelPendingIssueCount(this: PanelContext): number {
-      const issues = getGameContextSource(this).wheelPendingInventoryIssues;
+      const issues = this.game.session.wheelPendingInventoryIssues;
       return Array.isArray(issues) ? issues.length : 0;
     }
   },
-  setup: setupGameContext
+  setup: setupTypedGameContext
 };
