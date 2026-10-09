@@ -45,4 +45,25 @@ describe("AsyncSearchLifecycle", () => {
     await lifecycle.execute("ignored", async () => ["ignored"]);
     expect(lifecycle.snapshot().phase).toBe("idle");
   });
+
+  it("does not publish state or schedule work after disposal", async () => {
+    vi.useFakeTimers();
+    const onState = vi.fn();
+    const run = vi.fn();
+    const lifecycle = new AsyncSearchLifecycle<string>(onState);
+    lifecycle.dispose();
+    const disposedState = lifecycle.snapshot();
+    const publishedCount = onState.mock.calls.length;
+
+    lifecycle.debounce(100, run);
+    lifecycle.schedule("ignored", 100, async () => ["ignored"]);
+    await lifecycle.execute("ignored", async () => ["ignored"]);
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(lifecycle.snapshot()).toEqual(disposedState);
+    expect(onState).toHaveBeenCalledTimes(publishedCount);
+    expect(run).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
 });

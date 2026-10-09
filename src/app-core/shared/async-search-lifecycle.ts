@@ -22,9 +22,9 @@ export class AsyncSearchLifecycle<T> {
 
   /** Debounce a domain action that will start its own request through execute(). */
   debounce(delayMs: number, run: () => void): void {
+    if (this.disposed) return;
     this.cancelRequest();
     this.publish({ phase: "debouncing", results: [], error: null });
-    if (this.disposed) return;
     this.timer = setTimeout(() => {
       this.timer = null;
       if (!this.disposed) run();
