@@ -38,12 +38,12 @@
             <div v-for="(line, lineIndex) in (newSale.singlesItems || [])" :key="line.lineId || lineIndex"
               class="sale-editor-singles-line">
               <div class="sale-editor-line-layout">
-                <div v-if="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
+                <div v-if="findSinglesSaleCardOption(line.singlesPurchaseEntryId)?.image"
                   class="sale-editor-line-thumb-col">
-                  <img :src="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
-                    :alt="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.item"
+                  <img :src="findSinglesSaleCardOption(line.singlesPurchaseEntryId)?.image"
+                    :alt="findSinglesSaleCardOption(line.singlesPurchaseEntryId)?.item"
                     class="sale-editor-line-thumb" loading="lazy"
-                    @error="$event.target.closest('.sale-editor-line-thumb-col').style.display='none'" />
+                    @error="hideSaleItemImage" />
                 </div>
                 <div class="sale-editor-line-fields">
                   <v-row density="comfortable" class="sale-editor-singles-grid">
@@ -56,7 +56,7 @@
                           <v-list-item v-bind="props" class="sale-editor-dropdown-item">
                             <template v-if="resolveVuetifySlotString(item, ['image'])" #prepend>
                               <img :src="resolveVuetifySlotString(item, ['image'])" :alt="resolveVuetifySlotString(item, ['item', 'title', 'name'])" class="sale-editor-dropdown-thumb"
-                                loading="lazy" @error="$event.target.style.display='none'" />
+                                loading="lazy" @error="hideSaleItemImage" />
                             </template>
                             <v-list-item-title class="text-body-2 font-weight-medium">
                               {{ resolveVuetifySlotString(item, ['item', 'title', 'name']) }}
@@ -188,7 +188,7 @@
             <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">
               <v-text-field v-model.number="newSale.packsCount" :label="t('saleEditorRtyhItemsWonLabel')" type="number"
                 variant="outlined" :disabled="!hasLotSelected" :min="1"
-                :rules="[v => !!v || t('saleEditorRtyhItemsWonRequiredLabel')]" hide-details="auto"></v-text-field>
+                :rules="[(v) => !!v || t('saleEditorRtyhItemsWonRequiredLabel')]" hide-details="auto"></v-text-field>
             </v-col>
           </v-row>
         </div>

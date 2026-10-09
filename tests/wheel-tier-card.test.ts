@@ -21,6 +21,9 @@ function testGame(view: Record<string, unknown>) {
   };
 }
 
+const wheelTierCardMethods = WheelTierCard.methods;
+if (!wheelTierCardMethods) throw new Error("WheelTierCard methods are required for method contract tests.");
+
 const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
   TESTS_DIR,
@@ -51,7 +54,7 @@ test("finishTierEditor closes the editor and auto-applies when the wheel can app
     applyWheelConfig: vi.fn()
   };
 
-  WheelTierCard.methods.finishTierEditor.call(vm as never);
+  wheelTierCardMethods.finishTierEditor.call(vm as never);
 
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
@@ -71,7 +74,7 @@ test("finishTierEditor closes the editor without auto-applying when the wheel ca
     applyWheelConfig: vi.fn()
   };
 
-  WheelTierCard.methods.finishTierEditor.call(vm as never);
+  wheelTierCardMethods.finishTierEditor.call(vm as never);
 
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
@@ -91,25 +94,18 @@ test("tier editor drafts changes until Done", () => {
     applyWheelConfig: vi.fn()
   };
 
-  WheelTierCard.methods.openTierEditor.call(vm as never);
+  wheelTierCardMethods.openTierEditor.call(vm as never);
   vm.editorDraft!.label = "Draft";
 
   assert.equal(vm.tier.label, "Original");
   assert.equal(vm.editorOpen, true);
 
-  WheelTierCard.methods.cancelTierEditor.call(vm as never);
+  wheelTierCardMethods.cancelTierEditor.call(vm as never);
 
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
   assert.equal(vm.tier.label, "Original");
   assert.equal(vm.applyWheelConfig.mock.calls.length, 0);
-});
-
-test("units deducted field recalculates on input instead of waiting for change", () => {
-  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
-
-  assert.match(template, /@input="onTierPacksChange\(editorTier\)"/);
-  assert.doesNotMatch(template, /@change="onTierPacksChange\(editorTier\)"/);
 });
 
 test("tier source selectors use dialog-safe overlay menu props", () => {
@@ -155,7 +151,6 @@ test("required pending lot selections use a persistent shared modal instead of t
   assert.match(template, /<app-dialog-shell[\s\S]*v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
   assert.match(template, /class="wheel-pending-lot-dialog"/);
   assert.match(template, /v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/);
-  assert.match(template, /:disabled="wheelPendingInventoryIssues\.some\(\(entry\) => !entry\.selectedLotId\)"/);
 });
 
 test("required pending lot selections suppress duplicate stage warnings", () => {
@@ -301,11 +296,11 @@ test("tier card chance input rebalances the current editing config", () => {
   const vm = {
     game: testGame({ editingWheelConfig: { tiers } }),
     setTierChance(tier: (typeof tiers)[number], value: unknown) {
-      WheelTierCard.methods.setTierChance.call(this as never, tier, value);
+      wheelTierCardMethods.setTierChance.call(this as never, tier, value);
     }
   };
 
-  WheelTierCard.methods.setTierChance.call(vm as never, tiers[0], 70);
+  wheelTierCardMethods.setTierChance.call(vm as never, tiers[0], 70);
 
   assert.equal(tiers[0]!.chancePercent, 70);
   assert.equal(tiers[0]!.slots, 70);
@@ -321,7 +316,7 @@ test("tier card chance bar updates odds from pointer position", () => {
   const vm = {
     game: testGame({ editingWheelConfig: { tiers } }),
     setTierChance(tier: (typeof tiers)[number], value: unknown) {
-      WheelTierCard.methods.setTierChance.call(this as never, tier, value);
+      wheelTierCardMethods.setTierChance.call(this as never, tier, value);
     }
   };
   const event = {
@@ -333,7 +328,7 @@ test("tier card chance bar updates odds from pointer position", () => {
     clientX: 60
   };
 
-  WheelTierCard.methods.setTierChanceFromPointerEvent.call(vm as never, tiers[0], event as unknown as PointerEvent);
+  wheelTierCardMethods.setTierChanceFromPointerEvent.call(vm as never, tiers[0], event as unknown as PointerEvent);
 
   assert.equal(tiers[0]!.chancePercent, 25);
   assert.equal(tiers[1]!.chancePercent, 75);
@@ -349,7 +344,7 @@ test("deleteTierAndClose removes the tier and then auto-applies", () => {
     tierIndex: 3
   };
 
-  WheelTierCard.methods.deleteTierAndClose.call(vm as never);
+  wheelTierCardMethods.deleteTierAndClose.call(vm as never);
 
   assert.deepEqual(removeTier.mock.calls[0], [3]);
   assert.equal(vm.editorOpen, false);

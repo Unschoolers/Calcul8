@@ -1,4 +1,4 @@
-import { type PropType } from "vue";
+import { defineComponent, type PropType } from "vue";
 import { countGameOutcomeSlotsByTier } from "../../../../app-core/shared/game-domain.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import {
@@ -27,7 +27,7 @@ function getTierOutcomeLabel(config: WheelConfig | null, tier: WheelTier): strin
   return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
-export const WheelTierCard = {
+export const WheelTierCard = defineComponent({
   name: "WheelTierCard",
   components: { AppDialogShell, AppFormLayout },
   props: {
@@ -188,5 +188,5 @@ export const WheelTierCard = {
     }
   },
   setup: setupTypedGameContext
-};
+});
 

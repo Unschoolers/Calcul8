@@ -240,7 +240,7 @@
                 :class="{ 'is-mapped': isCsvColumnMapped(index) }"
               >
                 <div class="d-flex align-center ga-1">
-                  <span>{{ header || t('singlesCsvColumnLabel', { count: index + 1 }) }}</span>
+                  <span>{{ header || t('singlesCsvColumnLabel', { count: Number(index) + 1 }) }}</span>
                   <v-chip
                     v-if="csvMappedFieldLabel(index)"
                     size="x-small"
@@ -278,7 +278,7 @@
         >
           <div class="app-mobile-preview-card__head">
             <div class="app-mobile-preview-card__title">
-              {{ t('singlesCsvPreviewRowLabel', { number: rowIndex + 1 }) }}
+              {{ t('singlesCsvPreviewRowLabel', { number: Number(rowIndex) + 1 }) }}
             </div>
             <v-chip size="x-small" variant="tonal">
               {{ singlesCsvPreviewColumns.length }} {{ t('singlesCsvPreviewFieldsLabel') }}

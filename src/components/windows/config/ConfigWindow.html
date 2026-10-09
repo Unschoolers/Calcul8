@@ -76,7 +76,7 @@
                           <v-btn
                             value="expert"
                             size="small"
-                            :prepend-icon="hasProAccess ? null : 'mdi-lock-outline'"
+                            :prepend-icon="hasProAccess ? undefined : 'mdi-lock-outline'"
                             :title="hasProAccess ? t('configExpertModeLabel') : t('configUpgradeToUnlockExpertMode')"
                           >
                             {{ t('configExpertModeLabel') }}
@@ -215,7 +215,7 @@
                           :min="0"
                           class="mt-2"
                           hide-details
-                          :rules="[v => v !== null && v !== '' || t('configPurchaseTaxRequired')]"
+                          :rules="[(v) => v !== null && v !== '' || t('configPurchaseTaxRequired')]"
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 

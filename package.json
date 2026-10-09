@@ -28,7 +28,7 @@
     "coverage:hotpaths": "node scripts/coverage-hotpaths.mjs",
     "test:coverage:hotpaths": "npm run test:coverage:all",
     "security:scan": "node scripts/security-scan.mjs",
-    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p tsconfig.json && node scripts/typecheck-vue-templates.mjs",
     "typecheck:tests:web": "tsc -p tsconfig.tests.web.json --noEmit",
     "verify:checks": "node scripts/run-parallel.mjs --task shared::npm run shared:check --task security::npm run security:scan --task test::npm run test --task vue::npm run test:vue --task typecheck::npm run typecheck",
     "verify": "npm run verify:checks && npm run build",

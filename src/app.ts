@@ -82,7 +82,7 @@ import {
   type WhatnotDialogPorts
 } from "./components/windows/whatnot/whatnotDialogPorts.ts";
 import { createFeatureStatePorts, featureStatePortsKey } from "./app-core/feature-state/feature-state-ports.ts";
-import type { AppState } from "./types/app.ts";
+import type { AppState, Lot } from "./types/app.ts";
 
 export const appOptions = {
   components: {
@@ -131,5 +131,10 @@ export const appOptions = {
   beforeUnmount: appLifecycle.beforeUnmount,
   watch: { ...appWatch },
   computed: { ...appComputed },
-  methods: { ...appMethods }
+  methods: {
+    ...appMethods,
+    getSavedCurrentLot(this: Pick<AppState, "lots" | "currentLotId">): Lot | undefined {
+      return this.lots.find(candidate => candidate.id === this.currentLotId);
+    }
+  }
 };

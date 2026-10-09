@@ -12,6 +12,7 @@ const template = html.slice(html.indexOf('<!-- New Lot Modal -->'), html.indexOf
 
 test("create and edit forms offer an optional image independent of a Shopify connection", async () => {
   const ctx = reactive({ ...createInitialState(), showNewLotModal: true, lotNameDraft: "Box", currentLotType: "bulk", currentLotCatalogSource: "none", isCurrentWorkspaceOwner: true,
+    getSavedCurrentLot: () => undefined,
     t: (key: string) => translateAppMessage("en", key), createNewLot: vi.fn(), closeRenameLotModal: vi.fn(), renameCurrentLot: vi.fn(), deleteCurrentLot: vi.fn(),
     setCurrentLotCatalogSource: vi.fn(), loadShopifyDraftPreview: vi.fn(), createShopifyDraft: vi.fn(), refreshShopifyEditListing: vi.fn(), loadShopifyLinkedStock: vi.fn(),
     applyShopifyBinding: vi.fn(), saveShopifyProductDetails: vi.fn(), onShopifyEditQueryChange: vi.fn(), searchShopifyEditProducts: vi.fn() });

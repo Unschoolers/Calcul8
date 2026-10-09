@@ -23,6 +23,7 @@ test.each(["unionArenaDark", "unionArenaLight"])("%s: linked inventory hides the
     ...createInitialState(),
     currentLotId: 7, currentLotType: "bulk", currentLotCatalogSource: "none", isCurrentWorkspaceOwner: true,
     lots: [{ id: 7, name: "Kaiju #8", externalSku: "KEPT-REFERENCE" }],
+    getSavedCurrentLot: () => ({ id: 7, name: "Kaiju #8", externalSku: "KEPT-REFERENCE" }),
     showRenameLotModal: true, renameLotName: "Kaiju #8", renameLotExternalSku: "KEPT-REFERENCE", renameLotWhatnotVertical: "tcg",
     shopifyEditListingStatus: "loaded",
     shopifyEditListing: { mode: "managed", productTitle: "Kaiju #8 — sealed box", productId: "gid://shopify/Product/7", price: "131.00", currency: "CAD" } as object | null,

@@ -359,6 +359,9 @@ export const SalesWindowDefinition = {
       }
 
       return kpis;
+    },
+    salesSnapshotInventoryMeta(this: { salesSnapshotKpis: AppKpiItem[] }): string | undefined {
+      return this.salesSnapshotKpis.find(({ id }) => id === "inventory")?.meta;
     }
   },
   watch: {

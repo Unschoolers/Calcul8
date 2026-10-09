@@ -157,6 +157,10 @@ export type GameCommandPorts = {
   getSinglesItemsForTier(tier: import("../../../../types/app.ts").WheelTier): Array<{ title: string; value: number | null; image?: string; cardNumber?: string; stockLabel?: string }>;
   getTierInventoryMeta(tier: import("../../../../types/app.ts").WheelTier): { text: string; warning: boolean } | null;
   isBoundLotSingles(tier: import("../../../../types/app.ts").WheelTier): boolean;
+  onTierPacksChange(tier: import("../../../../types/app.ts").WheelTier): void;
+  onTierMultiLotChange(tier: import("../../../../types/app.ts").WheelTier, lotIds: unknown): void;
+  onTierSinglesChange(tier: import("../../../../types/app.ts").WheelTier, singlesId: unknown): void;
+  toggleTierChase(tier: import("../../../../types/app.ts").WheelTier): void;
   isWheelMobileViewport(): boolean;
 };
 
@@ -173,6 +177,7 @@ export type GameControllerCommands = Pick<
   | "endGameSpectatorMode" | "copyGameSpectatorLink" | "openGameSpectatorPage"
   | "closeGameSpectatorDialog" | "publishGameSpectatorSessionSnapshot"
   | "getSinglesItemsForTier" | "getTierInventoryMeta" | "isBoundLotSingles" | "removeTier"
+  | "onTierPacksChange" | "onTierMultiLotChange" | "onTierSinglesChange" | "toggleTierChase"
   | "applyWheelConfig" | "canTierBeChase"
 >;
 
@@ -212,6 +217,10 @@ export function createGameController(view: GameWindowThis): GameController {
       getSinglesItemsForTier: (...args) => view.getSinglesItemsForTier(...args),
       getTierInventoryMeta: (...args) => view.getTierInventoryMeta(...args),
       isBoundLotSingles: (...args) => view.isBoundLotSingles(...args),
+      onTierPacksChange: (...args) => view.onTierPacksChange(...args),
+      onTierMultiLotChange: (...args) => view.onTierMultiLotChange(...args),
+      onTierSinglesChange: (...args) => view.onTierSinglesChange(...args),
+      toggleTierChase: (...args) => view.toggleTierChase(...args),
       removeTier: (...args) => view.removeTier(...args),
       applyWheelConfig: (...args) => view.applyWheelConfig(...args),
       canTierBeChase: (...args) => view.canTierBeChase(...args)

@@ -58,7 +58,7 @@
               :min="0"
               class="mb-2"
               hide-details
-              :rules="[v => v !== null && v !== '' || t('configSellingTaxRequired')]"
+              :rules="[(v) => v !== null && v !== '' || t('configSellingTaxRequired')]"
               @input="onSystemPricingDefaultsChange"
             ></v-text-field>
 
@@ -185,7 +185,7 @@
                 :min="0"
                 class="mb-2"
                 hide-details
-                :rules="[v => v !== null && v !== '' || t('configSellingTaxRequired')]"
+                :rules="[(v) => v !== null && v !== '' || t('configSellingTaxRequired')]"
                 @input="onPurchaseConfigChange"
               ></v-text-field>
 

@@ -12,6 +12,7 @@ import {
   type WhatnotReviewChangeDiff
 } from "../../../app-core/methods/ui/whatnot/whatnot-review-decisions.ts";
 import { isSinglesLot } from "../../../app-core/shared/lot-types.ts";
+import type { LotOptionItem } from "../../../app-core/shared/lot-option-items.ts";
 import type {
   Sale,
   WhatnotImportReviewRow,
@@ -325,6 +326,9 @@ export const WhatnotReviewDialog = {
     }
   },
   methods: {
+    findLotItemByValue(this: { lotItems: LotOptionItem[] }, value: number | null | undefined): LotOptionItem | undefined {
+      return this.lotItems.find(item => item.value === value);
+    },
     whatnotOrderStatusLabel(this: any, rawStatus: string): string {
       return formatWhatnotOrderStatus(rawStatus, getWhatnotPreferredLanguage(this));
     },

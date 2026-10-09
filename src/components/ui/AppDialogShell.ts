@@ -1,4 +1,5 @@
 import { defineComponent, nextTick, type PropType } from "vue";
+import { useDisplay } from "vuetify";
 import AppStickyActionFooter from "./AppStickyActionFooter.vue";
 import "./AppDialogShell.css";
 
@@ -53,12 +54,15 @@ export const AppDialogShell = defineComponent({
       document.removeEventListener("keydown", this.keyDownListener, true);
     }
   },
+  setup() {
+    return { display: useDisplay() };
+  },
   computed: {
     effectiveMaxWidth(): string | number {
       return this.maxWidth ?? dialogVariantDefaultMaxWidths[this.variant];
     },
     isMobileFullscreen(): boolean {
-      return this.variant !== "media" && this.$vuetify.display.width <= 600;
+      return this.variant !== "media" && this.display.width.value <= 600;
     }
   },
   watch: {

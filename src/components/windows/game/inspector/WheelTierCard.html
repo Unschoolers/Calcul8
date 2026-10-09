@@ -10,7 +10,7 @@
         <div class="wheel-tier-card__summary">
           <template v-for="(item, index) in tierSummaryItems" :key="item">
             <span class="wheel-tier-card__summary-item">{{ item }}</span>
-            <span v-if="index < tierSummaryItems.length - 1" class="wheel-tier-card__summary-sep" aria-hidden="true">•</span>
+            <span v-if="Number(index) < tierSummaryItems.length - 1" class="wheel-tier-card__summary-sep" aria-hidden="true">•</span>
           </template>
         </div>
       </div>
@@ -122,10 +122,10 @@
                 type="number"
                 class="wheel-tier-num-input"
                 :min="game.commands.isBoundLotSingles(editorTier) ? 1 : 0"
-                :max="game.commands.isBoundLotSingles(editorTier) ? 1 : null"
+                :max="game.commands.isBoundLotSingles(editorTier) ? 1 : undefined"
                 :disabled="game.commands.isBoundLotSingles(editorTier)"
                 :title="game.commands.isBoundLotSingles(editorTier) ? game.view.t('wheelTierCountSinglesHint') : game.view.t('wheelTierCountHint')"
-                @input="onTierPacksChange(editorTier)"
+                @input="game.commands.onTierPacksChange(editorTier)"
               />
             </div>
             <div class="wheel-tier-metric">
@@ -157,7 +157,7 @@
                 density="compact"
                 hide-details="auto"
                 :menu-props="{ contentClass: 'wheel-tier-source-menu', zIndex: 4200 }"
-                @update:model-value="onTierMultiLotChange(editorTier, $event)"
+                @update:model-value="game.commands.onTierMultiLotChange(editorTier, $event)"
               ></v-select>
             </div>
 
@@ -173,10 +173,10 @@
                 density="compact"
                 hide-details="auto"
                 :menu-props="{ contentClass: 'wheel-tier-singles-menu', zIndex: 4200 }"
-                @update:model-value="onTierSinglesChange(editorTier, $event)"
+                @update:model-value="game.commands.onTierSinglesChange(editorTier, $event)"
               >
                 <template #item="{ props, item }">
-                  <v-list-item v-bind="props" :title="null" :subtitle="null">
+                  <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
                     <template #prepend>
                       <div class="wheel-card-thumb" v-if="resolveVuetifySlotString(item, ['image'])">
                         <img :src="resolveVuetifySlotString(item, ['image'])" alt="" loading="lazy">
@@ -228,7 +228,7 @@
                 inset
                 hide-details
                 :disabled="!game.commands.canTierBeChase(editorTier) && !editorTier.isChase"
-                @update:model-value="toggleTierChase(editorTier)"
+                @update:model-value="game.commands.toggleTierChase(editorTier)"
               ></v-switch>
             </div>
 

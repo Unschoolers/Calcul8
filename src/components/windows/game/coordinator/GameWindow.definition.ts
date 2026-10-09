@@ -211,6 +211,9 @@ export const gameWindowDefinition = {
       else if (actionId === "history") this.openWheelInspector("history");
       else if (actionId === "end") this.requestWheelSessionEnd();
     },
+    hasUnselectedPendingWheelInventoryIssues(this: GameWindowThis): boolean {
+      return this.wheelPendingInventoryIssues.some(entry => !entry.selectedLotId);
+    },
     applyRealtimeWheelSession(this: GameWindowOverlayThis): void {
       this._wheelAppliedRealtimeRevision = this.wheelRealtimeApplyRevision;
       const config = this.activeWheelConfig as WheelConfig | null;

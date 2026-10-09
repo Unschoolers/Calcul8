@@ -160,7 +160,7 @@
                 item-value="value" :label="t('wheelPickReplacementItemLabel')" variant="outlined" density="compact"
                 hide-details="auto" class="mb-2">
                 <template #item="{ props, item }">
-                    <v-list-item v-bind="props" :title="null" :subtitle="null">
+                    <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
                         <template #prepend>
                             <div class="wheel-card-thumb" v-if="resolveVuetifySlotString(item, ['image'])">
                                 <img :src="resolveVuetifySlotString(item, ['image'])" alt="" loading="lazy">
@@ -289,7 +289,7 @@
         <template #actions>
             <v-spacer></v-spacer>
             <v-btn color="success" variant="elevated" size="small"
-                :disabled="wheelPendingInventoryIssues.some((entry) => !entry.selectedLotId)"
+                :disabled="hasUnselectedPendingWheelInventoryIssues()"
                 @click="confirmAllBatchSales">
                 {{ t('wheelRecordAllAction') }}
             </v-btn>

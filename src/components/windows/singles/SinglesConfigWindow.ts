@@ -1,3 +1,4 @@
+import { defineComponent } from "vue";
 import "../config/ConfigWindow.css";
 import "./SinglesConfigWindow.css";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
@@ -10,7 +11,7 @@ import AdminSyncImportCard from "../config/AdminSyncImportCard.vue";
 import WhatnotLotSetupControl from "../WhatnotLotSetupControl.vue";
 import { singlesConfigWindowDefinition } from "./SinglesConfigWindow.definition.ts";
 
-export const SinglesConfigWindow = {
+export const SinglesConfigWindow = defineComponent({
   ...singlesConfigWindowDefinition,
   components: {
     AppDialogShell,
@@ -22,4 +23,4 @@ export const SinglesConfigWindow = {
     AdminSyncImportCard,
     WhatnotLotSetupControl
   }
-};
+});

@@ -38,7 +38,7 @@
         <v-btn
           size="x-small"
           :icon="game.view.wheelSoundEnabled ? 'mdi-volume-high' : 'mdi-volume-off'"
-          :color="game.view.wheelSoundEnabled ? null : 'warning'"
+          :color="game.view.wheelSoundEnabled ? undefined : 'warning'"
           variant="text"
           :title="game.view.wheelSoundToggleTitle"
           :aria-label="game.view.wheelSoundToggleTitle"
@@ -48,7 +48,7 @@
         <v-btn
           size="x-small"
           :icon="game.view.wheelReducedMotion ? 'mdi-motion-pause-outline' : 'mdi-motion-play-outline'"
-          :color="game.view.wheelReducedMotion ? 'warning' : null"
+          :color="game.view.wheelReducedMotion ? 'warning' : undefined"
           variant="text"
           :title="game.view.wheelMotionToggleTitle"
           :aria-label="game.view.wheelMotionToggleTitle"
@@ -147,7 +147,7 @@
           'game-spectator-btn--live': game.view.gameSpectatorSessionId && game.view.gameSpectatorSessionStatus !== 'ended',
           'game-spectator-btn--ended': game.view.gameSpectatorSessionStatus === 'ended'
         }"
-        :color="game.view.gameSpectatorSessionId ? (game.view.gameSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : null"
+        :color="game.view.gameSpectatorSessionId ? (game.view.gameSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
         :title="game.view.gameSpectatorActionLabel"
         @click="game.commands.openGameSpectatorDialog"
       >

@@ -2,7 +2,7 @@
   :model-value="showWhatnotReviewDialog"
   :title="t('whatnotReviewTitle')"
   :max-width="980"
-  @update:model-value="(value) => { if (!value) closeWhatnotReviewDialog(); }"
+  @update:model-value="!$event && closeWhatnotReviewDialog()"
 >
   <template #title>
     <div class="d-flex align-center justify-space-between ga-3 w-100">
@@ -262,9 +262,9 @@
               <span v-if="row.buyerShipping > 0">{{ t('whatnotReviewBuyerShippingLabel', { amount: formatCurrency(row.buyerShipping) }) }}</span>
               <span v-if="row.existingSaleId">{{ t('whatnotReviewExistingSaleLabel', { id: row.existingSaleId }) }}</span>
               <span
-                v-if="row.matchSource === 'remembered' && row.suggestedLotId && lotItems.find((lot) => lot.value === row.suggestedLotId)?.title"
+                v-if="row.matchSource === 'remembered' && row.suggestedLotId && findLotItemByValue(row.suggestedLotId)?.title"
               >
-                {{ t('whatnotReviewRememberedLotLabel', { name: lotItems.find((lot) => lot.value === row.suggestedLotId)?.title }) }}
+                {{ t('whatnotReviewRememberedLotLabel', { name: findLotItemByValue(row.suggestedLotId)?.title }) }}
               </span>
               <span v-if="whatnotSimilarRowCount(row) > 1">
                 {{ t('whatnotReviewMatchingRowsFollowLabel', { count: whatnotSimilarRowCount(row) }) }}
@@ -338,10 +338,10 @@
                   @update:model-value="handleWhatnotLotSelection(row, $event)"
                 ></v-select>
                 <div
-                  v-if="row.selectedLotId && lotItems.find((lot) => lot.value === row.selectedLotId)?.subtitle"
+                  v-if="row.selectedLotId && findLotItemByValue(row.selectedLotId)?.subtitle"
                   class="text-caption text-medium-emphasis mt-1"
                 >
-                  {{ lotItems.find((lot) => lot.value === row.selectedLotId)?.subtitle }}
+                  {{ findLotItemByValue(row.selectedLotId)?.subtitle }}
                 </div>
               </v-col>
               <v-col cols="12" md="3">
@@ -358,7 +358,7 @@
                   variant="outlined"
                   density="comfortable"
                   hide-details="auto"
-                  :disabled="row.skipImport || lotItems.find((lot) => lot.value === row.selectedLotId)?.lotType === 'singles'"
+                  :disabled="row.skipImport || findLotItemByValue(row.selectedLotId)?.lotType === 'singles'"
                   @update:model-value="handleWhatnotSaleTypeSelection(row, $event)"
                 ></v-select>
               </v-col>
@@ -379,7 +379,7 @@
             </v-row>
 
             <div class="text-caption text-medium-emphasis mt-2">
-              <template v-if="lotItems.find((lot) => lot.value === row.selectedLotId)?.lotType === 'singles'">
+              <template v-if="findLotItemByValue(row.selectedLotId)?.lotType === 'singles'">
                 • {{ t('whatnotReviewImportTypeSinglesNotice') }}
               </template>
               <template v-if="row.skipImport">
