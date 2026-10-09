@@ -2,14 +2,22 @@ import type { ShopifyEditListing, ShopifyVariantSearchResult } from "../../../..
 import type { ShopifyDraftPreview } from "../../../../domain/shopify-draft.ts";
 import { shopifyUiErrorMessage, shopifySavedLotFieldsMatch } from "../../../../domain/shopify-ui-error.ts";
 import { type BindingMutation, type BindingResult, type DraftCreateMutation, type ProductDetailsMutation } from "../../../../../shared/shopify-product-manager.ts";
+import { AsyncSearchLifecycle } from "../../../shared/async-search-lifecycle.ts";
 
 export const shopifyEditSearchTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
+export const shopifyEditSearchLifecycles = new WeakMap<object, AsyncSearchLifecycle<unknown>>();
+export function shopifyEditSearchLifecycle(context: object): AsyncSearchLifecycle<unknown> {
+  let lifecycle = shopifyEditSearchLifecycles.get(context);
+  if (!lifecycle) { lifecycle = new AsyncSearchLifecycle(); shopifyEditSearchLifecycles.set(context, lifecycle); }
+  return lifecycle;
+}
 export const shopifyDraftPreviewCache = new WeakMap<object, ShopifyDraftPreview>();
 
 export function shopifyVariantLabel(result: ShopifyVariantSearchResult, noSku: string): string {
   return `${result.title}${result.variantTitle && result.variantTitle !== "Default Title" ? ` · ${result.variantTitle}` : ""} · ${result.sku || noSku} · ${result.price}`;
 }
 export function cancelShopifyEditSearchTimer(context: object): void {
+  shopifyEditSearchLifecycle(context).clear();
   const timer = shopifyEditSearchTimers.get(context);
   if (timer) clearTimeout(timer);
   shopifyEditSearchTimers.delete(context);

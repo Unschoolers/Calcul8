@@ -3,12 +3,12 @@ import { ShopifyUiError, shopifyResponseUiError, shopifyUiErrorRecovery } from "
 import type { ConfigLotMethodImplementation, LotConfigurationContext } from "../../../context/commerce.ts";
 import { isApiRequestAborted } from "../common/api-client.ts";
 import { createShopifyEditorClient } from "./shopify-editor-client.ts";
-import { shopifyEditSearchTimers, shopifyVariantLabel, cancelShopifyEditSearchTimer, shopifyEditScopeBody, shopifyEditRequestIsOwned, shopifyEditRequestIsCurrent, shopifyEditSessionIsCurrent, shopifyEditErrorText } from "./shopify-editor-support.ts";
+import { shopifyVariantLabel, shopifyEditScopeBody, shopifyEditRequestIsOwned, shopifyEditRequestIsCurrent, shopifyEditSessionIsCurrent, shopifyEditErrorText, shopifyEditSearchLifecycle } from "./shopify-editor-support.ts";
 
 export const searchShopifyController = {
   onShopifyEditQueryChange(value: string): void {
       if (this.shopifyEditSearchResults.some((result) => value === shopifyVariantLabel(result, this.t("configShopifyNoSku")))) return;
-      cancelShopifyEditSearchTimer(this);
+      shopifyEditSearchLifecycle(this).clear();
       this.shopifyEditSearchQuery = value;
       this.shopifyEditError = null;
       this.shopifyEditRecovery = "none";
@@ -23,18 +23,17 @@ export const searchShopifyController = {
       this.shopifyEditSelectedLocationId = null;
       if (value.trim().length >= 2) {
         const scheduledRevision = this.shopifyEditRequestRevision;
-        shopifyEditSearchTimers.set(this, setTimeout(() => {
-          shopifyEditSearchTimers.delete(this);
+        shopifyEditSearchLifecycle(this).debounce(300, () => {
           if (this.showRenameLotModal && this.shopifyEditRequestRevision === scheduledRevision) {
             void searchShopifyController.searchShopifyEditProducts.call(this, false);
           }
-        }, 300));
+        });
       }
     },
 
   restoreShopifyEditSelection(selection: { query: string; variantId: string | null; locationId: string | null; product: ShopifyVariantSearchResult | null }): void {
       if (this.shopifyEditSaving || !this.showRenameLotModal || !shopifyEditSessionIsCurrent(this)) return;
-      cancelShopifyEditSearchTimer(this);
+      shopifyEditSearchLifecycle(this).clear();
       this.shopifyEditRequestRevision += 1;
       this.shopifyEditLoading = false;
       this.shopifyEditSearchQuery = selection.query;
@@ -53,7 +52,7 @@ export const searchShopifyController = {
       if (!variantId) {
         this.shopifyEditSelectedVariantId = null;
         this.shopifyEditSelectedLocationId = null;
-        cancelShopifyEditSearchTimer(this);
+        shopifyEditSearchLifecycle(this).clear();
         this.shopifyEditSearchQuery = "";
         this.shopifyEditSearchResults = [];
         this.shopifyEditSearchCursor = null;
@@ -92,12 +91,23 @@ export const searchShopifyController = {
       this.shopifyEditRequestRevision += 1;
       const captured = { auth: this.googleAuthEpoch, scope: JSON.stringify(shopifyEditScopeBody(this)), lotId: this.currentLotId, revision: this.shopifyEditRequestRevision, shop: this.shopifyConnectionShop };
       try {
+        const lifecycle = shopifyEditSearchLifecycle(this);
+        const pageResult: { current: { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } } | null } = { current: null };
+        await lifecycle.execute(query, async (_query, signal) => {
         const response = await createShopifyEditorClient(this).post("search", {
           ...shopifyEditScopeBody(this), query, ...(loadMore && this.shopifyEditSearchCursor ? { after: this.shopifyEditSearchCursor } : {})
-        }, { retryUnsafeMethods: true });
+        }, { retryUnsafeMethods: true, signal });
         if (!response.ok) throw await shopifyResponseUiError(response, this.t, "configShopifySearchError");
         const page = await response.json() as { variants: ShopifyVariantSearchResult[]; matchedVariantCount?: number; excludedVariantCount?: number; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+        if (!shopifyEditRequestIsCurrent(this, captured)) return [];
+        pageResult.current = page;
+        return page.variants;
+        });
         if (!shopifyEditRequestIsCurrent(this, captured)) return;
+        const lifecycleState = lifecycle.snapshot();
+        if (lifecycleState.phase === "error") throw lifecycleState.error;
+        const page = pageResult.current;
+        if (!page) return;
         this.shopifyEditSearchResults = loadMore ? [...this.shopifyEditSearchResults, ...page.variants] : page.variants;
         this.shopifyEditSearchHasMore = page.pageInfo.hasNextPage;
         this.shopifyEditSearchCursor = page.pageInfo.endCursor;

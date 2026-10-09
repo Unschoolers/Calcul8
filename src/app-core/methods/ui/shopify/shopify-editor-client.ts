@@ -27,7 +27,7 @@ export type ShopifyEditorRequests = {
 
 /** Typed boundary for the Shopify editor's authenticated requests. */
 export interface ShopifyEditorClient {
-  post<K extends ShopifyEditorEndpoint>(endpoint: K, payload: ShopifyEditorRequests[K], options?: { retryUnsafeMethods?: boolean }): Promise<Response>;
+  post<K extends ShopifyEditorEndpoint>(endpoint: K, payload: ShopifyEditorRequests[K], options?: { retryUnsafeMethods?: boolean; signal?: AbortSignal }): Promise<Response>;
 }
 
 export function createShopifyEditorClient(context: AuthEntitlementSessionContext): ShopifyEditorClient {
@@ -36,7 +36,7 @@ export function createShopifyEditorClient(context: AuthEntitlementSessionContext
       return fetchAuthenticatedApiResponse(context, SHOPIFY_EDITOR_ENDPOINTS[endpoint], {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload), signal: options.signal
       }, options);
     }
   };
