@@ -26,6 +26,7 @@ export type GameWindowHostState = GameHostState
   activeWheelConfig: WheelConfig | null;
   wheelDisplayConfig: WheelConfig | null;
   wheelDisplaySlots: WheelSlot[];
+  mysteryGridCells: import("../commands/mysteryGridMethods.ts").MysteryGridCell[];
   wheelIsCompactLayout: boolean;
   wheelCompactStageSummaryLabel: string;
   wheelCompactStageSummaryValue: string;

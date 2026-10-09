@@ -180,6 +180,7 @@ describe("game inspector scenarios", () => {
       loadSalesForLotId: vi.fn(() => []),
       wheelEndingSession: false,
       wheelChaseDialog: false,
+      spinWheel: vi.fn(async () => undefined),
       requestWheelReset: vi.fn(),
       requestWheelSessionEnd: vi.fn(),
       t: (key: string) => key,
@@ -204,11 +205,10 @@ describe("game inspector scenarios", () => {
     const Harness = defineComponent({
       setup() {
       provide(gameControllerKey, createGameController(context as never));
-        provide("gameCtx", context);
         return () => h("div", [
-          h(MysteryGridSurface, { ctx: context }),
-          h(WheelSessionPanel, { ctx: context }),
-          h(WheelHistoryPanel, { ctx: context })
+          h(MysteryGridSurface),
+          h(WheelSessionPanel),
+          h(WheelHistoryPanel)
         ]);
       },
     });

@@ -20,7 +20,6 @@
 
             <div v-if="wheelIsBracketBattle" class="game-stage-overlay-surface">
                 <bracket-battle-panel
-                    :ctx="getWindowComponentContext()"
                     @overlay-command="setGameStageOverlayCommand"
                     @session-state="syncBracketBattleState"
                 ></bracket-battle-panel>
@@ -65,7 +64,6 @@
                 </transition>
                 <mystery-grid-surface
                     ref="mysteryGridSurface"
-                    :ctx="getWindowComponentContext()"
                 ></mystery-grid-surface>
             </div>
 
