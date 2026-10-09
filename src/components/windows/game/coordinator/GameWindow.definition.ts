@@ -27,6 +27,7 @@ import {
     type GameWindowThis
 } from "./gameControllerState.ts";
 import { useGameCoordinatorPorts } from "./gameCoordinatorPorts.ts";
+import { gameControllerKey } from "./gameContext.ts";
 import {
     WHEEL_COMPACT_LAYOUT_BREAKPOINT,
     isWheelCompactViewport,
@@ -119,8 +120,10 @@ export const gameWindowDefinition = {
     }
   },
   provide(this: GameWindowThis) {
+    const gameController = createGameController(this);
     return {
-      gameController: createGameController(this),
+      [gameControllerKey]: gameController,
+      gameController,
       gameCtx: this
     };
   },
