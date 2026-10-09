@@ -17,12 +17,17 @@ export class AsyncSearchLifecycle<T> {
   snapshot(): AsyncSearchState<T> { return { ...this.state, results: [...this.state.results] }; }
 
   schedule(query: string, delayMs: number, run: (query: string, signal: AbortSignal) => Promise<T[]>): void {
+    this.debounce(delayMs, () => { void this.execute(query, run); });
+  }
+
+  /** Debounce a domain action that will start its own request through execute(). */
+  debounce(delayMs: number, run: () => void): void {
     this.cancelRequest();
     this.publish({ phase: "debouncing", results: [], error: null });
     if (this.disposed) return;
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.execute(query, run);
+      if (!this.disposed) run();
     }, Math.max(0, delayMs));
   }
 

@@ -23,11 +23,10 @@ export const searchShopifyController = {
       this.shopifyEditSelectedLocationId = null;
       if (value.trim().length >= 2) {
         const scheduledRevision = this.shopifyEditRequestRevision;
-        shopifyEditSearchLifecycle(this).schedule(value, 300, async () => {
+        shopifyEditSearchLifecycle(this).debounce(300, () => {
           if (this.showRenameLotModal && this.shopifyEditRequestRevision === scheduledRevision) {
-            await searchShopifyController.searchShopifyEditProducts.call(this, false);
+            void searchShopifyController.searchShopifyEditProducts.call(this, false);
           }
-          return [];
         });
       }
     },

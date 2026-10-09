@@ -304,6 +304,11 @@ export const singlesCatalogSearchMethods = {
     }
   },
 
+  disposeSinglesItemSearch(this: SinglesCatalogSearchContext): void {
+    this.cancelSinglesItemSearch();
+    singlesSearchLifecycle(this).dispose();
+  },
+
   cacheSinglesSuggestionImages(this: SinglesCatalogSearchContext, suggestions: SinglesCardSuggestion[]): void {
     if (!Array.isArray(suggestions) || suggestions.length === 0) return;
     const nextCache = {
@@ -449,9 +454,8 @@ export const singlesCatalogSearchMethods = {
     this.singlesItemSuggestions = [];
     this.singlesItemMenuOpen = true;
     this.singlesItemSearchLoading = true;
-    singlesSearchLifecycle(this).schedule(query, SINGLES_CARD_SEARCH_DEBOUNCE_MS, async (scheduledQuery) => {
-      await this.fetchSinglesItemSuggestions(scheduledQuery);
-      return [];
+    singlesSearchLifecycle(this).debounce(SINGLES_CARD_SEARCH_DEBOUNCE_MS, () => {
+      void this.fetchSinglesItemSuggestions(query);
     });
   },
 

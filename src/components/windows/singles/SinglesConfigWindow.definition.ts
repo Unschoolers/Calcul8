@@ -197,6 +197,7 @@ export type SinglesWindowThis = {
   conditionShortLabel(value: unknown): string;
   languageShortLabel(value: unknown): string;
   cancelSinglesItemSearch(): void;
+  disposeSinglesItemSearch(): void;
   requestSinglesCardSuggestions(query: string, signal?: AbortSignal): Promise<SinglesCardSuggestion[]>;
   refreshSinglesMarketPricesFromCatalog(): Promise<void>;
   openSinglesRowEditor(entry: SinglesPurchaseEntry): void;
@@ -839,7 +840,7 @@ export const singlesConfigWindowDefinition = {
     this.resetMobileRowsPagination();
   },
   beforeUnmount(this: SinglesWindowThis) {
-    this.cancelSinglesItemSearch();
+    this.disposeSinglesItemSearch();
   },
   provide(this: SinglesWindowThis) {
     return {

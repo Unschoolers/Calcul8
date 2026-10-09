@@ -77,7 +77,7 @@ async function mountSinglesEditor(
     template: "<singles-config-window ref=\"editor\" />"
   });
 
-  renderWithApp(Host, {
+  const rendered = renderWithApp(Host, {
     global: {
       provide: { [singlesConfigPortsKey as symbol]: createSinglesConfigPorts(source as never) },
       stubs: { AdminSyncImportCard: true, SinglesCsvImportDialog: true }
@@ -89,7 +89,7 @@ async function mountSinglesEditor(
 
   const input = document.querySelector<HTMLInputElement>(".v-autocomplete input");
   expect(input).not.toBeNull();
-  return { editor, input: input!, searchResponse };
+  return { editor, input: input!, searchResponse, unmount: rendered.unmount };
 }
 
 async function typeNativeValue(input: HTMLInputElement, value: string): Promise<void> {
@@ -186,6 +186,30 @@ test("ignores an older mobile search response after later characters are typed",
 
   resolveLoyd?.(cardSearchResponse("Loyd final"));
   await vi.waitFor(() => expect(document.body).toHaveTextContent("Loyd final"));
+}, 10_000);
+
+test("clearing and unmounting the mobile editor abort pending catalog searches", async () => {
+  const signals: AbortSignal[] = [];
+  const searchResponse = vi.fn((_url: string, init?: RequestInit) => {
+    if (init?.signal) signals.push(init.signal);
+    return new Promise<Response>(() => undefined);
+  });
+  const { editor, input, unmount } = await mountSinglesEditor(searchResponse);
+
+  await fireEvent.focus(input);
+  await typeNativeValue(input, "Lo");
+  await vi.waitFor(() => expect(searchResponse).toHaveBeenCalledOnce(), { timeout: 1_500 });
+  expect(signals[0]?.aborted).toBe(false);
+
+  await typeNativeValue(input, "");
+  await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+  expect(editor.value?.singlesItemSearchLoading).toBe(false);
+
+  await typeNativeValue(input, "Loyd");
+  await vi.waitFor(() => expect(searchResponse).toHaveBeenCalledTimes(2), { timeout: 1_500 });
+  expect(signals[1]?.aborted).toBe(false);
+  unmount();
+  expect(signals[1]?.aborted).toBe(true);
 }, 10_000);
 
 test("shows a delayed result while the autocomplete input remains focused", async () => {
