@@ -59,8 +59,20 @@ test("resolveWhatnotScope rejects stale workspace membership when the workspace 
 
   await assert.rejects(
     () => resolveWhatnotScope({} as never, "owner-1", "team-42", true),
-    (error: { status?: number; message?: string }) =>
-      error.status === 403 && error.message === "User is not a member of this workspace."
+    (error: { status?: number; message?: string; code?: string }) =>
+      error.status === 403 && error.message === "User is not a member of this workspace." && error.code === "workspace_membership_required"
+  );
+});
+
+
+test("resolveWhatnotScope keeps Whatnot owner copy while exposing the shared denial code", async () => {
+  getWorkspaceMembershipMock.mockResolvedValue({ role: "member", status: "active" });
+  await assert.rejects(
+    () => resolveWhatnotScope({} as never, "member-1", "team-42", true),
+    (error: { status?: number; message?: string; code?: string }) =>
+      error.status === 403 &&
+      error.message === "Only workspace owner can manage Whatnot integration." &&
+      error.code === "workspace_owner_required"
   );
 });
 

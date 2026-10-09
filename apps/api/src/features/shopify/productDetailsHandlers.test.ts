@@ -4,7 +4,7 @@ import type { HttpRequest, InvocationContext } from "@azure/functions";
 const mocks = vi.hoisted(() => ({ actor: vi.fn(), scope: vi.fn(), connection: vi.fn(), snapshot: vi.fn(), update: vi.fn(), get: vi.fn(), guard: vi.fn(), leasePasses: 1 }));
 vi.mock("../../lib/auth", async original => ({ ...await original<typeof import("../../lib/auth")>(), resolveUserId: mocks.actor }));
 vi.mock("../../lib/http", () => ({ executeHttpHandler: async (_req: unknown, _ctx: unknown, options: { operation: (input: { config: unknown }) => unknown }) => options.operation({ config: {} }), jsonResponse: (_req: unknown, _cfg: unknown, status: number, jsonBody: unknown) => ({ status, jsonBody }) }));
-vi.mock("../whatnot/serviceCore", () => ({ resolveWhatnotScope: mocks.scope }));
+vi.mock("../../lib/scopeAuthorization", () => ({ resolveScopeAuthorization: async (...args: unknown[]) => { const scope = await mocks.scope(...args); return { allowed: true, scope, connectionScopeKey: scope.connectionScopeKey ?? scope.partitionKey }; } }));
 vi.mock("../../lib/cosmos/shopifyRepository", () => ({ getShopifyConnection: mocks.connection }));
 vi.mock("../../lib/cosmos/syncSnapshotRepository", () => ({ getEffectiveSyncSnapshot: mocks.snapshot }));
 vi.mock("../../lib/cosmos/shopifyListingRepository", () => ({ createShopifyListingStore: () => ({ get: mocks.get }) }));
