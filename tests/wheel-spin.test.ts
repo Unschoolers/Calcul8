@@ -23,6 +23,103 @@ function completeGameSession<T extends Record<string, unknown>>(context: T): T {
   return context;
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
+
+function pendingFairnessResult() {
+  return {
+    resultIndex: 0,
+    hash: "pending-hash",
+    seed: "pending-seed",
+    clientSeed: "pending-client-seed",
+    layoutHash: "pending-layout-hash",
+    verificationUrl: "https://api.test/verify"
+  };
+}
+
+function createPendingLiveSpinVm(): Record<string, unknown> {
+  const slots = [{ name: "Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }];
+  return completeGameSession({
+    wheelSpinning: false,
+    wheelMode: "live",
+    wheelDisplaySlots: slots,
+    activeWheelSlots: slots,
+    activeWheelConfig: { id: 1, spinPrice: 10, tiers: [] },
+    wheelDisplayConfig: { id: 1, spinPrice: 10, tiers: [] },
+    activeWheelConfigId: 1,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    wheelSpinBlockedReason: "",
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    wheelSessionNetRevenue: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelPendingInventoryIssues: [],
+    wheelCurrentAngle: 0,
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: "",
+    wheelShowSeed: false,
+    _gameSpectatorSpinAnimation: null,
+    wheelFairnessHistory: [],
+    wheelChaseTallyHistory: [],
+    lots: [],
+    drawWheel: vi.fn(),
+    saveWheelSession: vi.fn(),
+    recordSpinResult: vi.fn(async () => undefined),
+    recordPreviewSpinResult: vi.fn(),
+    appendWheelFairnessHistory: vi.fn(),
+    landOnSlot: vi.fn(),
+    publishGameSpectatorSessionSnapshot: vi.fn(async () => undefined),
+    stopGameSpectatorCountPolling: vi.fn()
+  });
+}
+
+for (const cancellation of ["reset", "unmount"] as const) {
+  test(`cancels a live spin while fairness resolution is pending during ${cancellation}`, async () => {
+    const fairness = deferred<Awaited<ReturnType<typeof resolveWheelFairnessSpin>>>();
+    vi.mocked(resolveWheelFairnessSpin).mockReturnValueOnce(fairness.promise);
+    const vm = createPendingLiveSpinVm();
+    vm.cancelWheelSpinAnimation = GameWindow.methods!.cancelWheelSpinAnimation;
+
+    const spinning = GameWindow.methods!.spinWheelInternal.call(vm as never, true);
+    await Promise.resolve();
+    assert.equal(typeof vm._wheelSpinAnimationCancel, "function");
+
+    if (cancellation === "reset") {
+      await GameWindow.methods!.resetWheelSession.call(vm as never);
+    } else {
+      GameWindow.beforeUnmount!.call(vm as never);
+    }
+
+    await spinning;
+    assert.equal(vm.wheelSpinning, false);
+    assert.deepEqual(vm.wheelSpinCounts, [0]);
+    assert.equal(vm.wheelTotalSpins, 0);
+    assert.equal(vm.wheelSpinHash, "");
+    assert.equal(vm._gameSpectatorSpinAnimation, null);
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal((vm.recordSpinResult as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal((vm.landOnSlot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+    fairness.resolve(pendingFairnessResult());
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal((vm.recordSpinResult as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal((vm.landOnSlot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(vm.wheelSpinHash, "");
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  });
+}
+
 test("buildWheelReadableVerificationUrl targets the public proof view", () => {
   const url = buildWheelReadableVerificationUrl(
     "https://api.example.test/wheel/fairness/verify?serverSeed=server-seed&clientSeed=client-seed&slotCount=12",
