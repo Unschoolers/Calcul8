@@ -6,7 +6,6 @@ import {
     getScopedWheelSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
-import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import { ensureWheelControllerState, getWheelController, getGameWindowLocalKeys } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import {
     settleGameOutcomeSale,
@@ -167,15 +166,13 @@ test("requestWheelReset opens the shared reset confirmation and stops preview au
   assert.equal(vm.wheelConfirmDialog, true);
 });
 
-test("getWheelController resolves the bridge's canonical root owner", () => {
+test("getWheelController resolves the explicit game session owner", () => {
   const source = {
     wheelSpinHash: "seed-hash"
   } as Record<string, unknown>;
   ensureWheelControllerState(source);
-  const bridge = createNestedWindowContextBridge(source);
-
-  const controllerA = getWheelController(bridge);
-  const controllerB = getWheelController(bridge);
+  const controllerA = getWheelController(source);
+  const controllerB = getWheelController(source);
 
   assert.equal(controllerA, controllerB);
   assert.equal(controllerA.wheelSpinHash, "seed-hash");
@@ -1119,7 +1116,7 @@ test("confirmChaseReplacement accumulates adjustment across multiple replacement
   assert.equal(vm.wheelSessionCostAdjustment, 60);
 });
 
-test("resetWheelSession clears cost adjustment", () => {
+test("resetWheelSession clears cost adjustment", async () => {
   const vm: Record<string, unknown> = {
     activeWheelSlots: [{ cost: 5 }],
     wheelTotalSpins: 5,
@@ -1150,7 +1147,7 @@ test("resetWheelSession clears cost adjustment", () => {
     publishGameSpectatorSessionSnapshot: vi.fn()
   };
 
-  GameWindow.methods!.resetWheelSession.call(completeGameSession(vm) as never);
+  await GameWindow.methods!.resetWheelSession.call(completeGameSession(vm) as never);
 
   assert.equal(vm.wheelTotalSpins, 0);
   assert.equal(vm.wheelSessionNetRevenue, 0);

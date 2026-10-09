@@ -33,3 +33,28 @@ test("preview reset persists without publication", async () => {
   assert.deepEqual(next, { count: 0 });
   assert.deepEqual(calls, ["persist"]);
 });
+
+test("publishes a live reset only after persistence completes", async () => {
+  const calls: string[] = [];
+  let releasePersistence!: () => void;
+  const persistence = new Promise<void>((resolve) => { releasePersistence = resolve; });
+  const reset = runGameSessionReset(
+    { count: 3 },
+    "live",
+    { reset: () => ({ count: 0 }), shouldPublish: () => true },
+    {
+      persist: async () => {
+        calls.push("persist:start");
+        await persistence;
+        calls.push("persist:complete");
+      },
+      publish: () => { calls.push("publish"); }
+    }
+  );
+
+  await Promise.resolve();
+  assert.deepEqual(calls, ["persist:start"]);
+  releasePersistence();
+  await reset;
+  assert.deepEqual(calls, ["persist:start", "persist:complete", "publish"]);
+});

@@ -23,7 +23,7 @@
         min="0"
         max="100"
         step="1"
-        :aria-label="t('wheelOddsTierChanceLabel', { label: tier.label })"
+        :aria-label="game.view.t('wheelOddsTierChanceLabel', { label: tier.label })"
         @change="setTierChanceFromEvent(tier, $event)"
       />
       <span class="wheel-tier-card__chance-suffix">%</span>
@@ -34,8 +34,8 @@
       variant="tonal"
       color="primary"
       class="wheel-tier-card__edit-btn"
-      :title="t('wheelTierEditAction')"
-      :aria-label="t('wheelTierEditAction')"
+      :title="game.view.t('wheelTierEditAction')"
+      :aria-label="game.view.t('wheelTierEditAction')"
       @click="openTierEditor()"
     >
       <v-icon size="18">mdi-pencil-outline</v-icon>
@@ -46,7 +46,7 @@
     class="wheel-tier-card__chance-bar"
     role="slider"
     tabindex="0"
-    :aria-label="t('wheelOddsTierChanceLabel', { label: tier.label })"
+    :aria-label="game.view.t('wheelOddsTierChanceLabel', { label: tier.label })"
     aria-valuemin="0"
     aria-valuemax="100"
     :aria-valuenow="Number(tier.chancePercent) || 0"
@@ -71,7 +71,7 @@
     <div class="wheel-tier-card__meta-row wheel-tier-card__meta-row--warning">
       <span class="wheel-tier-card__meta-label">
         <v-icon size="14">mdi-alert-outline</v-icon>
-        {{ t('wheelTierStockLabel') }}
+        {{ game.view.t('wheelTierStockLabel') }}
       </span>
       <span class="wheel-tier-card__meta-value">{{ tierInventoryWarning }}</span>
     </div>
@@ -96,7 +96,7 @@
             </div>
           </div>
           <div class="wheel-tier-editor__subtitle">
-            {{ t('wheelTierEditorSubtitle') }}
+            {{ game.view.t('wheelTierEditorSubtitle') }}
           </div>
         </div>
         <v-btn icon="mdi-close" variant="text" size="small" @click="cancelTierEditor()"></v-btn>
@@ -106,53 +106,53 @@
       <div class="wheel-tier-editor__body">
         <section class="wheel-tier-editor__section">
           <div class="wheel-tier-editor__section-head">
-            <div class="wheel-tier-editor__section-title">{{ t('wheelTierBasicsSectionTitle') }}</div>
-            <div class="wheel-tier-editor__section-copy">{{ t('wheelTierBasicsSectionSubtitle') }}</div>
+            <div class="wheel-tier-editor__section-title">{{ game.view.t('wheelTierBasicsSectionTitle') }}</div>
+            <div class="wheel-tier-editor__section-copy">{{ game.view.t('wheelTierBasicsSectionSubtitle') }}</div>
           </div>
 
           <div class="wheel-tier-editor__grid">
             <div class="wheel-tier-metric">
-              <span class="wheel-tier-metric__label">{{ t('wheelTierLabelField') }}</span>
+              <span class="wheel-tier-metric__label">{{ game.view.t('wheelTierLabelField') }}</span>
               <input v-model="editorTier.label" class="wheel-tier-label-input wheel-tier-label-input--editor" spellcheck="false" />
             </div>
             <div class="wheel-tier-metric">
-              <span class="wheel-tier-metric__label">{{ t('wheelTierCountField') }}</span>
+              <span class="wheel-tier-metric__label">{{ game.view.t('wheelTierCountField') }}</span>
               <input
                 v-model.number="editorTier.packsCount"
                 type="number"
                 class="wheel-tier-num-input"
-                :min="isBoundLotSingles(editorTier) ? 1 : 0"
-                :max="isBoundLotSingles(editorTier) ? 1 : null"
-                :disabled="isBoundLotSingles(editorTier)"
-                :title="isBoundLotSingles(editorTier) ? t('wheelTierCountSinglesHint') : t('wheelTierCountHint')"
+                :min="game.commands.isBoundLotSingles(editorTier) ? 1 : 0"
+                :max="game.commands.isBoundLotSingles(editorTier) ? 1 : null"
+                :disabled="game.commands.isBoundLotSingles(editorTier)"
+                :title="game.commands.isBoundLotSingles(editorTier) ? game.view.t('wheelTierCountSinglesHint') : game.view.t('wheelTierCountHint')"
                 @input="onTierPacksChange(editorTier)"
               />
             </div>
             <div class="wheel-tier-metric">
-              <span class="wheel-tier-metric__label">{{ t('wheelTierCostField') }}</span>
-              <input v-model.number="editorTier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" :title="t('wheelTierCostHint')" />
+              <span class="wheel-tier-metric__label">{{ game.view.t('wheelTierCostField') }}</span>
+              <input v-model.number="editorTier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" :title="game.view.t('wheelTierCostHint')" />
             </div>
           </div>
         </section>
 
         <section class="wheel-tier-editor__section">
           <div class="wheel-tier-editor__section-head">
-            <div class="wheel-tier-editor__section-title">{{ t('wheelTierSourceSectionTitle') }}</div>
-            <div class="wheel-tier-editor__section-copy">{{ t('wheelTierSourceSectionSubtitle') }}</div>
+            <div class="wheel-tier-editor__section-title">{{ game.view.t('wheelTierSourceSectionTitle') }}</div>
+            <div class="wheel-tier-editor__section-copy">{{ game.view.t('wheelTierSourceSectionSubtitle') }}</div>
           </div>
 
           <div class="wheel-tier-editor__source-grid">
-            <div v-if="!isBoundLotSingles(editorTier)" class="wheel-tier-source-field wheel-tier-source-field--wide">
-              <div class="wheel-tier-source-label">{{ t('wheelTierSourceLotsLabel') }}</div>
+            <div v-if="!game.commands.isBoundLotSingles(editorTier)" class="wheel-tier-source-field wheel-tier-source-field--wide">
+              <div class="wheel-tier-source-label">{{ game.view.t('wheelTierSourceLotsLabel') }}</div>
               <v-select
                 :model-value="editorTier.boundLotIds || []"
-                :items="bulkTierSourceItems"
+                :items="game.view.bulkTierSourceItems"
                 item-title="title"
                 item-value="value"
                 multiple
                 chips
                 closable-chips
-                :placeholder="t('wheelTierSourceLotsPlaceholder')"
+                :placeholder="game.view.t('wheelTierSourceLotsPlaceholder')"
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
@@ -161,14 +161,14 @@
               ></v-select>
             </div>
 
-            <div v-if="isBoundLotSingles(editorTier)" class="wheel-tier-source-field">
-              <div class="wheel-tier-source-label">{{ t('wheelTierPrizeItemLabel') }}</div>
+            <div v-if="game.commands.isBoundLotSingles(editorTier)" class="wheel-tier-source-field">
+              <div class="wheel-tier-source-label">{{ game.view.t('wheelTierPrizeItemLabel') }}</div>
               <v-select
                 :model-value="editorTier.boundSinglesId"
-                :items="getSinglesItemsForTier(editorTier)"
+                :items="game.commands.getSinglesItemsForTier(editorTier)"
                 item-title="title"
                 item-value="value"
-                :placeholder="t('wheelTierPickItemPlaceholder')"
+                :placeholder="game.view.t('wheelTierPickItemPlaceholder')"
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
@@ -212,22 +212,22 @@
 
         <section class="wheel-tier-editor__section wheel-tier-editor__section--accent">
           <div class="wheel-tier-editor__section-head">
-            <div class="wheel-tier-editor__section-title">{{ t('wheelTierCelebrationSectionTitle') }}</div>
-            <div class="wheel-tier-editor__section-copy">{{ t('wheelTierCelebrationSectionSubtitle') }}</div>
+            <div class="wheel-tier-editor__section-title">{{ game.view.t('wheelTierCelebrationSectionTitle') }}</div>
+            <div class="wheel-tier-editor__section-copy">{{ game.view.t('wheelTierCelebrationSectionSubtitle') }}</div>
           </div>
 
           <div class="wheel-tier-editor__celebration-shell">
             <div class="wheel-tier-editor__switch-card">
               <div class="wheel-tier-editor__switch-copy">
-                <div class="wheel-tier-editor__switch-title">{{ t('wheelTierChaseLabel') }}</div>
-                <div class="wheel-tier-editor__switch-meta">{{ t('wheelTierChaseHelp') }}</div>
+                <div class="wheel-tier-editor__switch-title">{{ game.view.t('wheelTierChaseLabel') }}</div>
+                <div class="wheel-tier-editor__switch-meta">{{ game.view.t('wheelTierChaseHelp') }}</div>
               </div>
               <v-switch
                 :model-value="editorTier.isChase === true"
                 color="amber"
                 inset
                 hide-details
-                :disabled="!canTierBeChase(editorTier) && !editorTier.isChase"
+                :disabled="!game.commands.canTierBeChase(editorTier) && !editorTier.isChase"
                 @update:model-value="toggleTierChase(editorTier)"
               ></v-switch>
             </div>
@@ -238,7 +238,7 @@
               </div>
               <div class="wheel-tier-editor__emoji-picker">
                 <div class="wheel-tier-editor__emoji-picker-head">
-                  <div class="wheel-tier-editor__emoji-picker-title">{{ t('wheelTierCelebrationEmojiPickerTitle') }}</div>
+                  <div class="wheel-tier-editor__emoji-picker-title">{{ game.view.t('wheelTierCelebrationEmojiPickerTitle') }}</div>
                   <v-btn
                     variant="text"
                     size="small"
@@ -247,11 +247,11 @@
                     :disabled="!editorTier.celebrationEmoji"
                     @click="clearTierCelebrationEmoji()"
                   >
-                    {{ t('wheelTierCelebrationEmojiClearAction') }}
+                    {{ game.view.t('wheelTierCelebrationEmojiClearAction') }}
                   </v-btn>
                 </div>
 
-                <div class="wheel-tier-editor__emoji-grid" role="listbox" :aria-label="t('wheelTierCelebrationEmojiPickerTitle')">
+                <div class="wheel-tier-editor__emoji-grid" role="listbox" :aria-label="game.view.t('wheelTierCelebrationEmojiPickerTitle')">
                   <button
                     v-for="emoji in tierCelebrationEmojiOptions"
                     :key="emoji"
@@ -268,8 +268,8 @@
                 <v-text-field
                   :model-value="editorTier.celebrationEmoji || ''"
                   @update:model-value="editorTier.celebrationEmoji = $event || ''"
-                  :label="t('wheelTierCelebrationEmojiLabel')"
-                  :hint="t('wheelTierCelebrationEmojiHint')"
+                  :label="game.view.t('wheelTierCelebrationEmojiLabel')"
+                  :hint="game.view.t('wheelTierCelebrationEmojiHint')"
                   persistent-hint
                   density="compact"
                   variant="outlined"
@@ -284,9 +284,9 @@
     </app-form-layout>
     <template #actions>
       <div class="wheel-tier-editor__actions d-flex align-center flex-grow-1">
-        <v-btn variant="tonal" color="error" @click="deleteTierAndClose()">{{ t('commonDelete') }}</v-btn>
+        <v-btn variant="tonal" color="error" @click="deleteTierAndClose()">{{ game.view.t('commonDelete') }}</v-btn>
         <v-spacer></v-spacer>
-        <v-btn variant="elevated" color="primary" @click="finishTierEditor()">{{ t('commonDone') }}</v-btn>
+        <v-btn variant="elevated" color="primary" @click="finishTierEditor()">{{ game.view.t('commonDone') }}</v-btn>
       </div>
     </template>
   </app-dialog-shell>

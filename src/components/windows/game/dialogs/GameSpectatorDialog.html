@@ -1,38 +1,38 @@
 <app-dialog-shell
-  v-if="gameSpectatorDialog"
-  v-model="gameSpectatorDialog"
-  :title="t('gameSpectatorDialogTitle')"
+  v-if="game.view.gameSpectatorDialog"
+  v-model="game.view.gameSpectatorDialog"
+  :title="game.view.t('gameSpectatorDialogTitle')"
   :max-width="480"
   class="game-spectator-dialog"
 >
     <div class="text-body-2">
       <div class="game-spectator-dialog__intro">
-        <div>{{ gameSpectatorDialogHint }}</div>
+        <div>{{ game.view.gameSpectatorDialogHint }}</div>
         <div
-          v-if="gameSpectatorSessionId"
+          v-if="game.view.gameSpectatorSessionId"
           class="game-spectator-dialog__status app-status-chip"
-          :class="`game-spectator-dialog__status--${gameSpectatorSessionStatus}`"
+          :class="`game-spectator-dialog__status--${game.view.gameSpectatorSessionStatus}`"
         >
           {{
-            gameSpectatorSessionStatus === 'ended'
-              ? t('gameSpectatorStatusEnded')
-              : gameSpectatorSessionStatus === 'live'
-                ? t('gameSpectatorStatusLive')
-                : t('gameSpectatorStatusStarting')
+            game.view.gameSpectatorSessionStatus === 'ended'
+              ? game.view.t('gameSpectatorStatusEnded')
+              : game.view.gameSpectatorSessionStatus === 'live'
+                ? game.view.t('gameSpectatorStatusLive')
+                : game.view.t('gameSpectatorStatusStarting')
           }}
         </div>
       </div>
 
-      <template v-if="gameSpectatorSessionId">
+      <template v-if="game.view.gameSpectatorSessionId">
         <div class="game-spectator-dialog__qr-wrap">
           <img
-            :src="gameSpectatorSessionQrUrl"
-            :alt="t('gameSpectatorQrAlt')"
+            :src="game.view.gameSpectatorSessionQrUrl"
+            :alt="game.view.t('gameSpectatorQrAlt')"
             class="game-spectator-dialog__qr"
           >
         </div>
         <div class="game-spectator-dialog__url">
-          {{ gameSpectatorSessionUrl }}
+          {{ game.view.gameSpectatorSessionUrl }}
         </div>
       </template>
     </div>
@@ -40,48 +40,48 @@
       <div class="game-spectator-dialog__actions d-flex align-center flex-wrap flex-grow-1">
         <v-spacer></v-spacer>
         <app-action-button
-          v-if="!gameSpectatorSessionId || gameSpectatorSessionStatus === 'ended'"
+          v-if="!game.view.gameSpectatorSessionId || game.view.gameSpectatorSessionStatus === 'ended'"
           action="live"
-          :loading="gameSpectatorPublishPending"
-          :label="gameSpectatorStartButtonLabel"
-          @click="startGameSpectatorMode"
+          :loading="game.view.gameSpectatorPublishPending"
+          :label="game.view.gameSpectatorStartButtonLabel"
+          @click="game.commands.startGameSpectatorMode"
         >
-          {{ gameSpectatorStartButtonLabel }}
+          {{ game.view.gameSpectatorStartButtonLabel }}
         </app-action-button>
-        <template v-if="gameSpectatorSessionId">
+        <template v-if="game.view.gameSpectatorSessionId">
           <app-action-button
             action="copy"
             variant="text"
-            :label="t('gameSpectatorCopyAction')"
-            @click="copyGameSpectatorLink"
+            :label="game.view.t('gameSpectatorCopyAction')"
+            @click="game.commands.copyGameSpectatorLink"
           >
-            {{ t('gameSpectatorCopyAction') }}
+            {{ game.view.t('gameSpectatorCopyAction') }}
           </app-action-button>
           <app-action-button
             action="open"
             variant="text"
-            :label="t('gameSpectatorOpenAction')"
-            @click="openGameSpectatorPage"
+            :label="game.view.t('gameSpectatorOpenAction')"
+            @click="game.commands.openGameSpectatorPage"
           >
-            {{ t('gameSpectatorOpenAction') }}
+            {{ game.view.t('gameSpectatorOpenAction') }}
           </app-action-button>
           <app-action-button
-            v-if="gameSpectatorSessionStatus !== 'ended'"
+            v-if="game.view.gameSpectatorSessionStatus !== 'ended'"
             action="delete"
-            :loading="gameSpectatorPublishPending"
-            :label="t('gameSpectatorEndAction')"
-            @click="endGameSpectatorMode"
+            :loading="game.view.gameSpectatorPublishPending"
+            :label="game.view.t('gameSpectatorEndAction')"
+            @click="game.commands.endGameSpectatorMode"
           >
-            {{ t('gameSpectatorEndAction') }}
+            {{ game.view.t('gameSpectatorEndAction') }}
           </app-action-button>
         </template>
         <app-action-button
           action="close"
           variant="text"
-          :label="t('commonClose')"
-          @click="closeGameSpectatorDialog"
+          :label="game.view.t('commonClose')"
+          @click="game.commands.closeGameSpectatorDialog"
         >
-          {{ t('commonClose') }}
+          {{ game.view.t('commonClose') }}
         </app-action-button>
       </div>
     </template>

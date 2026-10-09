@@ -1,10 +1,10 @@
 <div
-  v-if="!wheelPresentationMode && !wheelIsCompactLayout && wheelStageSummaryCards.length"
+  v-if="!game.view.wheelPresentationMode && !game.view.wheelIsCompactLayout && game.view.wheelStageSummaryCards.length"
   class="wheel-stage-summary"
-  :class="{ 'wheel-stage-summary--live': wheelMode === 'live' }"
+  :class="{ 'wheel-stage-summary--live': game.view.wheelMode === 'live' }"
 >
   <div
-    v-for="card in wheelStageSummaryCards"
+    v-for="card in game.view.wheelStageSummaryCards"
     :key="card.id"
     class="wheel-stage-summary-card"
   >

@@ -1,41 +1,40 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
-import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
-import { getWheelController } from "../services/gameSessionState.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import {
   buildWheelFairnessViewModel,
   type WheelFairnessViewModel
 } from "../services/wheelFairnessViewModel.ts";
 
-type PanelContext = Record<string, unknown>;
+type PanelContext = { game: GameController };
 
 export const WheelHistoryPanel = {
   name: "WheelHistoryPanel",
   props: {
-    ctx: gameContextProp,
     latestOnly: { type: Boolean, default: false },
     presentation: { type: Boolean, default: false },
     showEmptyState: { type: Boolean, default: true }
   },
   methods: {
     t(this: PanelContext, key: string, params?: Record<string, string | number | null | undefined>): string {
-      const source = getGameContextSource(this);
-      return typeof source.t === "function"
-        ? (source.t as (translationKey: string, values?: typeof params) => string)(key, params)
-        : translateAppMessage(String(source.preferredLanguage ?? ""), key, params);
+      const view = this.game.view;
+      return typeof view.t === "function"
+        ? view.t(key, params)
+        : translateAppMessage(String(view.preferredLanguage ?? ""), key, params);
     }
   },
   computed: {
     wheelHistoryPanelModel(this: PanelContext): WheelFairnessViewModel {
-      return buildWheelFairnessViewModel(getGameContextSource(this));
+      return buildWheelFairnessViewModel(this.game.view);
     },
     wheelHistoryPanelHistoryOpen: {
       get(this: PanelContext): boolean {
-        return getWheelController(getGameContextSource(this)).wheelFairnessHistoryOpen;
+        return this.game.session.wheelFairnessHistoryOpen;
       },
       set(this: PanelContext, value: boolean): void {
-        getWheelController(getGameContextSource(this)).wheelFairnessHistoryOpen = value;
+        this.game.session.wheelFairnessHistoryOpen = value;
       }
     }
   },
-  setup: setupGameContext
+  setup: setupTypedGameContext
 };

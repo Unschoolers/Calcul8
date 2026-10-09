@@ -12,6 +12,9 @@ import { createInitialState } from "../../src/app-core/state.ts";
 import { configLotMethods } from "../../src/app-core/methods/config-lots.ts";
 import WorkspaceModals from "../../src/components/shell/WorkspaceModals.vue";
 import WheelCreateGameDialog from "../../src/components/windows/game/dialogs/WheelCreateGameDialog.vue";
+import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
+import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
+import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
 import WhatnotCsvImportDialog from "../../src/components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import { commerceDialogPortsKey } from "../../src/components/modals/commerceDialogPorts.ts";
 import { shellPortsKey } from "../../src/components/shell/shellPorts.ts";
@@ -292,7 +295,8 @@ describe("workflow dialog scenarios", () => {
 
   test("creates a wheel game from the game-type chooser", async () => {
     const createNewGameConfig = vi.fn();
-    renderWithApp(WheelCreateGameDialog, { props: { ctx: { wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() } } });
+    const view = { gameSessionFeatureState: createWheelControllerState(), wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() };
+    renderWithApp(WheelCreateGameDialog, { global: { provide: { [gameControllerKey]: createGameController(view as never) } } });
 
     await fireEvent.click(screen.getByRole("button", { name: /Wheel/ }));
 
@@ -301,14 +305,16 @@ describe("workflow dialog scenarios", () => {
 
   test("creates a grid game from the game-type chooser", async () => {
     const createNewGameConfig = vi.fn();
-    renderWithApp(WheelCreateGameDialog, { props: { ctx: { wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() } } });
+    const view = { gameSessionFeatureState: createWheelControllerState(), wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() };
+    renderWithApp(WheelCreateGameDialog, { global: { provide: { [gameControllerKey]: createGameController(view as never) } } });
     await fireEvent.click(screen.getByRole("button", { name: /Grid/ }));
     expect(createNewGameConfig).toHaveBeenCalledWith("grid");
   });
 
   test("creates a bracket game from the game-type chooser", async () => {
     const createNewGameConfig = vi.fn();
-    renderWithApp(WheelCreateGameDialog, { props: { ctx: { wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() } } });
+    const view = { gameSessionFeatureState: createWheelControllerState(), wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() };
+    renderWithApp(WheelCreateGameDialog, { global: { provide: { [gameControllerKey]: createGameController(view as never) } } });
     await fireEvent.click(screen.getByRole("button", { name: /Bracket/ }));
     expect(createNewGameConfig).toHaveBeenCalledWith("bracket");
   });

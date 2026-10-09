@@ -1,11 +1,16 @@
-import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
-import type { MysteryGridCell } from "../commands/mysteryGridMethods.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
+import { buildMysteryGridCells, type MysteryGridCell } from "../commands/mysteryGridMethods.ts";
+
+type MysteryGridSurfaceThis = {
+  game: GameController;
+  mysteryGridCells: MysteryGridCell[];
+  localGridSelectorAnimating: boolean;
+  localGridHighlightCellIndex: number;
+};
 
 export const MysteryGridSurface = {
   name: "MysteryGridSurface",
-  props: {
-    ctx: gameContextProp
-  },
   data() {
     return {
       localGridSelectorAnimating: false,
@@ -13,19 +18,22 @@ export const MysteryGridSurface = {
     };
   },
   computed: {
-    wheelSpinning(this: Record<string, unknown>): boolean {
-      return getGameContextSource(this).wheelSpinning === true;
+    mysteryGridCells(this: MysteryGridSurfaceThis): MysteryGridCell[] {
+      return buildMysteryGridCells(this.game.view);
     },
-    wheelGridRevealAnimating(this: Record<string, unknown>): boolean {
-      return getGameContextSource(this).wheelGridRevealAnimating === true;
+    wheelSpinning(this: MysteryGridSurfaceThis): boolean {
+      return this.game.view.wheelSpinning === true;
     },
-    wheelEndingSession(this: Record<string, unknown>): boolean {
-      return getGameContextSource(this).wheelEndingSession === true;
+    wheelGridRevealAnimating(this: MysteryGridSurfaceThis): boolean {
+      return this.game.view.wheelGridRevealAnimating === true;
     },
-    wheelChaseDialog(this: Record<string, unknown>): boolean {
-      return getGameContextSource(this).wheelChaseDialog === true;
+    wheelEndingSession(this: MysteryGridSurfaceThis): boolean {
+      return this.game.view.wheelEndingSession === true;
     },
-    mysteryGridSurfaceStyle(this: Record<string, unknown>): Record<string, string> {
+    wheelChaseDialog(this: MysteryGridSurfaceThis): boolean {
+      return this.game.view.wheelChaseDialog === true;
+    },
+    mysteryGridSurfaceStyle(this: MysteryGridSurfaceThis): Record<string, string> {
       const cells = Array.isArray(this.mysteryGridCells) ? this.mysteryGridCells : [];
       const cellCount = Math.max(1, cells.length);
       const columns = Math.ceil(Math.sqrt(cellCount));
@@ -51,14 +59,10 @@ export const MysteryGridSurface = {
       this.localGridSelectorAnimating = false;
       this.localGridHighlightCellIndex = -1;
     },
-    isMysteryGridCellHighlighted(this: Record<string, unknown> & {
-      localGridSelectorAnimating: boolean;
-      localGridHighlightCellIndex: number;
-      ctx?: Record<string, unknown>;
-    }, cell: MysteryGridCell): boolean {
+    isMysteryGridCellHighlighted(this: MysteryGridSurfaceThis, cell: MysteryGridCell): boolean {
       if (cell.revealed) return false;
       const isLocalAnimation = this.localGridSelectorAnimating === true;
-      const source = getGameContextSource(this);
+      const source = this.game.view;
       const highlightIndex = isLocalAnimation
         ? this.localGridHighlightCellIndex
         : Math.floor(Number(source.wheelGridHighlightCellIndex));
@@ -66,6 +70,6 @@ export const MysteryGridSurface = {
       return isAnimating && highlightIndex === cell.index;
     }
   },
-  setup: setupGameContext
+  setup: setupTypedGameContext
 };
 

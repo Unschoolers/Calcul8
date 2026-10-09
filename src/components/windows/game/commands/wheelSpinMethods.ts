@@ -59,6 +59,7 @@ type WheelSpinCommandContext = GameSessionStateContext
     _gameSpectatorSpinAnimation?: import("../../../../types/app.ts").GameSpectatorSpinAnimation | null;
     _wheelAnimationAngle?: number;
     _wheelCelebrationAnimId?: number;
+    _wheelSpinAnimationCancel?: () => void;
     _wheelHighlightTime?: number;
     _wheelHighlightTimeoutId?: number;
     _wheelStaticRenderCache?: unknown;
@@ -74,6 +75,13 @@ type WheelSpinCommandContext = GameSessionStateContext
     stopWheelAutospin(): void;
     triggerWheelCelebration?(payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void;
   };
+
+export type WheelSpinAnimationCompletion = {
+  status: "landed" | "cancelled";
+  targetIndex: number;
+  finalAngle: number;
+  completedAt: number;
+};
 
 function queuePendingInventoryIssue(
   context: WheelSpinCommandContext,
@@ -287,12 +295,89 @@ export const wheelSpinMethods = {
       return;
     }
 
-    const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
+    if (vm._wheelSpinAnimationCancel) return;
+    const isOutcomeCurrent = captureGameOutcomeGuard(vm);
+    let spinCancelled = false;
+    let completionSettled = false;
+    let animationStarted = false;
+    let animationTargetIndex: number | null = null;
+    let currentAngle = Number(vm.wheelCurrentAngle || 0);
+    let spinFrameId: number | undefined;
+    let spinCompleted = false;
+    let visibilityChangeHandler: (() => void) | undefined;
+    let resolveAnimation!: (completion: WheelSpinAnimationCompletion) => void;
+    let rejectAnimation!: (reason: unknown) => void;
+    const animationComplete = new Promise<WheelSpinAnimationCompletion>((resolve, reject) => {
+      resolveAnimation = resolve;
+      rejectAnimation = reject;
+    });
+    let resolveCancellation!: () => void;
+    const cancellationSignal = new Promise<void>((resolve) => { resolveCancellation = resolve; });
+    const cleanupSpinLoop = () => {
+      spinCompleted = true;
+      if (visibilityChangeHandler && typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", visibilityChangeHandler);
+        visibilityChangeHandler = undefined;
+      }
+    };
+    let cancelAnimationEffects = () => {
+      if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(spinFrameId);
+        spinFrameId = undefined;
+      }
+      cleanupSpinLoop();
+      if (animationStarted) {
+        vm.wheelSpinning = false;
+        vm._gameSpectatorSpinAnimation = null;
+        vm.drawWheel(currentAngle);
+      }
+    };
+    const cancelAnimation = () => {
+      if (completionSettled || spinCancelled) return;
+      spinCancelled = true;
+      resolveCancellation();
+      cancelAnimationEffects();
+      if (animationTargetIndex != null) {
+        completionSettled = true;
+        resolveAnimation({
+          status: "cancelled",
+          targetIndex: animationTargetIndex,
+          finalAngle: currentAngle,
+          completedAt: performance.now()
+        });
+      }
+    };
+    vm._wheelSpinAnimationCancel = cancelAnimation;
+
+    const clearCancellation = () => {
+      if (vm._wheelSpinAnimationCancel === cancelAnimation) {
+        vm._wheelSpinAnimationCancel = undefined;
+      }
+    };
+    const fairnessOutcome = await Promise.race([
+      resolveWheelFairnessSpin(slots.length, slots).then((result) => ({ status: "resolved" as const, result })),
+      cancellationSignal.then(() => ({ status: "cancelled" as const }))
+    ]).catch((error: unknown) => {
+      clearCancellation();
+      throw error;
+    });
+    if (fairnessOutcome.status === "cancelled") {
+      clearCancellation();
+      return;
+    }
+    if (!isOutcomeCurrent()) {
+      cancelAnimation();
+      clearCancellation();
+      return;
+    }
+    const fairnessResult = fairnessOutcome.result;
 
     beginWheelSpin(vm, fairnessResult);
+    animationStarted = true;
 
     const targetIndex = fairnessResult.resultIndex;
-    const currentAngle = (vm.wheelCurrentAngle || 0) as number;
+    animationTargetIndex = targetIndex;
+    currentAngle = Number(vm.wheelCurrentAngle || 0);
     const startedAt = Date.now();
     const plan = createWheelSpinPlan({
       slotCount: slots.length,
@@ -303,14 +388,32 @@ export const wheelSpinMethods = {
       startedAt,
       spinIdSeed: String(startedAt)
     });
-    if (!plan) return;
+  if (!plan) {
+    cancelAnimation();
+    clearCancellation();
+    return;
+  }
     const { sliceAngle, endAngle, durationMs: duration, startAngle } = plan;
     const startTime = performance.now();
     vm._gameSpectatorSpinAnimation = plan.spectatorAnimation;
     if (shouldRecordLiveSession) {
-      const isCurrent = captureGameOutcomeGuard(vm);
+      if (!isOutcomeCurrent()) {
+        cancelAnimation();
+      clearCancellation();
+        return;
+      }
+    try {
       await vm.recordSpinResult(targetIndex);
-      if (!isCurrent()) return;
+    } catch (error) {
+        cancelAnimation();
+      clearCancellation();
+      throw error;
+    }
+      if (spinCancelled || !isOutcomeCurrent()) {
+        if (!spinCancelled) cancelAnimation();
+      clearCancellation();
+        return;
+      }
     } else {
       vm.recordPreviewSpinResult(targetIndex);
     }
@@ -323,18 +426,9 @@ export const wheelSpinMethods = {
     const centerIcon = getWheelCenterIcon(vm);
     const spinFrameIntervalMs = getSpinFrameIntervalMs(vm);
     let lastSpinFrameTime = startTime - spinFrameIntervalMs;
-    let spinFrameId: number | undefined;
-    let spinCompleted = false;
-    let visibilityChangeHandler: (() => void) | undefined;
-    const cleanupSpinLoop = () => {
-      spinCompleted = true;
-      if (visibilityChangeHandler && typeof document !== "undefined") {
-        document.removeEventListener("visibilitychange", visibilityChangeHandler);
-        visibilityChangeHandler = undefined;
-      }
-    };
+    let runAnimationFrame: FrameRequestCallback;
     const scheduleSpinFrame = () => {
-      spinFrameId = requestAnimationFrame(tick);
+      spinFrameId = requestAnimationFrame(runAnimationFrame);
     };
 
     const tick = async (now: number) => {
@@ -403,6 +497,8 @@ export const wheelSpinMethods = {
           // Fall back to the short GET proof URL without the full ordered layout payload.
         }
       }
+      if (!isOutcomeCurrent()) cancelAnimation();
+      if (spinCancelled) return;
       const readableFairnessResult = {
         ...fairnessResult,
         verificationUrl
@@ -419,6 +515,25 @@ export const wheelSpinMethods = {
       vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     };
 
+    runAnimationFrame = (now: number) => {
+      void tick(now).then(() => {
+        if (spinCompleted && !completionSettled && !spinCancelled) {
+          completionSettled = true;
+          resolveAnimation({
+            status: "landed",
+            targetIndex,
+            finalAngle: endAngle,
+            completedAt: performance.now()
+          });
+        }
+      }, (error: unknown) => {
+        cleanupSpinLoop();
+        vm.wheelSpinning = false;
+        vm._gameSpectatorSpinAnimation = null;
+        rejectAnimation(error);
+      });
+    };
+
     if (typeof document !== "undefined") {
       visibilityChangeHandler = () => {
         if (document.visibilityState !== "visible" || spinCompleted) return;
@@ -426,12 +541,23 @@ export const wheelSpinMethods = {
           cancelAnimationFrame(spinFrameId);
           spinFrameId = undefined;
         }
-        void tick(performance.now());
+        runAnimationFrame(performance.now());
       };
       document.addEventListener("visibilitychange", visibilityChangeHandler);
     }
 
-    scheduleSpinFrame();
+    if (typeof requestAnimationFrame === "function") {
+      scheduleSpinFrame();
+    } else {
+      runAnimationFrame(startTime + duration);
+    }
+
+    try {
+      const completion = await animationComplete;
+      if (completion.status === "cancelled") return;
+    } finally {
+      clearCancellation();
+    }
   },
 
   recordPreviewSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {

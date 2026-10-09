@@ -1,14 +1,123 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { createWheelFairnessProofLink } from "../src/app-core/methods/wheel-fairness-api.ts";
 import { ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { resolveWheelFairnessSpin } from "../src/components/windows/game/services/wheelSpinFairness.ts";
 import { buildWheelReadableVerificationUrl } from "../src/components/windows/game/services/wheelSpinState.ts";
 import {
     GameWindow
 } from "../src/components/windows/game/GameWindow.ts";
 
+vi.mock("../src/app-core/methods/wheel-fairness-api.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/app-core/methods/wheel-fairness-api.ts")>();
+  return { ...actual, createWheelFairnessProofLink: vi.fn(actual.createWheelFairnessProofLink) };
+});
+
+vi.mock("../src/components/windows/game/services/wheelSpinFairness.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/components/windows/game/services/wheelSpinFairness.ts")>();
+  return { ...actual, resolveWheelFairnessSpin: vi.fn(actual.resolveWheelFairnessSpin) };
+});
+
 function completeGameSession<T extends Record<string, unknown>>(context: T): T {
   ensureWheelControllerState(context);
   return context;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
+
+function pendingFairnessResult() {
+  return {
+    resultIndex: 0,
+    hash: "pending-hash",
+    seed: "pending-seed",
+    clientSeed: "pending-client-seed",
+    layoutHash: "pending-layout-hash",
+    verificationUrl: "https://api.test/verify"
+  };
+}
+
+function createPendingLiveSpinVm(): Record<string, unknown> {
+  const slots = [{ name: "Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }];
+  return completeGameSession({
+    wheelSpinning: false,
+    wheelMode: "live",
+    wheelDisplaySlots: slots,
+    activeWheelSlots: slots,
+    activeWheelConfig: { id: 1, spinPrice: 10, tiers: [] },
+    wheelDisplayConfig: { id: 1, spinPrice: 10, tiers: [] },
+    activeWheelConfigId: 1,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    wheelSpinBlockedReason: "",
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    wheelSessionNetRevenue: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelPendingInventoryIssues: [],
+    wheelCurrentAngle: 0,
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: "",
+    wheelShowSeed: false,
+    _gameSpectatorSpinAnimation: null,
+    wheelFairnessHistory: [],
+    wheelChaseTallyHistory: [],
+    lots: [],
+    drawWheel: vi.fn(),
+    saveWheelSession: vi.fn(),
+    recordSpinResult: vi.fn(async () => undefined),
+    recordPreviewSpinResult: vi.fn(),
+    appendWheelFairnessHistory: vi.fn(),
+    landOnSlot: vi.fn(),
+    publishGameSpectatorSessionSnapshot: vi.fn(async () => undefined),
+    stopGameSpectatorCountPolling: vi.fn()
+  });
+}
+
+for (const cancellation of ["reset", "unmount"] as const) {
+  test(`cancels a live spin while fairness resolution is pending during ${cancellation}`, async () => {
+    const fairness = deferred<Awaited<ReturnType<typeof resolveWheelFairnessSpin>>>();
+    vi.mocked(resolveWheelFairnessSpin).mockReturnValueOnce(fairness.promise);
+    const vm = createPendingLiveSpinVm();
+    vm.cancelWheelSpinAnimation = GameWindow.methods!.cancelWheelSpinAnimation;
+
+    const spinning = GameWindow.methods!.spinWheelInternal.call(vm as never, true);
+    await Promise.resolve();
+    assert.equal(typeof vm._wheelSpinAnimationCancel, "function");
+
+    if (cancellation === "reset") {
+      await GameWindow.methods!.resetWheelSession.call(vm as never);
+    } else {
+      GameWindow.beforeUnmount!.call(vm as never);
+    }
+
+    await spinning;
+    assert.equal(vm.wheelSpinning, false);
+    assert.deepEqual(vm.wheelSpinCounts, [0]);
+    assert.equal(vm.wheelTotalSpins, 0);
+    assert.equal(vm.wheelSpinHash, "");
+    assert.equal(vm._gameSpectatorSpinAnimation, null);
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal((vm.recordSpinResult as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal((vm.landOnSlot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+    fairness.resolve(pendingFairnessResult());
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal((vm.recordSpinResult as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal((vm.landOnSlot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(vm.wheelSpinHash, "");
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  });
 }
 
 test("buildWheelReadableVerificationUrl targets the public proof view", () => {
@@ -163,6 +272,12 @@ test("landOnSlot preview mode opens preview chase flow and persists the preview 
 });
 
 test("preview spin persists updated preview session state through completion", async () => {
+  let startProof!: () => void;
+  let finishProof!: (value: { verificationUrl: string; jsonUrl: null }) => void;
+  let finishLanding!: () => void;
+  const proofStarted = new Promise<void>((resolve) => { startProof = resolve; });
+  const proofResult = new Promise<{ verificationUrl: string; jsonUrl: null }>((resolve) => { finishProof = resolve; });
+  const landingFinished = new Promise<void>((resolve) => { finishLanding = resolve; });
   const saveSnapshots: Array<{ previewTotal: number; previewHistory: number; lastResult: string; hash: string }> = [];
   const slots = [
     { name: "Preview Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
@@ -195,7 +310,10 @@ test("preview spin persists updated preview session state through completion", a
     recordSpinResult: GameWindow.methods!.recordSpinResult,
     recordPreviewSpinResult: GameWindow.methods!.recordPreviewSpinResult,
     appendWheelFairnessHistory: GameWindow.methods!.appendWheelFairnessHistory,
-    landOnSlot: GameWindow.methods!.landOnSlot,
+    landOnSlot: vi.fn(function (this: Record<string, unknown>, ...args: [number, { recordSession?: boolean }]) {
+      GameWindow.methods!.landOnSlot.call(completeGameSession(this) as never, ...args);
+      finishLanding();
+    }),
     saveWheelSession: vi.fn(function (this: Record<string, unknown>) {
       saveSnapshots.push({
         previewTotal: Number(this.wheelPreviewTotalSpins || 0),
@@ -206,6 +324,19 @@ test("preview spin persists updated preview session state through completion", a
     })
   };
 
+  vi.mocked(resolveWheelFairnessSpin).mockResolvedValueOnce({
+    resultIndex: 0,
+    hash: "preview-hash",
+    seed: "preview-seed",
+    clientSeed: "preview-client-seed",
+    layoutHash: "preview-layout-hash",
+    verificationUrl: "https://api.test/verify"
+  });
+  vi.mocked(createWheelFairnessProofLink).mockImplementationOnce(async () => {
+    startProof();
+    return proofResult;
+  });
+
   vi.stubGlobal("performance", { now: () => 0 });
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(9_999);
@@ -213,7 +344,12 @@ test("preview spin persists updated preview session state through completion", a
     });
 
   try {
-    await GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
+    const spin = GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
+    await proofStarted;
+    assert.equal((vm.wheelPreviewFairnessHistory as Array<unknown>).length, 0);
+    finishProof({ verificationUrl: "https://api.test/proof", jsonUrl: null });
+    await spin;
+    await landingFinished;
   } finally {
     vi.unstubAllGlobals();
   }
@@ -280,21 +416,29 @@ test("spinWheelInternal avoids reactive angle updates between mobile animation f
   });
 
   try {
-    await GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
+    const spinning = GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(rafCallbacks.length, 1);
 
     rafCallbacks.shift()?.(16);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(vm.wheelCurrentAngle, 0);
     assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
     rafCallbacks.shift()?.(24);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(vm.wheelCurrentAngle, 0);
     assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
     rafCallbacks.shift()?.(50);
+    await vi.waitFor(() => assert.equal(rafCallbacks.length, 1));
     assert.equal(vm.wheelCurrentAngle, 0);
     assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 2);
     assert.match(centerIcon.style.transform, /^rotate\(/);
+
+    rafCallbacks.shift()?.(10_000);
+    await spinning;
+    assert.equal(vm.wheelSpinning, false);
   } finally {
     vi.unstubAllGlobals();
   }

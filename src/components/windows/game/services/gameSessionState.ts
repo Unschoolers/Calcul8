@@ -10,7 +10,6 @@ import {
   type WheelSessionResetContext
 } from "./wheelSessionState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
-import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 
 export type WheelControllerState = GameSessionStateContext;
 
@@ -19,7 +18,7 @@ export function createWheelControllerState(): WheelControllerState {
 }
 
 export function getWheelController(context: object): WheelControllerState {
-  const root = unwrapWindowBridgeContext(context as Record<string, unknown>);
+  const root = context as Record<string, unknown>;
   const featureOwner = root.gameSessionFeatureState;
   const owner = featureOwner && typeof featureOwner === "object"
     ? featureOwner as Record<string, unknown>
@@ -31,7 +30,7 @@ export function getWheelController(context: object): WheelControllerState {
 
 /** Explicit compatibility boundary for isolated tests and legacy partial hosts. */
 export function ensureWheelControllerState(context: object): WheelControllerState {
-  const root = unwrapWindowBridgeContext(context as Record<string, unknown>);
+  const root = context as Record<string, unknown>;
   const featureOwner = root.gameSessionFeatureState;
   const owner = featureOwner && typeof featureOwner === "object"
     ? featureOwner as Record<string, unknown>

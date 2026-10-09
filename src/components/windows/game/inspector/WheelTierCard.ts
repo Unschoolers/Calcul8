@@ -10,7 +10,8 @@ import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-c
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
 import AppDialogShell from "../../../ui/AppDialogShell.vue";
 import AppFormLayout from "../../../ui/AppFormLayout.vue";
-import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 
 const TIER_CELEBRATION_EMOJI_OPTIONS = [
@@ -30,7 +31,6 @@ export const WheelTierCard = {
   name: "WheelTierCard",
   components: { AppDialogShell, AppFormLayout },
   props: {
-    ctx: gameContextProp,
     tier: {
       type: Object as PropType<WheelTier>,
       required: true
@@ -50,14 +50,9 @@ export const WheelTierCard = {
     editorTier(this: { editorDraft: WheelTier | null; tier: WheelTier }): WheelTier {
       return this.editorDraft ?? this.tier;
     },
-    tierSourceSummary(this: Record<string, unknown> & { tier: WheelTier }): string {
+    tierSourceSummary(this: { game: GameController; tier: WheelTier }): string {
       const tier = this.tier;
-      const lots = (((this as Record<string, unknown>).lots || []) as Array<{
-        id: number;
-        name: string;
-        lotType?: string;
-        singlesPurchases?: Array<{ id: number; item: string }>;
-      }>);
+      const lots = this.game.view.lots;
       if (isWheelTierMultiLot(tier)) {
         const names = getWheelTierSourceLotIds(tier)
           .map((id) => lots.find((entry) => entry.id === id)?.name)
@@ -74,25 +69,23 @@ export const WheelTierCard = {
       }
       return lot.name;
     },
-    tierTypeLabel(this: Record<string, unknown> & { tier: WheelTier }): string {
-      return ((this as Record<string, unknown>) as Record<string, unknown> & {
-        isBoundLotSingles: (tier: WheelTier) => boolean;
-      }).isBoundLotSingles(this.tier) ? "Singles" : "Bulk";
+    tierTypeLabel(this: { game: GameController; tier: WheelTier }): string {
+      return this.game.commands.isBoundLotSingles(this.tier) ? "Singles" : "Bulk";
     },
-    tierSummaryItems(this: Record<string, unknown> & { tier: WheelTier }): string[] {
+    tierSummaryItems(this: { game: GameController; tier: WheelTier }): string[] {
       const tier = this.tier;
       const hitCount = Number(tier.packsCount || 0);
       const cost = Number(tier.costPerTier || 0);
-      const config = ((this as Record<string, unknown>).editingWheelConfig || null) as WheelConfig | null;
+      const config = this.game.view.editingWheelConfig as WheelConfig | null;
       return [
         getTierOutcomeLabel(config, tier),
         `${hitCount} hit${hitCount === 1 ? "" : "s"}`,
         `$${cost.toFixed(2)}`
       ];
     },
-    tierStatusChips(this: Record<string, unknown> & { tier: WheelTier }): Array<{ label: string; tone: string }> {
+    tierStatusChips(this: { tier: WheelTier; tierTypeLabel: string; tierInventoryMeta: { text: string; warning: boolean } | null }): Array<{ label: string; tone: string }> {
       const chips: Array<{ label: string; tone: string }> = [
-        { label: ((this as Record<string, unknown>) as Record<string, unknown> & { tierTypeLabel: string }).tierTypeLabel, tone: "neutral" }
+        { label: this.tierTypeLabel, tone: "neutral" }
       ];
       if (this.tier.isChase === true) {
         chips.push({ label: "Chase", tone: "amber" });
@@ -100,23 +93,17 @@ export const WheelTierCard = {
       if (!getWheelTierSourceLotIds(this.tier).length) {
         chips.push({ label: "Source needed", tone: "warning" });
       }
-      const inventoryMeta = ((this as Record<string, unknown>) as Record<string, unknown> & {
-        tierInventoryMeta: { text: string; warning: boolean } | null;
-      }).tierInventoryMeta;
+      const inventoryMeta = this.tierInventoryMeta;
       if (inventoryMeta?.warning) {
         chips.push({ label: "Low stock", tone: "warning" });
       }
       return chips;
     },
-    tierInventoryMeta(this: Record<string, unknown> & { tier: WheelTier }): { text: string; warning: boolean } | null {
-      return ((this as Record<string, unknown>) as Record<string, unknown> & {
-        getTierInventoryMeta: (tier: WheelTier) => { text: string; warning: boolean } | null;
-      }).getTierInventoryMeta(this.tier);
+    tierInventoryMeta(this: { game: GameController; tier: WheelTier }): { text: string; warning: boolean } | null {
+      return this.game.commands.getTierInventoryMeta(this.tier);
     },
-    editorTierInventoryMeta(this: Record<string, unknown> & { editorTier: WheelTier }): { text: string; warning: boolean } | null {
-      return ((this as Record<string, unknown>) as Record<string, unknown> & {
-        getTierInventoryMeta: (tier: WheelTier) => { text: string; warning: boolean } | null;
-      }).getTierInventoryMeta(this.editorTier);
+    editorTierInventoryMeta(this: { game: GameController; editorTier: WheelTier }): { text: string; warning: boolean } | null {
+      return this.game.commands.getTierInventoryMeta(this.editorTier);
     },
     tierInventoryWarning(this: Record<string, unknown> & { tierInventoryMeta: { text: string; warning: boolean } | null }): string | null {
       return this.tierInventoryMeta?.warning ? this.tierInventoryMeta.text : null;
@@ -132,8 +119,8 @@ export const WheelTierCard = {
       const chance = Number(tier.chancePercent) || 0;
       return String(Math.round(chance));
     },
-    setTierChance(this: Record<string, unknown>, tier: WheelTier, value: unknown): void {
-      const config = (this.editingWheelConfig || null) as { tiers?: WheelTier[] } | null;
+    setTierChance(this: { game: GameController }, tier: WheelTier, value: unknown): void {
+      const config = this.game.view.editingWheelConfig;
       if (!config?.tiers) return;
       setWheelTierChancePercent(config.tiers, tier.id, value);
     },
@@ -177,7 +164,7 @@ export const WheelTierCard = {
     clearTierCelebrationEmoji(this: { editorTier: WheelTier }): void {
       this.editorTier.celebrationEmoji = undefined;
     },
-    finishTierEditor(this: Record<string, unknown> & {
+    finishTierEditor(this: { game: GameController } & {
       editorOpen: boolean;
       editorDraft: WheelTier | null;
       tier: WheelTier;
@@ -187,30 +174,19 @@ export const WheelTierCard = {
       }
       this.editorOpen = false;
       this.editorDraft = null;
-      if ((this.canApplyWheelConfig as boolean) !== true) return;
-      const applyWheelConfig = this.applyWheelConfig as (() => void) | undefined;
-      if (typeof applyWheelConfig === "function") {
-        applyWheelConfig();
-      }
+      if (this.game.view.canApplyWheelConfig) this.game.commands.applyWheelConfig();
     },
-    deleteTierAndClose(this: Record<string, unknown> & {
+    deleteTierAndClose(this: { game: GameController } & {
       editorOpen: boolean;
       editorDraft: WheelTier | null;
       tierIndex: number;
     }): void {
-      const removeTier = this.removeTier as ((index: number) => void) | undefined;
-      if (typeof removeTier === "function") {
-        removeTier(this.tierIndex);
-      }
+      this.game.commands.removeTier(this.tierIndex);
       this.editorOpen = false;
       this.editorDraft = null;
-      if ((this.canApplyWheelConfig as boolean) !== true) return;
-      const applyWheelConfig = this.applyWheelConfig as (() => void) | undefined;
-      if (typeof applyWheelConfig === "function") {
-        applyWheelConfig();
-      }
+      if (this.game.view.canApplyWheelConfig) this.game.commands.applyWheelConfig();
     }
   },
-  setup: setupGameContext
+  setup: setupTypedGameContext
 };
 

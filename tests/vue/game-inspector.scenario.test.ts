@@ -6,6 +6,8 @@ import WheelHistoryPanel from "../../src/components/windows/game/inspector/Wheel
 import WheelInspector from "../../src/components/windows/game/inspector/WheelInspector.vue";
 import WheelSessionPanel from "../../src/components/windows/game/inspector/WheelSessionPanel.vue";
 import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
+import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
+import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
 import MysteryGridSurface from "../../src/components/windows/game/stage/MysteryGridSurface.vue";
 import { renderWithApp } from "./render.ts";
 
@@ -50,6 +52,7 @@ describe("game inspector scenarios", () => {
       }]
     };
     const context = {
+      ...createWheelControllerState(),
       wheelMobileInspectorOpen: false,
       wheelIsCompactLayout: false,
       wheelInspectorTab: "config",
@@ -88,13 +91,16 @@ describe("game inspector scenarios", () => {
       focusWheelInspector: vi.fn((tab: string) => {
         context.wheelInspectorTab = tab;
       }),
+      requestWheelReset: vi.fn(),
+      requestWheelSessionEnd: vi.fn(),
       closeWheelInspector: vi.fn()
     };
 
     renderWithApp(WheelInspector, {
-      props: { ctx: context },
       global: {
-        provide: { gameCtx: context },
+        provide: {
+          [gameControllerKey]: createGameController(context as never)
+        },
         stubs: {
           WheelTierCard: { template: "<div data-testid=\"wheel-tier-card\">{{ tier.label }}</div>", props: ["tier"] },
           WheelSessionPanel: { template: "<div />" },
@@ -172,6 +178,7 @@ describe("game inspector scenarios", () => {
       loadSalesForLotId: vi.fn(() => []),
       wheelEndingSession: false,
       wheelChaseDialog: false,
+      spinWheel: vi.fn(async () => undefined),
       requestWheelReset: vi.fn(),
       requestWheelSessionEnd: vi.fn(),
       t: (key: string) => key,
@@ -195,11 +202,11 @@ describe("game inspector scenarios", () => {
     const warnings: string[] = [];
     const Harness = defineComponent({
       setup() {
-        provide("gameCtx", context);
+      provide(gameControllerKey, createGameController(context as never));
         return () => h("div", [
-          h(MysteryGridSurface, { ctx: context }),
-          h(WheelSessionPanel, { ctx: context }),
-          h(WheelHistoryPanel, { ctx: context })
+          h(MysteryGridSurface),
+          h(WheelSessionPanel),
+          h(WheelHistoryPanel)
         ]);
       },
     });

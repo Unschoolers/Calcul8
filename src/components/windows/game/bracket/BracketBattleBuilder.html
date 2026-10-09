@@ -2,8 +2,8 @@
   <div class="bracket-battle-builder-hero">
     <div>
       <div class="bracket-battle-section-head bracket-battle-section-head--stacked">
-        <h3>{{ t('bracketBattleSetupTitle') }}</h3>
-        <span class="text-caption">{{ t('bracketBattleBuilderBody') }}</span>
+        <h3>{{ game.view.t('bracketBattleSetupTitle') }}</h3>
+        <span class="text-caption">{{ game.view.t('bracketBattleBuilderBody') }}</span>
       </div>
     </div>
     <div class="bracket-battle-builder-hero-actions">
@@ -19,7 +19,7 @@
         <v-btn :value="8" size="small">8</v-btn>
       </v-btn-toggle>
       <div class="bracket-battle-meta-pill bracket-battle-meta-pill--accent">
-        {{ t('bracketBattlePrizesMeta', { count: bracketConfig.prizes.length }) }}
+        {{ game.view.t('bracketBattlePrizesMeta', { count: bracketConfig.prizes.length }) }}
       </div>
     </div>
   </div>
@@ -31,7 +31,7 @@
         v-for="(_buyer, index) in bracketConfig.participants"
         :key="index"
         v-model="bracketConfig.participants[index]"
-        :label="t('bracketBattleBuyerLabel', { number: index + 1 })"
+        :label="game.view.t('bracketBattleBuyerLabel', { number: index + 1 })"
         variant="outlined"
         density="compact"
         hide-details="auto"
@@ -41,8 +41,8 @@
   </div>
 
   <div class="bracket-battle-section-head bracket-battle-section-head--prizes">
-    <h3>{{ t('bracketBattlePrizesTitle') }}</h3>
-    <span class="text-caption">{{ t('bracketBattlePrizesMeta', { count: bracketConfig.prizes.length }) }}</span>
+    <h3>{{ game.view.t('bracketBattlePrizesTitle') }}</h3>
+    <span class="text-caption">{{ game.view.t('bracketBattlePrizesMeta', { count: bracketConfig.prizes.length }) }}</span>
   </div>
 
   <div class="bracket-battle-prize-list">
@@ -50,8 +50,8 @@
       <div class="bracket-battle-prize-header">
         <div class="bracket-battle-prize-index">{{ index + 1 }}</div>
         <div class="bracket-battle-prize-copy">
-          <div class="bracket-battle-prize-title">{{ t('bracketBattleMatchLabel', { number: index + 1 }) }}</div>
-          <div class="bracket-battle-prize-subtitle">{{ prize.label || t('bracketBattlePrizeFallbackLabel') }}</div>
+          <div class="bracket-battle-prize-title">{{ game.view.t('bracketBattleMatchLabel', { number: index + 1 }) }}</div>
+          <div class="bracket-battle-prize-subtitle">{{ prize.label || game.view.t('bracketBattlePrizeFallbackLabel') }}</div>
         </div>
       </div>
 
@@ -64,8 +64,8 @@
           class="bracket-battle-source-toggle"
           @update:model-value="setBracketPrizeSourceMode(prize, $event)"
         >
-          <v-btn value="manual" size="small">{{ t('bracketBattleManualPrizeLabel') }}</v-btn>
-          <v-btn value="inventory" size="small">{{ t('bracketBattleInventoryPrizeLabel') }}</v-btn>
+          <v-btn value="manual" size="small">{{ game.view.t('bracketBattleManualPrizeLabel') }}</v-btn>
+          <v-btn value="inventory" size="small">{{ game.view.t('bracketBattleInventoryPrizeLabel') }}</v-btn>
         </v-btn-toggle>
 
         <v-select
@@ -74,7 +74,7 @@
           :items="bracketPrizeCatalog"
           item-title="title"
           item-value="value"
-          :label="t('bracketBattlePrizeSourceLabel')"
+          :label="game.view.t('bracketBattlePrizeSourceLabel')"
           variant="outlined"
           density="compact"
           hide-details="auto"
@@ -98,7 +98,7 @@
 
         <v-text-field
           v-model="prize.label"
-          :label="t('bracketBattlePrizeLabel')"
+          :label="game.view.t('bracketBattlePrizeLabel')"
           variant="outlined"
           density="compact"
           hide-details="auto"

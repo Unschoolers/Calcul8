@@ -16,7 +16,7 @@
     :style="cell.revealed ? { '--mystery-grid-cell-color': cell.color } : null"
     :disabled="wheelSpinning || wheelGridRevealAnimating || cell.revealed || wheelEndingSession || wheelChaseDialog"
     :data-mystery-grid-cell-index="cell.index"
-    @click="revealMysteryGridCell(cell.index, true)"
+    @click="game.commands.revealMysteryGridCell(cell.index, true)"
   >
     <span v-if="!cell.revealed" class="mystery-grid-cell__number">{{ cell.index + 1 }}</span>
     <span v-else class="mystery-grid-cell__reveal">

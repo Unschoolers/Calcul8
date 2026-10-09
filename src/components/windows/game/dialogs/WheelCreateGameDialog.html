@@ -1,30 +1,30 @@
 <app-dialog-shell
-  v-if="wheelCreateDialog"
-  v-model="wheelCreateDialog"
-  :title="t('wheelCreateGameTitle')"
+  v-if="game.view.wheelCreateDialog"
+  v-model="game.view.wheelCreateDialog"
+  :title="game.view.t('wheelCreateGameTitle')"
   :max-width="520"
 >
     <div class="text-body-2">
       <div class="wheel-create-game-grid">
-        <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('wheel')">
+        <button type="button" class="wheel-create-game-card" @click="game.commands.createNewGameConfig('wheel')">
           <v-icon size="28">mdi-chart-donut</v-icon>
-          <span class="wheel-create-game-card__title">{{ t('wheelGameTypeWheelLabel') }}</span>
-          <span class="wheel-create-game-card__copy">{{ t('wheelCreateWheelBody') }}</span>
+          <span class="wheel-create-game-card__title">{{ game.view.t('wheelGameTypeWheelLabel') }}</span>
+          <span class="wheel-create-game-card__copy">{{ game.view.t('wheelCreateWheelBody') }}</span>
         </button>
-        <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('grid')">
+        <button type="button" class="wheel-create-game-card" @click="game.commands.createNewGameConfig('grid')">
           <v-icon size="28">mdi-grid</v-icon>
-          <span class="wheel-create-game-card__title">{{ t('wheelGameTypeGridLabel') }}</span>
-          <span class="wheel-create-game-card__copy">{{ t('wheelCreateGridBody') }}</span>
+          <span class="wheel-create-game-card__title">{{ game.view.t('wheelGameTypeGridLabel') }}</span>
+          <span class="wheel-create-game-card__copy">{{ game.view.t('wheelCreateGridBody') }}</span>
         </button>
-        <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('bracket')">
+        <button type="button" class="wheel-create-game-card" @click="game.commands.createNewGameConfig('bracket')">
           <v-icon size="28">mdi-tournament</v-icon>
-          <span class="wheel-create-game-card__title">{{ t('bracketBattleGameLabel') }}</span>
-          <span class="wheel-create-game-card__copy">{{ t('bracketBattleCreateBody') }}</span>
+          <span class="wheel-create-game-card__title">{{ game.view.t('bracketBattleGameLabel') }}</span>
+          <span class="wheel-create-game-card__copy">{{ game.view.t('bracketBattleCreateBody') }}</span>
         </button>
       </div>
     </div>
     <template #actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="closeWheelCreateDialog">{{ t('commonCancel') }}</v-btn>
+        <v-btn variant="text" @click="game.commands.closeWheelCreateDialog">{{ game.view.t('commonCancel') }}</v-btn>
     </template>
 </app-dialog-shell>

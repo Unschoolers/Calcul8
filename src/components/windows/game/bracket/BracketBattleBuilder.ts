@@ -7,7 +7,8 @@ import {
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { BracketBattleConfig, BracketBattleConfigPrize, Lot, WheelConfig } from "../../../../types/app.ts";
 import AppFormLayout from "../../../ui/AppFormLayout.vue";
-import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import {
   applyBracketBattlePrizeCatalogSelection,
   buildBracketBattlePrizeCatalog,
@@ -15,13 +16,12 @@ import {
 } from "./bracketBattlePanelModel.ts";
 
 type BracketBattleBuilderThis = {
-  editingWheelConfig: WheelConfig | null;
-  lots: Lot[];
+  game: GameController;
   bracketPrizeCatalog: BracketBattlePrizeCatalogItem[];
 };
 
 function getBracketConfig(context: BracketBattleBuilderThis): BracketBattleConfig {
-  const config = context.editingWheelConfig;
+  const config = context.game.view.editingWheelConfig;
   if (!config?.bracketBattle) {
     if (config) {
       config.bracketBattle = createDefaultBracketBattleConfig(4);
@@ -34,21 +34,18 @@ function getBracketConfig(context: BracketBattleBuilderThis): BracketBattleConfi
 export const BracketBattleBuilder = {
   name: "BracketBattleBuilder",
   components: { AppFormLayout },
-  props: {
-    ctx: gameContextProp
-  },
   computed: {
     bracketConfig(this: BracketBattleBuilderThis): BracketBattleConfig {
       return getBracketConfig(this);
     },
     bracketPrizeCatalog(this: BracketBattleBuilderThis): BracketBattlePrizeCatalogItem[] {
-      return buildBracketBattlePrizeCatalog((this.lots || []) as Lot[]);
+      return buildBracketBattlePrizeCatalog((this.game.view.lots || []) as Lot[]);
     }
   },
   methods: {
     resolveVuetifySlotString,
     onBracketParticipantCountChange(this: BracketBattleBuilderThis, value: unknown): void {
-      const config = this.editingWheelConfig;
+      const config = this.game.view.editingWheelConfig;
       if (!config) return;
       config.bracketBattle = resizeBracketBattleConfig(getBracketConfig(this), Number(value) === 8 ? 8 : 4);
     },
@@ -73,8 +70,8 @@ export const BracketBattleBuilder = {
       prize: BracketBattleConfigPrize,
       value: unknown
     ): void {
-      applyBracketBattlePrizeCatalogSelection(prize, String(value || ""), this.bracketPrizeCatalog as BracketBattlePrizeCatalogItem[]);
+      applyBracketBattlePrizeCatalogSelection(prize, String(value || ""), this.bracketPrizeCatalog);
     }
   },
-  setup: setupGameContext
+  setup: setupTypedGameContext
 };

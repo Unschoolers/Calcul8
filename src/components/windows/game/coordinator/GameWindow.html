@@ -16,11 +16,10 @@
     <!-- SPINNER PANEL -->
     <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
         <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
-            <wheel-stage-topbar :ctx="getWindowComponentContext()"></wheel-stage-topbar>
+            <wheel-stage-topbar></wheel-stage-topbar>
 
             <div v-if="wheelIsBracketBattle" class="game-stage-overlay-surface">
                 <bracket-battle-panel
-                    :ctx="getWindowComponentContext()"
                     @overlay-command="setGameStageOverlayCommand"
                     @session-state="syncBracketBattleState"
                 ></bracket-battle-panel>
@@ -32,7 +31,7 @@
             </div>
 
             <template v-else>
-            <wheel-stage-summary :ctx="getWindowComponentContext()"></wheel-stage-summary>
+            <wheel-stage-summary></wheel-stage-summary>
 
             <div
                 v-if="wheelIsMysteryGrid"
@@ -65,7 +64,6 @@
                 </transition>
                 <mystery-grid-surface
                     ref="mysteryGridSurface"
-                    :ctx="getWindowComponentContext()"
                 ></mystery-grid-surface>
             </div>
 
@@ -145,7 +143,6 @@
 
             <wheel-history-panel
                 v-if="wheelPresentationMode && wheelLatestFairnessEntry"
-                :ctx="getWindowComponentContext()"
                 :latest-only="true"
                 :presentation="true"
                 :show-empty-state="false"
@@ -311,7 +308,6 @@
     <wheel-inspector
         v-show="!wheelPresentationMode"
         ref="wheelInspectorPanel"
-        :ctx="getWindowComponentContext()"
         class="wheel-inspector-panel"
         :class="{ 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }"
     ></wheel-inspector>
@@ -397,7 +393,7 @@
         </template>
     </app-dialog-shell>
 
-    <game-spectator-dialog :ctx="getWindowComponentContext()"></game-spectator-dialog>
+    <game-spectator-dialog></game-spectator-dialog>
 
     <!-- Wheel Config Saved Snackbar -->
     <v-snackbar
@@ -417,5 +413,5 @@
         {{ t('wheelConfigSavedSnackbar') }}
     </v-snackbar>
 
-    <wheel-create-game-dialog :ctx="getWindowComponentContext()"></wheel-create-game-dialog>
+    <wheel-create-game-dialog></wheel-create-game-dialog>
 </div>
