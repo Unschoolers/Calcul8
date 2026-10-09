@@ -180,7 +180,7 @@
         <system-configuration-dialog></system-configuration-dialog>
 
         <!-- New Lot Modal -->
-        <app-dialog-shell v-model="showNewLotModal" :title="t('newLotTitle')" :max-width="400" @update:model-value="(value) => { if (!value) newLotImage = ''; }">
+        <app-dialog-shell v-model="showNewLotModal" :title="t('newLotTitle')" :max-width="400" @update:model-value="!$event && (newLotImage = '')">
           <app-form-layout id="guided-onboarding-new-lot-card" data-driver-target="guided-onboarding-new-lot-card">
               <v-text-field id="guided-onboarding-lot-name-field" v-model="lotNameDraft" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="createNewLot"></v-text-field>
@@ -226,7 +226,7 @@
         </app-dialog-shell>
 
         <!-- Edit Lot Modal -->
-        <app-dialog-shell :model-value="showRenameLotModal && !shopifyEditManagerOpen" eager :title="t('editLotTitle')" :max-width="560" :persistent="shopifyEditSaving" @update:model-value="(value) => { if (!value && !shopifyEditManagerOpen) closeRenameLotModal(); }">
+        <app-dialog-shell :model-value="showRenameLotModal && !shopifyEditManagerOpen" eager :title="t('editLotTitle')" :max-width="560" :persistent="shopifyEditSaving" @update:model-value="!$event && !shopifyEditManagerOpen && closeRenameLotModal()">
           <app-form-layout compact :responsive="false">
               <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined" density="comfortable" hide-details="auto" :disabled="shopifyEditSaving"
                 @keyup.enter="renameCurrentLot"></v-text-field>
@@ -249,7 +249,7 @@
                   :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId + ':' + shopifyConnectionShop"
                   v-if="showRenameLotModal && currentLotType !== 'singles'"
                   :state="{ listing: shopifyEditListing, listingStatus: shopifyEditListingStatus, error: shopifyEditError, errorOperation: shopifyEditErrorOperation, recovery: shopifyEditRecovery, saving: shopifyEditSaving, bindingVersion: shopifyEditBindingVersion, generation: shopifyEditGeneration, detailsOutcome: shopifyEditDetailsOutcome, pendingBindingMutation: shopifyEditPendingBindingMutation, pendingDetailsMutation: shopifyEditPendingDetailsMutation, pendingCreateMutation: shopifyEditPendingCreateMutation, search: { query: shopifyEditSearchQuery, results: shopifyEditSearchResults, loading: shopifyEditLoading, completed: shopifyEditSearchCompleted, hasMore: shopifyEditSearchHasMore, selectedVariantId: shopifyEditSelectedVariantId, selectedLocationId: shopifyEditSelectedLocationId } }"
-                  :lot="{ type: currentLotType, saved: lots.find(lot => lot.id === currentLotId), draftName: renameLotName, draftSku: renameLotExternalSku, draftImage: renameLotImage, imageBusy: renameLotImageBusy, boxesPurchased, packsPerBox, sales }"
+                  :lot="{ type: currentLotType, saved: getSavedCurrentLot(), draftName: renameLotName, draftSku: renameLotExternalSku, draftImage: renameLotImage, imageBusy: renameLotImageBusy, boxesPurchased, packsPerBox, sales }"
                   :connection="{ status: shopifyConnectionStatus, shop: shopifyConnectionShop, offline: isOffline, canManage: activeScopeType !== 'workspace' || isCurrentWorkspaceOwner }"
                   :language="preferredLanguage"
                   :t="t"

@@ -37,7 +37,7 @@
                         <div v-else class="sales-summary-caption">{{ t('salesSummaryNoCost') }}</div>
                         <div class="sales-summary-inventory">
                           <v-icon size="16" aria-hidden="true">mdi-package-variant-closed</v-icon>
-                          <span>{{ salesSnapshotKpis.find(item => item.id === 'inventory')?.meta }}</span>
+                          <span>{{ salesSnapshotInventoryMeta() }}</span>
                         </div>
                         <details class="sales-summary-details">
                           <summary>{{ t('salesSummaryMoreDetails') }}</summary>

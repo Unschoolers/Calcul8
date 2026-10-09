@@ -40,6 +40,15 @@ function seedOptionsForProject(testInfo: TestInfo): Parameters<typeof seedVisual
 }
 
 test.describe("@visual-smoke real app screens", () => {
+  test("auth startup resolves into a visible sign-in gate without exposing app actions", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const gate = page.locator(".auth-gate-card");
+    await expect(gate).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("#google-signin-button, .auth-gate-btn").first()).toBeVisible();
+    await expect(page.locator(".app-shell-bottom-nav")).toHaveCount(0);
+  });
+
   test("context action dock stays in the shell layer while tabs transition", async ({ page }, testInfo) => {
     test.slow();
     await seedVisualSmokeState(page, seedOptionsForProject(testInfo));
@@ -105,9 +114,7 @@ test.describe("@visual-smoke real app screens", () => {
     }
   });
 
-  test("portfolio performance sheet stays readable at mobile width", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "mobile-smoke", "This targeted smoke state is mobile-only.");
-
+  test("portfolio performance sheet stays readable across viewport sizes", async ({ page }, testInfo) => {
     await seedVisualSmokeState(page, seedOptionsForProject(testInfo));
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/nologin");
@@ -117,11 +124,24 @@ test.describe("@visual-smoke real app screens", () => {
     const performanceSheet = page.locator(".portfolio-performance-card");
     await expect(performanceSheet).toBeVisible();
     await performanceSheet.locator(".portfolio-performance-mode-toggle .v-btn").nth(1).click();
-    await expect(performanceSheet.locator(".portfolio-customer-performance .portfolio-performance-grid__row").first()).toBeVisible();
+    const customerGrid = performanceSheet.locator(".portfolio-customer-performance");
+    const customerRow = customerGrid.locator(".portfolio-performance-grid__row").first();
+    await expect(customerRow).toBeVisible();
+    const fontSize = await customerRow.evaluate(element => Number.parseFloat(getComputedStyle(element).fontSize));
+    expect(fontSize).toBeGreaterThanOrEqual(12);
+    const customerSort = customerGrid.locator(".portfolio-performance-grid__sort").first();
+    if (testInfo.project.name === "mobile-smoke") {
+      await customerSort.click();
+      await expect(customerSort).toHaveClass(/is-active/);
+    }
     await performanceSheet.scrollIntoViewIfNeeded();
     await expectNoPageOverflow(page);
+    await performanceSheet.locator(".portfolio-performance-mode-toggle .v-btn").nth(0).click();
+    await expect(performanceSheet.locator(".portfolio-lot-performance .portfolio-performance-grid__row").first()).toBeVisible();
+    await expectNoPageOverflow(page);
+    await performanceSheet.locator(".portfolio-performance-mode-toggle .v-btn").nth(1).click();
     await performanceSheet.screenshot({
-      path: testInfo.outputPath("portfolio-performance-sheet-mobile.png"),
+      path: testInfo.outputPath(`portfolio-performance-sheet-${testInfo.project.name}.png`),
       animations: "disabled",
       caret: "hide"
     });

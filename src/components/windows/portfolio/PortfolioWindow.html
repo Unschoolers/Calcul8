@@ -39,8 +39,8 @@
                         <template #item="{ props, item }">
                           <v-list-item
                             v-bind="props"
-                            :title="null"
-                            :subtitle="null"
+                            :title="undefined"
+                            :subtitle="undefined"
                           >
                             <template #prepend>
                               <v-icon size="18" class="mr-2">
@@ -89,7 +89,7 @@
                               <v-icon
                                 size="12"
                                 start
-                                :color="portfolioLotFilterPrimaryItem()?.completionIcon ? 'success' : null"
+                                :color="portfolioLotFilterPrimaryItem()?.completionIcon ? 'success' : undefined"
                               >
                                 {{ portfolioLotFilterPrimaryItem()?.completionIcon || portfolioLotFilterPrimaryItem()?.symbolIcon || 'mdi-bookmark-outline' }}
                               </v-icon>
@@ -117,8 +117,8 @@
                             </div>
                             <v-list-item
                               v-bind="props"
-                              :title="null"
-                              :subtitle="null"
+                              :title="undefined"
+                              :subtitle="undefined"
                             >
                               <template #prepend>
                                 <span class="portfolio-filter-item-icon-stack mr-2">

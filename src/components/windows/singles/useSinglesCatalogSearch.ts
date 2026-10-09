@@ -117,7 +117,29 @@ function resolveCachedSinglesImage(
   return "";
 }
 
-export function createSinglesCatalogSearchState(): Record<string, unknown> {
+export type SinglesCatalogSearchState = Pick<SinglesCatalogSearchContext,
+  | "showCatalogSourceSheet"
+  | "showSinglesImagePreview"
+  | "singlesImagePreviewSrc"
+  | "singlesImagePreviewTitle"
+  | "singlesItemSearchText"
+  | "singlesItemMenuOpen"
+  | "singlesEditorPreviewLoading"
+  | "singlesItemSearchLoading"
+  | "suppressNextSinglesItemSearchUpdate"
+  | "singlesCardImageCache"
+  | "singlesItemSuggestions"
+  | "singlesItemSearchTimerId"
+  | "singlesItemSearchAbortController"
+  | "singlesItemSearchRequestSeq"
+  | "singlesEditorPreviewRequestSeq"
+  | "selectedSinglesCatalogFilter"
+  | "singlesCatalogFilterOptionsBySource"
+  | "singlesCatalogFilterOptionsLoadedSources"
+  | "singlesCatalogFilterLoadingSources"
+>;
+
+export function createSinglesCatalogSearchState(): SinglesCatalogSearchState {
   return {
     showCatalogSourceSheet: false,
     showSinglesImagePreview: false,

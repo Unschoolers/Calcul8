@@ -1,6 +1,6 @@
 <app-dialog-shell :model-value="showShopifyConnectDialog" :title="t('shellConnectShopify')"
   :description="t('shellShopifyConnectHint')" :max-width="440" :persistent="shopifyConnectionStatus === 'connecting'"
-  @update:model-value="(value) => { if (!value && shopifyConnectionStatus !== 'connecting') showShopifyConnectDialog = false; }">
+  @update:model-value="!$event && shopifyConnectionStatus !== 'connecting' && (showShopifyConnectDialog = false)">
   <v-alert v-if="shopifyConnectionStatus === 'error'" type="error" variant="tonal" class="mb-3" role="alert">
     {{ t('shellShopifyError') }}
     <v-btn variant="text" @click="refreshShopifyStatus">{{ t('shellShopifyRetry') }}</v-btn>

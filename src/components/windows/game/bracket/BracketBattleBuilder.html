@@ -31,7 +31,7 @@
         v-for="(_buyer, index) in bracketConfig.participants"
         :key="index"
         v-model="bracketConfig.participants[index]"
-        :label="game.view.t('bracketBattleBuyerLabel', { number: index + 1 })"
+        :label="game.view.t('bracketBattleBuyerLabel', { number: Number(index) + 1 })"
         variant="outlined"
         density="compact"
         hide-details="auto"
@@ -48,9 +48,9 @@
   <div class="bracket-battle-prize-list">
     <article v-for="(prize, index) in bracketConfig.prizes" :key="prize.id" class="bracket-battle-prize-row">
       <div class="bracket-battle-prize-header">
-        <div class="bracket-battle-prize-index">{{ index + 1 }}</div>
+          <div class="bracket-battle-prize-index">{{ Number(index) + 1 }}</div>
         <div class="bracket-battle-prize-copy">
-          <div class="bracket-battle-prize-title">{{ game.view.t('bracketBattleMatchLabel', { number: index + 1 }) }}</div>
+          <div class="bracket-battle-prize-title">{{ game.view.t('bracketBattleMatchLabel', { number: Number(index) + 1 }) }}</div>
           <div class="bracket-battle-prize-subtitle">{{ prize.label || game.view.t('bracketBattlePrizeFallbackLabel') }}</div>
         </div>
       </div>

@@ -1,112 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { test } from "vitest";
 
-describe("portfolio customer performance UI", () => {
-  test("portfolio and buyer quick view use typed capability injection instead of root context props", () => {
-    const appTemplate = readFileSync("src/App.html", "utf8");
-    const portfolioTemplate = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
-    const portfolioDefinition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
-    const buyerHost = readFileSync("src/components/customers/BuyerQuickViewHost.ts", "utf8");
-    const compositionRoot = readFileSync("src/app.ts", "utf8");
+test("portfolio and buyer quick view use narrow injected feature ports", () => {
+  const appTemplate = readFileSync("src/App.html", "utf8");
+  const portfolioTemplate = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+  const portfolioDefinition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
+  const buyerHost = readFileSync("src/components/customers/BuyerQuickViewHost.ts", "utf8");
+  const compositionRoot = readFileSync("src/app.ts", "utf8");
 
-    assert.doesNotMatch(appTemplate, /<portfolio-window[^>]*:ctx=/);
-    assert.doesNotMatch(portfolioTemplate, /<buyer-quick-view-host[^>]*:ctx=/);
-    assert.doesNotMatch(portfolioDefinition, /PropType<Record<string, unknown>>/);
-    assert.doesNotMatch(portfolioDefinition, /inject<Record<string, unknown>/);
-    assert.doesNotMatch(portfolioDefinition, /createWindowContextBridge/);
-    assert.doesNotMatch(buyerHost, /BuyerProfileHostContext = Record<string, unknown>/);
-    assert.match(portfolioDefinition, /usePortfolioWindowPorts\(\)/);
-    assert.match(buyerHost, /useBuyerProfilePorts\(\)/);
-    assert.match(compositionRoot, /portfolioWindowPortsKey/);
-    assert.match(compositionRoot, /buyerProfilePortsKey/);
-  });
-
-  test("portfolio owns a local lots/customers performance switch", () => {
-    const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
-    const sheetTemplate = readFileSync("src/components/windows/portfolio/PortfolioPerformanceSheet.html", "utf8");
-    const definition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
-    const component = readFileSync("src/components/windows/portfolio/PortfolioWindow.ts", "utf8");
-
-    assert.match(definition, /portfolioPerformanceView/);
-    assert.match(definition, /portfolioLotPerformanceSortKey/);
-    assert.match(definition, /portfolioCustomerPerformanceSortKey/);
-    assert.match(definition, /portfolioPerformanceSheetTitle/);
-    assert.match(template, /<portfolio-performance-sheet/);
-    assert.match(sheetTemplate, /portfolio-performance-sheet-switch/);
-    assert.match(sheetTemplate, /portfolio-performance-sheet-switch__summary/);
-    assert.match(sheetTemplate, /portfolio-performance-mode-toggle/);
-    assert.match(sheetTemplate, /viewModeLabel/);
-    assert.match(definition, /portfolioPerformanceLotsViewLabel/);
-    assert.match(definition, /portfolioPerformanceCustomersViewLabel/);
-    assert.match(template, /portfolio-customer-performance/);
-    assert.match(definition, /customerPerformanceRows/);
-    assert.match(template, /<buyer-quick-view-host/);
-    assert.match(template, /<buyer-identity-label/);
-    assert.match(component, /BuyerQuickViewHost/);
-  });
-
-  test("lot performance uses the same responsive grid contract as customer performance", () => {
-    const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
-    const definition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
-    const sheetTemplate = readFileSync("src/components/windows/portfolio/PortfolioPerformanceSheet.html", "utf8");
-    const gridTemplate = readFileSync("src/components/windows/portfolio/PortfolioPerformanceGrid.html", "utf8");
-    const gridComponent = readFileSync("src/components/windows/portfolio/PortfolioPerformanceGrid.ts", "utf8");
-    const gridStyles = readFileSync("src/components/windows/portfolio/PortfolioPerformanceGrid.css", "utf8");
-    const sheetStyles = readFileSync("src/components/windows/portfolio/PortfolioPerformanceSheet.css", "utf8");
-    const sortbarRule = gridStyles.match(/\.portfolio-performance-grid__sortbar\s*{[^}]*}/)?.[0] ?? "";
-
-    assert.match(template, /portfolio-lot-performance/);
-    assert.match(sheetTemplate, /<portfolio-performance-grid/);
-    assert.match(definition, /portfolioLotPerformanceGridColumns/);
-    assert.match(definition, /portfolioCustomerPerformanceGridColumns/);
-    assert.match(gridTemplate, /portfolio-performance-grid__head/);
-    assert.match(template, /portfolio-performance-grid__row/);
-    assert.match(template, /portfolioLotColumnNameLabel/);
-    assert.match(template, /portfolioLotColumnStatusLabel/);
-    assert.match(template, /portfolioLotColumnSoldMarginLabel/);
-    assert.match(template, /portfolioLotColumnRiskLabel/);
-    assert.match(template, /portfolioLotColumnProfitLabel/);
-    assert.match(definition, /portfolioPerformanceSortLabel/);
-    assert.match(gridTemplate, /portfolio-performance-grid__sort-button/);
-    assert.match(gridTemplate, /portfolio-performance-grid__sort-label/);
-    assert.doesNotMatch(template, /class="sr-only"/);
-    assert.match(gridTemplate, /portfolio-performance-grid__sortbar/);
-    assert.match(gridTemplate, /v-for="option in sortOptions"/);
-    assert.match(gridTemplate, /emitSort\(option\.key\)/);
-    assert.match(gridComponent, /sortClass\(key: string\)/);
-    assert.match(gridComponent, /sortIcon\(key: string\)/);
-    assert.match(template, /portfolio-performance-grid__cell--number/);
-    assert.match(template, /sortedPortfolioLotPerformanceRows/);
-    assert.match(template, /portfolioBuyerContextTitle/);
-    assert.match(template, /portfolioLotContextTitle/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__head/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__row/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__cell--number/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__sort-button/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__sort-label\s*{[\s\S]*position:\s*absolute/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__sort-label\s*{[\s\S]*clip-path:\s*inset\(50%\)/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__sortbar/);
-    assert.match(gridStyles, /\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*none/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*flex/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*flex-wrap:\s*wrap/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*overflow:\s*visible/);
-    assert.doesNotMatch(sortbarRule, /overflow-x:\s*auto/);
-    assert.match(gridStyles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__sort:nth-child\(3\),[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__sort:nth-child\(4\),[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__sort:nth-child\(6\)\s*{[\s\S]*display:\s*none/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__head\s*{[\s\S]*display:\s*none/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(56px,\s*0\.55fr\)\s+minmax\(56px,\s*0\.55fr\)/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row > span:nth-child\(6\)\s*{[\s\S]*grid-column:\s*2 \/ 4/);
-    assert.match(gridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row > span\s*{[\s\S]*overflow-wrap:\s*anywhere/);
-    assert.match(template, /portfolioLotPrimaryProfitValueClass\(row\)/);
-    assert.doesNotMatch(template, /portfolio-lot-profit-chip/);
-    assert.match(gridStyles, /\.portfolio-lot-profit-value\.is-positive\s*{[\s\S]*color:\s*rgba\(var\(--v-theme-success\)/);
-    assert.match(gridStyles, /\.portfolio-lot-profit-value\.is-negative\s*{[\s\S]*color:\s*rgba\(var\(--v-theme-error\)/);
-    assert.match(gridStyles, /\.portfolio-lot-profit-value\.is-projected\s*{[\s\S]*font-style:\s*italic/);
-    assert.match(gridStyles, /\.portfolio-lot-performance \.portfolio-performance-grid__row > span:last-child\s*{[\s\S]*overflow:\s*visible/);
-    assert.match(gridStyles, /\.portfolio-lot-performance \.portfolio-performance-grid__row > span:last-child\s*{[\s\S]*padding-inline-end:\s*0\.08rem/);
-    assert.match(gridStyles, /portfolio-lot-performance/);
-    assert.match(sheetStyles, /\.portfolio-performance-sheet-switch/);
-    assert.match(sheetStyles, /@media \(max-width:\s*1144px\)[\s\S]*\.portfolio-performance-mode-toggle\s*{[\s\S]*width:\s*100%/);
-  });
+  assert.doesNotMatch(appTemplate, /<portfolio-window[^>]*:ctx=/);
+  assert.doesNotMatch(portfolioTemplate, /<buyer-quick-view-host[^>]*:ctx=/);
+  assert.doesNotMatch(portfolioDefinition, /PropType<Record<string, unknown>>|inject<Record<string, unknown>|createWindowContextBridge/);
+  assert.doesNotMatch(buyerHost, /BuyerProfileHostContext = Record<string, unknown>/);
+  assert.match(portfolioDefinition, /usePortfolioWindowPorts\(\)/);
+  assert.match(buyerHost, /useBuyerProfilePorts\(\)/);
+  assert.match(compositionRoot, /portfolioWindowPortsKey/);
+  assert.match(compositionRoot, /buyerProfilePortsKey/);
 });

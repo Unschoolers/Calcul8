@@ -116,7 +116,7 @@
                   <div class="workspace-member-card-row__name">
                     {{ member.displayName || t('shellWorkspaceMemberFallback') }}
                   </div>
-                  <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : null">
+                  <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : undefined">
                     {{ member.role === 'owner' ? t('shellWorkspaceRoleOwner') : t('shellWorkspaceRoleMember') }}
                   </v-chip>
                 </div>
@@ -179,16 +179,9 @@
     @confirm="leaveCurrentWorkspace"
   >
     <v-select
-      v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
+      v-if="isCurrentWorkspaceOwner && activeWorkspaceMembers().length > 0"
       v-model="leaveWorkspaceTransferMemberUserId"
-      :items="workspaceMembers
-        .filter(member => member.role === 'member' && member.status === 'active')
-        .map(member => ({
-          title: member.displayName
-            ? `${member.displayName} (${member.userId.slice(0, 8)}...${member.userId.slice(-4)})`
-            : member.userId,
-          value: member.userId
-        }))"
+      :items="activeWorkspaceMemberOptions()"
       item-title="title"
       item-value="value"
       :label="t('shellTransferOwnerLabel')"
