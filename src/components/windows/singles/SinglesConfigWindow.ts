@@ -10,7 +10,7 @@ import AdminSyncImportCard from "../config/AdminSyncImportCard.vue";
 import WhatnotLotSetupControl from "../WhatnotLotSetupControl.vue";
 import { singlesConfigWindowDefinition } from "./SinglesConfigWindow.definition.ts";
 
-export const SinglesConfigWindow: any = {
+export const SinglesConfigWindow = {
   ...singlesConfigWindowDefinition,
   components: {
     AppDialogShell,
