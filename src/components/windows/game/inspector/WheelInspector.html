@@ -47,7 +47,6 @@
       <template v-if="game.view.editingWheelConfig">
         <bracket-battle-builder
           v-if="game.view.editingWheelConfig.gameType === 'bracket'"
-          :ctx="game.view"
         ></bracket-battle-builder>
 
         <template v-else>
@@ -126,8 +125,7 @@
               <wheel-tier-card
                 v-for="entry in group.tiers"
                 :key="entry.tier.id"
-                :ctx="game.view"
-                :tier="entry.tier"
+                      :tier="entry.tier"
                 :tier-index="entry.index"
               ></wheel-tier-card>
             </div>
@@ -148,10 +146,9 @@
 
     <wheel-session-panel
       v-show="game.view.wheelInspectorTab === 'session'"
-      :ctx="game.view"
     ></wheel-session-panel>
 
     <section v-show="game.view.wheelInspectorTab === 'history'" class="wheel-panel-section">
-      <wheel-history-panel :ctx="game.view"></wheel-history-panel>
+      <wheel-history-panel></wheel-history-panel>
     </section>
   </app-section-card>

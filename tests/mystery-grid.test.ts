@@ -488,6 +488,7 @@ test("mystery grid selector can animate through the surface without updating the
 
 test("mystery grid surface local selector state controls highlighted cells", () => {
   const vm = {
+    game: { view: { wheelGridHighlightCellIndex: -1, wheelGridRevealAnimating: false } },
     localGridSelectorAnimating: false,
     localGridHighlightCellIndex: -1,
     wheelGridRevealAnimating: false,

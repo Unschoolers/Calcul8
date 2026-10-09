@@ -13,6 +13,7 @@ export function createGameHostState() {
     wheelGridResetAnimating: false, wheelGridHighlightCellIndex: -1, wheelCanvasSize: 360,
     wheelConfigReady: false, wheelViewportWidth: 0, wheelMode: "config" as "config" | "live",
     _wheelDraftSaveTimeoutId: undefined as ReturnType<typeof globalThis.setTimeout> | undefined,
+    _wheelSpinAnimationCancel: undefined as (() => void) | undefined,
     wheelInspectorTab: "config" as "config" | "session" | "history", wheelEndingSession: false,
     wheelEndSessionReviewActive: false, wheelPresentationMode: false, wheelConfirmDialog: false,
     wheelConfirmAction: "" as "reset" | "delete" | "apply" | "end" | "", wheelLiveConfirmDialog: false,

@@ -1,8 +1,8 @@
 <div class="bracket-battle-panel">
   <div class="bracket-battle-header">
     <div>
-      <div class="text-overline bracket-battle-kicker">{{ t('bracketBattleKicker') }}</div>
-      <h2 class="bracket-battle-title">{{ t('bracketBattleTitle') }}</h2>
+      <div class="text-overline bracket-battle-kicker">{{ game.view.t('bracketBattleKicker') }}</div>
+      <h2 class="bracket-battle-title">{{ game.view.t('bracketBattleTitle') }}</h2>
     </div>
     <div class="bracket-battle-header-actions">
       <v-btn
@@ -12,7 +12,7 @@
         prepend-icon="mdi-refresh"
         @click="bracketResetDialog = true"
       >
-        {{ t('bracketBattleResetAction') }}
+        {{ game.view.t('bracketBattleResetAction') }}
       </v-btn>
     </div>
   </div>
@@ -20,23 +20,23 @@
   <section v-if="!bracketSession" class="bracket-battle-setup">
     <div class="bracket-battle-setup-hero">
       <div>
-        <h3>{{ t('bracketBattleSetupTitle') }}</h3>
-        <p class="text-body-2 bracket-battle-setup-body">{{ t('bracketBattleSetupBody') }}</p>
+        <h3>{{ game.view.t('bracketBattleSetupTitle') }}</h3>
+        <p class="text-body-2 bracket-battle-setup-body">{{ game.view.t('bracketBattleSetupBody') }}</p>
       </div>
       <div class="bracket-battle-setup-meta">
         <div class="bracket-battle-meta-pill">
-          {{ bracketDraft.participantCount }} {{ t('bracketBattleBuyersLabel') }}
+          {{ bracketDraft.participantCount }} {{ game.view.t('bracketBattleBuyersLabel') }}
         </div>
         <div class="bracket-battle-meta-pill bracket-battle-meta-pill--accent">
-          {{ t('bracketBattlePrizesMeta', { count: bracketDraft.prizes.length }) }}
+          {{ game.view.t('bracketBattlePrizesMeta', { count: bracketDraft.prizes.length }) }}
         </div>
       </div>
     </div>
 
     <div class="bracket-battle-setup-preview">
       <div class="bracket-battle-section-head">
-        <h3>{{ t('bracketBattlePreviewTitle') }}</h3>
-        <span class="text-caption">{{ t('bracketBattlePreviewSubtitle') }}</span>
+        <h3>{{ game.view.t('bracketBattlePreviewTitle') }}</h3>
+        <span class="text-caption">{{ game.view.t('bracketBattlePreviewSubtitle') }}</span>
       </div>
       <div class="bracket-battle-setup-roster">
         <div
@@ -45,7 +45,7 @@
           class="bracket-battle-setup-roster-slot"
         >
           <div class="bracket-battle-setup-roster-index">{{ index + 1 }}</div>
-          <div class="bracket-battle-setup-roster-name">{{ participant || t('bracketBattleWaitingLabel') }}</div>
+          <div class="bracket-battle-setup-roster-name">{{ participant || game.view.t('bracketBattleWaitingLabel') }}</div>
         </div>
       </div>
     </div>
@@ -68,7 +68,7 @@
         :disabled="!canStartBracketBattle"
         @click="startBracketBattle"
       >
-        {{ t('bracketBattleStartAction') }}
+        {{ game.view.t('bracketBattleStartAction') }}
       </v-btn>
     </div>
   </section>
@@ -84,10 +84,10 @@
       <div class="bracket-battle-showcase-copy">
         <div class="bracket-battle-showcase-badges">
           <span class="bracket-battle-meta-pill bracket-battle-meta-pill--accent">
-            {{ activeBracketMatch ? t('bracketBattleActiveMatchLabel') : t('bracketBattleChampionLabel') }}
+            {{ activeBracketMatch ? game.view.t('bracketBattleActiveMatchLabel') : game.view.t('bracketBattleChampionLabel') }}
           </span>
           <span v-if="activeBracketMatch" class="bracket-battle-meta-pill">
-            {{ t('bracketBattleRoundLabel', { number: activeBracketMatch.round }) }}
+            {{ game.view.t('bracketBattleRoundLabel', { number: activeBracketMatch.round }) }}
           </span>
           <span v-if="bracketProgressSummary()" class="bracket-battle-meta-pill bracket-battle-meta-pill--progress">
             {{ bracketProgressSummary() }}
@@ -108,7 +108,7 @@
                 v-if="bracketParticipantMatchState(activeBracketMatch, activeBracketMatch.participantAId) === 'winner'"
                 class="bracket-battle-winner-chip"
               >
-                {{ t('bracketBattleWinnerLabel') }}
+                {{ game.view.t('bracketBattleWinnerLabel') }}
               </span>
             </div>
             <div class="bracket-battle-duel-result">
@@ -120,9 +120,9 @@
           </article>
 
           <div class="bracket-battle-duel-center">
-            <div class="bracket-battle-duel-versus">{{ t('bracketBattleVersusLabel') }}</div>
+            <div class="bracket-battle-duel-versus">{{ game.view.t('bracketBattleVersusLabel') }}</div>
             <div class="bracket-battle-duel-prize-block">
-              <span>{{ t('bracketBattlePrizeAwardLabel') }}</span>
+              <span>{{ game.view.t('bracketBattlePrizeAwardLabel') }}</span>
               <strong>{{ bracketPrizeLabel(activeBracketMatch.prizeId) }}</strong>
             </div>
             <div class="bracket-battle-duel-caption">
@@ -154,7 +154,7 @@
                 v-if="bracketParticipantMatchState(activeBracketMatch, activeBracketMatch.participantBId) === 'winner'"
                 class="bracket-battle-winner-chip"
               >
-                {{ t('bracketBattleWinnerLabel') }}
+                {{ game.view.t('bracketBattleWinnerLabel') }}
               </span>
             </div>
             <div class="bracket-battle-duel-result">
@@ -167,15 +167,15 @@
         </div>
 
         <div v-else class="bracket-battle-finale">
-          <div class="bracket-battle-finale-kicker">{{ t('bracketBattleCompleteLabel') }}</div>
+          <div class="bracket-battle-finale-kicker">{{ game.view.t('bracketBattleCompleteLabel') }}</div>
           <div class="bracket-battle-finale-name">{{ bracketChampionName }}</div>
           <div class="bracket-battle-finale-award">
-            {{ t('bracketBattleAwardsTitle') }}: {{ bracketSession.awards.length }}
+            {{ game.view.t('bracketBattleAwardsTitle') }}: {{ bracketSession.awards.length }}
           </div>
         </div>
 
         <div v-if="bracketLastRolls.length" class="bracket-battle-last-rolls">
-          <div class="bracket-battle-last-rolls-label">{{ t('bracketBattleRecentRollsTitle') }}</div>
+          <div class="bracket-battle-last-rolls-label">{{ game.view.t('bracketBattleRecentRollsTitle') }}</div>
           <div class="bracket-battle-last-roll-list">
             <div
               v-for="duel in bracketLatestRollDuelGroups()"
@@ -216,7 +216,7 @@
             :disabled="!queuedBracketMatch || bracketRolling"
             @click="rollActiveBracketMatch"
           >
-            {{ t('bracketBattleRollAction') }}
+            {{ game.view.t('bracketBattleRollAction') }}
           </v-btn>
           <div
             ref="actionDiceStageEl"
@@ -235,7 +235,7 @@
         class="bracket-battle-tree-round"
         :class="{ 'bracket-battle-tree-round--final': roundIndex === bracketRoundGroups.length - 1 }"
       >
-        <div class="bracket-battle-round-title">{{ t('bracketBattleRoundLabel', { number: round.round }) }}</div>
+        <div class="bracket-battle-round-title">{{ game.view.t('bracketBattleRoundLabel', { number: round.round }) }}</div>
         <div class="bracket-battle-tree-list">
           <article
             v-for="match in round.matches"
@@ -252,7 +252,7 @@
               aria-hidden="true"
             ></div>
             <div class="bracket-battle-match-meta">
-              <span>{{ t('bracketBattleMatchLabel', { number: match.position }) }}</span>
+              <span>{{ game.view.t('bracketBattleMatchLabel', { number: match.position }) }}</span>
               <v-chip size="x-small" variant="tonal">{{ bracketPrizeLabel(match.prizeId) }}</v-chip>
             </div>
             <div class="bracket-battle-match-buyers">
@@ -276,7 +276,7 @@
 
     <details v-if="bracketSession.awards.length" class="bracket-battle-awards">
       <summary class="bracket-battle-awards-summary">
-        <span>{{ t('bracketBattleAwardsTitle') }}</span>
+        <span>{{ game.view.t('bracketBattleAwardsTitle') }}</span>
         <strong>{{ bracketSession.awards.length }} / {{ bracketSession.matches.length }}</strong>
       </summary>
       <div v-for="award in bracketSession.awards" :key="award.id" class="bracket-battle-award-row">
@@ -289,10 +289,10 @@
 
   <app-confirm-dialog
     v-model="bracketResetDialog"
-    :title="t('bracketBattleResetTitle')"
-    :body="t('bracketBattleResetBody')"
-    :cancel-text="t('commonCancel')"
-    :confirm-text="t('commonReset')"
+    :title="game.view.t('bracketBattleResetTitle')"
+    :body="game.view.t('bracketBattleResetBody')"
+    :cancel-text="game.view.t('commonCancel')"
+    :confirm-text="game.view.t('commonReset')"
     confirm-color="error"
     :max-width="420"
     persistent

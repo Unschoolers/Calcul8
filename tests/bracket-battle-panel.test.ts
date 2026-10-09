@@ -13,6 +13,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function testGame(mode: "config" | "live" = "live", t: (key: string, params?: Record<string, string | number | null | undefined>) => string = (key) => key) {
+  return {
+    session: {},
+    commands: { publishGameSpectatorSessionSnapshot: vi.fn(async () => undefined) },
+    view: {
+      wheelMode: mode,
+      wheelDisplayConfig: null,
+      activeWheelConfigId: 7,
+      activeScopeType: "personal",
+      activeWorkspaceId: null,
+      wheelPresentationMode: false,
+      wheelViewportWidth: 1024,
+      t
+    }
+  };
+}
+
 test("BracketBattlePanel rollActiveBracketMatch animates before settling the match", async () => {
   vi.useFakeTimers();
 
@@ -47,6 +64,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
     height: 104
   };
   const vm: any = {
+    game: testGame(),
     bracketSession: session,
     activeBracketMatch: session.matches[0],
     queuedBracketMatch: session.matches[0],
@@ -229,9 +247,9 @@ test("BracketBattlePanel publishes bracket spectator snapshots at roll start and
     rolling: boolean;
     showcaseMatchId: string | null;
     rollCount: number;
-    publishLive: boolean;
   }> = [];
   const vm = {
+    game: testGame(),
     bracketSession: session,
     activeBracketMatch: session.matches[0],
     queuedBracketMatch: session.matches[0],
@@ -248,13 +266,11 @@ test("BracketBattlePanel publishes bracket spectator snapshots at roll start and
         rolling: boolean;
         showcaseMatchId: string | null;
         lastRolls: unknown[];
-        publishLive: boolean;
       };
       sessionStates.push({
         rolling: state.rolling,
         showcaseMatchId: state.showcaseMatchId,
-        rollCount: Array.isArray(state.lastRolls) ? state.lastRolls.length : 0,
-        publishLive: state.publishLive
+        rollCount: Array.isArray(state.lastRolls) ? state.lastRolls.length : 0
       });
     },
     persistBracketSession() {},
@@ -275,18 +291,17 @@ test("BracketBattlePanel publishes bracket spectator snapshots at roll start and
   assert.deepEqual(sessionStates.at(-1), {
     rolling: true,
     showcaseMatchId: session.matches[0]!.id,
-    rollCount: 0,
-    publishLive: true
+    rollCount: 0
   });
 
   await nextTick();
   await vi.advanceTimersByTimeAsync(1_100);
 
-  const livePublishes = sessionStates.filter((entry) => entry.publishLive);
-  assert.equal(livePublishes.length, 2);
-  assert.equal(livePublishes[1]?.rolling, false);
-  assert.equal(livePublishes[1]?.showcaseMatchId, session.matches[0]!.id);
-  assert.ok((livePublishes[1]?.rollCount ?? 0) >= 2);
+  assert.equal(vm.game.commands.publishGameSpectatorSessionSnapshot.mock.calls.length, 2);
+  const settledState = sessionStates.at(-1);
+  assert.equal(settledState?.rolling, false);
+  assert.equal(settledState?.showcaseMatchId, session.matches[0]!.id);
+  assert.ok((settledState?.rollCount ?? 0) >= 2);
 });
 
 test("BracketBattlePanel syncBracketBattleParentState emits a host state update instead of mutating a nested parent proxy", () => {
@@ -298,6 +313,7 @@ test("BracketBattlePanel syncBracketBattleParentState emits a host state update 
   });
   const emitted: Array<{ eventName: string; payload: unknown }> = [];
   const vm = {
+    game: testGame(),
     bracketSession: session,
     bracketLastRolls: [],
     bracketRolling: true,
@@ -318,8 +334,7 @@ test("BracketBattlePanel syncBracketBattleParentState emits a host state update 
       session,
       lastRolls: [],
       rolling: true,
-      showcaseMatchId: session.matches[0]!.id,
-      publishLive: false
+      showcaseMatchId: session.matches[0]!.id
     }
   }]);
 });
@@ -335,6 +350,7 @@ test("BracketBattlePanel emits session-state updates for the host live publisher
   });
   const emitted: Array<{ eventName: string; payload: unknown }> = [];
   const vm = {
+    game: testGame(),
     bracketSession: session,
     activeBracketMatch: session.matches[0],
     queuedBracketMatch: session.matches[0],
@@ -404,6 +420,7 @@ test("BracketBattlePanel groups latest rolls by duel and highlights the winning 
   });
   const match = session.matches[0]!;
   const vm = {
+    game: testGame(),
     bracketSession: session,
     bracketLastRolls: [
       { id: "r1", matchId: match.id, participantId: match.participantAId!, value: 4, rollNumber: 1, tiebreakerIndex: 0 },
@@ -460,6 +477,10 @@ test("BracketBattlePanel exposes clear live match status, next action, and progr
   const match = session.matches[0]!;
   const messages: string[] = [];
   const vm = {
+    game: testGame("live", (key, params) => {
+      messages.push(`${key}:${JSON.stringify(params ?? {})}`);
+      return `${key}:${params ? Object.values(params).join("|") : ""}`;
+    }),
     bracketSession: session,
     activeBracketMatch: match,
     queuedBracketMatch: match,
@@ -483,6 +504,7 @@ test("BracketBattlePanel exposes clear live match status, next action, and progr
 
   match.status = "complete";
   match.winnerParticipantId = match.participantBId;
+  vm.activeBracketMatch = match;
   session.matches[1]!.status = "active";
   vm.queuedBracketMatch = session.matches[1]!;
 
@@ -521,6 +543,7 @@ test("BracketBattlePanel advances to the next match before allowing the next rol
   let rollCalls = 0;
   let anchorRefreshes = 0;
   const vm = {
+    game: testGame(),
     bracketSession: session,
     activeBracketMatch: matchOne,
     queuedBracketMatch: matchTwo,
@@ -585,8 +608,10 @@ test("BracketBattlePanel keeps separate preview and live storage and publishes s
   draft.prizes[1]!.label = "Match 2 prize";
   draft.prizes[2]!.label = "Final prize";
 
-  const published: boolean[] = [];
+  const previewController = testGame("config");
+  const liveController = testGame("live");
   const baseVm = {
+    game: previewController,
     bracketDraft: draft,
     bracketSession: null,
     bracketLastRolls: [],
@@ -602,8 +627,7 @@ test("BracketBattlePanel keeps separate preview and live storage and publishes s
     },
     $emit(eventName: string, payload: unknown) {
       if (eventName !== "session-state") return;
-      const state = payload as { publishLive?: boolean };
-      published.push(state.publishLive === true);
+      void payload;
     },
     clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
     emitBracketBattleSessionState: BracketBattlePanel.methods!.emitBracketBattleSessionState,
@@ -614,25 +638,29 @@ test("BracketBattlePanel keeps separate preview and live storage and publishes s
 
   BracketBattlePanel.methods!.startBracketBattle.call({
     ...baseVm,
+    game: previewController,
     wheelMode: "config"
   } as never);
   BracketBattlePanel.methods!.startBracketBattle.call({
     ...baseVm,
+    game: liveController,
     wheelMode: "live"
   } as never);
 
   assert.equal(stored.size, 2);
   assert.ok([...stored.keys()].some((key) => key.endsWith("_7_preview")));
   assert.ok([...stored.keys()].some((key) => key.endsWith("_7_live")));
-  assert.equal(published.filter((entry) => entry === true).length, 2);
+  assert.equal(previewController.commands.publishGameSpectatorSessionSnapshot.mock.calls.length, 0);
+  assert.equal(liveController.commands.publishGameSpectatorSessionSnapshot.mock.calls.length, 1);
 });
 
 test("BracketBattlePanel preview reset synchronizes cleared parent state without publication", async () => {
   const draft = createBracketBattleDraft(4);
   draft.participants = ["Alex", "Bri", "Cam", "Dev"];
   const session = createBracketBattleSessionFromDraft(draft);
-  const states: Array<{ session: unknown; publishLive: boolean }> = [];
+  const states: Array<{ session: unknown }> = [];
   const vm = {
+    game: testGame("config"),
     bracketSession: session,
     bracketLastRolls: session.rolls,
     bracketRolling: false,
@@ -651,7 +679,7 @@ test("BracketBattlePanel preview reset synchronizes cleared parent state without
     getBracketBattleActionDiceAnchors() { return {}; },
     getBracketBattleChampionWinnerSide() { return null; },
     $emit(eventName: string, payload: unknown) {
-      if (eventName === "session-state") states.push(payload as { session: unknown; publishLive: boolean });
+      if (eventName === "session-state") states.push(payload as { session: unknown });
     }
   };
 
@@ -659,7 +687,6 @@ test("BracketBattlePanel preview reset synchronizes cleared parent state without
   await Promise.resolve();
 
   assert.equal(states.at(-1)?.session, null);
-  assert.equal(states.some((state) => state.publishLive), false);
 });
 
 test("BracketBattlePanel keeps the showcased match latched until the next roll begins", () => {
@@ -680,6 +707,7 @@ test("BracketBattlePanel keeps the showcased match latched until the next roll b
   matchTwo.status = "active";
 
   const vm = {
+    game: testGame(),
     bracketSession: session,
     bracketShowcaseMatchId: matchOne.id,
     queuedBracketMatch: matchTwo
@@ -733,9 +761,7 @@ test("BracketBattlePanel loadBracketSession normalizes legacy d100 sessions to d
   });
 
   const vm: any = {
-    activeScopeType: "personal",
-    activeWorkspaceId: null,
-    activeWheelConfigId: 7,
+    game: testGame(),
     bracketSession: null,
     bracketLastRolls: [],
     clearBracketRollAnimation() {}
@@ -805,6 +831,7 @@ test("BracketBattlePanel final resolve reanchors dice under Roll match and reset
     height: 112
   };
   const vm = {
+    game: testGame(),
     bracketSession: session,
     activeBracketMatch: finalMatch,
     queuedBracketMatch: finalMatch,
@@ -941,6 +968,7 @@ test("BracketBattlePanel refreshBracketBattleDiceAnchors emits an anchor update 
     height: 92
   };
   const vm = {
+    game: testGame(),
     bracketSession: session,
     activeBracketMatch: session.matches[0],
     bracketRolling: false,

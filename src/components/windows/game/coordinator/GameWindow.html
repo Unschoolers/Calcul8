@@ -143,7 +143,6 @@
 
             <wheel-history-panel
                 v-if="wheelPresentationMode && wheelLatestFairnessEntry"
-                :ctx="getWindowComponentContext()"
                 :latest-only="true"
                 :presentation="true"
                 :show-empty-state="false"
@@ -309,7 +308,6 @@
     <wheel-inspector
         v-show="!wheelPresentationMode"
         ref="wheelInspectorPanel"
-        :ctx="getWindowComponentContext()"
         class="wheel-inspector-panel"
         :class="{ 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }"
     ></wheel-inspector>

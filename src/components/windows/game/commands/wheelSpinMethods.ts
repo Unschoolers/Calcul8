@@ -59,6 +59,7 @@ type WheelSpinCommandContext = GameSessionStateContext
     _gameSpectatorSpinAnimation?: import("../../../../types/app.ts").GameSpectatorSpinAnimation | null;
     _wheelAnimationAngle?: number;
     _wheelCelebrationAnimId?: number;
+    _wheelSpinAnimationCancel?: () => void;
     _wheelHighlightTime?: number;
     _wheelHighlightTimeoutId?: number;
     _wheelStaticRenderCache?: unknown;
@@ -74,6 +75,13 @@ type WheelSpinCommandContext = GameSessionStateContext
     stopWheelAutospin(): void;
     triggerWheelCelebration?(payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void;
   };
+
+export type WheelSpinAnimationCompletion = {
+  status: "landed" | "cancelled";
+  targetIndex: number;
+  finalAngle: number;
+  completedAt: number;
+};
 
 function queuePendingInventoryIssue(
   context: WheelSpinCommandContext,
@@ -325,6 +333,7 @@ export const wheelSpinMethods = {
     let lastSpinFrameTime = startTime - spinFrameIntervalMs;
     let spinFrameId: number | undefined;
     let spinCompleted = false;
+    let completionSettled = false;
     let visibilityChangeHandler: (() => void) | undefined;
     let runAnimationFrame: FrameRequestCallback;
     const cleanupSpinLoop = () => {
@@ -404,6 +413,7 @@ export const wheelSpinMethods = {
           // Fall back to the short GET proof URL without the full ordered layout payload.
         }
       }
+      if (spinCancelled) return;
       const readableFairnessResult = {
         ...fairnessResult,
         verificationUrl
@@ -420,32 +430,74 @@ export const wheelSpinMethods = {
       vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     };
 
-    const animationComplete = new Promise<void>((resolve, reject) => {
-      runAnimationFrame = (now: number) => {
-        void tick(now).then(() => {
-          if (spinCompleted) resolve();
-        }, reject);
-      };
-
-      if (typeof document !== "undefined") {
-        visibilityChangeHandler = () => {
-          if (document.visibilityState !== "visible" || spinCompleted) return;
-          if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
-            cancelAnimationFrame(spinFrameId);
-            spinFrameId = undefined;
-          }
-          runAnimationFrame(performance.now());
-        };
-        document.addEventListener("visibilitychange", visibilityChangeHandler);
-      }
-
-      if (typeof requestAnimationFrame === "function") {
-        scheduleSpinFrame();
-      } else {
-        runAnimationFrame(startTime + duration);
-      }
+    let resolveAnimation!: (completion: WheelSpinAnimationCompletion) => void;
+    let rejectAnimation!: (reason: unknown) => void;
+    let spinCancelled = false;
+    const animationComplete = new Promise<WheelSpinAnimationCompletion>((resolve, reject) => {
+      resolveAnimation = resolve;
+      rejectAnimation = reject;
     });
-    await animationComplete;
+    const cancelAnimation = () => {
+      if (completionSettled || spinCancelled) return;
+      spinCancelled = true;
+      if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(spinFrameId);
+        spinFrameId = undefined;
+      }
+      cleanupSpinLoop();
+      vm.wheelSpinning = false;
+      vm._gameSpectatorSpinAnimation = null;
+      vm.drawWheel(currentAngle);
+      completionSettled = true;
+      resolveAnimation({ status: "cancelled", targetIndex, finalAngle: currentAngle, completedAt: performance.now() });
+    };
+    vm._wheelSpinAnimationCancel = cancelAnimation;
+    runAnimationFrame = (now: number) => {
+      void tick(now).then(() => {
+        if (spinCompleted && !completionSettled && !spinCancelled) {
+          completionSettled = true;
+          resolveAnimation({
+            status: "landed",
+            targetIndex,
+            finalAngle: endAngle,
+            completedAt: performance.now()
+          });
+        }
+      }, (error: unknown) => {
+        cleanupSpinLoop();
+        vm.wheelSpinning = false;
+        vm._gameSpectatorSpinAnimation = null;
+        rejectAnimation(error);
+      });
+    };
+
+    if (typeof document !== "undefined") {
+      visibilityChangeHandler = () => {
+        if (document.visibilityState !== "visible" || spinCompleted) return;
+        if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
+          cancelAnimationFrame(spinFrameId);
+          spinFrameId = undefined;
+        }
+        runAnimationFrame(performance.now());
+      };
+      document.addEventListener("visibilitychange", visibilityChangeHandler);
+    }
+
+    if (typeof requestAnimationFrame === "function") {
+      scheduleSpinFrame();
+    } else {
+      runAnimationFrame(startTime + duration);
+    }
+
+    let completion: WheelSpinAnimationCompletion;
+    try {
+      completion = await animationComplete;
+    } finally {
+      if (vm._wheelSpinAnimationCancel === cancelAnimation) {
+        vm._wheelSpinAnimationCancel = undefined;
+      }
+    }
+    if (completion.status === "cancelled") return;
   },
 
   recordPreviewSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {

@@ -124,7 +124,6 @@ export const gameWindowDefinition = {
     return {
       [gameControllerKey]: gameController,
       gameController,
-      gameCtx: this
     };
   },
   watch: {
@@ -243,7 +242,7 @@ export const gameWindowDefinition = {
       }
     },
     syncBracketBattleState(this: GameWindowThis, payload: BracketBattleSessionStatePayload): void {
-      void applyBracketBattleHostState(this, payload);
+      applyBracketBattleHostState(this, payload);
     },
     syncGameStageOverlayState(this: GameWindowOverlayThis): void {
       const nextEnabled = this.currentTab === "wheel" && this.wheelIsBracketBattle === true;
@@ -407,9 +406,6 @@ export const gameWindowDefinition = {
         });
       }
     },
-    getWindowComponentContext(this: GameWindowThis): Record<string, unknown> {
-      return this;
-    },
     focusWheelInspector(this: GameWindowThis, tab: "config" | "session" | "history"): void {
       this.wheelInspectorTab = tab;
       if (isWheelCompactViewport((this.wheelViewportWidth as number) || getCurrentViewportWidth())) {
@@ -509,6 +505,9 @@ export const gameWindowDefinition = {
         clearTimeout(timeoutId);
         this._wheelAutospinTimeoutId = undefined;
       }
+    },
+    cancelWheelSpinAnimation(this: GameWindowThis): void {
+      this._wheelSpinAnimationCancel?.();
     },
     scheduleNextWheelAutospin(this: GameWindowThis, delayMs = WHEEL_AUTOSPIN_DELAY_MS): void {
       const existingTimeoutId = this._wheelAutospinTimeoutId as number | undefined;
@@ -632,6 +631,7 @@ export const gameWindowDefinition = {
     });
   },
   beforeUnmount(this: GameWindowThis) {
+    this.cancelWheelSpinAnimation();
     const ro = this._wheelResizeObserver as ResizeObserver | undefined;
     if (ro) {
       ro.disconnect();

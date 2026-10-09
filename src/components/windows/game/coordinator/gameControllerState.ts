@@ -44,6 +44,7 @@ export type GameWindowHostState = GameHostState
   gameSpectatorActionLabel: string;
   gameSpectatorDialogHint: string;
   gameSpectatorStartButtonLabel: string;
+  bulkTierSourceItems: Array<{ title: string; value: number }>;
   wheelConfigItems: Array<{ title: string; value: number }>;
   wheelStageSummaryCards: Array<{ id: string; label: string; value: string; valueClass?: string; valueStyle?: string; meta: string }>;
   wheelSpinBlockedReason: string;
@@ -103,9 +104,9 @@ export type GameCommandPorts = {
   runMysteryGridAutoPreviewAnimation(): Promise<void>;
   saveWheelSession(): void;
   loadWheelFromSession(): boolean;
-  resetPreviewSession(): void;
-  resetWheelSession(): void;
-  startEndWheelSession(): void;
+  resetPreviewSession(): Promise<void>;
+  resetWheelSession(): Promise<void>;
+  startEndWheelSession(): Promise<void>;
   recordChaseSale(tierId: string): void;
   confirmBatchSale(index: number): void;
   deleteWheelConfig(): void;
@@ -127,6 +128,7 @@ export type GameCommandPorts = {
   ensureWheelEditorState(): void;
   showWheelConfigSaved?(): void;
   stopWheelAutospin(): void;
+  cancelWheelSpinAnimation(): void;
   startWheelAutospin(): void;
   scheduleNextWheelAutospin(delayMs?: number): void;
   normalizeWheelCompactInspectorState(): void;
@@ -136,6 +138,7 @@ export type GameCommandPorts = {
   requestWheelReset(): void;
   focusWheelInspector(tab: "config" | "session" | "history"): void;
   addTier(): void;
+  removeTier(index: number): void;
   closeWheelInspector(): void;
   openWheelCreateDialog(): void;
   openWheelManageDialog(): void;
@@ -150,6 +153,10 @@ export type GameCommandPorts = {
   copyGameSpectatorLink(): Promise<void>;
   openGameSpectatorPage(): void;
   closeGameSpectatorDialog(): void;
+  publishGameSpectatorSessionSnapshot(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
+  getSinglesItemsForTier(tier: import("../../../../types/app.ts").WheelTier): Array<{ title: string; value: number | null; image?: string; cardNumber?: string; stockLabel?: string }>;
+  getTierInventoryMeta(tier: import("../../../../types/app.ts").WheelTier): { text: string; warning: boolean } | null;
+  isBoundLotSingles(tier: import("../../../../types/app.ts").WheelTier): boolean;
   isWheelMobileViewport(): boolean;
 };
 
@@ -164,7 +171,9 @@ export type GameControllerCommands = Pick<
   | "toggleWheelReducedMotion" | "handleWheelModeChange" | "openGameSpectatorDialog"
   | "createNewGameConfig" | "closeWheelCreateDialog" | "startGameSpectatorMode"
   | "endGameSpectatorMode" | "copyGameSpectatorLink" | "openGameSpectatorPage"
-  | "closeGameSpectatorDialog"
+  | "closeGameSpectatorDialog" | "publishGameSpectatorSessionSnapshot"
+  | "getSinglesItemsForTier" | "getTierInventoryMeta" | "isBoundLotSingles" | "removeTier"
+  | "applyWheelConfig" | "canTierBeChase"
 >;
 
 /** Explicit game boundary shared with nested game components. */
@@ -198,7 +207,14 @@ export function createGameController(view: GameWindowThis): GameController {
       endGameSpectatorMode: (...args) => view.endGameSpectatorMode(...args),
       copyGameSpectatorLink: (...args) => view.copyGameSpectatorLink(...args),
       openGameSpectatorPage: (...args) => view.openGameSpectatorPage(...args),
-      closeGameSpectatorDialog: (...args) => view.closeGameSpectatorDialog(...args)
+      closeGameSpectatorDialog: (...args) => view.closeGameSpectatorDialog(...args),
+      publishGameSpectatorSessionSnapshot: (...args) => view.publishGameSpectatorSessionSnapshot?.(...args) ?? Promise.resolve(),
+      getSinglesItemsForTier: (...args) => view.getSinglesItemsForTier(...args),
+      getTierInventoryMeta: (...args) => view.getTierInventoryMeta(...args),
+      isBoundLotSingles: (...args) => view.isBoundLotSingles(...args),
+      removeTier: (...args) => view.removeTier(...args),
+      applyWheelConfig: (...args) => view.applyWheelConfig(...args),
+      canTierBeChase: (...args) => view.canTierBeChase(...args)
     }
   };
 }

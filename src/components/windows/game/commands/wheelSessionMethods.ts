@@ -54,16 +54,17 @@ type WheelSessionCommandContext = WheelSessionContext
     activeWheelConfig: WheelConfig | null;
     appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
     confirmBatchSale(index: number): Promise<void>;
+    cancelWheelSpinAnimation?(): void;
     deleteWheelConfig(): void;
     drawWheel(offset?: number): void;
     isWheelMobileViewport(): boolean;
     openWheelInspector(tab: "config" | "session" | "history"): void;
     publishGameSpectatorSessionSnapshot?(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
     recordChaseSale(tierId: string): Promise<boolean>;
-    resetPreviewSession(): void;
-    resetWheelSession(): void;
+    resetPreviewSession(): Promise<void>;
+    resetWheelSession(): Promise<void>;
     saveWheelSession(): void;
-    startEndWheelSession(): void;
+    startEndWheelSession(): Promise<void>;
     stopWheelAutospin(): void;
     syncGameSpectatorLinks(): void;
   };
@@ -172,11 +173,12 @@ export const wheelSessionMethods = {
     recordWheelSessionFairness(this, controller, options.preview === true ? "preview" : "live", entry);
   },
 
-  resetPreviewSession(this: WheelSessionCommandContext): void {
+  async resetPreviewSession(this: WheelSessionCommandContext): Promise<void> {
+    this.cancelWheelSpinAnimation?.();
     this.stopWheelAutospin?.();
     const controller = getWheelController(this);
     const previewSlots = ((controller.wheelPreviewSlots || controller.activeWheelSlots) as WheelSlot[]);
-    void resetGameSessionOwner(this, "preview", previewSlots, {
+    await resetGameSessionOwner(this, "preview", previewSlots, {
       persist: () => this.saveWheelSession?.(),
       publish: () => this.publishGameSpectatorSessionSnapshot?.()
     });
@@ -384,12 +386,13 @@ export const wheelSessionMethods = {
     return getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) > 1;
   },
 
-  resetWheelSession(this: WheelSessionCommandContext): void {
+  async resetWheelSession(this: WheelSessionCommandContext): Promise<void> {
+    this.cancelWheelSpinAnimation?.();
     invalidateGameOutcomeSettlements(this);
     const resetController = getWheelController(this);
     const slots = resetController.activeWheelSlots as WheelSlot[];
     this.wheelSessionUpdatedAt = Date.now();
-    void resetGameSessionOwner(this, "live", slots, {
+    await resetGameSessionOwner(this, "live", slots, {
       persist: () => this.saveWheelSession(),
       publish: async () => {
         await Promise.all([
@@ -406,19 +409,19 @@ export const wheelSessionMethods = {
     this.wheelConfirmDialog = true;
   },
 
-  confirmWheelAction(this: WheelSessionCommandContext): void {
+  async confirmWheelAction(this: WheelSessionCommandContext): Promise<void> {
     const action = this.wheelConfirmAction as string;
     this.wheelConfirmDialog = false;
     this.wheelConfirmAction = "";
     if (action === "reset") {
       if ((this.wheelMode as string) === "config") {
-        this.resetPreviewSession();
+        await this.resetPreviewSession();
       } else {
-        this.resetWheelSession();
+        await this.resetWheelSession();
       }
     } else if (action === "end") {
       this.wheelEndSessionReviewActive = false;
-      this.startEndWheelSession();
+      await this.startEndWheelSession();
     } else if (action === "delete") {
       this.deleteWheelConfig();
     }
@@ -439,11 +442,11 @@ export const wheelSessionMethods = {
     this.wheelConfirmDialog = true;
   },
 
-  startEndWheelSession(this: WheelSessionCommandContext): void {
+  async startEndWheelSession(this: WheelSessionCommandContext): Promise<void> {
     this.wheelEndSessionReviewActive = false;
     const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
     if (!pendingIssues.length) {
-      this.resetWheelSession();
+      await this.resetWheelSession();
       return;
     }
     const config = this.activeWheelConfig as WheelConfig | null;

@@ -97,10 +97,8 @@ describe("game inspector scenarios", () => {
     };
 
     renderWithApp(WheelInspector, {
-      props: { ctx: context },
       global: {
         provide: {
-          gameCtx: context,
           [gameControllerKey]: createGameController(context as never)
         },
         stubs: {

@@ -148,30 +148,26 @@ test("bracket host flow resolves queued and showcased matches without mounting t
   assert.equal(resolveBracketBattleActiveMatch(session, matchTwo.id), null);
 });
 
-test("bracket host flow builds and applies host session state with publish intent", async () => {
+test("bracket host flow applies host session state independently from publication", () => {
   const session = createSession();
   const payload = buildBracketBattleSessionStatePayload({
     session,
     lastRolls: session.rolls,
     rolling: true,
-    showcaseMatchId: resolveBracketBattleShowcaseMatchId(session),
-    publishLive: true
+    showcaseMatchId: resolveBracketBattleShowcaseMatchId(session)
   });
-  const publish = vi.fn(async () => undefined);
   const host = {
     bracketBattleSession: null,
     bracketBattleLastRolls: [],
     bracketBattleRolling: false,
-    bracketBattleShowcaseMatchId: null,
-    publishGameSpectatorSessionSnapshot: publish
+    bracketBattleShowcaseMatchId: null
   };
 
-  await applyBracketBattleHostState(host, payload);
+  applyBracketBattleHostState(host, payload);
 
   assert.equal(host.bracketBattleSession, session);
   assert.equal(host.bracketBattleRolling, true);
   assert.equal(host.bracketBattleShowcaseMatchId, session.matches[0]!.id);
-  assert.equal(publish.mock.calls.length, 1);
 });
 
 test("bracket host reset clears dice state and publishes only for live execution", async () => {
@@ -181,8 +177,7 @@ test("bracket host reset clears dice state and publishes only for live execution
     session: createSession(),
     lastRolls: [{ id: "roll-1" }] as any,
     rolling: true,
-    showcaseMatchId: "match-1",
-    publishLive: false
+    showcaseMatchId: "match-1"
   }, "live", { persist, publish });
 
   assert.equal(live.session, null);
@@ -190,9 +185,7 @@ test("bracket host reset clears dice state and publishes only for live execution
   assert.equal(live.rolling, false);
   assert.equal(live.showcaseMatchId, null);
   assert.equal(persist.mock.calls.length, 1);
-  assert.equal(publish.mock.calls.length, 1);
 
   await runBracketBattleSessionReset(live, "preview", { persist, publish });
   assert.equal(persist.mock.calls.length, 2);
-  assert.equal(publish.mock.calls.length, 1);
 });

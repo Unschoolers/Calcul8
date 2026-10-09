@@ -2,8 +2,8 @@ import { defineComponent, nextTick } from "vue";
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import type { BracketBattleConfig, WheelConfig } from "../../../../types/app.ts";
 import AppConfirmDialog from "../../../ui/AppConfirmDialog.vue";
-import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
-import type { GameHostState } from "../services/gameHostState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
 import type { GameStageOverlayAnchor, GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import { createBracketBattleOverlayAnchor } from "./bracketBattleOverlayAnchors.ts";
 import {
@@ -22,7 +22,6 @@ import {
   runBracketBattleSessionReset,
   resolveBracketBattleActiveMatch,
   resolveBracketBattleQueuedMatch,
-  type BracketBattleHostFlowContext,
   type BracketBattleSessionStatePayload
 } from "./bracketBattleHostFlow.ts";
 import {
@@ -62,12 +61,7 @@ type BracketBattleLifecycleHost = {
   syncBracketBattleParentState?(): void;
 };
 
-type BracketBattleParentContext = BracketBattleHostFlowContext
-  & Pick<GameHostState, "wheelPresentationMode" | "wheelViewportWidth">
-  & {
-  wheelDisplayConfig: WheelConfig | null;
-  t(key: string, params?: Record<string, string | number | null | undefined>): string;
-};
+type BracketBattleParentContext = { game: GameController };
 
 const BRACKET_ROLL_PREVIEW_INTERVAL_MS = 90;
 const BRACKET_ROLL_RESOLVE_DELAY_MS = 1000;
@@ -107,21 +101,18 @@ function commitBracketBattleLifecycleState(
 export const BracketBattlePanel = defineComponent({
   name: "BracketBattlePanel",
   components: { AppConfirmDialog },
-  props: {
-    ctx: gameContextProp
-  },
   emits: ["overlay-command", "session-state"],
   watch: {
-    wheelMode() {
+    "game.view.wheelMode"() {
       this.loadBracketSession();
     },
-    activeWheelConfigId() {
+    "game.view.activeWheelConfigId"() {
       this.loadBracketSession();
     },
-    wheelPresentationMode() {
+    "game.view.wheelPresentationMode"() {
       void nextTick(() => this.refreshBracketBattleDiceAnchors());
     },
-    wheelViewportWidth() {
+    "game.view.wheelViewportWidth"() {
       void nextTick(() => this.refreshBracketBattleDiceAnchors());
     }
   },
@@ -139,9 +130,9 @@ export const BracketBattlePanel = defineComponent({
   },
   computed: {
     bracketDraft(): BracketBattleDraft {
-      const config = (this.wheelDisplayConfig as WheelConfig | null)?.bracketBattle
+      const config = (this.game.view.wheelDisplayConfig as WheelConfig | null)?.bracketBattle
         ?? createDefaultBracketBattleConfig(4);
-      return createBracketBattleDraftFromConfig(config, (this.wheelDisplayConfig as WheelConfig | null)?.name || "Bracket Battle");
+      return createBracketBattleDraftFromConfig(config, (this.game.view.wheelDisplayConfig as WheelConfig | null)?.name || "Bracket Battle");
     },
     bracketDraftValidation() {
       return getBracketBattleDraftValidation(this.bracketDraft);
@@ -164,24 +155,23 @@ export const BracketBattlePanel = defineComponent({
     }
   },
   methods: {
-    emitBracketBattleSessionState(publishLive: boolean = false): void {
+    emitBracketBattleSessionState(): void {
       this.$emit("session-state", buildBracketBattleSessionStatePayload({
         session: this.bracketSession,
         lastRolls: this.bracketLastRolls,
         rolling: this.bracketRolling,
-        showcaseMatchId: this.bracketShowcaseMatchId,
-        publishLive
+        showcaseMatchId: this.bracketShowcaseMatchId
       }));
     },
     syncBracketBattleParentState(): void {
       if (typeof this.emitBracketBattleSessionState === "function") {
-        this.emitBracketBattleSessionState(false);
+        this.emitBracketBattleSessionState();
       }
     },
-    publishLiveBracketSpectatorSnapshot(): void {
-      if (typeof this.emitBracketBattleSessionState === "function") {
-        this.emitBracketBattleSessionState(true);
-      }
+    async publishLiveBracketSpectatorSnapshot(): Promise<void> {
+      this.syncBracketBattleParentState();
+      if (this.game.view.wheelMode !== "live") return;
+      await this.game.commands.publishGameSpectatorSessionSnapshot();
     },
     clearBracketRollAnimation(): void {
       if (this.bracketRollIntervalId != null) {
@@ -198,7 +188,7 @@ export const BracketBattlePanel = defineComponent({
     },
     loadBracketSession(): void {
       this.clearBracketRollAnimation();
-      const loaded = loadBracketBattleSessionState(localStorage, this);
+      const loaded = loadBracketBattleSessionState(localStorage, this.game.view);
       this.bracketSession = loaded.session;
       this.bracketLastRolls = loaded.lastRolls;
       this.bracketShowcaseMatchId = loaded.showcaseMatchId;
@@ -210,7 +200,7 @@ export const BracketBattlePanel = defineComponent({
     persistBracketSession(): void {
       persistBracketBattleSessionState(
         localStorage,
-        getBracketBattleSessionStorageKey(this),
+        getBracketBattleSessionStorageKey(this.game.view),
         this.bracketSession
       );
     },
@@ -423,7 +413,7 @@ export const BracketBattlePanel = defineComponent({
               lastRolls: this.bracketLastRolls,
               rolling: this.bracketRolling,
               showcaseMatchId: this.bracketShowcaseMatchId
-            }), this.wheelMode === "live" ? "live" : "preview", session, result.rolls, {
+            }), this.game.view.wheelMode === "live" ? "live" : "preview", session, result.rolls, {
               persist: (next) => commitBracketBattleLifecycleState(this, next),
               publish: () => this.publishLiveBracketSpectatorSnapshot?.()
             });
@@ -472,7 +462,7 @@ export const BracketBattlePanel = defineComponent({
         lastRolls: this.bracketLastRolls,
         rolling: this.bracketRolling,
         showcaseMatchId: this.bracketShowcaseMatchId
-      }), this.wheelMode === "live" ? "live" : "preview", {
+      }), this.game.view.wheelMode === "live" ? "live" : "preview", {
         persist: (next) => commitBracketBattleLifecycleState(this, next),
         publish: () => this.publishLiveBracketSpectatorSnapshot?.()
       });
@@ -487,7 +477,7 @@ export const BracketBattlePanel = defineComponent({
     },
     bracketParticipantLabel(participantId: string | null | undefined): string {
       const participant = findById(this.bracketSession?.participants ?? [], participantId);
-      return participant?.buyerName || this.t("bracketBattleWaitingLabel");
+      return participant?.buyerName || this.game.view.t("bracketBattleWaitingLabel");
     },
     bracketRollColorTone(roll: BracketBattleRoll): "dark" | "light" {
       const match = this.bracketSession?.matches.find((entry) => entry.id === roll.matchId);
@@ -498,7 +488,7 @@ export const BracketBattlePanel = defineComponent({
     },
     bracketPrizeLabel(prizeId: string | null | undefined): string {
       const prize = findById(this.bracketSession?.prizes ?? [], prizeId);
-      return prize?.label || this.t("bracketBattlePrizeFallbackLabel");
+      return prize?.label || this.game.view.t("bracketBattlePrizeFallbackLabel");
     },
     bracketLatestRollDuelGroups(): BracketBattleLatestRollDuelGroup[] {
       const groups = new Map<string, BracketBattleRoll[]>();
@@ -528,23 +518,23 @@ export const BracketBattlePanel = defineComponent({
     bracketDuelStatusLabel(): string {
       const match = this.activeBracketMatch;
       if (this.bracketRolling) {
-        return this.t("bracketBattleRollingLabel");
+        return this.game.view.t("bracketBattleRollingLabel");
       }
       if (match?.status === "complete" && match.winnerParticipantId) {
-        return this.t("bracketBattleMatchWonLabel", {
+        return this.game.view.t("bracketBattleMatchWonLabel", {
           winner: this.bracketParticipantLabel(match.winnerParticipantId),
           prize: this.bracketPrizeLabel(match.prizeId)
         });
       }
-      return this.t("bracketBattleReadyLabel");
+      return this.game.view.t("bracketBattleReadyLabel");
     },
     bracketRollButtonLabel(): string {
       const activeMatch = this.activeBracketMatch;
       const queuedMatch = this.queuedBracketMatch;
       if (activeMatch?.status === "complete" && queuedMatch && queuedMatch.id !== activeMatch.id) {
-        return this.t("bracketBattleNextMatchAction");
+        return this.game.view.t("bracketBattleNextMatchAction");
       }
-      return this.t("bracketBattleRollAction");
+      return this.game.view.t("bracketBattleRollAction");
     },
     bracketProgressSummary(): string {
       const session = this.bracketSession;
@@ -558,7 +548,7 @@ export const BracketBattlePanel = defineComponent({
         ? Math.max(1, session.matches.findIndex((entry) => entry.id === match.id) + 1)
         : totalMatches;
       const round = match?.round ?? Math.log2(session.participantCount);
-      return this.t("bracketBattleProgressSummary", {
+      return this.game.view.t("bracketBattleProgressSummary", {
         current: matchIndex,
         total: totalMatches,
         round,
@@ -592,10 +582,10 @@ export const BracketBattlePanel = defineComponent({
       this.bracketLastRolls = [];
       this.bracketRolling = false;
       this.bracketShowcaseMatchId = null;
-      this.emitBracketBattleSessionState(false);
+      this.emitBracketBattleSessionState();
     }
   },
-  setup(props): BracketBattleParentContext {
-    return setupGameContext(props) as BracketBattleParentContext;
+  setup(): BracketBattleParentContext {
+    return setupTypedGameContext();
   }
 });

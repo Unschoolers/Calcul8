@@ -56,7 +56,7 @@ test("wheel stage owns game selection and editor actions instead of the inspecto
   const inspectorTemplate = readFileSync("src/components/windows/game/inspector/WheelInspector.html", "utf8");
 
   assert.match(stageTemplate, /wheel-stage-game-toolbar/);
-  assert.match(stageTemplate, /v-model="activeWheelConfigId"/);
+  assert.match(stageTemplate, /v-model="game\.view\.activeWheelConfigId"/);
   assert.match(stageTemplate, /openWheelCreateDialog/);
   assert.match(stageTemplate, /openWheelManageDialog/);
   assert.doesNotMatch(inspectorTemplate, /wheel-active-config-toolbar/);
@@ -72,7 +72,7 @@ test("wheel stage keeps desktop controls visible and collapses them behind one c
   assert.match(stageTemplate, /wheel-effects-controls/);
   assert.match(stageTemplate, /toggleWheelSound/);
   assert.match(stageTemplate, /toggleWheelReducedMotion/);
-  assert.match(stageTemplate, /wheelPresentationMode = !wheelPresentationMode/);
+  assert.match(stageTemplate, /game\.view\.wheelPresentationMode = !game\.view\.wheelPresentationMode/);
   assert.match(stageStyles, /\.wheel-stage-more-action\s*\{[^}]*display: none;/s);
   assert.match(stageStyles, /@container \(max-width: 440px\)[\s\S]*\.wheel-stage-more-action\s*\{[^}]*display: inline-flex;/);
   assert.match(stageStyles, /@container \(max-width: 440px\)[\s\S]*\.wheel-stage-game-action,[\s\S]*\.wheel-stage-utility-controls\s*\{[^}]*display: none;/);

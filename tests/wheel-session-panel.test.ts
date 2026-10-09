@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { WheelSessionPanel } from "../src/components/windows/game/inspector/WheelSessionPanel.ts";
-import { ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { ensureWheelControllerState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 
 test("wheelSessionPanelProfit falls back to fee calculation when live session net revenue is missing", () => {
   const vm = {
@@ -57,6 +57,7 @@ test("wheelSessionPanelProfit falls back to fee calculation when live session ne
   };
 
   ensureWheelControllerState(vm);
+  (vm as Record<string, unknown>).game = { view: vm, session: getWheelController(vm), commands: {} };
   const result = WheelSessionPanel.computed!.wheelSessionPanelModel.call(vm as never);
   assert.ok(Math.abs(result.profit - 56.1) < 0.001);
 });
@@ -110,6 +111,7 @@ test("wheelSessionPanelProfit uses stored live session net revenue when present"
   };
 
   ensureWheelControllerState(vm);
+  (vm as Record<string, unknown>).game = { view: vm, session: getWheelController(vm), commands: {} };
   const result = WheelSessionPanel.computed!.wheelSessionPanelModel.call(vm as never);
   assert.ok(Math.abs(result.profit - 54.65) < 0.001);
 });
