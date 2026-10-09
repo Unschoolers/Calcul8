@@ -1,6 +1,6 @@
 <app-section-card
   variant="outlined"
-  :card-class="['wheel-inspector-panel', { 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }]"
+  :card-class="['wheel-inspector-panel', { 'wheel-inspector-panel--mobile-open': game.view.wheelMobileInspectorOpen }]"
   title-class="wheel-panel-title app-section-title-bar"
   content-class="wheel-inspector-panel__body"
   divider
@@ -10,11 +10,11 @@
     <div class="wheel-panel-title__row">
       <div class="wheel-panel-title__copy">
         <div class="wheel-panel-heading">
-          <v-icon start size="small">{{ wheelInspectorPanelMeta.icon }}</v-icon>
-          {{ wheelInspectorPanelMeta.title }}
+          <v-icon start size="small">{{ game.view.wheelInspectorPanelMeta.icon }}</v-icon>
+          {{ game.view.wheelInspectorPanelMeta.title }}
         </div>
         <div class="wheel-panel-subtitle">
-          {{ wheelInspectorPanelMeta.subtitle }}
+          {{ game.view.wheelInspectorPanelMeta.subtitle }}
         </div>
       </div>
       <v-btn
@@ -22,13 +22,13 @@
         size="small"
         variant="text"
         class="wheel-inspector-mobile-close"
-        @click="closeWheelInspector"
+        @click="game.commands.closeWheelInspector"
       ></v-btn>
     </div>
   </template>
     <v-btn-toggle
-      v-if="!wheelIsCompactLayout"
-      :model-value="wheelInspectorTab"
+      v-if="!game.view.wheelIsCompactLayout"
+      :model-value="game.view.wheelInspectorTab"
       mandatory
       divided
       density="comfortable"
@@ -36,34 +36,34 @@
       class="wheel-inspector-toggle"
       @update:model-value="setWheelInspectorTab($event)"
     >
-      <v-btn v-for="tab in wheelInspectorTabItems" :key="tab.id" :value="tab.id" size="small">
+      <v-btn v-for="tab in game.view.wheelInspectorTabItems" :key="tab.id" :value="tab.id" size="small">
         <v-icon start size="small">{{ tab.icon }}</v-icon>
         {{ tab.label }}
       </v-btn>
     </v-btn-toggle>
 
-    <section v-show="wheelInspectorTab === 'config'" class="wheel-panel-section">
+    <section v-show="game.view.wheelInspectorTab === 'config'" class="wheel-panel-section">
 
-      <template v-if="editingWheelConfig">
+      <template v-if="game.view.editingWheelConfig">
         <bracket-battle-builder
-          v-if="editingWheelConfig.gameType === 'bracket'"
-          :ctx="getWindowComponentContext()"
+          v-if="game.view.editingWheelConfig.gameType === 'bracket'"
+          :ctx="game.view"
         ></bracket-battle-builder>
 
         <template v-else>
         <app-form-layout compact :responsive="false">
         <div class="wheel-compact-settings app-form-row">
           <div class="wheel-compact-setting">
-            <div class="wheel-compact-setting__label app-text-wrap">{{ t('wheelInspectorSpinPriceLabel') }}</div>
-            <v-text-field v-model.number="editingWheelConfig.spinPrice" type="number"
-              :aria-label="t('wheelInspectorSpinPriceLabel')"
+            <div class="wheel-compact-setting__label app-text-wrap">{{ game.view.t('wheelInspectorSpinPriceLabel') }}</div>
+            <v-text-field v-model.number="game.view.editingWheelConfig.spinPrice" type="number"
+              :aria-label="game.view.t('wheelInspectorSpinPriceLabel')"
               min="0.5" step="0.5" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
           </div>
           <div class="wheel-compact-setting">
-            <div class="wheel-compact-setting__label app-text-wrap">{{ t('wheelInspectorOutcomeCountLabel') }}</div>
-            <v-text-field v-model.number="editingWheelConfig.outcomeCount"
-              :aria-label="t('wheelInspectorOutcomeCountLabel')"
+            <div class="wheel-compact-setting__label app-text-wrap">{{ game.view.t('wheelInspectorOutcomeCountLabel') }}</div>
+            <v-text-field v-model.number="game.view.editingWheelConfig.outcomeCount"
+              :aria-label="game.view.t('wheelInspectorOutcomeCountLabel')"
               type="number" min="4" max="200" step="1" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
           </div>
@@ -73,8 +73,8 @@
         <v-divider class="my-2"></v-divider>
         <div class="wheel-section-heading">
           <div>
-            <div class="wheel-section-title">{{ t('wheelInspectorWheelTiersTitle') }}</div>
-            <div class="wheel-section-subtitle">{{ t('wheelOddsSubtitle') }}</div>
+            <div class="wheel-section-title">{{ game.view.t('wheelInspectorWheelTiersTitle') }}</div>
+            <div class="wheel-section-subtitle">{{ game.view.t('wheelOddsSubtitle') }}</div>
           </div>
           <span
             class="wheel-odds-total-badge"
@@ -105,7 +105,7 @@
                         size="x-small"
                         variant="text"
                         class="wheel-builder-group__info"
-                        :aria-label="t('wheelInspectorMultiLotInfoLabel')"
+                        :aria-label="game.view.t('wheelInspectorMultiLotInfoLabel')"
                       ></v-btn>
                     </template>
                     <v-list density="compact" class="wheel-builder-group__source-list">
@@ -126,7 +126,7 @@
               <wheel-tier-card
                 v-for="entry in group.tiers"
                 :key="entry.tier.id"
-                :ctx="getWindowComponentContext()"
+                :ctx="game.view"
                 :tier="entry.tier"
                 :tier-index="entry.index"
               ></wheel-tier-card>
@@ -135,23 +135,23 @@
         </div>
 
         <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" class="mt-1"
-          @click="addTier">
-          {{ t('wheelInspectorAddTierAction') }}
+          @click="game.commands.addTier">
+          {{ game.view.t('wheelInspectorAddTierAction') }}
         </v-btn>
         </template>
       </template>
 
       <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
-        {{ t('wheelInspectorEmptyState') }}
+        {{ game.view.t('wheelInspectorEmptyState') }}
       </v-alert>
     </section>
 
     <wheel-session-panel
-      v-show="wheelInspectorTab === 'session'"
-      :ctx="getWindowComponentContext()"
+      v-show="game.view.wheelInspectorTab === 'session'"
+      :ctx="game.view"
     ></wheel-session-panel>
 
-    <section v-show="wheelInspectorTab === 'history'" class="wheel-panel-section">
-      <wheel-history-panel :ctx="getWindowComponentContext()"></wheel-history-panel>
+    <section v-show="game.view.wheelInspectorTab === 'history'" class="wheel-panel-section">
+      <wheel-history-panel :ctx="game.view"></wheel-history-panel>
     </section>
   </app-section-card>

@@ -122,6 +122,9 @@ export type GameCommandPorts = {
   openWheelInspector(tab: "config" | "session" | "history"): void;
   requestWheelSessionEnd(): void;
   requestWheelReset(): void;
+  focusWheelInspector(tab: "config" | "session" | "history"): void;
+  addTier(): void;
+  closeWheelInspector(): void;
   isWheelMobileViewport(): boolean;
 };
 
@@ -131,6 +134,7 @@ export type GameWindowThis = GameCommandContext;
 export type GameControllerCommands = Pick<
   GameCommandPorts,
   "spinWheel" | "revealMysteryGridCell" | "requestWheelSessionEnd" | "requestWheelReset"
+  | "focusWheelInspector" | "addTier" | "closeWheelInspector"
 >;
 
 /** Explicit game boundary shared with nested game components. */
@@ -148,7 +152,10 @@ export function createGameController(view: GameWindowThis): GameController {
       spinWheel: (...args) => view.spinWheel(...args),
       revealMysteryGridCell: (...args) => view.revealMysteryGridCell(...args),
       requestWheelSessionEnd: (...args) => view.requestWheelSessionEnd(...args),
-      requestWheelReset: (...args) => view.requestWheelReset(...args)
+      requestWheelReset: (...args) => view.requestWheelReset(...args),
+      focusWheelInspector: (...args) => view.focusWheelInspector(...args),
+      addTier: (...args) => view.addTier(...args),
+      closeWheelInspector: (...args) => view.closeWheelInspector(...args)
     }
   };
 }

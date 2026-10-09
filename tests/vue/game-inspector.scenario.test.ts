@@ -52,6 +52,7 @@ describe("game inspector scenarios", () => {
       }]
     };
     const context = {
+      ...createWheelControllerState(),
       wheelMobileInspectorOpen: false,
       wheelIsCompactLayout: false,
       wheelInspectorTab: "config",
@@ -90,13 +91,18 @@ describe("game inspector scenarios", () => {
       focusWheelInspector: vi.fn((tab: string) => {
         context.wheelInspectorTab = tab;
       }),
+      requestWheelReset: vi.fn(),
+      requestWheelSessionEnd: vi.fn(),
       closeWheelInspector: vi.fn()
     };
 
     renderWithApp(WheelInspector, {
       props: { ctx: context },
       global: {
-        provide: { gameCtx: context },
+        provide: {
+          gameCtx: context,
+          [gameControllerKey]: createGameController(context as never)
+        },
         stubs: {
           WheelTierCard: { template: "<div data-testid=\"wheel-tier-card\">{{ tier.label }}</div>", props: ["tier"] },
           WheelSessionPanel: { template: "<div />" },

@@ -5,7 +5,8 @@ import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-c
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import AppFormLayout from "../../../ui/AppFormLayout.vue";
 import AppSectionCard from "../../../ui/AppSectionCard.vue";
-import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
+import type { GameController } from "../coordinator/gameControllerState.ts";
+import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import BracketBattleBuilder from "../bracket/BracketBattleBuilder.vue";
 import {
     getAvailableSinglesQuantityForWheelTier,
@@ -36,25 +37,16 @@ export const WheelInspector = {
     WheelSessionPanel
   },
   methods: {
-    getWindowComponentContext(this: Record<string, unknown>): Record<string, unknown> {
-      return this as Record<string, unknown>;
-    },
-    setWheelInspectorTab(this: Record<string, unknown>, tab: unknown): void {
+    setWheelInspectorTab(this: { game: GameController }, tab: unknown): void {
       if (typeof tab !== "string") return;
-      const context = this.ctx;
-      const source = context && typeof context === "object"
-        ? getGameContextSource(context as Record<string, unknown>)
-        : this;
-      if (typeof source.focusWheelInspector === "function") {
-        (source.focusWheelInspector as (targetTab: string) => void)(tab);
-        return;
+      if (tab === "config" || tab === "session" || tab === "history") {
+        this.game.commands.focusWheelInspector(tab);
       }
-      source.wheelInspectorTab = tab;
     }
   },
   computed: {
-    wheelOddsTotal(this: Record<string, unknown>): number {
-      const config = (this.editingWheelConfig || null) as WheelConfig | null;
+    wheelOddsTotal(this: { game: GameController }): number {
+      const config = this.game.view.editingWheelConfig;
       return config ? getWheelChanceTotal(config.tiers) : 0;
     },
     wheelOddsTotalDisplay(this: { wheelOddsTotal: number }): string {
@@ -63,11 +55,12 @@ export const WheelInspector = {
     wheelOddsTotalValid(this: { wheelOddsTotal: number }): boolean {
       return Math.abs(this.wheelOddsTotal - 100) < 0.01;
     },
-    wheelBuilderTierGroups(this: Record<string, unknown>): WheelBuilderTierGroup[] {
-      const config = (this.editingWheelConfig || null) as WheelConfig | null;
+    wheelBuilderTierGroups(this: { game: GameController }): WheelBuilderTierGroup[] {
+      const context = this.game.view;
+      const config = context.editingWheelConfig;
       if (!config) return [];
-      const lots = (this.lots || []) as Lot[];
-      const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+      const lots = context.lots || [];
+      const preferredLanguage = String(context.preferredLanguage ?? "");
       const groups = new Map<string, WheelBuilderTierGroup>();
 
       const ensureGroup = (tier: WheelTier): WheelBuilderTierGroup => {
@@ -76,7 +69,7 @@ export const WheelInspector = {
           const key = `customer-choice:${ids.join(":")}`;
           let group = groups.get(key);
           if (!group) {
-            const remainingPacks = ids.reduce((sum, id) => sum + getRemainingPacksForWheelLot(this, id), 0);
+            const remainingPacks = ids.reduce((sum, id) => sum + getRemainingPacksForWheelLot(context, id), 0);
             const sourceLotNames = ids
               .map((id) => lots.find((entry) => entry.id === id)?.name)
               .filter((entry): entry is string => Boolean(entry));
@@ -123,7 +116,7 @@ export const WheelInspector = {
           if (lot) {
             if (isSinglesLot(lot)) {
               const remainingSingles = (lot.singlesPurchases || []).reduce((sum, entry) => (
-                sum + getAvailableSinglesQuantityForWheelTier(this, lot.id, entry.id)
+                sum + getAvailableSinglesQuantityForWheelTier(context, lot.id, entry.id)
               ), 0);
               detail = translateAppMessage(preferredLanguage, "wheelInspectorItemAvailabilityDetail", {
                 count: remainingSingles,
@@ -131,7 +124,7 @@ export const WheelInspector = {
               });
               warning = remainingSingles <= 0;
             } else {
-              const remainingPacks = getRemainingPacksForWheelLot(this, lot.id);
+              const remainingPacks = getRemainingPacksForWheelLot(context, lot.id);
               detail = translateAppMessage(preferredLanguage, "wheelInspectorItemAvailabilityDetail", {
                 count: remainingPacks,
                 suffix: remainingPacks === 1 ? "" : "s"
@@ -172,8 +165,5 @@ export const WheelInspector = {
       return orderedGroups;
     }
   },
-  props: {
-    ctx: gameContextProp
-  },
-  setup: setupGameContext
+  setup: setupTypedGameContext
 };
