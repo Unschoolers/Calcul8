@@ -41,6 +41,7 @@ import {
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
 } from "../src/app-core/methods/sales-live-api.ts";
+import { requestJson } from "../src/app-core/methods/entity-api-shared.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
@@ -779,7 +780,7 @@ test("createMutationId uses crypto when available and falls back otherwise", () 
   assert.match(fallbackMutationId, /^sale:\d+:[0-9a-f]+$/);
 });
 
-test("cacheAuthoritativeSales ignores storage failures", () => {
+test("cacheAuthoritativeSales exposes storage failures to mutation callers", () => {
   const setItem = vi.fn(() => {
     throw new Error("quota");
   });
@@ -790,7 +791,7 @@ test("cacheAuthoritativeSales ignores storage failures", () => {
     clear: vi.fn()
   });
 
-  cacheAuthoritativeSales(createApp(), 12, [{
+  assert.throws(() => cacheAuthoritativeSales(createApp(), 12, [{
     id: 1,
     type: "pack",
     quantity: 1,
@@ -798,7 +799,7 @@ test("cacheAuthoritativeSales ignores storage failures", () => {
     price: 1,
     buyerShipping: 0,
     date: "2026-03-17"
-  }]);
+  }]), /quota/);
 
   assert.equal(setItem.mock.calls.length, 1);
 });
@@ -927,4 +928,15 @@ test("wheel creation retries send the same mutation identity", async () => {
   const requests = fetchAuthenticatedApiResponseMock.mock.calls.map(call => JSON.parse(String((call[2] as RequestInit).body)));
   assert.deepEqual(requests.map(body => body.mutationId), ["wheel-sale:777", "wheel-sale:777"]);
   assert.deepEqual(requests.map(body => body.baseVersion), [0, 0]);
+});
+
+test("entity JSON readers propagate body abort instead of reporting successful null data", async () => {
+  const response = new Response("{}");
+  Object.defineProperty(response, "json", { value: async () => { throw new DOMException("Aborted", "AbortError"); } });
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(response);
+
+  await assert.rejects(
+    requestJson(createApp(), "/sales", { method: "GET" }, "Failed to load sales."),
+    (error: unknown) => error instanceof DOMException && error.name === "AbortError"
+  );
 });

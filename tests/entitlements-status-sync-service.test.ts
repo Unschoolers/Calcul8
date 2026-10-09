@@ -90,7 +90,7 @@ function createApp(overrides: Record<string, unknown> = {}): Record<string, unkn
     googleAuthEpoch: 0,
     hasProAccess: false,
     isOffline: false,
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     notify: vi.fn(),
     startOfflineReconnectScheduler: vi.fn(),
     ...overrides

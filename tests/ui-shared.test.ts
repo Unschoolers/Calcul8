@@ -368,7 +368,7 @@ test("fetchAuthenticatedApiResponse refreshes an expired session once before exp
     const response = await fetchAuthenticatedApiResponse(app as never, "/sync/pull", {
       method: "POST",
       body: "{}"
-    });
+    }, { retryUnsafeMethods: true });
 
     assert.equal(response.status, 200);
     assert.equal(app.googleAuthEpoch, 0);
@@ -409,7 +409,7 @@ test("fetchAuthenticatedApiResponse shares one refresh across concurrent 401 res
     const app = { googleAuthEpoch: 0, hasProAccess: false };
 
     const [first, second] = await Promise.all([
-      fetchAuthenticatedApiResponse(app as never, "/sync/pull", { method: "POST", body: "{}" }),
+      fetchAuthenticatedApiResponse(app as never, "/sync/pull", { method: "POST", body: "{}" }, { retryUnsafeMethods: true }),
       fetchAuthenticatedApiResponse(app as never, "/workspaces/me", { method: "GET" })
     ]);
 
@@ -438,7 +438,7 @@ test("fetchAuthenticatedApiResponse expires auth when refresh cannot recover the
     const response = await fetchAuthenticatedApiResponse(app as never, "/sync/pull", {
       method: "POST",
       body: "{}"
-    });
+    }, { retryUnsafeMethods: true });
 
     assert.equal(response.status, 401);
     assert.equal(app.googleAuthEpoch, 1);
@@ -471,7 +471,8 @@ test("fetchWithRetry retries retryable responses and network errors", async () =
     }, {
       maxAttempts: 3,
       baseDelayMs: 1,
-      timeoutMs: 50
+      timeoutMs: 50,
+      retryUnsafeMethods: true
     });
 
     await vi.runAllTimersAsync();

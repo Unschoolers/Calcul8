@@ -36,12 +36,14 @@ export const uiBaseMethods = {
 
   askConfirmation(
     { title, text, color = "error" }: { title: string; text: string; color?: UiColor },
-    action: () => void
+    action: () => void,
+    onCancel?: () => void
   ): void {
     this.confirmTitle = title;
     this.confirmText = text;
     this.confirmColor = color;
     this.confirmAction = action;
+    this.confirmCancelAction = onCancel ?? null;
     this.confirmDialog = true;
   },
 
@@ -51,11 +53,15 @@ export const uiBaseMethods = {
     }
     this.confirmDialog = false;
     this.confirmAction = null;
+    this.confirmCancelAction = null;
   },
 
   cancelConfirmAction(): void {
+    const onCancel = this.confirmCancelAction;
     this.confirmDialog = false;
     this.confirmAction = null;
+    this.confirmCancelAction = null;
+    onCancel?.();
   },
 
   formatCurrency(value: number | null | undefined, decimals = 2): string {

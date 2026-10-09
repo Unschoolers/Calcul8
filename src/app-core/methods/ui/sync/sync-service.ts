@@ -22,6 +22,8 @@ import { createSyncPayload, getSyncPayloadSignature, type SyncPayload } from "./
 import { createSyncSession } from "./sync-session.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
 import { setSyncStatusError, setSyncStatusSuccess, startSyncStatus } from "./sync-status.ts";
+import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import { voidBackgroundPersistence } from "../../../shared/persistence-outcomes.ts";
 
 export type SyncServiceDeps = {
   resolveApiBaseUrl: () => string;
@@ -106,27 +108,27 @@ export async function runCloudSyncPull(
   app: SyncServiceContext,
   deps: Partial<SyncServiceDeps> = {},
   options: SyncPullOptions = {}
-): Promise<void> {
+): Promise<PersistenceOutcome> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SyncServiceDeps;
   const session = createSyncSession(app, resolvedDeps);
   const state = session.state;
   const shouldForceApply = options.forceApply === true;
-  if (state.activeOperation === "pull") {
-    if (shouldForceApply) {
+  return new Promise((resolve) => {
+    if (state.activeOperation === "pull" && !shouldForceApply) {
+      state.activePullCompletions.push(resolve);
+    } else {
       state.pendingPull = true;
-      state.pendingPullForceApply = true;
+      state.pendingPullForceApply = state.pendingPullForceApply || shouldForceApply;
+      state.pendingPullCompletions.push(resolve);
     }
-  } else {
-    state.pendingPull = true;
-    state.pendingPullForceApply = state.pendingPullForceApply || shouldForceApply;
-  }
-  return scheduleSyncDrain(session);
+    void scheduleSyncDrain(session);
+  });
 }
 
 export function startCloudSyncScheduler(app: SyncServiceContext, deps: Partial<SyncServiceDeps> = {}): void {
   if (app.cloudSyncIntervalId != null) return;
   app.cloudSyncIntervalId = window.setInterval(() => {
-    void runCloudSyncPush(app, false, deps);
+    voidBackgroundPersistence(runCloudSyncPush(app, false, deps), "Scheduled cloud sync");
   }, CLOUD_SYNC_INTERVAL_MS);
 }
 
@@ -141,7 +143,7 @@ export async function runCloudSyncPush(
   force = false,
   deps: Partial<SyncServiceDeps> = {},
   options: SyncPushOptions = {}
-): Promise<void> {
+): Promise<PersistenceOutcome> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SyncServiceDeps;
   const session = createSyncSession(app, resolvedDeps, options);
   const state = session.state;
@@ -150,5 +152,8 @@ export async function runCloudSyncPush(
   state.pendingPushAllowEmptyOverwrite = state.pendingPushAllowEmptyOverwrite || options.allowEmptyOverwrite === true;
   state.pendingPushTreatConflictAsSuccess =
     state.pendingPushTreatConflictAsSuccess || options.treatConflictAsSuccess === true;
-  return scheduleSyncDrain(session);
+  return new Promise((resolve) => {
+    state.pendingPushCompletions.push(resolve);
+    void scheduleSyncDrain(session);
+  });
 }

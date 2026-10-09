@@ -1,5 +1,5 @@
 import type { ShopifyMethodImplementation } from "../../../context/shopify.ts";
-import { fetchAuthenticatedApiResponse } from "../common/api-client.ts";
+import { fetchAuthenticatedApiResponse, isApiRequestAborted } from "../common/api-client.ts";
 
 function scopeBody(context: { activeScopeType: string; activeWorkspaceId: string | null }): { workspaceId?: string } {
   return context.activeScopeType === "workspace" && context.activeWorkspaceId ? { workspaceId: context.activeWorkspaceId } : {};
@@ -65,7 +65,7 @@ export const uiShopifyMethods = {
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/status", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(scopeBody(this))
-      }, { expireAuthOn401: false });
+      }, { expireAuthOn401: false, retryUnsafeMethods: true });
       if (!response.ok) throw new Error("Shopify status unavailable");
       const status = await response.json() as { configured?: boolean; connected?: boolean; shop?: string | null; lastSyncedAt?: string | null; syncError?: string | null };
       if (key !== keyOf(this) || revision !== owner.statusRevision || owner.pendingKey === key) return;
@@ -74,7 +74,8 @@ export const uiShopifyMethods = {
       this.shopifyLastSyncedAt = status.connected ? status.lastSyncedAt ?? null : null;
       this.shopifySyncError = status.connected ? status.syncError ?? null : null;
       void this.refreshShopifyBindings?.();
-    } catch {
+    } catch (error) {
+      if (isApiRequestAborted(error)) return;
       if (key !== keyOf(this) || revision !== owner.statusRevision || owner.pendingKey === key) return;
       this.shopifyConnectionStatus = "error";
     }
@@ -88,6 +89,7 @@ export const uiShopifyMethods = {
     if (this.activeScopeType === "workspace" && !this.isCurrentWorkspaceOwner) return;
     const mutation = beginMutation(this); if (!mutation) return;
     const { current, release } = mutation;
+    const previousStatus = this.shopifyConnectionStatus;
     const shop = this.shopifyShopDraft.trim().toLowerCase(); if (!validShop(shop)) { release(); return; }
     this.shopifyConnectionStatus = "connecting";
     try {
@@ -97,13 +99,17 @@ export const uiShopifyMethods = {
       if (url.origin !== `https://${shop}` || url.pathname !== "/admin/oauth/authorize") throw new Error("Invalid Shopify authorization URL");
       if (!current()) return;
       this.shopifyShopDraft = ""; this.shopifyConnectionStatus = "disconnected"; window.location.assign(url.toString());
-    } catch { if (current()) this.shopifyConnectionStatus = "error"; }
+    } catch (error) {
+      if (!current()) return;
+      this.shopifyConnectionStatus = isApiRequestAborted(error) ? previousStatus : "error";
+    }
     finally { release(); }
   },
   async disconnectShopify(): Promise<void> {
     if (this.activeScopeType === "workspace" && !this.isCurrentWorkspaceOwner) return;
     const mutation = beginMutation(this); if (!mutation) return;
     const { current, release } = mutation;
+    const previousStatus = this.shopifyConnectionStatus;
     this.shopifyConnectionStatus = "connecting";
     try {
       const response = await fetchAuthenticatedApiResponse(this, "/integrations/shopify/disconnect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(scopeBody(this)) });
@@ -111,7 +117,10 @@ export const uiShopifyMethods = {
       if (!current()) return;
       this.shopifyConnectionStatus = "disconnected"; this.shopifyConnectionShop = null; this.shopifyLastSyncedAt = null; this.shopifySyncError = null; this.showShopifyConnectDialog = false;
       void this.refreshShopifyBindings?.();
-    } catch { if (current()) this.shopifyConnectionStatus = "error"; }
+    } catch (error) {
+      if (!current()) return;
+      this.shopifyConnectionStatus = isApiRequestAborted(error) ? previousStatus : "error";
+    }
     finally { release(); }
   }
 } satisfies ShopifyMethodImplementation;

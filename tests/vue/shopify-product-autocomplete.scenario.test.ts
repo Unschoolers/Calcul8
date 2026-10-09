@@ -11,7 +11,10 @@ import type { ShopifyEditListing } from "../../src/types/app.ts";
 import { renderWithApp } from "./render.ts";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
-vi.mock("../../src/app-core/methods/ui/common/api-client.ts", () => ({ fetchAuthenticatedApiResponse: apiCall }));
+vi.mock("../../src/app-core/methods/ui/common/api-client.ts", () => ({
+  fetchAuthenticatedApiResponse: apiCall,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError"
+}));
 
 const longTitleProduct = {
   productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/1",

@@ -4,7 +4,10 @@ import type { BindingResult, ProductDetailsResult } from "../shared/shopify-prod
 import { makeLot } from "./helpers/fixtures.ts";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
-vi.mock("../src/app-core/methods/ui/common/api-client.ts", () => ({ fetchAuthenticatedApiResponse: apiCall }));
+vi.mock("../src/app-core/methods/ui/common/api-client.ts", () => ({
+  fetchAuthenticatedApiResponse: apiCall,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError"
+}));
 
 function response(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } });

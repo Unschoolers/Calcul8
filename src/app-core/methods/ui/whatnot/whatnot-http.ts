@@ -3,7 +3,8 @@ import type {
   WhatnotHttpContext,
   WhatnotScopeContext
 } from "../../../context/whatnot.ts";
-import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
+import { normalizeApiErrorEnvelope } from "../../../shared/api-error-message.ts";
+import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
 
 export function canManageWhatnot(
   app: Pick<WhatnotConnectionContext, "activeScopeType" | "isCurrentWorkspaceOwner">
@@ -27,16 +28,23 @@ export async function fetchWhatnotJson(
   fallbackMessage: string,
   options: {
     expireAuthOn401?: boolean;
+    retryUnsafeMethods?: boolean;
     errorMessagesByCode?: Readonly<Record<string, string>>;
   } = {}
-): Promise<{ ok: true; body: unknown } | { ok: false }> {
+): Promise<{ ok: true; body: unknown } | { ok: false; aborted: true } | { ok: false }> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
     app.notify("Whatnot integration is unavailable until the API base URL is configured.", "warning");
     return { ok: false };
   }
 
-  const response = await fetchAuthenticatedApiResponse(app, path, init, options);
+  let response: Response;
+  try {
+    response = await fetchAuthenticatedApiResponse(app, path, init, options);
+  } catch (error) {
+    if (isApiRequestAborted(error)) return { ok: false, aborted: true };
+    throw error;
+  }
 
   if (response.status === 401) {
     if (options.expireAuthOn401 !== false) {
@@ -49,17 +57,17 @@ export async function fetchWhatnotJson(
   let body: unknown = null;
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (isApiRequestAborted(error)) return { ok: false, aborted: true };
     body = null;
   }
 
   if (!response.ok) {
-    const errorBody = body as { code?: unknown; error?: unknown } | null;
-    const errorCode = String(errorBody?.code ?? "").trim();
+    const errorBody = normalizeApiErrorEnvelope(body, response.status, fallbackMessage);
+    const errorCode = errorBody.code;
     const message = String(
       (errorCode ? options.errorMessagesByCode?.[errorCode] : undefined)
-      ?? errorBody?.error
-      ?? fallbackMessage
+      ?? errorBody.message
     ).trim() || fallbackMessage;
     app.notify(message, "error");
     return { ok: false };

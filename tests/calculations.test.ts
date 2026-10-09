@@ -2246,7 +2246,7 @@ test("saveSale is blocked when paywall is locked", () => {
   assert.equal(notified, "Pro access required to add or update sales");
 });
 
-test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", () => {
+test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", async () => {
   const scenarios = [
     {
       draft: { type: "pack", quantity: 3, packsCount: null, expectedPacks: 3 },
@@ -2280,12 +2280,13 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
       notify() {
         // noop
       },
+      saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
       cancelSale() {
         cancelCalled = true;
       }
     } as any;
 
-    salesMethods.saveSale.call(context);
+    await salesMethods.saveSale.call(context);
 
     assert.equal(context.sales.length, 1);
     assert.equal(context.sales[0]?.packsCount, scenario.draft.expectedPacks);
@@ -2294,7 +2295,7 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
   }
 });
 
-test("saveSale normalizes slash date input to YYYY-MM-DD", () => {
+test("saveSale normalizes slash date input to YYYY-MM-DD", async () => {
   const context = {
     canUsePaidActions: true,
     packsPerBox: 16,
@@ -2311,18 +2312,19 @@ test("saveSale normalizes slash date input to YYYY-MM-DD", () => {
     notify() {
       // noop
     },
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
     cancelSale() {
       // noop
     }
   } as any;
 
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
 
   assert.equal(context.sales.length, 1);
   assert.equal(context.sales[0]?.date, "2026-02-21");
 });
 
-test("saveSale falls back to local today date when date input is invalid", () => {
+test("saveSale falls back to local today date when date input is invalid", async () => {
   const todayDate = getTodayLocalDate();
 
   const context = {
@@ -2341,18 +2343,19 @@ test("saveSale falls back to local today date when date input is invalid", () =>
     notify() {
       // noop
     },
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
     cancelSale() {
       // noop
     }
   } as any;
 
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
 
   assert.equal(context.sales.length, 1);
   assert.equal(context.sales[0]?.date, todayDate);
 });
 
-test("manual Whatnot sale snapshot uses its sale-date period and survives descriptive edits", () => {
+test("manual Whatnot sale snapshot uses its sale-date period and survives descriptive edits", async () => {
   const lot = {
     id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "none", usesSystemPricingDefaults: true, whatnotVertical: "coins",
     sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 0,
@@ -2370,21 +2373,22 @@ test("manual Whatnot sale snapshot uses its sale-date period and survives descri
     sales: [], editingSale: null, packsPerBox: 16, singlesPurchases: [], singlesSoldCountByPurchaseId: {},
     newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
     getAllSalesByLotId: () => scopeSales,
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
     notify() {}, cancelSale() { this.editingSale = null; }, initSalesChart() {},
   };
 
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   const saved = context.sales[0] as Sale;
   assert.equal(saved.wasWhatnotSale, true);
   assert.equal(saved.netRevenue, 965); // Coins tier 6 (3.5%) for the sale's September period.
 
   context.editingSale = saved;
   context.newSale = { ...context.newSale, memo: "note only" };
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   assert.equal(context.sales[0].netRevenue, 965);
 });
 
-test("manual Whatnot date edits exclude the old date and retain provenance after profile changes", () => {
+test("manual Whatnot date edits exclude the old date and retain provenance after profile changes", async () => {
   const lot = {
     id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "none", whatnotVertical: "coins",
     sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 0,
@@ -2397,15 +2401,16 @@ test("manual Whatnot date edits exclude the old date and retain provenance after
     sales: [priorManualSale], editingSale: priorManualSale, packsPerBox: 16, singlesPurchases: [], singlesSoldCountByPurchaseId: {},
     newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
     getAllSalesByLotId: () => scopeSales,
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
     notify() {}, cancelSale() { this.editingSale = null; }, initSalesChart() {}
   };
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   assert.equal(context.sales[0].date, "2026-09-22");
   assert.equal(context.sales[0].wasWhatnotSale, true);
   assert.equal(context.sales[0].netRevenue, 960); // Old-date sale is removed before deriving Standard (4%).
 });
 
-test("offline save defers a tier snapshot while scoped sales are missing and snapshots after history arrives", () => {
+test("offline save defers a tier snapshot while scoped sales are missing and snapshots after history arrives", async () => {
   const lot = {
     id: 1, name: "Coins", lotType: "bulk", feeProfilePreset: "whatnot", whatnotVertical: "coins",
     sellingCurrency: "CAD", exchangeRate: 1, sellingTaxPercent: 0, platformFeePercent: 8,
@@ -2421,10 +2426,11 @@ test("offline save defers a tier snapshot while scoped sales are missing and sna
     newSale: { type: "pack", quantity: 1, packsCount: null, price: 1000, buyerShipping: 0, date: "2026-09-22" },
     getAllSalesByLotId: () => scopedSales,
     getSalesCacheEntry: (lotId: number) => ({ status: cacheStatus.get(lotId), sales: scopedSales.get(lotId) || [] }),
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "skipped-offline" }),
     notify(message: string) { warnings.push(message); }, cancelSale() { this.editingSale = null; }, initSalesChart() {}
   };
 
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   const saved = context.sales[0] as Sale;
   assert.equal(saved.wasWhatnotSale, true);
   assert.equal(saved.netRevenue, undefined);
@@ -2434,8 +2440,15 @@ test("offline save defers a tier snapshot while scoped sales are missing and sna
   cacheStatus.set(2, "loaded");
   context.editingSale = saved;
   context.newSale = { ...context.newSale, price: 1100 };
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
   assert.equal(context.sales[0].netRevenue, 1061.5);
+
+  warnings.length = 0;
+  context.newSale = { ...context.newSale, price: 1200 };
+  context.saveSalesToStorage = async () => ({ kind: "failure", error: new Error("quota exceeded"), stage: "local" });
+  const failed = await salesMethods.saveSale.call(context);
+  assert.equal(failed.kind, "failure");
+  assert.equal(warnings.some((message) => /Sale saved, but Whatnot history is incomplete/i.test(message)), false);
 });
 
 test("saveSale validates negative buyer shipping", () => {
@@ -2662,7 +2675,7 @@ test("requestPurchaseUiMode upgrades locked expert requests and applies allowed 
   assert.equal(unlockedContext.purchaseUiMode, "simple");
 });
 
-test("saveSale updates existing sale in edit mode", () => {
+test("saveSale updates existing sale in edit mode", async () => {
   const originalSale: Sale = {
     id: 1001,
     type: "pack",
@@ -2690,12 +2703,13 @@ test("saveSale updates existing sale in edit mode", () => {
     notify() {
       // noop
     },
+    saveSalesToStorage: async () => ({ kind: "confirmed", persistence: "local", cache: "saved", cloud: "unavailable" }),
     cancelSale() {
       // noop
     }
   } as any;
 
-  salesMethods.saveSale.call(context);
+  await salesMethods.saveSale.call(context);
 
   assert.equal(context.sales.length, 1);
   assert.equal(context.sales[0]?.id, 1001);

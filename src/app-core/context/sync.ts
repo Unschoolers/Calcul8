@@ -5,6 +5,7 @@ import type {
   SyncWheelConfigDto
 } from "../../../shared/sync-contracts.mjs";
 import type { CommerceMethodState } from "./commerce.ts";
+import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
 import type { RuntimeMethodState, FeatureMethodImplementation } from "./runtime.ts";
 import type { WorkspaceComputedState, WorkspaceMethodState } from "./workspace.ts";
 
@@ -29,8 +30,8 @@ export type SyncComputedObject = {
 };
 
 export interface SyncMethodState {
-  pullCloudSync(forceApply?: boolean): Promise<void>;
-  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
+  pullCloudSync(forceApply?: boolean): Promise<PersistenceOutcome>;
+  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<PersistenceOutcome>;
   startCloudSyncScheduler(): void;
   stopCloudSyncScheduler(): void;
 }

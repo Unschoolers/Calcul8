@@ -41,6 +41,7 @@ export type BaseUiContext = Pick<
   | "additionalFeePercent"
   | "chartView"
   | "confirmAction"
+  | "confirmCancelAction"
   | "confirmColor"
   | "confirmDialog"
   | "confirmText"

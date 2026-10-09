@@ -3,25 +3,45 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   fetchWithRetryMock,
+  fetchAuthenticatedApiResponseMock,
   bootstrapServerSessionStatusMock,
   handleExpiredAuthMock,
   resolveApiBaseUrlMock,
   runCloudSyncPushMock,
   createSyncPayloadMock
-} = vi.hoisted(() => ({
-  fetchWithRetryMock: vi.fn(),
+} = vi.hoisted(() => {
+  const fetchWithRetryMock = vi.fn();
+  const fetchAuthenticatedApiResponseMock = vi.fn(async (
+    _app: unknown,
+    path: string,
+    init: RequestInit,
+    options?: { bootstrapAuthOn401?: (signal?: AbortSignal) => Promise<boolean>; retryUnsafeMethods?: boolean }
+  ): Promise<Response> => {
+    let response = await fetchWithRetryMock(`https://api.example.test${path}`, init);
+    const safeMethod = ["GET", "HEAD", "OPTIONS"].includes(String(init.method ?? "GET").toUpperCase());
+    if (response.status === 401 && options?.bootstrapAuthOn401 && (safeMethod || options.retryUnsafeMethods)) {
+      if (await options.bootstrapAuthOn401(init.signal ?? undefined)) {
+        response = await fetchWithRetryMock(`https://api.example.test${path}`, init);
+      }
+    }
+    return response;
+  });
+  return {
+  fetchWithRetryMock,
+  fetchAuthenticatedApiResponseMock,
   bootstrapServerSessionStatusMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn(),
   runCloudSyncPushMock: vi.fn(),
   createSyncPayloadMock: vi.fn()
-}));
+  };
+});
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchWithRetry: fetchWithRetryMock,
-  fetchAuthenticatedApiResponse: vi.fn((app: unknown, path: string, init: RequestInit) =>
-    fetchWithRetryMock(`https://api.example.test${path}`, init)
-  ),
+  fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
+  isApiNetworkFailure: (error: unknown) => error instanceof TypeError,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -119,7 +139,7 @@ function createContext() {
     isCurrentWorkspaceOwner: false,
     preferredLanguage: "en",
     notify: vi.fn(),
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     loadLotsFromStorage: vi.fn(),
     loadWheelFromStorage: vi.fn(),
     loadLot: vi.fn(),
@@ -142,7 +162,7 @@ function createContext() {
 beforeEach(() => {
   vi.clearAllMocks();
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  runCloudSyncPushMock.mockResolvedValue(undefined);
+  runCloudSyncPushMock.mockResolvedValue({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" });
   createSyncPayloadMock.mockReturnValue({ lots: [], salesByLot: {}, workspaceId: "ws_1" });
 
   const historyReplaceState = vi.fn();

@@ -27,7 +27,8 @@ export interface RuntimeMethodState {
   notify(message: string, color?: UiColor): void;
   askConfirmation(
     payload: { title: string; text: string; color?: UiColor },
-    action: () => void
+    action: () => void,
+    onCancel?: () => void
   ): void;
   runConfirmAction(): void;
   cancelConfirmAction(): void;

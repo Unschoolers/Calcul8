@@ -2,12 +2,8 @@ import type { WorkspaceUiHelperContext } from "../../../context/workspace.ts";
 import type { WorkspaceSummary } from "../../../../types/app.ts";
 import { getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_KEYS } from "../../../storageKeys.ts";
 import { resolveWorkspaceScopeContext, setActiveWorkspaceScope, sortWorkspacesByName } from "../../../workspace-scope.ts";
-
-type WorkspaceApiError = {
-  code?: unknown;
-  error?: unknown;
-  message?: unknown;
-};
+import { handleBackgroundPersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import { parseApiErrorEnvelope } from "../../../shared/api-error-message.ts";
 
 export type WorkspaceListResponse = {
   workspaces?: unknown;
@@ -38,19 +34,8 @@ export async function parseWorkspaceApiError(
   fallbackMessage: string,
   errorMessagesByCode: Readonly<Record<string, string>> = {}
 ): Promise<string> {
-  try {
-    const body = (await response.json()) as WorkspaceApiError;
-    const code = String(body.code ?? "").trim();
-    if (code && errorMessagesByCode[code]) return errorMessagesByCode[code]!;
-    const errorMessage = typeof body.error === "string" ? body.error.trim() : "";
-    if (errorMessage) return errorMessage;
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    if (message) return message;
-  } catch {
-    // Ignore JSON parsing errors and use fallback message.
-  }
-
-  return fallbackMessage;
+  const error = await parseApiErrorEnvelope(response, fallbackMessage);
+  return (error.code ? errorMessagesByCode[error.code] : undefined) || error.message;
 }
 
 export function normalizeWorkspaceSummary(value: unknown): WorkspaceSummary | null {
@@ -179,7 +164,8 @@ export async function applyWorkspaceScope(
   loadScopedAppState(app);
 
   if (options.pullFromCloud !== false && options.getGoogleIdToken()) {
-    await app.pullCloudSync();
+    const outcome = await app.pullCloudSync();
+    handleBackgroundPersistenceOutcome(outcome, "Workspace scope pull");
   }
 }
 

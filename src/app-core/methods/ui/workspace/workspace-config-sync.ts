@@ -1,4 +1,6 @@
 import { resolveWorkspaceScopeContext } from "../../../workspace-scope.ts";
+import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import { voidBackgroundPersistence } from "../../../shared/persistence-outcomes.ts";
 
 type WorkspaceConfigSyncApp = {
   activeScopeType: "personal" | "workspace";
@@ -6,7 +8,7 @@ type WorkspaceConfigSyncApp = {
   currentLotId: number | null;
   isGoogleSignedIn?: boolean;
   isOffline: boolean;
-  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
+  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<PersistenceOutcome>;
 };
 
 type WorkspaceConfigSyncState = {
@@ -49,7 +51,7 @@ export function queueWorkspaceConfigSyncPush(app: WorkspaceConfigSyncApp): void 
 
   state.timeoutId = Number(globalThis.setTimeout(() => {
     state.timeoutId = null;
-    void app.pushCloudSync();
+    voidBackgroundPersistence(app.pushCloudSync(), "Workspace cloud sync");
   }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS));
 }
 
@@ -63,7 +65,7 @@ export function queueCloudConfigSyncPush(app: WorkspaceConfigSyncApp): void {
 
   state.timeoutId = Number(globalThis.setTimeout(() => {
     state.timeoutId = null;
-    void app.pushCloudSync();
+    voidBackgroundPersistence(app.pushCloudSync(), "Cloud sync");
   }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS));
 }
 

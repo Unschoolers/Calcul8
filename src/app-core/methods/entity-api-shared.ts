@@ -1,6 +1,6 @@
 import type { ScopedApiContext } from "../context/api.ts";
 import { hasAuthSignal } from "../auth/index.ts";
-import { parseApiErrorMessage } from "../shared/api-error-message.ts";
+import { isApiRequestAborted, parseApiErrorMessage } from "../shared/api-error-message.ts";
 import { getActiveWorkspaceId } from "../workspace-scope.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/common/shared.ts";
 
@@ -47,6 +47,7 @@ export async function requestJson(
   fallbackMessage: string,
   options: {
     expireAuthOn401?: boolean;
+    retryUnsafeMethods?: boolean;
   } = {}
 ): Promise<unknown> {
   const baseUrl = resolveApiBaseUrl();
@@ -66,7 +67,8 @@ export async function requestJson(
 
   try {
     return await response.json();
-  } catch {
+  } catch (error) {
+    if (isApiRequestAborted(error)) throw error;
     return null;
   }
 }

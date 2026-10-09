@@ -24,10 +24,12 @@ export const uiWhatnotMethods = {
       },
       "Failed to load Whatnot status.",
       {
-        expireAuthOn401: false
+        expireAuthOn401: false,
+        retryUnsafeMethods: true
       }
     );
     if (!result.ok) {
+      if ("aborted" in result) return;
       this.whatnotConnectionSummary = null;
       this.whatnotConnectionStatus = "error";
       return;
@@ -42,6 +44,7 @@ export const uiWhatnotMethods = {
       return;
     }
 
+    const previousStatus = this.whatnotConnectionStatus;
     this.whatnotConnectionStatus = "connecting";
     const result = await fetchWhatnotJson(
       this,
@@ -56,6 +59,10 @@ export const uiWhatnotMethods = {
       "Failed to start Whatnot connection."
     );
     if (!result.ok) {
+      if ("aborted" in result) {
+        this.whatnotConnectionStatus = previousStatus;
+        return;
+      }
       this.whatnotConnectionStatus = "error";
       return;
     }
@@ -101,6 +108,7 @@ export const uiWhatnotMethods = {
       return;
     }
 
+    const previousStatus = this.whatnotSyncStatus;
     this.whatnotSyncStatus = "syncing";
     const result = await fetchWhatnotJson(
       this,
@@ -115,6 +123,10 @@ export const uiWhatnotMethods = {
       "Failed to sync Whatnot sales."
     );
     if (!result.ok) {
+      if ("aborted" in result) {
+        this.whatnotSyncStatus = previousStatus;
+        return;
+      }
       this.whatnotSyncStatus = "error";
       return;
     }
@@ -319,12 +331,19 @@ export const uiWhatnotMethods = {
       resetWhatnotReviewState(this);
       resetWhatnotCsvImportState(this);
       await this.refreshWhatnotStatus();
-      await this.pullCloudSync();
+      const syncOutcome = await this.pullCloudSync();
       await refreshAffectedWhatnotSales(this, affectedLotIds);
-      this.notify(
-        `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
-        "success"
-      );
+      if (syncOutcome.kind === "confirmed") {
+        this.notify(
+          `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
+          "success"
+        );
+      } else {
+        this.notify(
+          `Whatnot import completed, but cloud sync was not confirmed (${syncOutcome.kind}).`,
+          "warning"
+        );
+      }
     } finally {
       this.isConfirmingWhatnotImport = false;
     }

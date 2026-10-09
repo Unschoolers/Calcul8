@@ -29,7 +29,8 @@ function normalizeUserId(value: unknown): string {
 
 export async function bootstrapServerSessionStatus(
   app: AuthSessionBootstrapContext,
-  baseUrl: string
+  baseUrl: string,
+  signal?: AbortSignal
 ): Promise<ServerSessionBootstrapResult> {
   const normalizedBaseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
   if (!normalizedBaseUrl) {
@@ -44,7 +45,8 @@ export async function bootstrapServerSessionStatus(
     const requestUrl = `${normalizedBaseUrl}/auth/me`;
     const response = await fetchWithRetry(requestUrl, {
       method: "GET",
-      headers: buildBootstrapBearerHeaders(getStoredGoogleIdToken())
+      headers: buildBootstrapBearerHeaders(getStoredGoogleIdToken()),
+      signal
     });
 
     if (response.status === 401) {

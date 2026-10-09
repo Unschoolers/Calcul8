@@ -2,6 +2,7 @@ import { APP_BUILD_ID, APP_VERSION } from "../../constants.ts";
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { PwaMethodImplementation } from "../context/shell.ts";
 import { getAppRuntime } from "../platform/runtime.ts";
+import { voidBackgroundPersistence } from "../shared/persistence-outcomes.ts";
 
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
 const APP_UPDATE_NAVIGATION_FALLBACK_MS = 4000;
@@ -76,7 +77,7 @@ export const pwaMethods = {
       this.stopOfflineReconnectScheduler();
       void this.debugLogEntitlement(true);
       if (this.isGoogleSignedIn) {
-        void this.pushCloudSync();
+        voidBackgroundPersistence(this.pushCloudSync(), "PWA cloud sync");
         void this.retryPendingBuyerProfiles();
       }
     };
@@ -151,7 +152,7 @@ export const pwaMethods = {
       this.stopOfflineReconnectScheduler();
       void this.debugLogEntitlement(true);
       if (this.isGoogleSignedIn) {
-        void this.pushCloudSync();
+        voidBackgroundPersistence(this.pushCloudSync(), "PWA cloud sync");
         void this.retryPendingBuyerProfiles();
       }
     }, 60 * 1000);

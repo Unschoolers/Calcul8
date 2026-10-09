@@ -1,10 +1,6 @@
 import type { WorkspaceApiContext } from "../../../context/workspace.ts";
-import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
-import {
-  buildSessionHeaders,
-  getStoredGoogleIdToken,
-  hasAuthSignal
-} from "../../../auth/index.ts";
+import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiNetworkFailure, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
+import { getStoredGoogleIdToken, hasAuthSignal } from "../../../auth/index.ts";
 import { bootstrapServerSessionStatus } from "../auth/auth-session.ts";
 import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
 
@@ -19,7 +15,7 @@ export async function fetchWorkspaceJson(
   path: string,
   init: RequestInit,
   fallbackMessage: string,
-  options: { errorMessagesByCode?: Readonly<Record<string, string>> } = {}
+  options: { errorMessagesByCode?: Readonly<Record<string, string>>; retryUnsafeMethods?: boolean } = {}
 ): Promise<{ ok: true; response: Response; body: unknown } | { ok: false; handled: true }> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
@@ -32,24 +28,24 @@ export async function fetchWorkspaceJson(
     return { ok: false, handled: true };
   }
 
-  const requestUrl = `${baseUrl}${path}`;
-  const buildRequestInit = (): RequestInit => ({
-    ...init,
-    headers: buildSessionHeaders(init.headers as Record<string, string> | undefined)
-  });
-
   let response: Response;
+  let bootstrapUnavailable = false;
   try {
-    response = await fetchWithRetry(requestUrl, buildRequestInit());
+    response = await fetchAuthenticatedApiResponse(app, path, init, {
+      expireAuthOn401: false,
+      retryUnsafeMethods: options.retryUnsafeMethods,
+      ...(getStoredGoogleIdToken() ? {
+        bootstrapAuthOn401: async (signal) => {
+          const result = await bootstrapServerSessionStatus(app, baseUrl, signal);
+          bootstrapUnavailable = !result.ok && !result.authExpired;
+          return result.ok;
+        }
+      } : {})
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    const isOfflineFailure =
-      message.includes("Failed to fetch")
-      || message.includes("NetworkError")
-      || message.includes("Load failed")
-      || message.includes("fetch");
+    if (isApiRequestAborted(error)) return { ok: false, handled: true };
     app.notify(
-      isOfflineFailure
+      isApiNetworkFailure(error)
         ? "You're offline. Workspace data will refresh when the connection returns."
         : fallbackMessage,
       "warning"
@@ -58,39 +54,39 @@ export async function fetchWorkspaceJson(
   }
 
   if (response.status === 401) {
-    const bootstrapToken = getStoredGoogleIdToken();
-    if (bootstrapToken) {
-      const bootstrapResult = await bootstrapServerSessionStatus(app, baseUrl);
-      if (bootstrapResult.ok) {
-        response = await fetchWithRetry(requestUrl, buildRequestInit());
-        if (response.status !== 401) {
-          return await parseWorkspaceJsonResponse(response);
-        }
-      }
-
-      if (!bootstrapResult.authExpired) {
-        return { ok: false, handled: true };
-      }
-    }
-
+    if (init.signal?.aborted) return { ok: false, handled: true };
+    if (bootstrapUnavailable) return { ok: false, handled: true };
     handleExpiredAuth(app);
     app.notify("Your sign-in expired. Please sign in again.", "warning");
     return { ok: false, handled: true };
   }
 
   if (!response.ok) {
-    app.notify(await parseWorkspaceApiError(response, fallbackMessage, options.errorMessagesByCode), "error");
+    let message: string;
+    try {
+      message = await parseWorkspaceApiError(response, fallbackMessage, options.errorMessagesByCode);
+    } catch (error) {
+      if (isApiRequestAborted(error)) return { ok: false, handled: true };
+      throw error;
+    }
+    app.notify(message, "error");
     return { ok: false, handled: true };
   }
 
-  return await parseWorkspaceJsonResponse(response);
+  try {
+    return await parseWorkspaceJsonResponse(response);
+  } catch (error) {
+    if (isApiRequestAborted(error)) return { ok: false, handled: true };
+    throw error;
+  }
 }
 
 async function parseWorkspaceJsonResponse(response: Response): Promise<{ ok: true; response: Response; body: unknown }> {
   let body: unknown = null;
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (isApiRequestAborted(error)) throw error;
     body = null;
   }
 

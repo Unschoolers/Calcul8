@@ -15,6 +15,7 @@ const {
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -24,6 +25,7 @@ vi.mock("../src/app-core/auth/index.ts", () => ({
 }));
 
 import { uiWhatnotMethods } from "../src/app-core/methods/ui/whatnot/whatnot.ts";
+import { fetchWhatnotJson } from "../src/app-core/methods/ui/whatnot/whatnot-http.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -66,6 +68,58 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+test("Whatnot transport cancellation is handled without a user error notification", async () => {
+  const app = {
+    googleAuthEpoch: 0,
+    hasProAccess: false,
+    notify: vi.fn()
+  };
+  fetchAuthenticatedApiResponseMock.mockRejectedValueOnce(new DOMException("Aborted", "AbortError"));
+
+  const result = await fetchWhatnotJson(app as never, "/integrations/whatnot/status", { method: "GET" }, "Failed to load status.");
+
+  assert.deepEqual(result, { ok: false, aborted: true });
+  assert.equal(app.notify.mock.calls.length, 0);
+});
+
+test("Whatnot response body cancellation remains distinct from request failure", async () => {
+  const app = { googleAuthEpoch: 0, hasProAccess: false, notify: vi.fn() };
+  const response = new Response("{}");
+  Object.defineProperty(response, "json", { value: async () => { throw new DOMException("Aborted", "AbortError"); } });
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(response);
+
+  const result = await fetchWhatnotJson(app as never, "/integrations/whatnot/status", { method: "GET" }, "Failed to load status.");
+
+  assert.deepEqual(result, { ok: false, aborted: true });
+  assert.equal(app.notify.mock.calls.length, 0);
+});
+
+test("Whatnot cancellation preserves connection and sync statuses", async () => {
+  const app = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: false,
+    isCurrentWorkspaceOwner: true,
+    notify: vi.fn(),
+    whatnotConnectionStatus: "connected",
+    whatnotConnectionSummary: { connected: true },
+    whatnotSyncStatus: "success"
+  };
+  fetchAuthenticatedApiResponseMock.mockRejectedValue(new DOMException("Aborted", "AbortError"));
+
+  await uiWhatnotMethods.refreshWhatnotStatus.call(app as never);
+  assert.equal(app.whatnotConnectionStatus, "connected");
+  assert.deepEqual(app.whatnotConnectionSummary, { connected: true });
+
+  await uiWhatnotMethods.connectWhatnot.call(app as never);
+  assert.equal(app.whatnotConnectionStatus, "connected");
+
+  await uiWhatnotMethods.syncWhatnotSales.call(app as never);
+  assert.equal(app.whatnotSyncStatus, "success");
+  assert.equal(app.notify.mock.calls.length, 0);
+});
+
 test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots after import", async () => {
   fetchAuthenticatedApiResponseMock
     .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -100,7 +154,7 @@ test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots 
     }));
 
   const refreshWhatnotStatus = vi.fn(async () => undefined);
-  const pullCloudSync = vi.fn(async () => undefined);
+  const pullCloudSync = vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" }));
   const notify = vi.fn();
 
   const context = {
@@ -229,7 +283,7 @@ test("confirmWhatnotImportBatch guards duplicate requests and retains frozen dec
     }],
     isConfirmingWhatnotImport: false,
     whatnotConfirmationRetryPayload: null,
-    pullCloudSync: vi.fn(),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     refreshWhatnotStatus: vi.fn(),
     currentLotId: 7,
     sales: [],
@@ -318,7 +372,7 @@ test("discardWhatnotReviewBatch clears the staged batch and refreshes Whatnot st
     showWhatnotReviewDialog: true,
     whatnotCallbackStatus: null,
     whatnotCallbackMessage: "",
-    pullCloudSync: vi.fn(async () => undefined),
+    pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     currentLotId: 0,
     sales: [],
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
