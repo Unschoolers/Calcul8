@@ -8,3 +8,7 @@ export function useGameController(): GameController {
   if (!controller) throw new Error("Game controller was not provided by GameWindow");
   return controller;
 }
+
+export function setupTypedGameContext() {
+  return { game: useGameController() };
+}

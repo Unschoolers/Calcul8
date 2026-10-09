@@ -6,6 +6,8 @@ import WheelHistoryPanel from "../../src/components/windows/game/inspector/Wheel
 import WheelInspector from "../../src/components/windows/game/inspector/WheelInspector.vue";
 import WheelSessionPanel from "../../src/components/windows/game/inspector/WheelSessionPanel.vue";
 import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
+import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
+import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
 import MysteryGridSurface from "../../src/components/windows/game/stage/MysteryGridSurface.vue";
 import { renderWithApp } from "./render.ts";
 
@@ -195,6 +197,7 @@ describe("game inspector scenarios", () => {
     const warnings: string[] = [];
     const Harness = defineComponent({
       setup() {
+      provide(gameControllerKey, createGameController(context as never));
         provide("gameCtx", context);
         return () => h("div", [
           h(MysteryGridSurface, { ctx: context }),
