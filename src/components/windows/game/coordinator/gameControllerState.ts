@@ -42,6 +42,8 @@ export type GameWindowHostState = GameHostState
   wheelSoundToggleTitle: string;
   wheelMotionToggleTitle: string;
   gameSpectatorActionLabel: string;
+  gameSpectatorDialogHint: string;
+  gameSpectatorStartButtonLabel: string;
   wheelConfigItems: Array<{ title: string; value: number }>;
   wheelStageSummaryCards: Array<{ id: string; label: string; value: string; valueClass?: string; valueStyle?: string; meta: string }>;
   wheelSpinBlockedReason: string;
@@ -141,6 +143,13 @@ export type GameCommandPorts = {
   toggleWheelReducedMotion(): void;
   handleWheelModeChange(nextMode: "config" | "live"): void;
   openGameSpectatorDialog(): void;
+  createNewGameConfig(gameType: "wheel" | "grid" | "bracket"): void;
+  closeWheelCreateDialog(): void;
+  startGameSpectatorMode(): Promise<void>;
+  endGameSpectatorMode(options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }): Promise<void>;
+  copyGameSpectatorLink(): Promise<void>;
+  openGameSpectatorPage(): void;
+  closeGameSpectatorDialog(): void;
   isWheelMobileViewport(): boolean;
 };
 
@@ -153,6 +162,9 @@ export type GameControllerCommands = Pick<
   | "focusWheelInspector" | "addTier" | "closeWheelInspector"
   | "openWheelCreateDialog" | "openWheelManageDialog" | "toggleWheelSound"
   | "toggleWheelReducedMotion" | "handleWheelModeChange" | "openGameSpectatorDialog"
+  | "createNewGameConfig" | "closeWheelCreateDialog" | "startGameSpectatorMode"
+  | "endGameSpectatorMode" | "copyGameSpectatorLink" | "openGameSpectatorPage"
+  | "closeGameSpectatorDialog"
 >;
 
 /** Explicit game boundary shared with nested game components. */
@@ -179,7 +191,14 @@ export function createGameController(view: GameWindowThis): GameController {
       toggleWheelSound: (...args) => view.toggleWheelSound(...args),
       toggleWheelReducedMotion: (...args) => view.toggleWheelReducedMotion(...args),
       handleWheelModeChange: (...args) => view.handleWheelModeChange(...args),
-      openGameSpectatorDialog: (...args) => view.openGameSpectatorDialog(...args)
+      openGameSpectatorDialog: (...args) => view.openGameSpectatorDialog(...args),
+      createNewGameConfig: (...args) => view.createNewGameConfig(...args),
+      closeWheelCreateDialog: (...args) => view.closeWheelCreateDialog(...args),
+      startGameSpectatorMode: (...args) => view.startGameSpectatorMode(...args),
+      endGameSpectatorMode: (...args) => view.endGameSpectatorMode(...args),
+      copyGameSpectatorLink: (...args) => view.copyGameSpectatorLink(...args),
+      openGameSpectatorPage: (...args) => view.openGameSpectatorPage(...args),
+      closeGameSpectatorDialog: (...args) => view.closeGameSpectatorDialog(...args)
     }
   };
 }
