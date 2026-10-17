@@ -30,7 +30,7 @@ async function applyProjection(config: ApiConfig, line: ShopifyOrderLine): Promi
         if (existing && !existing.deletedAt) {
           try {
             await deleteSaleDocument(config, { scopeKey: line.scopeKey, lotId: String(line.lotId), saleId,
-              updatedBy: actor, mutationId: `shopify:cancel:${line.shop}:${line.orderId}:${line.lineId}`, baseVersion: existing.version });
+              updatedBy: actor, mutationId: `shopify:cancel:${line.shop}:${line.orderId}:${line.lineId}`, baseVersion: existing.version, trustedExternal: true });
           } catch (error) { if (error instanceof EntityVersionConflictError) continue; throw error; }
         }
         return;
@@ -42,7 +42,7 @@ async function applyProjection(config: ApiConfig, line: ShopifyOrderLine): Promi
         externalOrderItemId: line.lineId, memo: `Shopify order ${line.orderId}` };
       try {
         await upsertSaleDocument(config, { scopeKey: line.scopeKey, lotId: String(line.lotId), saleId, sale,
-          updatedBy: actor, mutationId: `shopify:paid:${line.shop}:${line.orderId}:${line.lineId}`, baseVersion: existing?.version ?? 0 });
+          updatedBy: actor, mutationId: `shopify:paid:${line.shop}:${line.orderId}:${line.lineId}`, baseVersion: existing?.version ?? 0, trustedExternal: true });
         return;
       } catch (error) { if (error instanceof EntityVersionConflictError) continue; throw error; }
     }

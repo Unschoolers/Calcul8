@@ -183,6 +183,34 @@ export interface PendingWheelInventoryIssue {
   slotSinglesId?: number | null;
   candidateLotIds?: number[];
   requiresLotSelection?: boolean;
+  writeAttempted?: boolean;
+}
+
+export interface PendingWheelChaseObligation {
+  version: 1;
+  unresolvedSource?: true;
+  configId: number;
+  spinNumber: number;
+  tierId: string;
+  slotIndex: number;
+  originalConfig: WheelConfig;
+  originalSourceJson: string;
+  originalTier: WheelTier;
+  originalPrize: {
+    slotLabel: string;
+    slotColor: string;
+    lotId: number | null;
+    singlesEntryId: number | null;
+    lotType?: LotType;
+    itemLabel: string;
+    image?: string;
+    /** Stable description of the captured singles entry; quantity is intentionally excluded. */
+    singlesSourceFingerprint?: string;
+    /** Full immutable entry snapshot for audit and retry context, including its spin-time price. */
+    singlesSourceSnapshot?: string;
+  };
+  saleDraft: Sale | null;
+  saleAttempted?: boolean;
 }
 
 export interface WheelFairnessEntry {
@@ -836,6 +864,7 @@ export interface AppState extends LotSetup {
   wheelSessionUpdatedAt: number;
   wheelSessionLotSelections: Record<string, number | null>;
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
+  wheelPendingChase: PendingWheelChaseObligation | null;
   wheelSessionNetRevenue: number | null;
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: WheelFairnessEntry[];

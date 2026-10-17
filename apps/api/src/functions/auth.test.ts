@@ -16,7 +16,8 @@ const {
   clearSessionCookieMock,
   getUserProfileMock,
   revokeAllSessionsForUserMock,
-  revokeAllRefreshSessionsForUserMock
+  revokeAllRefreshSessionsForUserMock,
+  clearRefreshSessionAssociationsForUserMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
@@ -25,7 +26,8 @@ const {
   clearSessionCookieMock: vi.fn(),
   getUserProfileMock: vi.fn(),
   revokeAllSessionsForUserMock: vi.fn(),
-  revokeAllRefreshSessionsForUserMock: vi.fn()
+  revokeAllRefreshSessionsForUserMock: vi.fn(),
+  clearRefreshSessionAssociationsForUserMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -50,6 +52,7 @@ vi.mock("../lib/auth", () => ({
 }));
 
 vi.mock("../lib/cosmos/sessionRepository", () => ({
+  clearRefreshSessionAssociationsForUser: clearRefreshSessionAssociationsForUserMock,
   revokeAllSessionsForUser: revokeAllSessionsForUserMock,
   revokeAllRefreshSessionsForUser: revokeAllRefreshSessionsForUserMock
 }));
@@ -78,6 +81,7 @@ beforeEach(() => {
   });
   revokeAllSessionsForUserMock.mockResolvedValue(3);
   revokeAllRefreshSessionsForUserMock.mockResolvedValue(4);
+  clearRefreshSessionAssociationsForUserMock.mockResolvedValue(undefined);
 });
 
 test("authMe resolves user and returns payload", async () => {
@@ -150,4 +154,6 @@ test("authLogoutAll revokes all sessions and clears cookie", async () => {
     revokedRefreshSessionCount: 4
   });
   assert.equal(clearSessionCookieMock.mock.calls.length, 1);
+  assert.ok(revokeAllRefreshSessionsForUserMock.mock.invocationCallOrder[0]! < revokeAllSessionsForUserMock.mock.invocationCallOrder[0]!);
+  assert.ok(revokeAllSessionsForUserMock.mock.invocationCallOrder[0]! < clearRefreshSessionAssociationsForUserMock.mock.invocationCallOrder[0]!);
 });

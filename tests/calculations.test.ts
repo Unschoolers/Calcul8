@@ -43,6 +43,42 @@ import {
 } from "../src/components/windows/game/services/wheelPricing.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
+test("native CAD-to-USD lot costs use the finite positive fallback before summary calculations", () => {
+  const invalidRates = [Number.POSITIVE_INFINITY, -1, 0, Number.NaN];
+  for (const exchangeRate of invalidRates) {
+    const lot: Lot = {
+      id: 9001,
+      name: "CAD cost, USD sale",
+      lotType: "bulk",
+      boxPriceCost: 100,
+      boxesPurchased: 1,
+      packsPerBox: 10,
+      spotsPerBox: 10,
+      costInputMode: "perBox",
+      currency: "CAD",
+      sellingCurrency: "USD",
+      exchangeRate,
+      purchaseDate: "2026-10-17",
+      purchaseShippingCost: 0,
+      purchaseTaxPercent: 0,
+      sellingTaxPercent: 0,
+      sellingShippingPerOrder: 0,
+      feeProfilePreset: "none",
+      platformFeePercent: 0,
+      additionalFeePercent: 0,
+      additionalFeeAppliesTo: "sale_only",
+      fixedFeePerOrder: 0,
+      includeTax: false,
+      spotPrice: 0,
+      boxPriceSell: 0,
+      packPrice: 0,
+      targetProfitPercent: 15
+    };
+    const summary = calculateLotPerformanceSummary(lot, [], 1.35);
+    assert.ok(Math.abs(summary.totalCost - (100 / 1.35)) < 0.000001, `rate ${exchangeRate} produced ${summary.totalCost}`);
+  }
+});
+
 type MockStorage = {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;

@@ -228,6 +228,13 @@ export const gameWindowDefinition = {
         : [];
       this.persistLastWheelConfigSelection();
       this.ensureWheelEditorState();
+      if (this.wheelPendingChase) {
+        this.reopenPendingChaseDecision();
+      } else if (this.wheelChaseDialog && !this.wheelChasePreviewMode) {
+        this.wheelChaseDialog = false;
+        this.wheelChasePendingTierId = "";
+        this.wheelChaseReplacementSinglesId = null;
+      }
       this.syncGameStageOverlayState();
     },
     handleGameStageOverlayMountedChange(this: GameWindowOverlayThis, mounted: boolean): void {

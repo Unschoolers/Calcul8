@@ -5,7 +5,7 @@ import {
 } from "../../../../../shared/workspace-realtime-rooms.mjs";
 import type { WorkspaceRealtimeStatus } from "../../../../types/app.ts";
 import type { WorkspaceRealtimeContext } from "../../../context/workspace.ts";
-import { resolveWorkspaceScopeContext, type WorkspaceScopeContext } from "../../../workspace-scope.ts";
+import { getWorkspaceScopeRevision, resolveWorkspaceScopeContext, type WorkspaceScopeContext } from "../../../workspace-scope.ts";
 import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
 
 export type RealtimeSocketState = {
@@ -17,6 +17,8 @@ export type RealtimeSocketState = {
   subscribeAttemptId: number;
   reconnectAttempt: number;
   catchUpPromise: Promise<void> | null;
+  catchUpVisitKey: string | null;
+  pendingCatchUpReason: "manual" | "subscribed" | "reconnected" | "uncertain-event" | null;
   recoveredTimeoutId: number | null;
 };
 
@@ -50,6 +52,17 @@ const FALLBACK_REALTIME_SOCKET_URL = "wss://whatfees-realtime.redsand-4d20b4cc.c
 const PROD_REALTIME_SOCKET_URL = "wss://ws.whatfees.ca/socket";
 const WORKSPACE_REALTIME_TABS = new Set(["config", "live", "sales", "portfolio", "wheel"]);
 const realtimeSocketStateByApp = new WeakMap<object, RealtimeSocketState>();
+const realtimeApplyRevisionByApp = new WeakMap<object, number>();
+
+export function getWorkspaceRealtimeApplyRevision(app: object): number {
+  return realtimeApplyRevisionByApp.get(app) ?? 0;
+}
+
+export function markWorkspaceRealtimeDataChanged(app: object): number {
+  const revision = getWorkspaceRealtimeApplyRevision(app) + 1;
+  realtimeApplyRevisionByApp.set(app, revision);
+  return revision;
+}
 
 export function getRealtimeSocketState(app: object): RealtimeSocketState {
   let state = realtimeSocketStateByApp.get(app);
@@ -63,6 +76,8 @@ export function getRealtimeSocketState(app: object): RealtimeSocketState {
       subscribeAttemptId: 0,
       reconnectAttempt: 0,
       catchUpPromise: null,
+      catchUpVisitKey: null,
+      pendingCatchUpReason: null,
       recoveredTimeoutId: null
     };
     realtimeSocketStateByApp.set(app, state);

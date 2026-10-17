@@ -4,7 +4,9 @@ import { afterEach, expect, test, vi } from "vitest";
 import { applyRealtimeMessage } from "../../src/app-core/methods/ui/workspace/workspace-realtime-events.ts";
 import { getScopedWheelConfigSessionStorageKey } from "../../src/app-core/storageKeys.ts";
 import { createInitialState } from "../../src/app-core/state.ts";
+import { ensureWheelControllerState } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
 import { gameWindowDefinition } from "../../src/components/windows/game/coordinator/GameWindow.definition.ts";
+import { wheelSessionMethods } from "../../src/components/windows/game/commands/wheelSessionMethods.ts";
 import {
   createGameCoordinatorPorts,
   gameCoordinatorPortsKey
@@ -121,4 +123,89 @@ test("mounted GameWindow watchers preserve an authoritative realtime session ove
   expect(ctx.wheelPreviewSlots.every((slot) => slot.tier === "remote-tier")).toBe(true);
   expect(ctx.wheelSpinCounts).toEqual(remoteCounts);
   expect(ctx.wheelTotalSpins).toBe(3);
+});
+
+test("a realtime chase update reopens its decision and warns when the original source is mismatched", async () => {
+  const ctx = reactive({
+    ...createInitialState(),
+    activeScopeType: "workspace" as const,
+    activeWorkspaceId: "team-42",
+    currentTab: "wheel",
+    currentLotId: 1,
+    lots: [{ id: 1, name: "Bulk", lotType: "bulk" as const }],
+    wheelConfigs: [config("Remote wheel")],
+    activeWheelConfigId: 91,
+    activeWheelSlots: buildSlotsFromConfig(config("Remote wheel")),
+    wheelPreviewSlots: buildSlotsFromConfig(config("Remote wheel")),
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    wheelSessionUpdatedAt: 100,
+    wheelChaseDialog: false,
+    wheelChasePreviewMode: false,
+    wheelChasePendingTierId: "",
+    loadSalesForLotId: vi.fn(() => []),
+    getSalesStorageKey: vi.fn(() => "sales"),
+    pullCloudSync: vi.fn(),
+    hydrateBuyerProfiles: vi.fn(),
+    handleWorkspaceAccessLost: vi.fn(),
+    notify: vi.fn(),
+    persistLastWheelConfigSelection: vi.fn(),
+    ensureWheelEditorState: vi.fn(),
+    syncGameStageOverlayState: vi.fn()
+  });
+  ensureWheelControllerState(ctx as never);
+  Object.assign(ctx, {
+    reopenPendingChaseDecision: () => wheelSessionMethods.reopenPendingChaseDecision.call(ctx as never),
+    activeWheelConfig: config("Remote wheel")
+  });
+
+  applyRealtimeMessage(ctx as never, "workspace:team-42:wheel", "wheel.session.updated", {
+    wheelConfigs: [config("Remote wheel")],
+    activeWheelConfigId: 91,
+    wheelSpinCounts: [1],
+    wheelTotalSpins: 1,
+    wheelSessionUpdatedAt: 200,
+    wheelPendingChase: {
+      version: 1,
+      configId: 91,
+      spinNumber: 1,
+      tierId: "tier-1",
+      slotIndex: 0,
+      originalConfig: config("Remote wheel"),
+      originalSourceJson: JSON.stringify(config("Remote wheel")),
+      originalTier: config("Remote wheel").tiers[0],
+      originalPrize: { slotLabel: "Prize", slotColor: "#f00", lotId: 1, singlesEntryId: 99, itemLabel: "Original card", singlesSourceFingerprint: "{}" },
+      saleDraft: { id: 123, type: "wheel", quantity: 1, price: 10 }
+    }
+  });
+  gameWindowDefinition.methods!.applyRealtimeWheelSession.call(ctx as never);
+
+  expect(ctx.wheelPendingChase?.tierId).toBe("tier-1");
+  expect(ctx.wheelChaseDialog).toBe(true);
+  expect(ctx.wheelChasePendingTierId).toBe("tier-1");
+  expect(ctx.wheelInventoryWarning).toMatch(/original wheel or prize source changed/i);
+
+  applyRealtimeMessage(ctx as never, "workspace:team-42:wheel", "wheel.session.updated", {
+    wheelConfigs: [config("Remote wheel")],
+    activeWheelConfigId: 91,
+    wheelSessionUpdatedAt: 300,
+    wheelPendingChase: null
+  });
+  gameWindowDefinition.methods!.applyRealtimeWheelSession.call(ctx as never);
+  expect(ctx.wheelChaseDialog).toBe(false);
+  expect(ctx.wheelChasePendingTierId).toBe("");
+
+  ctx.wheelChaseDialog = true;
+  ctx.wheelChasePreviewMode = true;
+  ctx.wheelChasePendingTierId = "preview-tier";
+  applyRealtimeMessage(ctx as never, "workspace:team-42:wheel", "wheel.session.updated", {
+    wheelConfigs: [config("Remote wheel")],
+    activeWheelConfigId: 91,
+    wheelSessionUpdatedAt: 400,
+    wheelPendingChase: null
+  });
+  gameWindowDefinition.methods!.applyRealtimeWheelSession.call(ctx as never);
+  expect(ctx.wheelChaseDialog).toBe(true);
+  expect(ctx.wheelChasePreviewMode).toBe(true);
+  expect(ctx.wheelChasePendingTierId).toBe("preview-tier");
 });

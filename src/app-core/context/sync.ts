@@ -30,7 +30,7 @@ export type SyncComputedObject = {
 };
 
 export interface SyncMethodState {
-  pullCloudSync(forceApply?: boolean): Promise<PersistenceOutcome>;
+  pullCloudSync(forceApply?: boolean, options?: { expectedPayloadSignature?: string; isRequestCurrent?: () => boolean }): Promise<PersistenceOutcome>;
   pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<PersistenceOutcome>;
   startCloudSyncScheduler(): void;
   stopCloudSyncScheduler(): void;

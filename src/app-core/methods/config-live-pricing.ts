@@ -4,6 +4,7 @@ import type {
 } from "../context/commerce.ts";
 import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
 import { captureWorkspaceScopeGuard } from "../workspace-scope.ts";
+import { getWorkspaceRealtimeApplyRevision } from "./ui/workspace/workspace-realtime-state.ts";
 import {
   fetchAuthoritativeLivePricing,
   saveAuthoritativeLivePricing,
@@ -17,6 +18,7 @@ type QueuedLivePricingSnapshot = {
   workspaceId: string | null;
   authEpoch: number;
   lotHydrationRevision: number;
+  realtimeApplyRevision: number | null;
   isScopeVisitCurrent: () => boolean;
   liveSpotPrice: number;
   liveBoxPriceSell: number;
@@ -62,13 +64,14 @@ function createLivePricingHash(snapshot: QueuedLivePricingSnapshot): string {
   });
 }
 
-function captureSnapshot(context: QueuedLivePricingContext, lotId: number): QueuedLivePricingSnapshot {
+function captureSnapshot(context: QueuedLivePricingContext, lotId: number, trackRealtimeRevision = false): QueuedLivePricingSnapshot {
   return {
     lotId,
     scopeType: context.activeScopeType,
     workspaceId: context.activeWorkspaceId,
     authEpoch: context.googleAuthEpoch,
     lotHydrationRevision: context.lotHydrationRevision,
+    realtimeApplyRevision: trackRealtimeRevision ? getWorkspaceRealtimeApplyRevision(context as object) : null,
     isScopeVisitCurrent: captureWorkspaceScopeGuard(context),
     liveSpotPrice: Number(context.liveSpotPrice) || 0,
     liveBoxPriceSell: Number(context.liveBoxPriceSell) || 0,
@@ -83,7 +86,9 @@ function isSnapshotCurrent(context: QueuedLivePricingContext, snapshot: QueuedLi
     && context.activeScopeType === snapshot.scopeType
     && context.activeWorkspaceId === snapshot.workspaceId
     && context.googleAuthEpoch === snapshot.authEpoch
-    && context.lotHydrationRevision === snapshot.lotHydrationRevision;
+    && context.lotHydrationRevision === snapshot.lotHydrationRevision
+    && (snapshot.realtimeApplyRevision == null
+      || getWorkspaceRealtimeApplyRevision(context as object) === snapshot.realtimeApplyRevision);
 }
 
 function requestOptions(
@@ -113,14 +118,22 @@ export async function hydrateAuthoritativeLivePricingForLot(
   if (!shouldHydrateAuthoritativeLivePricing(context, lotId)) return;
   if (!canUseAuthoritativeSalesLiveApi()) return;
 
-  const snapshot = captureSnapshot(context, lotId);
+  const snapshot = captureSnapshot(context, lotId, true);
   if (!isSnapshotCurrent(context, snapshot)) return;
 
   context.livePricingHydrationStatus = "loading";
   context.livePricingHydratedLotId = lotId;
   try {
     const latest = await fetchAuthoritativeLivePricing(context, lotId, requestOptions(context, snapshot));
-    if (!isSnapshotCurrent(context, snapshot)) return;
+    if (!isSnapshotCurrent(context, snapshot)) {
+      const sameHydrationVisit = snapshot.isScopeVisitCurrent()
+        && context.currentLotId === snapshot.lotId
+        && context.lotHydrationRevision === snapshot.lotHydrationRevision;
+      if (sameHydrationVisit && context.livePricingHydratedLotId === lotId) {
+        context.livePricingHydrationStatus = "idle";
+      }
+      return;
+    }
     if (latest) {
       applyAuthoritativeLivePricingSnapshot(context, lotId, latest);
     } else {

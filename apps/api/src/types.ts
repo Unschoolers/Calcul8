@@ -103,6 +103,8 @@ export interface SessionDocument {
   lastSeenAt: string;
   idleExpiresAt: string;
   absoluteExpiresAt: string;
+  /** Server-only stable link to the refresh-token family that issued this session. */
+  refreshFamilyId?: string | null;
 }
 
 export interface RefreshSessionDocument {
@@ -110,7 +112,9 @@ export interface RefreshSessionDocument {
   docType: "refresh_session";
   userId: string;
   tokenHash: string;
+  previousTokenHash?: string | null;
   sessionId: string | null;
+  previousSessionId?: string | null;
   createdAt: string;
   lastUsedAt: string;
   expiresAt: string;
@@ -360,6 +364,7 @@ export interface SyncPresetDocument {
   sales: unknown[];
   version: number;
   updatedAt: string;
+  supersededAt?: string;
 }
 
 export interface SyncMetaDocument extends Omit<SyncMetadataDto, "activeWheelConfigId"> {
@@ -597,6 +602,7 @@ export interface SaleDocument {
   updatedAt: string;
   updatedBy: string;
   mutationId: string;
+  mutationFingerprint?: string;
   deletedAt?: string | null;
 }
 

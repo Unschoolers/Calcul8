@@ -36,3 +36,13 @@ One isolated worktree per task; six child slots maximum, reserve Sol review capa
 - Snapshot retention clock begins at confirmed supersession, not generation creation. Null metadata only equals null; present metadata requires matching nonempty ETag/version/generation. Cleanup awaited best effort after confirmed publication; never report failed batch success.
 - Sales replay fingerprint includes sorted canonical operation+scope+lot+sale+original baseVersion+payload and is stored atomically. Same ID changed request409; later mutation cannot be rolled back.
 - CAD conversion occurs after native fee/profit/forecast calculations, once. Counts/percentages/native sale editor stay native.
+
+## Final continuation rulings
+
+Six tasks1/2/3/4/10/11 survived in remote2a5258b. Reconstruct remaining tasks5/6/7/8/9/12/13/14 from accepted behavior; publish EACH worker committed candidate to its own remote branch before final review, so interruptions cannot erase completed work. No main/deployment.
+
+- Inventory: supported paid unlinked singles count aggregate capacity; reject forged nonempty references. Wheel0 is legitimate noninventory paidspot; pack/RTYH requirepositive consumption. Nonincreasing historical edits cannot shift consumption to another entry/resource. Honor entity-mode vs legacy snapshot semantics; snapshot-only delete materializes tombstone. Shared meta/preset loader guard-first, exact generation, bounded churn409.
+- Logout: valid refresh capability current/previous secret works without old access. Supported verified-access-only fallback must also win rotation races. Use stable server-only family link on access sessions, setnew and conditionally backfill legacyold BEFORE rotationCAS, rereadlink when query misses, owner-bound family revoke despite associationchange. Deleteold+successor beforeclearing association; failure retryable/no false success.
+- Retention tests must actually discover active marked candidate, preserve fresh/unmarked, keep old generation after partialstaging or finalmetadata412, provecleanup awaited and rejection best effort. Preserve both changed-valid AND missing ETag cases.
+- CAD: normalize finitepositive rate BEFORE native crosscurrency costs/fees/profit/forecast and final conversion, not just final helper. Reports desktop/mobile and copied/savedTSV explicitlyCAD.
+- Realtime: catchup broad app.pullCloudSync() can overwrite WS before laterentityguards; guard the ACTUAL fullsync pre-apply stage or avoid its unsafeentityeffects. Tests must use real sync coordinator/pull with deferredHTTP plusWS event, not mocked app.pullCloudSync. PreserveTask8 queuedreader coalescing and explicitforceApply semantics.

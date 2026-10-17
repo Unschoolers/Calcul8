@@ -48,6 +48,7 @@ function createConfig(): ApiConfig {
 }
 
 function createRefreshSession(): RefreshSessionDocument & { _etag: string } {
+  const now = Date.now();
   return {
     id: "refresh-1",
     docType: "refresh_session",
@@ -56,7 +57,7 @@ function createRefreshSession(): RefreshSessionDocument & { _etag: string } {
     sessionId: "session-old",
     createdAt: "2026-07-01T00:00:00.000Z",
     lastUsedAt: "2026-07-01T00:00:00.000Z",
-    expiresAt: "2026-09-01T00:00:00.000Z",
+    expiresAt: new Date(now + 86_400_000).toISOString(),
     revokedAt: null,
     _etag: "etag-refresh-1"
   };
@@ -128,6 +129,60 @@ test("rotateRefreshSession rejects a token that changed before the conditional w
     }),
     RefreshSessionConflictError
   );
+  assert.equal(replace.mock.calls.length, 0);
+});
+
+test("rotateRefreshSession never resets a revoked or expired family", async () => {
+  for (const overrides of [
+    { revokedAt: new Date().toISOString() },
+    { expiresAt: new Date(Date.now() - 1_000).toISOString() }
+  ]) {
+    const existing = { ...createRefreshSession(), ...overrides };
+    const replace = vi.fn();
+    getContainersMock.mockReturnValue({
+      sessions: {
+        items: { upsert: vi.fn() },
+        item: vi.fn().mockReturnValue({
+          read: vi.fn().mockResolvedValue({ resource: existing }),
+          replace
+        })
+      }
+    });
+
+    await assert.rejects(
+      () => rotateRefreshSession(createConfig(), {
+        refreshSessionId: "refresh-1",
+        expectedTokenHash: "old-token-hash",
+        tokenHash: "new-token-hash",
+        sessionId: "session-new",
+        lastUsedAt: new Date().toISOString()
+      }),
+      RefreshSessionConflictError
+    );
+    assert.equal(replace.mock.calls.length, 0);
+  }
+});
+
+test("rotateRefreshSession rejects a fresh row without an ETag", async () => {
+  const existing = { ...createRefreshSession(), _etag: "" };
+  const replace = vi.fn();
+  getContainersMock.mockReturnValue({
+    sessions: {
+      items: { upsert: vi.fn() },
+      item: vi.fn().mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: existing }),
+        replace
+      })
+    }
+  });
+
+  await assert.rejects(() => rotateRefreshSession(createConfig(), {
+    refreshSessionId: "refresh-1",
+    expectedTokenHash: "old-token-hash",
+    tokenHash: "new-token-hash",
+    sessionId: "session-new",
+    lastUsedAt: new Date().toISOString()
+  }), RefreshSessionConflictError);
   assert.equal(replace.mock.calls.length, 0);
 });
 

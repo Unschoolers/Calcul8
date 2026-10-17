@@ -135,7 +135,7 @@ test("required pending lot selections use a persistent shared modal instead of t
   assert.match(template, /<app-dialog-shell[\s\S]*v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
   assert.match(template, /class="wheel-pending-lot-dialog"/);
   assert.match(template, /v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/);
-  assert.match(template, /:disabled="wheelPendingInventoryIssues\.some\(\(entry\) => !entry\.selectedLotId\)"/);
+  assert.match(template, /:disabled="wheelPendingInventoryIssues\.every\(\(entry\) => isPendingChaseInventoryIssue\(entry\) \|\| !entry\.selectedLotId\)"/);
 });
 
 test("required pending lot selections suppress duplicate stage warnings", () => {

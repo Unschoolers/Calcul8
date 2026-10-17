@@ -4,6 +4,7 @@ import {
   calculateSaleProfit,
 } from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
+import { convertAmountToCad, normalizeUsdToCadRate } from "../../domain/currency.ts";
 import { compareLocalizedText, formatLocalizedCompactDate, translateAppMessage } from "../i18n/index.ts";
 import type {
   Lot,
@@ -191,8 +192,9 @@ export function buildPortfolioSalesByUserChartData(params: {
 
   for (const lot of params.lots) {
     if (!selectedLotIdSet.has(lot.id)) continue;
+    const nativeLot = { ...lot, exchangeRate: normalizeUsdToCadRate(lot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE) };
     const sales = params.salesByLotId.get(lot.id) ?? [];
-    const lotSummary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+    const lotSummary = calculateLotPerformanceSummary(nativeLot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
 
     for (const sale of sales) {
       const saleDate = parseDateOnly(String(sale.date || ""));
@@ -214,23 +216,29 @@ export function buildPortfolioSalesByUserChartData(params: {
       if (params.metric === "count") {
         current.values[weekIndex] += 1;
       } else {
-        const saleNetRevenue = calculateSaleNetRevenue(sale, lot.sellingTaxPercent, lot);
-        current.values[weekIndex] += params.metric === "revenue"
+        const saleNetRevenue = calculateSaleNetRevenue(sale, nativeLot.sellingTaxPercent, nativeLot);
+        const amount = params.metric === "revenue"
           ? saleNetRevenue
           : calculateSaleProfit({
             sale,
-            lotType: getLotType(lot),
-            packsPerBox: lot.packsPerBox,
-            sellingTaxPercent: lot.sellingTaxPercent,
+            lotType: getLotType(nativeLot),
+            packsPerBox: nativeLot.packsPerBox,
+            sellingTaxPercent: nativeLot.sellingTaxPercent,
             totalCaseCost: lotSummary.totalCost,
             totalPacks: lotSummary.totalPacks,
-            purchaseCurrency: lot.currency,
-            sellingCurrency: lot.sellingCurrency,
-            exchangeRate: lot.exchangeRate,
-            singlesPurchases: lot.singlesPurchases,
+            purchaseCurrency: nativeLot.currency,
+            sellingCurrency: nativeLot.sellingCurrency,
+            exchangeRate: nativeLot.exchangeRate,
+            singlesPurchases: nativeLot.singlesPurchases,
             defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
-            feeProfileInput: lot
+            feeProfileInput: nativeLot
           });
+        current.values[weekIndex] += convertAmountToCad(
+          amount,
+          nativeLot.sellingCurrency,
+          nativeLot.exchangeRate,
+          DEFAULT_VALUES.EXCHANGE_RATE
+        );
       }
       seriesMap.set(identity.key, current);
     }
@@ -270,8 +278,9 @@ export function buildPortfolioSalesByUserDrilldownRows(params: {
 
   for (const lot of params.lots) {
     if (!selectedLotIdSet.has(lot.id)) continue;
+    const nativeLot = { ...lot, exchangeRate: normalizeUsdToCadRate(lot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE) };
     const sales = params.salesByLotId.get(lot.id) ?? [];
-    const lotSummary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+    const lotSummary = calculateLotPerformanceSummary(nativeLot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
 
     for (const sale of sales) {
       const saleDate = parseDateOnly(String(sale.date || ""));
@@ -286,20 +295,20 @@ export function buildPortfolioSalesByUserDrilldownRows(params: {
         params.workspaceMembers,
         params.preferredLanguage
       );
-      const revenue = calculateSaleNetRevenue(sale, lot.sellingTaxPercent, lot);
+      const revenue = calculateSaleNetRevenue(sale, nativeLot.sellingTaxPercent, nativeLot);
       const profit = calculateSaleProfit({
         sale,
-        lotType: getLotType(lot),
-        packsPerBox: lot.packsPerBox,
-        sellingTaxPercent: lot.sellingTaxPercent,
+        lotType: getLotType(nativeLot),
+        packsPerBox: nativeLot.packsPerBox,
+        sellingTaxPercent: nativeLot.sellingTaxPercent,
         totalCaseCost: lotSummary.totalCost,
         totalPacks: lotSummary.totalPacks,
-        purchaseCurrency: lot.currency,
-        sellingCurrency: lot.sellingCurrency,
-        exchangeRate: lot.exchangeRate,
-        singlesPurchases: lot.singlesPurchases,
+        purchaseCurrency: nativeLot.currency,
+        sellingCurrency: nativeLot.sellingCurrency,
+        exchangeRate: nativeLot.exchangeRate,
+        singlesPurchases: nativeLot.singlesPurchases,
         defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
-        feeProfileInput: lot
+        feeProfileInput: nativeLot
       });
 
       rows.push({
@@ -314,8 +323,8 @@ export function buildPortfolioSalesByUserDrilldownRows(params: {
         sellerKey: identity.key,
         sellerLabel: identity.label,
         quantity: getSaleQuantity(sale),
-        revenue,
-        profit
+        revenue: convertAmountToCad(revenue, nativeLot.sellingCurrency, nativeLot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE),
+        profit: convertAmountToCad(profit, nativeLot.sellingCurrency, nativeLot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE)
       });
     }
   }

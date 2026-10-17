@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createSyncPayload, getSyncPayloadSignature } from "../src/app-core/methods/ui/sync/sync-payload.ts";
+import { runCloudSyncPull } from "../src/app-core/methods/ui/sync/sync-service.ts";
+import { setActiveWorkspaceScope } from "../src/app-core/workspace-scope.ts";
+import { markWorkspaceRealtimeDataChanged } from "../src/app-core/methods/ui/workspace/workspace-realtime-state.ts";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
@@ -44,7 +47,8 @@ vi.mock("../src/app-core/methods/lot-live-pricing-api.ts", () => ({
   normalizeLivePricing: normalizeLivePricingMock
 }));
 
-vi.mock("../src/app-core/methods/ui/sync/lot-entity-polling.ts", () => ({
+vi.mock("../src/app-core/methods/ui/sync/lot-entity-polling.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/app-core/methods/ui/sync/lot-entity-polling.ts")>(),
   reconcileIncomingLivePricingSnapshot: reconcileIncomingLivePricingSnapshotMock
 }));
 
@@ -52,6 +56,7 @@ import {
   refreshWorkspaceRealtime,
   stopWorkspaceRealtime
 } from "../src/app-core/methods/ui/workspace/workspace-realtime.ts";
+import { applyRealtimeMessage } from "../src/app-core/methods/ui/workspace/workspace-realtime-events.ts";
 
 class FakeWebSocket {
   static CONNECTING = 0;
@@ -139,6 +144,7 @@ function createApp(overrides: Record<string, any> = {}): any {
     wheelSpinCounts: [] as number[],
     wheelLastResult: "",
     wheelSessionUpdatedAt: 0,
+    wheelPendingChase: null,
     wheelSkippedDeductions: [],
     wheelSessionNetRevenue: 0,
     wheelSessionCostAdjustment: 0,
@@ -173,6 +179,7 @@ function createApp(overrides: Record<string, any> = {}): any {
     }>,
     wheelCurrentAngle: 0,
     wheelLastResultColor: "",
+    notify: vi.fn(),
     pullCloudSync: vi.fn(async () => ({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" })),
     hydrateBuyerProfiles: vi.fn(async () => undefined),
     handleWorkspaceAccessLost: vi.fn(async () => undefined),
@@ -197,6 +204,14 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
 }
 
 beforeEach(() => {
@@ -246,7 +261,7 @@ afterEach(() => {
 });
 
 test("refreshWorkspaceRealtime connects to prod socket host and subscribes with a signed token", async () => {
-  const app = createApp();
+  const app = createApp({ loadLot: vi.fn() });
   app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
 
   refreshWorkspaceRealtime(app as never);
@@ -385,6 +400,294 @@ test("workspace realtime catch-up blocks broad cloud pull when local state is di
   await runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
 
   assert.equal(app.workspaceRealtimeStatus, "stale");
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
+});
+
+test("workspace catch-up full sync cannot overwrite a newer websocket sale", async () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => { storage.set(key, String(value)); },
+    removeItem: (key: string) => { storage.delete(key); }
+  });
+  const app = createApp({ loadLot: vi.fn() });
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce(null);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce(null);
+  const pullResponse = createDeferred<Response>();
+  let pullCalls = 0;
+  app.pullCloudSync = (forceApply = false, options = {}) => runCloudSyncPull(app, {
+    resolveApiBaseUrl: () => "https://api.example",
+    isOnline: () => true,
+    requestCloudSyncPull: () => {
+      pullCalls += 1;
+      return pullResponse.promise;
+    },
+    createSyncPayload: (target, _version, scope) => createSyncPayload({
+      lots: target.lots,
+      currentLotId: target.currentLotId,
+      wheelConfigs: target.wheelConfigs,
+      activeWheelConfigId: target.activeWheelConfigId,
+      systemPricingDefaults: target.systemPricingDefaults,
+      workspaceId: scope?.workspaceId ?? undefined
+    }),
+    getStoredClientVersion: () => 0,
+    setStoredClientVersion: () => {},
+    setStoredLastSyncedPayloadHash: () => {},
+    startSyncStatus: () => {},
+    setSyncStatusSuccess: () => {},
+    setSyncStatusError: () => {}
+  }, { forceApply, ...options });
+  app.startOfflineReconnectScheduler = () => {};
+
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+  const catchUpPromise = runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+  await flushMicrotasks();
+  assert.equal(pullCalls, 1);
+
+  applyRealtimeMessage(
+    app as never,
+    "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+    "sale.upserted",
+    {
+      lotId: 1773766061603,
+      sale: { id: 901, type: "pack", quantity: 1, packsCount: 1, price: 30, date: "2026-10-17" }
+    }
+  );
+  assert.equal((app.sales as Array<{ id: number }>)[0]?.id, 901);
+
+  pullResponse.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [{ id: 1773766061603, name: "Stale cloud lot" }],
+        salesByLot: { "1773766061603": [{ id: 900, type: "pack", quantity: 1, packsCount: 1, price: 20, date: "2026-10-16" }] },
+        wheelConfigs: [],
+        activeWheelConfigId: null,
+        version: 1
+      }
+    })
+  } as Response);
+  await catchUpPromise;
+
+  assert.equal((app.sales as Array<{ id: number }>)[0]?.id, 901);
+  assert.equal(app.lots[0]?.name, "Lot A");
+  assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(app.workspaceRealtimeStatus, "stale");
+});
+
+test("a confirmed default full apply remains recovered after loadLot advances hydration revision", async () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => { storage.set(key, String(value)); },
+    removeItem: (key: string) => { storage.delete(key); }
+  });
+  const app = createApp({ loadLot: vi.fn(() => { app.lotHydrationRevision = (app.lotHydrationRevision ?? 0) + 1; }) });
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  app.lotHydrationRevision = 1;
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce(null);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce(null);
+  app.pullCloudSync = (forceApply = false, options = {}) => runCloudSyncPull(app, {
+    resolveApiBaseUrl: () => "https://api.example",
+    isOnline: () => true,
+    requestCloudSyncPull: async () => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ snapshot: {
+        lots: [{ id: 1773766061603, name: "Confirmed cloud lot" }],
+        salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null, version: 2
+      } })
+    } as Response),
+    createSyncPayload: (target, _version, scope) => createSyncPayload({
+      lots: target.lots, currentLotId: target.currentLotId, wheelConfigs: target.wheelConfigs,
+      activeWheelConfigId: target.activeWheelConfigId, systemPricingDefaults: target.systemPricingDefaults,
+      workspaceId: scope?.workspaceId ?? undefined
+    }),
+    getStoredClientVersion: () => 0,
+    setStoredClientVersion: () => {},
+    setStoredLastSyncedPayloadHash: () => {},
+    startSyncStatus: () => {}, setSyncStatusSuccess: () => {}, setSyncStatusError: () => {}
+  }, { forceApply, ...options });
+
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+  await runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+
+  assert.equal(app.lots[0]?.name, "Confirmed cloud lot");
+  assert.equal(app.loadLot.mock.calls.length, 1);
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
+});
+
+test("workspace catch-up fences a metadata edit made while the full snapshot is in flight", async () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => { storage.set(key, String(value)); },
+    removeItem: (key: string) => { storage.delete(key); }
+  });
+  const app = createApp({ loadLot: vi.fn() });
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce(null);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce(null);
+  const pullResponse = createDeferred<Response>();
+  app.pullCloudSync = (forceApply = false, options = {}) => runCloudSyncPull(app, {
+    resolveApiBaseUrl: () => "https://api.example",
+    isOnline: () => true,
+    requestCloudSyncPull: () => pullResponse.promise,
+    createSyncPayload: (target, _version, scope) => createSyncPayload({
+      lots: target.lots,
+      currentLotId: target.currentLotId,
+      wheelConfigs: target.wheelConfigs,
+      activeWheelConfigId: target.activeWheelConfigId,
+      systemPricingDefaults: target.systemPricingDefaults,
+      workspaceId: scope?.workspaceId ?? undefined
+    }),
+    getStoredClientVersion: () => 0,
+    setStoredClientVersion: () => {},
+    setStoredLastSyncedPayloadHash: () => {},
+    startSyncStatus: () => {},
+    setSyncStatusSuccess: () => {},
+    setSyncStatusError: () => {}
+  }, { forceApply, ...options });
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+
+  const catchUpPromise = runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+  await flushMicrotasks();
+  app.lots[0]!.name = "Locally renamed while syncing";
+  pullResponse.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ snapshot: {
+      lots: [{ id: 1773766061603, name: "Older cloud lot" }],
+      salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null, version: 5
+    } })
+  } as Response);
+  await catchUpPromise;
+
+  assert.equal(app.lots[0]?.name, "Locally renamed while syncing");
+  assert.equal(app.workspaceRealtimeStatus, "stale");
+});
+
+test("workspace catch-up skips broad pull when live pricing is already dirty", async () => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  app.livePackPrice = 31;
+  const { markLivePricingPollingBaseline } = await import(
+    "../src/app-core/methods/ui/sync/lot-entity-polling.ts"
+  );
+  markLivePricingPollingBaseline(app, {
+    liveSpotPrice: 0, liveBoxPriceSell: 0, livePackPrice: 0, currentLivePricingVersion: null
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce(null);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce(null);
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+
+  await runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
+  assert.equal(app.livePackPrice, 31);
+  assert.equal(app.workspaceRealtimeStatus, "stale");
+});
+
+test("a changed lot visit queues one bounded catch-up after the old request settles", async () => {
+  const app = createApp();
+  app.lotHydrationRevision = 1;
+  const oldSales = createDeferred<any[]>();
+  const oldPricing = createDeferred<any>();
+  fetchAuthoritativeSalesMock.mockReturnValueOnce(oldSales.promise).mockResolvedValueOnce([]);
+  fetchAuthoritativeLivePricingMock.mockReturnValueOnce(oldPricing.promise).mockResolvedValueOnce(null);
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+
+  const oldCatchUp = runWorkspaceRealtimeCatchUp(app as never, { reason: "subscribed" });
+  app.currentLotId = 2;
+  app.lotHydrationRevision = 2;
+  void runWorkspaceRealtimeCatchUp(app as never, { reason: "subscribed" });
+  oldSales.resolve([]);
+  oldPricing.resolve(null);
+  await oldCatchUp;
+  await flushMicrotasks();
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 2);
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls[1]?.[1], 2);
+});
+
+test("a realtime event during catch-up queues one bounded follow-up", async () => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  const oldPull = createDeferred<any>();
+  app.pullCloudSync.mockReturnValueOnce(oldPull.promise).mockResolvedValueOnce({
+    kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed"
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValue([]);
+  fetchAuthoritativeLivePricingMock.mockResolvedValue(null);
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+
+  const oldCatchUp = runWorkspaceRealtimeCatchUp(app as never, { reason: "subscribed" });
+  await flushMicrotasks();
+  markWorkspaceRealtimeDataChanged(app);
+  void runWorkspaceRealtimeCatchUp(app as never, { reason: "uncertain-event" });
+  oldPull.resolve({ kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" });
+  await oldCatchUp;
+  await flushMicrotasks();
+
+  assert.equal(app.pullCloudSync.mock.calls.length, 2);
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
+});
+
+test("workspace catch-up rejects sales and pricing responses after scope and lot A-to-B-to-A", async () => {
+  const app = createApp();
+  app.googleAuthEpoch = 0;
+  app.lotHydrationRevision = 4;
+  const salesResponse = createDeferred<any[]>();
+  const pricingResponse = createDeferred<any>();
+  fetchAuthoritativeSalesMock.mockReturnValueOnce(salesResponse.promise);
+  fetchAuthoritativeLivePricingMock.mockReturnValueOnce(pricingResponse.promise);
+  const originalSales = [{ id: 5, type: "pack", quantity: 1, packsCount: 1, price: 9, date: "2026-10-17" }];
+  app.sales = originalSales;
+  app.livePackPrice = 7;
+
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+  const catchUpPromise = runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+  const salesOptions = fetchAuthoritativeSalesMock.mock.calls[0]?.[2];
+  const pricingOptions = fetchAuthoritativeLivePricingMock.mock.calls[0]?.[2];
+  assert.equal(salesOptions.cache, false);
+  assert.equal(salesOptions.scope.workspaceId, "ws_dcb4d6f021637411");
+  assert.equal(pricingOptions.scope.workspaceId, "ws_dcb4d6f021637411");
+
+  setActiveWorkspaceScope(app, "workspace", "team-b");
+  setActiveWorkspaceScope(app, "workspace", "ws_dcb4d6f021637411");
+  app.currentLotId = 2;
+  app.lotHydrationRevision += 1;
+  app.currentLotId = 1773766061603;
+  app.lotHydrationRevision += 1;
+  assert.equal(salesOptions.isRequestCurrent(), false);
+  assert.equal(pricingOptions.isRequestCurrent(), false);
+
+  salesResponse.resolve([{ id: 90, type: "pack", quantity: 1, packsCount: 1, price: 50, date: "2026-10-16" }]);
+  pricingResponse.resolve({ livePackPrice: 99, liveBoxPriceSell: 99, liveSpotPrice: 99, version: 8 });
+  await catchUpPromise;
+
+  assert.deepEqual(app.sales, originalSales);
+  assert.equal(app.livePackPrice, 7);
+  assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 0);
   assert.equal(app.pullCloudSync.mock.calls.length, 0);
 });
 
@@ -648,7 +951,24 @@ test("workspace realtime applies wheel updates including resets when revision is
         spinNumber: 2
       }],
       wheelCurrentAngle: 1.75,
-      wheelLastResultColor: "#00ff00"
+      wheelLastResultColor: "#00ff00",
+      wheelPendingChase: {
+        version: 1,
+        configId: 91,
+        spinNumber: 2,
+        tierId: "tier-1",
+        slotIndex: 0,
+        originalConfig: {
+          id: 91, name: "New Wheel", spinPrice: 10, targetMargin: 40,
+          tiers: [{ id: "tier-1", label: "Tier One", color: "#ff0000", slots: 4, costPerTier: 0,
+            boundLotId: 1, boundSinglesId: 10, deductionType: "singles", packsCount: 1, isChase: true }]
+        },
+        originalSourceJson: "{\"id\":91,\"name\":\"New Wheel\",\"spinPrice\":10,\"targetMargin\":40,\"tiers\":[{\"id\":\"tier-1\",\"label\":\"Tier One\",\"color\":\"#ff0000\",\"slots\":4,\"costPerTier\":0,\"boundLotId\":1,\"boundSinglesId\":10,\"deductionType\":\"singles\",\"packsCount\":1,\"isChase\":true}]}",
+        originalTier: { id: "tier-1", label: "Tier One", color: "#ff0000", slots: 4, costPerTier: 0,
+          boundLotId: 1, boundSinglesId: 10, deductionType: "singles", packsCount: 1, isChase: true },
+        originalPrize: { slotLabel: "Tier One", slotColor: "#ff0000", lotId: 1, singlesEntryId: 10, lotType: "singles", itemLabel: "Card" },
+        saleDraft: null
+      }
     }
   });
 
@@ -704,6 +1024,9 @@ test("workspace realtime applies wheel updates including resets when revision is
   assert.equal(app.activeWheelConfigId, 91);
   assert.equal(app.wheelSessionUpdatedAt, 200);
   assert.equal((app.wheelPendingInventoryIssues as Array<{ spinNumber?: number }>)[0]?.spinNumber, 2);
+  assert.equal((app.wheelPendingChase as { saleDraft: unknown; spinNumber: number }).spinNumber, 2);
+  assert.equal((app.wheelPendingChase as { saleDraft: unknown }).saleDraft, null);
+  assert.equal((app.wheelPendingChase as { originalPrize: { lotType?: string } }).originalPrize.lotType, "singles");
 });
 
 test("workspace realtime normalizes wheel config updates through the shared sync contract", async () => {

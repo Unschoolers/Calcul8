@@ -56,7 +56,7 @@ test("resetLoadedTierPrizeGameState clears loaded slots plus session state", () 
 test("manual live reset preserves persisted sale and required lot-selection obligations", async () => {
   const state = createGameWindowState() as Record<string, any>;
   const controller = ensureWheelControllerState(state);
-  const slots = [{ tier: "tier-a", name: "Pack" }];
+  const slots = [{ tier: "tier-a", name: "Pack", color: "#2563eb", cost: 4, packsCount: 1, deductionType: "packs" as const, isChase: false }];
   const pendingIssues = [
     {
       slotName: "Failed pack sale",

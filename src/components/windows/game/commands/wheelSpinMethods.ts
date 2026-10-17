@@ -13,7 +13,7 @@ import {
 } from "../../../../app-core/shared/game-spin.ts";
 import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
-import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { Lot, PendingWheelChaseObligation, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
     getStaticWheelRender,
@@ -30,6 +30,7 @@ import {
     getAvailableSinglesQuantityForWheelTier,
     getRemainingPacksForWheelLot
 } from "../services/wheelSaleSupport.ts";
+import { calculateWheelSaleNetRevenue } from "../services/wheelPricing.ts";
 import { resolveWheelFairnessSpin } from "../services/wheelSpinFairness.ts";
 import {
     applyWheelSpinBlockedReason,
@@ -68,7 +69,7 @@ type WheelSpinCommandContext = GameSessionStateContext
     landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
     recordPreviewSpinResult(slotIndex: number): void;
     recordSpinResult(slotIndex: number): Promise<void>;
-    saveWheelSession(): void;
+    saveWheelSession(options?: { strict?: boolean }): void;
     scheduleNextWheelAutospin(delayMs?: number): void;
     spinWheelInternal(recordSession?: boolean): Promise<void>;
     stopWheelAutospin(): void;
@@ -113,6 +114,96 @@ const DESKTOP_CELEBRATION_FRAME_INTERVAL_MS = 33;
 const MOBILE_CELEBRATION_FRAME_INTERVAL_MS = 50;
 const activeWheelSpinOperations = new WeakMap<object, number>();
 let nextWheelSpinOperationId = 0;
+
+function copyWheelValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function nextChaseSaleId(): number {
+  const values = new Uint32Array(2);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(values);
+  else {
+    values[0] = Math.floor(Math.random() * 0xffffffff);
+    values[1] = Date.now() >>> 0;
+  }
+  return ((values[0]! & 0x1fffff) * 0x100000000 + values[1]!) || 1;
+}
+
+function preparePendingChaseObligation(
+  context: WheelSpinCommandContext,
+  slot: WheelSlot,
+  slotIndex: number,
+  config: WheelConfig
+): PendingWheelChaseObligation | null {
+  const tier = config.tiers.find((entry) => entry.id === slot.tier);
+  if (!tier) return null;
+  const originalConfig = copyWheelValue(config);
+  const originalTier = copyWheelValue(tier);
+  const lot = tier.boundLotId == null ? undefined : (context.lots || []).find((entry) => entry.id === tier.boundLotId);
+  const prize = lot?.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId);
+  const spinNumber = context.wheelTotalSpins || 0;
+  let saleDraft: Sale | null = null;
+  if (tier.boundLotId != null && tier.deductionType !== "none" && (tier.packsCount || 0) > 0) {
+    const now = new Date();
+    saleDraft = {
+      id: nextChaseSaleId(),
+      type: "wheel",
+      quantity: tier.deductionType === "singles" ? 1 : tier.packsCount,
+      packsCount: tier.packsCount,
+      price: config.spinPrice,
+      priceIsTotal: true,
+      buyerShipping: lot?.sellingShippingPerOrder ?? 0,
+      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+      memo: `Wheel spin #${spinNumber}: ${slot.name}`,
+      linkedWheelId: config.id,
+      winningTierId: tier.id,
+      costOfWinningTier: slot.cost,
+      netRevenue: calculateWheelSaleNetRevenue(config, lot, context.whatnotFeeSummary),
+      wasWhatnotSale: lot?.feeProfilePreset === "whatnot",
+      ...(tier.boundSinglesId != null ? { singlesPurchaseEntryId: tier.boundSinglesId } : {})
+    };
+  }
+  return {
+    version: 1,
+    configId: config.id,
+    spinNumber,
+    tierId: tier.id,
+    slotIndex,
+    originalConfig,
+    originalSourceJson: JSON.stringify(originalConfig),
+    originalTier,
+    originalPrize: {
+      slotLabel: slot.name,
+      slotColor: slot.color,
+      lotId: tier.boundLotId ?? null,
+      singlesEntryId: tier.boundSinglesId ?? null,
+      ...(lot ? { lotType: lot.lotType ?? (isSinglesLot(lot) ? "singles" : "bulk") } : {}),
+      itemLabel: prize?.item || slot.name,
+      ...(prize?.image ? { image: prize.image } : {}),
+      ...(prize ? { singlesSourceFingerprint: JSON.stringify({
+        item: prize.item,
+        cardNumber: prize.cardNumber ?? null,
+        externalSku: prize.externalSku ?? null,
+        image: prize.image ?? null,
+        condition: prize.condition ?? null,
+        language: prize.language ?? null,
+      }), singlesSourceSnapshot: JSON.stringify({
+        item: prize.item,
+        cardNumber: prize.cardNumber ?? null,
+        externalSku: prize.externalSku ?? null,
+        image: prize.image ?? null,
+        condition: prize.condition ?? null,
+        language: prize.language ?? null,
+        cost: prize.cost,
+        currency: prize.currency ?? null,
+        quantity: prize.quantity,
+        marketValue: prize.marketValue,
+        marketValueCurrency: prize.marketValueCurrency ?? null
+      }) } : {})
+    },
+    saleDraft
+  };
+}
 
 function acquireWheelSpin(context: WheelSpinCommandContext): number {
   const operationId = ++nextWheelSpinOperationId;
@@ -170,6 +261,17 @@ function setWheelAnimatedAngle(
 
 function clearWheelAnimatedAngle(context: WheelSpinCommandContext): void {
   context._wheelAnimationAngle = undefined;
+}
+
+function keepPendingChaseVisible(context: WheelSpinCommandContext): void {
+  const obligation = context.wheelPendingChase;
+  if (!obligation) return;
+  context.wheelChaseDialog = true;
+  context.wheelChasePendingTierId = obligation.tierId;
+  context.wheelChasePreviewMode = false;
+  context.wheelChaseReplacementSinglesId = null;
+  getWheelController(context).wheelInventoryWarning = "This chase is still unresolved because its original wheel source changed during the spin.";
+  context.saveWheelSession();
 }
 
 export const wheelSpinMethods = {
@@ -301,6 +403,7 @@ export const wheelSpinMethods = {
     const slots = getWheelSpinSlots(vm).map((slot) => ({ ...slot }));
     const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm, recordSession);
     if (vm.wheelSpinning || !slots.length) return;
+    if (shouldRecordLiveSession && vm.wheelPendingChase) return;
     if (shouldRecordLiveSession && vm.wheelSpinBlockedReason) {
       applyWheelSpinBlockedReason(vm, vm.wheelSpinBlockedReason);
       return;
@@ -334,7 +437,10 @@ export const wheelSpinMethods = {
       if (shouldRecordLiveSession) {
         if (!isCurrentOutcome()) return;
         await vm.recordSpinResult(targetIndex);
-        if (!isCurrentOutcome()) return;
+        if (!isCurrentOutcome()) {
+          keepPendingChaseVisible(vm);
+          return;
+        }
       } else {
         vm.recordPreviewSpinResult(targetIndex);
       }
@@ -373,6 +479,7 @@ export const wheelSpinMethods = {
         }
         if (!isCurrentOutcome()) {
           cleanupSpinLoop();
+          keepPendingChaseVisible(vm);
           releaseWheelSpin(vm, operationId);
           return;
         }
@@ -440,7 +547,10 @@ export const wheelSpinMethods = {
               // Fall back to the short GET proof URL without the full ordered layout payload.
             }
           }
-          if (!ownsWheelSpin(vm, operationId) || !isCurrentOutcome()) return;
+          if (!ownsWheelSpin(vm, operationId) || !isCurrentOutcome()) {
+            keepPendingChaseVisible(vm);
+            return;
+          }
           const readableFairnessResult = {
             ...fairnessResult,
             verificationUrl
@@ -495,8 +605,51 @@ export const wheelSpinMethods = {
     const slots = getWheelSpinSlots(this);
     const slot = slots[slotIndex];
     if (!slot) return;
+    if (slot.isChase && this.wheelPendingChase) return;
 
     recordWheelSessionSpin(this, recordController, "live", slotIndex, slots.length);
+
+    if (slot.isChase) {
+      const config = (this.wheelConfigs || []).find((entry) => entry.id === this.activeWheelConfigId);
+      const obligation = config ? preparePendingChaseObligation(this, slot, slotIndex, config) : null;
+      if (!obligation) throw new Error("The winning chase source could not be captured.");
+      this.wheelPendingChase = obligation;
+      this.wheelChasePendingTierId = obligation.tierId;
+      this.wheelChasePreviewMode = false;
+      this.wheelChaseReplacementSinglesId = null;
+      if (obligation.saleDraft) {
+        const issues = normalizeWheelPendingInventoryIssues(this.wheelPendingInventoryIssues);
+        issues.push({
+          pendingSale: obligation.saleDraft,
+          pendingSaleLotId: obligation.originalPrize.lotId ?? undefined,
+          slotName: obligation.originalPrize.slotLabel,
+          slotColor: obligation.originalPrize.slotColor,
+          slotCost: obligation.originalTier.costPerTier,
+          slotTier: obligation.tierId,
+          slotPacksCount: obligation.originalTier.packsCount,
+          slotDeductionType: obligation.originalTier.deductionType,
+          slotIndex,
+          selectedLotId: obligation.originalPrize.lotId,
+          spinNumber: obligation.spinNumber,
+          slotSinglesId: obligation.originalPrize.singlesEntryId,
+          writeAttempted: false
+        });
+        assignWheelPendingInventoryIssues(this as unknown as Record<string, unknown>, issues);
+      }
+      try {
+        this.saveWheelSession({ strict: true });
+      } catch (error) {
+        this.wheelChaseDialog = true;
+        recordController.wheelInventoryWarning = "The chase decision could not be saved. Do not continue until storage is available.";
+        throw error;
+      }
+      if (!isCurrent()) {
+        this.wheelChaseDialog = true;
+        recordController.wheelInventoryWarning = "This chase remains unresolved because its original wheel source changed.";
+        return;
+      }
+      return;
+    }
 
     if (!slot.isChase) {
       const config = this.wheelDisplayConfig || this.activeWheelConfig;

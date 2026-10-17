@@ -543,6 +543,7 @@ test("confirmWhatnotImportBatchForActor updates a manual candidate sale and pres
     updatedCount: 1,
     skippedCount: 0
   });
+  assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.trustedExternal, true);
   assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.baseVersion, 1);
   assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.saleId, "7");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).customer, "Jordan Lee");

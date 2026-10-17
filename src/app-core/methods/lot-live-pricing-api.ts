@@ -10,6 +10,7 @@ import {
   SalesLiveApiError,
   type ScopedApiApp
 } from "./entity-api-shared.ts";
+import { getWorkspaceRealtimeApplyRevision } from "./ui/workspace/workspace-realtime-state.ts";
 
 type LivePricingResponse = {
   livePricing?: object | null;
@@ -68,6 +69,9 @@ export async function fetchAuthoritativeLivePricing(
 ): Promise<LotLivePricingRecord | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
   const scope = requestScope(app, options);
+  const realtimeRevision = getWorkspaceRealtimeApplyRevision(app as object);
+  const isRequestCurrent = () => getWorkspaceRealtimeApplyRevision(app as object) === realtimeRevision
+    && (options?.isRequestCurrent?.() ?? true);
 
   const body = await requestJson(
     app,
@@ -76,9 +80,10 @@ export async function fetchAuthoritativeLivePricing(
       method: "GET"
     },
     "Failed to load live pricing.",
-    { isRequestCurrent: options?.isRequestCurrent }
+    { isRequestCurrent }
   ) as LivePricingResponse | null;
 
+  if (!isRequestCurrent()) return null;
   return normalizeLivePricing(body?.livePricing);
 }
 

@@ -312,8 +312,49 @@ test("shared sync contracts normalize game session DTOs", () => {
     wheelLastResultColor: "#f00",
     wheelSessionUpdatedAt: 456,
     wheelPendingInventoryIssues: [],
-    wheelSkippedDeductions: []
+    wheelSkippedDeductions: [],
+    wheelPendingChase: null
   });
+});
+
+test("shared session codecs preserve pending chase source and stable sale draft through round trips", () => {
+  const sourceConfig = {
+    id: 7, name: "Wheel", spinPrice: 10, targetMargin: 40, createdAt: "2026-01-01",
+    tiers: [{ id: "chase", label: "Chase", color: "#ff0", slots: 1, costPerTier: 50, packsCount: 1,
+      deductionType: "singles", boundLotId: 10, boundSinglesId: 5, isChase: true, sets: [] }]
+  };
+  const pending = {
+    version: 1,
+    configId: 7,
+    spinNumber: 4,
+    tierId: "chase",
+    slotIndex: 0,
+    originalConfig: sourceConfig,
+    originalSourceJson: JSON.stringify(sourceConfig),
+    originalTier: sourceConfig.tiers[0],
+    originalPrize: { slotLabel: "Chase", slotColor: "#ff0", lotId: 10, singlesEntryId: 5, itemLabel: "Card", singlesSourceFingerprint: "{\"item\":\"Card\"}", singlesSourceSnapshot: "{\"item\":\"Card\",\"cost\":10}" },
+    saleDraft: { id: 777, type: "wheel", quantity: 1, packsCount: 1, price: 10, priceIsTotal: true,
+      buyerShipping: 0, date: "2026-01-01", memo: "Wheel spin #4: Chase", linkedWheelId: 7,
+      winningTierId: "chase", costOfWinningTier: 50 },
+    saleAttempted: true
+  };
+  const codecs = [normalizeSyncGameSessionDto,
+    (require("../shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts")).normalizeSyncGameSessionDto,
+    (require("../apps/api/src/shared/sync-contracts.cjs") as typeof import("../shared/sync-contracts")).normalizeSyncGameSessionDto];
+  for (const normalize of codecs) {
+    const restored = normalize(JSON.parse(JSON.stringify({
+      wheelPendingChase: pending,
+      wheelPendingInventoryIssues: [{ slotName: "Chase", slotColor: "#ff0", slotCost: 50, slotTier: "chase",
+        slotPacksCount: 1, slotDeductionType: "singles", slotIndex: 0, selectedLotId: 10, spinNumber: 4,
+        pendingSaleLotId: 10, pendingSale: pending.saleDraft, writeAttempted: true }]
+    })));
+    assert.equal(restored.wheelPendingChase?.saleDraft?.id, 777);
+    assert.equal(restored.wheelPendingChase?.originalSourceJson, JSON.stringify(sourceConfig));
+    assert.equal(restored.wheelPendingChase?.originalPrize?.singlesSourceFingerprint, "{\"item\":\"Card\"}");
+    assert.equal(restored.wheelPendingChase?.originalPrize?.singlesSourceSnapshot, "{\"item\":\"Card\",\"cost\":10}");
+    assert.equal(restored.wheelPendingChase?.saleAttempted, true);
+    assert.equal(restored.wheelPendingInventoryIssues[0]?.writeAttempted, true);
+  }
 });
 
 test("shared sync contracts preserve required multi-lot pending selections", () => {

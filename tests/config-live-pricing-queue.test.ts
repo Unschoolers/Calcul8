@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { setActiveWorkspaceScope } from "../src/app-core/workspace-scope.ts";
+import { markWorkspaceRealtimeDataChanged } from "../src/app-core/methods/ui/workspace/workspace-realtime-state.ts";
 
 const { fetchPricing, savePricing } = vi.hoisted(() => ({
   fetchPricing: vi.fn(),
@@ -124,6 +125,43 @@ test("hydration from an earlier real workspace A-B-A scope cannot apply", async 
   assert.equal(context.liveSpotPrice, 77);
   assert.equal(context.liveBoxPriceSell, 88);
   assert.equal(context.livePackPrice, 99);
+});
+
+test("hydration cannot overwrite a realtime pricing update from the same lot visit", async () => {
+  const context = createContext();
+  context.livePricingHydrationStatus = "idle";
+  context.livePricingHydratedLotId = null;
+  let resolveFetch: (value: unknown) => void = () => { throw new Error("fetch was not started"); };
+  fetchPricing.mockReturnValue(new Promise(resolve => { resolveFetch = resolve; }));
+  const pending = hydrateAuthoritativeLivePricingForLot(context, 7);
+
+  context.liveSpotPrice = 70;
+  context.liveBoxPriceSell = 80;
+  context.livePackPrice = 90;
+  context.currentLivePricingVersion = 9;
+  markWorkspaceRealtimeDataChanged(context);
+  resolveFetch({ liveSpotPrice: 1, liveBoxPriceSell: 2, livePackPrice: 3, version: 5 });
+  await pending;
+
+  assert.equal(context.liveSpotPrice, 70);
+  assert.equal(context.liveBoxPriceSell, 80);
+  assert.equal(context.livePackPrice, 90);
+  assert.equal(context.currentLivePricingVersion, 9);
+  assert.equal(context.livePricingHydrationStatus, "idle");
+});
+
+test("a realtime sale event does not cancel a queued local pricing save", async () => {
+  const context = createContext();
+  context.livePricingHydrationStatus = "hydrated";
+  context.livePackPrice = 44;
+  savePricing.mockResolvedValue({ liveSpotPrice: 11, liveBoxPriceSell: 22, livePackPrice: 44, version: 5 });
+  queueAuthoritativeLivePricingSave(context, 7);
+  markWorkspaceRealtimeDataChanged(context);
+
+  await vi.advanceTimersByTimeAsync(500);
+
+  assert.equal(savePricing.mock.calls.length, 1);
+  assert.equal(savePricing.mock.calls[0]?.[2].livePackPrice, 44);
 });
 
 test("an in-flight save cannot apply after real workspace A-B-A scope changes", async () => {

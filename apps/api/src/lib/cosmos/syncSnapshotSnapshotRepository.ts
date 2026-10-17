@@ -15,10 +15,8 @@ import {
 import { syncSnapshotId } from "./ids";
 import { parseSyncSale, parseSyncWheelConfig } from "../syncShape";
 import {
-  getSyncMetaDocumentFromContainer,
-  getSyncPresetDocumentsFromContainer,
-  normalizeActiveWheelConfigId,
-  selectCurrentSyncPresetDocuments
+  loadCoherentSyncSnapshotInputs,
+  normalizeActiveWheelConfigId
 } from "./syncSnapshotRepository.shared";
 import { normalizeSyncSystemPricingDefaultsDto } from "../../shared/sync-contracts.cjs";
 
@@ -76,12 +74,7 @@ async function getSyncSnapshotFromContainer(
   container: Container,
   userId: string
 ): Promise<SyncSnapshotDocument | null> {
-  const [presetDocuments, metaDocument] = await Promise.all([
-    getSyncPresetDocumentsFromContainer(container, userId),
-    getSyncMetaDocumentFromContainer(container, userId)
-  ]);
-
-  const currentPresetDocuments = selectCurrentSyncPresetDocuments(presetDocuments, metaDocument);
+  const { presetDocuments: currentPresetDocuments, metaDocument } = await loadCoherentSyncSnapshotInputs(container, userId);
   const wheelConfigs = toSyncWheelConfigDtos(metaDocument?.wheelConfigs);
   const activeWheelConfigId = normalizeActiveWheelConfigId(metaDocument?.activeWheelConfigId);
   const systemPricingDefaults = normalizeSyncSystemPricingDefaultsDto(metaDocument?.systemPricingDefaults);

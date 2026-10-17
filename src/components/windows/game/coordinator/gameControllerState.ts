@@ -95,6 +95,7 @@ export type GameCommandPorts = {
   resetWheelSession(): void;
   startEndWheelSession(): void;
   recordChaseSale(tierId: string): void;
+  reopenPendingChaseDecision(): void;
   confirmBatchSale(index: number): void;
   deleteWheelConfig(): void;
   persistLastWheelConfigSelection(): void;

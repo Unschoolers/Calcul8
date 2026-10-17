@@ -101,7 +101,7 @@ export const BuyerQuickViewModal = defineComponent({
       this.isEditingProfile = false;
     },
     money(value: number | null | undefined): string {
-      return `$${this.fmtCurrency(value ?? 0)}`;
+      return `$${this.fmtCurrency(value ?? 0)} CAD`;
     },
     purchasesLabel(value: number | null | undefined): string {
       const count = Math.max(0, Number(value) || 0);

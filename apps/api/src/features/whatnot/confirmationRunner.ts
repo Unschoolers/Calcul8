@@ -235,7 +235,8 @@ export async function runWhatnotConfirmationPlan(
           sale: salePayload,
           updatedBy: input.actorUserId,
           mutationId,
-          baseVersion: operation.plan.expectedSaleVersion ?? 0
+          baseVersion: operation.plan.expectedSaleVersion ?? 0,
+          trustedExternal: true
         });
       } catch (error) {
         if (error instanceof EntityVersionConflictError) {

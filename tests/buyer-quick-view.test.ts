@@ -119,4 +119,20 @@ describe("buyer quick view summary", () => {
     assert.equal(buildBuyerQuickViewSummary({ buyerName: "", currentLotId: 1, lots, salesByLotId }), null);
     assert.equal(buildBuyerQuickViewSummary({ buyerName: "Bob", currentLotId: 1, lots, salesByLotId }), null);
   });
+
+  test("converts mixed-lot buyer gross spend to CAD once", () => {
+    const usdLot: Lot = { ...lot(2, "USD lot"), sellingCurrency: "USD", exchangeRate: 1.35 };
+    const summary = buildBuyerQuickViewSummary({
+      buyerName: "Alice",
+      currentLotId: 2,
+      lots: [lot(1, "CAD lot"), usdLot],
+      salesByLotId: new Map([
+        [1, [sale({ customer: "Alice", price: 100 })]],
+        [2, [sale({ customer: "Alice", price: 100 })]]
+      ])
+    });
+    assert.equal(summary?.totalSpentAllLots, 235);
+    assert.equal(summary?.totalSpentForCurrentLot, 135);
+    assert.equal(summary?.groupedByLot.find((entry) => entry.lotId === 2)?.totalSpent, 135);
+  });
 });
