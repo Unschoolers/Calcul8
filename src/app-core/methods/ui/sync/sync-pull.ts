@@ -45,8 +45,6 @@ export async function performCloudSyncPull(
     cloudSnapshotReceived = true;
     if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
     if (!body.snapshot) {
-      const signature = session.getCurrentPayloadSignature();
-      session.setLastSyncedPayloadHash(signature);
       deps.setSyncStatusSuccess(app);
       return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
     }
@@ -65,8 +63,6 @@ export async function performCloudSyncPull(
         cloudHasData: parsedSnapshot.hasData
       });
     if (!shouldApplyCloud) {
-      const signature = session.getCurrentPayloadSignature();
-      session.setLastSyncedPayloadHash(signature);
       deps.setSyncStatusSuccess(app);
       return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
     }

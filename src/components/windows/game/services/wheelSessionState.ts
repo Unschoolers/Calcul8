@@ -264,6 +264,9 @@ export function runWheelSessionReset(
   ports: GameSessionEnginePorts<WheelResetState>,
   reseedGrid = true
 ): Promise<WheelResetState> {
+  if (execution === "live" && (context.wheelPendingInventoryIssues || []).length > 0) {
+    return Promise.resolve({ context, controller, slots, reseedGrid });
+  }
   return runGameSessionReset(
     { context, controller, slots, reseedGrid },
     execution,

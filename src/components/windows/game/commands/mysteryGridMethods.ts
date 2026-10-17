@@ -57,6 +57,11 @@ function getGridReveals(context: Record<string, unknown>, preview: boolean): Mys
   return ((preview ? controller.wheelPreviewGridReveals : controller.wheelGridReveals) || []) as MysteryGridReveal[];
 }
 
+function hasPendingLiveInventoryIssues(context: Record<string, unknown>): boolean {
+  return Array.isArray(context.wheelPendingInventoryIssues)
+    && context.wheelPendingInventoryIssues.length > 0;
+}
+
 function setGridReveals(context: Record<string, unknown>, preview: boolean, reveals: MysteryGridReveal[]): void {
   const controller = getWheelController(context);
   if (preview) {
@@ -135,6 +140,9 @@ function scheduleMysteryGridAutoReset(
   if (existingTimer) {
     globalThis.clearTimeout(existingTimer);
   }
+  context[timerKey] = undefined;
+
+  if (!params.preview && hasPendingLiveInventoryIssues(context)) return;
 
   const resetPlan = createMysteryGridAutoResetPlan({
     revealedCount: getGridReveals(context, params.preview).length,
@@ -146,11 +154,20 @@ function scheduleMysteryGridAutoReset(
   context[timerKey] = globalThis.setTimeout(() => {
     const currentReveals = getGridReveals(context, params.preview);
     if (currentReveals.length < params.gridCellCount) return;
+    if (!params.preview && hasPendingLiveInventoryIssues(context)) {
+      context.wheelGridResetAnimating = false;
+      return;
+    }
 
     context.wheelGridResetAnimating = true;
     ((context as Record<string, unknown>).publishGameSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
 
     globalThis.setTimeout(() => {
+      if (getGridReveals(context, params.preview).length < params.gridCellCount
+        || (!params.preview && hasPendingLiveInventoryIssues(context))) {
+        context.wheelGridResetAnimating = false;
+        return;
+      }
       const resetSession = params.preview
         ? (context as Record<string, unknown> & { resetPreviewSession?: () => void }).resetPreviewSession
         : (context as Record<string, unknown> & { resetWheelSession?: () => void }).resetWheelSession;

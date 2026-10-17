@@ -120,6 +120,55 @@ test("Whatnot cancellation preserves connection and sync statuses", async () => 
   assert.equal(app.notify.mock.calls.length, 0);
 });
 
+test("prepareWhatnotCsvImport preserves the existing review batch when the API rejects the upload", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    error: "Whatnot CSV imports are limited to 250 rows."
+  }), {
+    status: 400,
+    headers: { "Content-Type": "application/json" }
+  }));
+  const reviewRows = [{ rowId: "existing-row" }];
+  const notify = vi.fn();
+  const context = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: true,
+    isCurrentWorkspaceOwner: true,
+    notify,
+    whatnotCsvRawInput: "new upload",
+    whatnotCsvSellerAccountId: "seller-1",
+    whatnotCsvHeaders: ["Order ID"],
+    whatnotCsvRows: [{ externalOrderId: "new-order" }],
+    whatnotCsvMapExternalSaleId: null,
+    whatnotReviewBatchId: "existing-batch",
+    whatnotReviewRows: reviewRows,
+    whatnotConfirmationRetryPayload: "[]",
+    showWhatnotCsvImportDialog: true,
+    showWhatnotReviewDialog: true
+  };
+
+  const result = await uiWhatnotMethods.prepareWhatnotCsvImport.call(context as never, [{
+    source: "csv",
+    externalOrderId: "new-order",
+    externalOrderItemId: "new-item",
+    title: "Lot A",
+    quantity: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-25"
+  }]);
+
+  assert.equal(result, false);
+  assert.equal(context.whatnotReviewBatchId, "existing-batch");
+  assert.equal(context.whatnotReviewRows, reviewRows);
+  assert.equal(context.whatnotConfirmationRetryPayload, "[]");
+  assert.equal(context.showWhatnotReviewDialog, true);
+  assert.equal(context.whatnotCsvRawInput, "new upload");
+  assert.equal(context.showWhatnotCsvImportDialog, true);
+  assert.deepEqual(notify.mock.calls.at(-1), ["Whatnot CSV imports are limited to 250 rows.", "error"]);
+});
+
 test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots after import", async () => {
   fetchAuthenticatedApiResponseMock
     .mockResolvedValueOnce(new Response(JSON.stringify({

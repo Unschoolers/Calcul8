@@ -139,11 +139,15 @@ export async function createWhatnotImportBatchFromRowsForActor(
   actorUserId: string,
   input: CreateWhatnotImportBatchFromRowsInput
 ): Promise<WhatnotImportBatchDocument> {
-  const scope = await resolveWhatnotScope(config, actorUserId, input.workspaceId, false);
   const rowsInput = Array.isArray(input.rows) ? input.rows : [];
   if (rowsInput.length === 0) {
     throw new HttpError(400, "Whatnot import requires at least one row.");
   }
+  if (rowsInput.length > MAX_SYNC_ROWS) {
+    throw new HttpError(400, `Whatnot CSV imports are limited to ${MAX_SYNC_ROWS} rows.`);
+  }
+
+  const scope = await resolveWhatnotScope(config, actorUserId, input.workspaceId, false);
 
   const externalAccountId = resolveBatchExternalAccountId(input.externalAccountId, rowsInput, scope.partitionKey);
   const snapshot = await getEffectiveSyncSnapshot(config, scope.partitionKey);
@@ -151,7 +155,7 @@ export async function createWhatnotImportBatchFromRowsForActor(
   const seenExternalHashes = new Set<string>();
   const rows: WhatnotImportRowDocument[] = [];
 
-  for (const rawRow of rowsInput.slice(0, MAX_SYNC_ROWS)) {
+  for (const rawRow of rowsInput) {
     const normalizedRow = buildWhatnotImportRowFromNormalizedInput({
       ...rawRow,
       externalAccountId

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   resetLoadedTierPrizeGameState,
+  runWheelSessionReset,
   type WheelSessionContext
 } from "../src/components/windows/game/services/wheelSessionState.ts";
 import { createGameWindowState, ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
@@ -50,4 +51,59 @@ test("resetLoadedTierPrizeGameState clears loaded slots plus session state", () 
   assert.equal(state.wheelGridLayoutSeed, "");
   assert.equal(state.wheelPreviewGridLayoutSeed, "");
   assert.deepEqual(state.wheelSpinCounts, []);
+});
+
+test("manual live reset preserves persisted sale and required lot-selection obligations", async () => {
+  const state = createGameWindowState() as Record<string, any>;
+  const controller = ensureWheelControllerState(state);
+  const slots = [{ tier: "tier-a", name: "Pack" }];
+  const pendingIssues = [
+    {
+      slotName: "Failed pack sale",
+      slotColor: "#2563eb",
+      slotCost: 4,
+      slotTier: "tier-a",
+      slotPacksCount: 1,
+      slotDeductionType: "packs",
+      slotIndex: 0,
+      selectedLotId: 10,
+      spinNumber: 1,
+      pendingSale: { id: 101, type: "wheel" },
+      pendingSaleLotId: 10
+    },
+    {
+      slotName: "Multi-lot pack",
+      slotColor: "#f59e0b",
+      slotCost: 4,
+      slotTier: "tier-b",
+      slotPacksCount: 1,
+      slotDeductionType: "packs",
+      slotIndex: 1,
+      selectedLotId: null,
+      spinNumber: 2,
+      candidateLotIds: [10, 20],
+      requiresLotSelection: true
+    }
+  ];
+  state.wheelPendingInventoryIssues = pendingIssues;
+  state.wheelSpinCounts = [3];
+  state.wheelTotalSpins = 3;
+  controller.activeWheelSlots = slots;
+  const persist = vi.fn();
+  const publish = vi.fn();
+
+  await runWheelSessionReset(
+    state as WheelSessionContext,
+    controller,
+    "live",
+    slots as never,
+    { persist, publish }
+  );
+
+  assert.deepEqual(state.wheelPendingInventoryIssues, pendingIssues);
+  assert.deepEqual(state.wheelSpinCounts, [3]);
+  assert.equal(state.wheelTotalSpins, 3);
+  assert.equal(controller.activeWheelSlots, slots);
+  assert.equal(persist.mock.calls.length, 0);
+  assert.equal(publish.mock.calls.length, 0);
 });

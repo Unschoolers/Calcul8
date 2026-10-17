@@ -208,6 +208,102 @@ test("runCloudSyncPull recovers the coordinator after an unexpected setup error"
   warnSpy.mockRestore();
 });
 
+test.each([
+  ["an empty response", {}],
+  ["a same-version snapshot", {
+    snapshot: {
+      lots: [{ id: 1, name: "Cloud lot" }],
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
+      version: 2
+    }
+  }]
+])("a pull with %s preserves the dirty baseline so the next push uploads local edits", async (_label, body) => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = "previously-confirmed-signature";
+  app.lots = [{ id: 1, name: "Offline edit" }];
+  const localPayload = () => ({
+    lots: app.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  });
+  const signature = (payload: unknown) => JSON.stringify(payload);
+  const requestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => body
+  });
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+  const deps = {
+    requestCloudSyncPull,
+    requestCloudSyncPush,
+    createSyncPayload: localPayload,
+    getSyncPayloadSignature: signature,
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  };
+
+  await runCloudSyncPull(app, deps);
+  assert.equal(app.lastSyncedPayloadHash, "previously-confirmed-signature");
+
+  await runCloudSyncPush(app, false, deps);
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(app.lastSyncedPayloadHash, signature(localPayload()));
+});
+
+test("an unapplied pull does not write a clean unchanged payload signature", async () => {
+  const app = createApp();
+  const payload = {
+    lots: app.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  };
+  const signature = JSON.stringify(payload);
+  app.lastSyncedPayloadHash = signature;
+  const setItem = vi.fn();
+  vi.stubGlobal("localStorage", {
+    getItem: () => "2",
+    setItem,
+    removeItem: vi.fn()
+  });
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull: vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({
+        snapshot: {
+          lots: [{ id: 1 }],
+          salesByLot: {},
+          wheelConfigs: [],
+          activeWheelConfigId: null,
+          version: 2
+        }
+      })
+    }),
+    createSyncPayload: () => payload,
+    getSyncPayloadSignature: () => signature,
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(app.lastSyncedPayloadHash, signature);
+  assert.equal(setItem.mock.calls.length, 0);
+});
+
 test("runCloudSyncPull shares one in-flight request across overlapping callers", async () => {
   const app = createApp();
   const pullDeferred = createDeferred<{
