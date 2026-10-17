@@ -330,7 +330,7 @@ export type LivePricingHydrationContext = ScopedApiContext &
   LivePricingPayload &
   Pick<
     AppState,
-    "currentLotId" | "livePricingHydrationStatus" | "livePricingHydratedLotId"
+    "currentLotId" | "lotHydrationRevision" | "livePricingHydrationStatus" | "livePricingHydratedLotId"
   >;
 
 export type QueuedLivePricingContext = LivePricingHydrationContext;

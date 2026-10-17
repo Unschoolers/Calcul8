@@ -622,6 +622,41 @@ test("normalizeLivePricing rejects negative pricing payloads", () => {
   }), null);
 });
 
+test("live pricing requests use captured scope while retaining the original app for auth effects", async () => {
+  const app = createApp({ activeScopeType: "workspace", activeWorkspaceId: "workspace-new" });
+  const isRequestCurrent = vi.fn(() => true);
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ livePricing: null }), { status: 200 }));
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ livePricing: {
+    livePackPrice: 5,
+    liveBoxPriceSell: 50,
+    liveSpotPrice: 2,
+    version: 8
+  } }), { status: 200 }));
+
+  await fetchAuthoritativeLivePricing(app, 6, {
+    scope: { scopeType: "workspace", workspaceId: "workspace-original" },
+    isRequestCurrent
+  });
+  await saveAuthoritativeLivePricing(app, 6, {
+    livePackPrice: 5,
+    liveBoxPriceSell: 50,
+    liveSpotPrice: 2,
+    currentLivePricingVersion: 7
+  }, {
+    scope: { scopeType: "workspace", workspaceId: "workspace-original" },
+    isRequestCurrent
+  });
+
+  const [fetchApp, fetchPath, , fetchOptions] = fetchAuthenticatedApiResponseMock.mock.calls.at(-2)!;
+  const [saveApp, , saveInit, saveOptions] = fetchAuthenticatedApiResponseMock.mock.calls.at(-1)!;
+  assert.equal(fetchApp, app);
+  assert.equal(fetchPath, "/lots/6/live-pricing?workspaceId=workspace-original");
+  assert.equal(fetchOptions.isRequestCurrent, isRequestCurrent);
+  assert.equal(saveApp, app);
+  assert.equal(JSON.parse(String(saveInit.body)).workspaceId, "workspace-original");
+  assert.equal(saveOptions.isRequestCurrent, isRequestCurrent);
+});
+
 test("normalizeLivePricing uses the shared sync contract for metadata", () => {
   assert.deepEqual(normalizeLivePricing({
     livePackPrice: "4.5",

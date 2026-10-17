@@ -3,11 +3,21 @@ import type {
   QueuedLivePricingContext
 } from "../context/commerce.ts";
 import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
-import { fetchAuthoritativeLivePricing, saveAuthoritativeLivePricing } from "./lot-live-pricing-api.ts";
+import { captureWorkspaceScopeGuard } from "../workspace-scope.ts";
+import {
+  fetchAuthoritativeLivePricing,
+  saveAuthoritativeLivePricing,
+  type LivePricingRequestOptions
+} from "./lot-live-pricing-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 
 type QueuedLivePricingSnapshot = {
   lotId: number;
+  scopeType: QueuedLivePricingContext["activeScopeType"];
+  workspaceId: string | null;
+  authEpoch: number;
+  lotHydrationRevision: number;
+  isScopeVisitCurrent: () => boolean;
   liveSpotPrice: number;
   liveBoxPriceSell: number;
   livePackPrice: number;
@@ -41,11 +51,49 @@ function getLivePricingQueueState(context: object): LivePricingQueueState {
 function createLivePricingHash(snapshot: QueuedLivePricingSnapshot): string {
   return JSON.stringify({
     lotId: snapshot.lotId,
+    scopeType: snapshot.scopeType,
+    workspaceId: snapshot.workspaceId,
+    authEpoch: snapshot.authEpoch,
+    lotHydrationRevision: snapshot.lotHydrationRevision,
     liveSpotPrice: Number(snapshot.liveSpotPrice) || 0,
     liveBoxPriceSell: Number(snapshot.liveBoxPriceSell) || 0,
     livePackPrice: Number(snapshot.livePackPrice) || 0,
     baseVersion: Math.max(0, Number(snapshot.baseVersion) || 0)
   });
+}
+
+function captureSnapshot(context: QueuedLivePricingContext, lotId: number): QueuedLivePricingSnapshot {
+  return {
+    lotId,
+    scopeType: context.activeScopeType,
+    workspaceId: context.activeWorkspaceId,
+    authEpoch: context.googleAuthEpoch,
+    lotHydrationRevision: context.lotHydrationRevision,
+    isScopeVisitCurrent: captureWorkspaceScopeGuard(context),
+    liveSpotPrice: Number(context.liveSpotPrice) || 0,
+    liveBoxPriceSell: Number(context.liveBoxPriceSell) || 0,
+    livePackPrice: Number(context.livePackPrice) || 0,
+    baseVersion: context.currentLivePricingVersion ?? 0
+  };
+}
+
+function isSnapshotCurrent(context: QueuedLivePricingContext, snapshot: QueuedLivePricingSnapshot): boolean {
+  return snapshot.isScopeVisitCurrent()
+    && context.currentLotId === snapshot.lotId
+    && context.activeScopeType === snapshot.scopeType
+    && context.activeWorkspaceId === snapshot.workspaceId
+    && context.googleAuthEpoch === snapshot.authEpoch
+    && context.lotHydrationRevision === snapshot.lotHydrationRevision;
+}
+
+function requestOptions(
+  context: QueuedLivePricingContext,
+  snapshot: QueuedLivePricingSnapshot
+): LivePricingRequestOptions {
+  return {
+    scope: { scopeType: snapshot.scopeType, workspaceId: snapshot.workspaceId },
+    isRequestCurrent: () => isSnapshotCurrent(context, snapshot)
+  };
 }
 
 export function shouldHydrateAuthoritativeLivePricing(
@@ -65,18 +113,21 @@ export async function hydrateAuthoritativeLivePricingForLot(
   if (!shouldHydrateAuthoritativeLivePricing(context, lotId)) return;
   if (!canUseAuthoritativeSalesLiveApi()) return;
 
+  const snapshot = captureSnapshot(context, lotId);
+  if (!isSnapshotCurrent(context, snapshot)) return;
+
   context.livePricingHydrationStatus = "loading";
   context.livePricingHydratedLotId = lotId;
   try {
-    const latest = await fetchAuthoritativeLivePricing(context, lotId);
-    if (Number(context.currentLotId) !== lotId) return;
+    const latest = await fetchAuthoritativeLivePricing(context, lotId, requestOptions(context, snapshot));
+    if (!isSnapshotCurrent(context, snapshot)) return;
     if (latest) {
       applyAuthoritativeLivePricingSnapshot(context, lotId, latest);
     } else {
       resetAuthoritativeLivePricingState(context, lotId);
     }
   } catch (error) {
-    if (Number(context.currentLotId) === lotId) {
+    if (isSnapshotCurrent(context, snapshot)) {
       context.livePricingHydrationStatus = "error";
       context.livePricingHydratedLotId = lotId;
     }
@@ -100,74 +151,92 @@ async function flushQueuedLivePricingSave(context: QueuedLivePricingContext, not
   state.inFlight = true;
   state.queuedSnapshot = null;
 
+  let currentSnapshot = snapshot;
+  let conflictRetried = false;
+  let drainQueuedSnapshot = true;
   try {
-    const saved = await saveAuthoritativeLivePricing(context, snapshot.lotId, {
-      liveSpotPrice: snapshot.liveSpotPrice,
-      liveBoxPriceSell: snapshot.liveBoxPriceSell,
-      livePackPrice: snapshot.livePackPrice,
-      currentLivePricingVersion: snapshot.baseVersion
-    });
-    context.currentLivePricingVersion = saved.version;
-    context.livePricingHydrationStatus = "hydrated";
-    context.livePricingHydratedLotId = snapshot.lotId;
-    state.lastSavedHash = createLivePricingHash({
-      lotId: snapshot.lotId,
-      liveSpotPrice: saved.liveSpotPrice,
-      liveBoxPriceSell: saved.liveBoxPriceSell,
-      livePackPrice: saved.livePackPrice,
-      baseVersion: saved.version ?? 0
-    });
-    markLivePricingPollingBaseline(context as object, {
-      liveSpotPrice: saved.liveSpotPrice,
-      liveBoxPriceSell: saved.liveBoxPriceSell,
-      livePackPrice: saved.livePackPrice,
-      currentLivePricingVersion: saved.version
-    });
-    if (notifySuccess) {
-      context.notify("Live prices saved", "success");
-    }
-  } catch (error) {
-    if (error instanceof SalesLiveApiError && error.status === 409) {
-      const latest = await fetchAuthoritativeLivePricing(context, snapshot.lotId).catch(() => null);
-      if (latest) {
-        // Update context with latest version and queue a retry with the new baseVersion
-        context.currentLivePricingVersion = latest.version;
-        context.livePricingHydrationStatus = "hydrated";
-        context.livePricingHydratedLotId = snapshot.lotId;
-        state.queuedSnapshot = {
-          lotId: snapshot.lotId,
-          liveSpotPrice: Number(context.liveSpotPrice) || 0,
-          liveBoxPriceSell: Number(context.liveBoxPriceSell) || 0,
-          livePackPrice: Number(context.livePackPrice) || 0,
-          baseVersion: latest.version ?? 0
-        };
-        context.notify("Live pricing changed. Retrying save with latest version...", "info");
-      } else {
-        context.notify("Live pricing changed in the cloud. Please try saving again.", "warning");
+    while (true) {
+      if (!isSnapshotCurrent(context, currentSnapshot)) return;
+      let saved;
+      try {
+        saved = await saveAuthoritativeLivePricing(context, currentSnapshot.lotId, {
+          liveSpotPrice: currentSnapshot.liveSpotPrice,
+          liveBoxPriceSell: currentSnapshot.liveBoxPriceSell,
+          livePackPrice: currentSnapshot.livePackPrice,
+          currentLivePricingVersion: currentSnapshot.baseVersion
+        }, requestOptions(context, currentSnapshot));
+      } catch (error) {
+        if (!isSnapshotCurrent(context, currentSnapshot)) return;
+        if (error instanceof SalesLiveApiError && error.status === 409) {
+          if (conflictRetried) {
+            drainQueuedSnapshot = false;
+            context.notify("Live pricing changed in the cloud. Please review and save again.", "warning");
+            return;
+          }
+          // Check ownership before dispatching recovery GET. The API also checks before each network/auth action.
+          if (!isSnapshotCurrent(context, currentSnapshot)) return;
+          const latest = await fetchAuthoritativeLivePricing(context, currentSnapshot.lotId, requestOptions(context, currentSnapshot)).catch(() => null);
+          if (!isSnapshotCurrent(context, currentSnapshot)) return;
+          if (!latest) {
+            context.notify("Live pricing changed in the cloud. Please try saving again.", "warning");
+            return;
+          }
+          context.currentLivePricingVersion = latest.version;
+          context.livePricingHydrationStatus = "hydrated";
+          context.livePricingHydratedLotId = currentSnapshot.lotId;
+          const queuedAfterConflict: QueuedLivePricingSnapshot | null = state.queuedSnapshot;
+          if (queuedAfterConflict && isSnapshotCurrent(context, queuedAfterConflict)) {
+            state.queuedSnapshot = Object.assign({}, queuedAfterConflict, { baseVersion: latest.version ?? 0 });
+          }
+          currentSnapshot = { ...snapshot, baseVersion: latest.version ?? 0 };
+          conflictRetried = true;
+          context.notify("Live pricing changed. Retrying save with latest version...", "info");
+          continue;
+        }
+        const message = error instanceof Error && error.message.trim()
+          ? error.message
+          : "Failed to save live pricing.";
+        context.notify(message, "error");
+        return;
       }
-    } else {
-      const message = error instanceof Error && error.message.trim()
-        ? error.message
-        : "Failed to save live pricing.";
-      context.notify(message, "error");
+
+      if (!isSnapshotCurrent(context, currentSnapshot)) return;
+      context.currentLivePricingVersion = saved.version;
+      context.livePricingHydrationStatus = "hydrated";
+      context.livePricingHydratedLotId = currentSnapshot.lotId;
+      state.lastSavedHash = createLivePricingHash({
+        ...currentSnapshot,
+        liveSpotPrice: saved.liveSpotPrice,
+        liveBoxPriceSell: saved.liveBoxPriceSell,
+        livePackPrice: saved.livePackPrice,
+        baseVersion: saved.version ?? 0
+      });
+      const queuedAfterSave: QueuedLivePricingSnapshot | null = state.queuedSnapshot;
+      if (queuedAfterSave && isSnapshotCurrent(context, queuedAfterSave)) {
+        state.queuedSnapshot = Object.assign({}, queuedAfterSave, { baseVersion: saved.version ?? 0 });
+      }
+      markLivePricingPollingBaseline(context as object, {
+        liveSpotPrice: saved.liveSpotPrice,
+        liveBoxPriceSell: saved.liveBoxPriceSell,
+        livePackPrice: saved.livePackPrice,
+        currentLivePricingVersion: saved.version
+      });
+      if (notifySuccess) context.notify("Live prices saved", "success");
+      return;
     }
   } finally {
     state.inFlight = false;
-    if (state.queuedSnapshot) {
-      void flushQueuedLivePricingSave(context, notifySuccess);
+    if (!drainQueuedSnapshot && state.timeoutId != null) {
+      globalThis.clearTimeout(state.timeoutId);
+      state.timeoutId = null;
     }
+    if (drainQueuedSnapshot && state.queuedSnapshot) void flushQueuedLivePricingSave(context, notifySuccess);
   }
 }
 
 export function queueAuthoritativeLivePricingSave(context: QueuedLivePricingContext, lotId: number): void {
   const state = getLivePricingQueueState(context as object);
-  const nextSnapshot: QueuedLivePricingSnapshot = {
-    lotId,
-    liveSpotPrice: Number(context.liveSpotPrice) || 0,
-    liveBoxPriceSell: Number(context.liveBoxPriceSell) || 0,
-    livePackPrice: Number(context.livePackPrice) || 0,
-    baseVersion: context.currentLivePricingVersion ?? 0
-  };
+  const nextSnapshot = captureSnapshot(context, lotId);
   const nextHash = createLivePricingHash(nextSnapshot);
   if (state.lastSavedHash === nextHash && !state.inFlight) {
     return;
@@ -179,6 +248,7 @@ export function queueAuthoritativeLivePricingSave(context: QueuedLivePricingCont
   }
   state.timeoutId = Number(globalThis.setTimeout(() => {
     state.timeoutId = null;
+    if (!isSnapshotCurrent(context, nextSnapshot)) return;
     void flushQueuedLivePricingSave(context, true);
   }, LIVE_PRICING_SAVE_DELAY_MS));
 }
@@ -200,13 +270,7 @@ export function applyAuthoritativeLivePricingSnapshot(
   context.livePricingHydrationStatus = "hydrated";
   context.livePricingHydratedLotId = lotId;
   const state = getLivePricingQueueState(context as object);
-  state.lastSavedHash = createLivePricingHash({
-    lotId,
-    liveSpotPrice: latest.liveSpotPrice,
-    liveBoxPriceSell: latest.liveBoxPriceSell,
-    livePackPrice: latest.livePackPrice,
-    baseVersion: latest.version ?? 0
-  });
+  state.lastSavedHash = createLivePricingHash(captureSnapshot(context, lotId));
   markLivePricingPollingBaseline(context as object, {
     liveSpotPrice: latest.liveSpotPrice,
     liveBoxPriceSell: latest.liveBoxPriceSell,

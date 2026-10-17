@@ -20,6 +20,7 @@ import {
     type GameStageOverlayCommand
 } from "../overlay/gameStageOverlayTypes.ts";
 import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
+import { invalidateGameOutcomeSettlements } from "../services/gameOutcomeSettlement.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
 import { gameComputeds } from "./gameComputeds.ts";
 import {
@@ -267,6 +268,7 @@ export const gameWindowDefinition = {
     },
     handleWheelModeChange(this: GameWindowThis, nextMode: "config" | "live"): void {
       if (nextMode === this.wheelMode) return;
+      invalidateGameOutcomeSettlements(this);
       this.stopWheelAutospin?.();
       if (nextMode === "live") {
         this.wheelRequestedMode = nextMode;
@@ -282,6 +284,7 @@ export const gameWindowDefinition = {
         && this.gameSpectatorStartAfterLiveConfirm === true;
       this.gameSpectatorStartAfterLiveConfirm = false;
       if (requestedMode) {
+        if (requestedMode !== this.wheelMode) invalidateGameOutcomeSettlements(this);
         if (requestedMode !== "config") {
           this.stopWheelAutospin?.();
         }

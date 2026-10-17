@@ -21,3 +21,19 @@ Pre-fairness/config/mode guards now cover prior findings. CHANGES REQUIRED: anim
 ## Task4
 
 SPEC COMPLIANCE: APPROVED. CODE QUALITY: APPROVED. No-op branches no longer assign unsent current payload signature to baseline. Actual pull→push regressions exercise queue and normal snapshot policy; independent sync-service/sync-status run36/36 passed (UTC). Integrated484fdfe by cherry-pick.
+
+## Task2 follow-up
+
+SPEC COMPLIANCE: APPROVED. CODE QUALITY: APPROVED. Reviewed synchronous acquisition, token-owned cleanup, mode/source snapshots and monotonic real apply/load/mode/reset invalidation. Followup09cf2d1 checks owned animation and post-proof completion; lock held through proof+landing. Independent spin/config90/90 passed (UTC). Existing adjacent grid tests independently validated in Task1. Root added a warning for unexpected visual/completion exceptions so the new cleanup catch does not silently hide persistence/landing failures. Original9319fc5 + followup09cf2d1 integrated by cherry-pick.
+
+## Task11
+
+SPEC COMPLIANCE: APPROVED. CODE QUALITY: APPROVED. Both merge paths add normalized row quantity; sync/append and ambiguous matches retain semantics. Independent import suite21/21 passed (UTC). Integrated7bb67d2 by cherry-pick.
+
+## Pending Task3
+
+CHANGES REQUIRED: manual scope equality omits monotonic workspace revision from captureWorkspaceScopeGuard; A→B→A before lot hydration can retain all compared fields. Request central guard capture and real scope-setter regressions. Late401/retry ownership changes otherwise reviewed.
+
+## Task3 follow-up
+
+SPEC COMPLIANCE: APPROVED. CODE QUALITY: APPROVED. Central scope visit guard and lot hydration revision now fence dispatch, hydration, conflict GET and retry completion. Captured URL/body scope uses centralized helpers, auth operates on real app and optional ownership guards stop late401/retries/CSRF side effects from expiring newer auth. Bounded conflict retry preserves queued edits. Independent four-suite65/65 passed (UTC). Integrated4c783e6 +1ebe59f by cherry-pick.

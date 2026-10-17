@@ -111,6 +111,25 @@ function queuePendingInventoryIssue(
 const MOBILE_SPIN_FRAME_INTERVAL_MS = 33;
 const DESKTOP_CELEBRATION_FRAME_INTERVAL_MS = 33;
 const MOBILE_CELEBRATION_FRAME_INTERVAL_MS = 50;
+const activeWheelSpinOperations = new WeakMap<object, number>();
+let nextWheelSpinOperationId = 0;
+
+function acquireWheelSpin(context: WheelSpinCommandContext): number {
+  const operationId = ++nextWheelSpinOperationId;
+  activeWheelSpinOperations.set(context, operationId);
+  context.wheelSpinning = true;
+  return operationId;
+}
+
+function releaseWheelSpin(context: WheelSpinCommandContext, operationId: number): void {
+  if (activeWheelSpinOperations.get(context) !== operationId) return;
+  activeWheelSpinOperations.delete(context);
+  context.wheelSpinning = false;
+}
+
+function ownsWheelSpin(context: WheelSpinCommandContext, operationId: number): boolean {
+  return activeWheelSpinOperations.get(context) === operationId;
+}
 
 function isCompactWheelPerformanceMode(context: WheelSpinCommandContext): boolean {
   const viewportWidth = Number(context.wheelViewportWidth || 0);
@@ -279,7 +298,7 @@ export const wheelSpinMethods = {
   async spinWheelInternal(this: WheelSpinCommandContext | Record<string, unknown>, recordSession = true): Promise<void> {
     const vm = this as WheelSpinCommandContext;
     const spinController = getWheelController(vm);
-    const slots = getWheelSpinSlots(vm);
+    const slots = getWheelSpinSlots(vm).map((slot) => ({ ...slot }));
     const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm, recordSession);
     if (vm.wheelSpinning || !slots.length) return;
     if (shouldRecordLiveSession && vm.wheelSpinBlockedReason) {
@@ -287,151 +306,181 @@ export const wheelSpinMethods = {
       return;
     }
 
-    const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
+    const operationId = acquireWheelSpin(vm);
+    const isCurrentOutcome = captureGameOutcomeGuard(vm);
+    let animationStarted = false;
+    try {
+      const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
+      if (!isCurrentOutcome()) return;
 
-    beginWheelSpin(vm, fairnessResult);
+      beginWheelSpin(vm, fairnessResult);
 
-    const targetIndex = fairnessResult.resultIndex;
-    const currentAngle = (vm.wheelCurrentAngle || 0) as number;
-    const startedAt = Date.now();
-    const plan = createWheelSpinPlan({
-      slotCount: slots.length,
-      targetIndex,
-      currentAngle,
-      extraRotations: resolveWheelLiveExtraRotations(Math.random()),
-      durationMs: resolveWheelLiveDurationMs(Math.random()),
-      startedAt,
-      spinIdSeed: String(startedAt)
-    });
-    if (!plan) return;
-    const { sliceAngle, endAngle, durationMs: duration, startAngle } = plan;
-    const startTime = performance.now();
-    vm._gameSpectatorSpinAnimation = plan.spectatorAnimation;
-    if (shouldRecordLiveSession) {
-      const isCurrent = captureGameOutcomeGuard(vm);
-      await vm.recordSpinResult(targetIndex);
-      if (!isCurrent()) return;
-    } else {
-      vm.recordPreviewSpinResult(targetIndex);
-    }
-    vm.saveWheelSession();
-
-    // Pointer wobble: detect when slice dividers cross the pointer position
-    let prevBoundaryCount = 0;
-    const pointerEl = (vm.$refs?.wheelOuter as HTMLElement | null)
-      ?.querySelector(".wheel-pointer") as HTMLElement | null;
-    const centerIcon = getWheelCenterIcon(vm);
-    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm);
-    let lastSpinFrameTime = startTime - spinFrameIntervalMs;
-    let spinFrameId: number | undefined;
-    let spinCompleted = false;
-    let visibilityChangeHandler: (() => void) | undefined;
-    const cleanupSpinLoop = () => {
-      spinCompleted = true;
-      if (visibilityChangeHandler && typeof document !== "undefined") {
-        document.removeEventListener("visibilitychange", visibilityChangeHandler);
-        visibilityChangeHandler = undefined;
-      }
-    };
-    const scheduleSpinFrame = () => {
-      spinFrameId = requestAnimationFrame(tick);
-    };
-
-    const tick = async (now: number) => {
-      if (spinCompleted) return;
-      const t = Math.min((now - startTime) / duration, 1);
-      const currentOffset = startAngle + (endAngle - startAngle) * easeOutQuart(t);
-      const shouldDrawFrame = t >= 1 || spinFrameIntervalMs <= 0 || now - lastSpinFrameTime >= spinFrameIntervalMs;
-      if (shouldDrawFrame) {
-        lastSpinFrameTime = now;
-        setWheelAnimatedAngle(vm, currentOffset, centerIcon);
-        vm.drawWheel(currentOffset);
-      }
-
-      // Wobble pointer when a divider crosses
-      if (pointerEl) {
-        const totalAngleSwept = Math.abs(currentOffset - startAngle);
-        const boundaryCount = Math.floor(totalAngleSwept / sliceAngle);
-        if (boundaryCount > prevBoundaryCount) {
-          prevBoundaryCount = boundaryCount;
-          pointerEl.classList.remove("wheel-pointer--tick");
-          void pointerEl.offsetWidth; // force reflow to restart animation
-          pointerEl.classList.add("wheel-pointer--tick");
-          // Tick volume fades as the wheel slows down
-          const tickVolume = 0.04 + 0.06 * (1 - t);
-          if (shouldPlayWheelSounds(vm)) {
-            playWheelTick(tickVolume);
-          }
-        }
-      }
-
-      if (t < 1) {
-        scheduleSpinFrame();
-        return;
-      }
-
-      cleanupSpinLoop();
-      vm.wheelCurrentAngle = endAngle;
-      clearWheelAnimatedAngle(vm);
-      vm.drawWheel(endAngle);
-      vm.wheelSpinning = false;
-      pointerEl?.classList.remove("wheel-pointer--tick");
-      const config = vm.wheelDisplayConfig || vm.activeWheelConfig;
-      const spinNumber = Number(shouldRecordLiveSession
-        ? (vm.wheelTotalSpins || 0)
-        : (spinController.wheelPreviewTotalSpins || 0));
-      let verificationUrl = buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
-        slotLabel: slots[targetIndex]?.name,
-        wheelName: config?.name,
-        spinNumber,
-        slots
-      });
-      if (fairnessResult.seed && fairnessResult.clientSeed) {
-        try {
-          const proofLink = await createWheelFairnessProofLink({
-            serverSeed: fairnessResult.seed,
-            clientSeed: fairnessResult.clientSeed,
-            slotCount: slots.length,
-            layoutHash: fairnessResult.layoutHash,
-            layout: serializeWheelLayoutForFairness(slots),
-            slotLabel: slots[targetIndex]?.name,
-            wheelName: config?.name,
-            spinNumber
-          });
-          verificationUrl = proofLink.verificationUrl;
-        } catch {
-          // Fall back to the short GET proof URL without the full ordered layout payload.
-        }
-      }
-      const readableFairnessResult = {
-        ...fairnessResult,
-        verificationUrl
-      };
-      vm._gameSpectatorSpinAnimation = null;
-      finalizeWheelSpinProof(vm, readableFairnessResult);
-      vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm, {
-        fairnessResult: readableFairnessResult,
-        slots,
+      const targetIndex = fairnessResult.resultIndex;
+      const currentAngle = (vm.wheelCurrentAngle || 0) as number;
+      const startedAt = Date.now();
+      const plan = createWheelSpinPlan({
+        slotCount: slots.length,
         targetIndex,
-        shouldRecordLiveSession
-      }), { preview: !shouldRecordLiveSession });
+        currentAngle,
+        extraRotations: resolveWheelLiveExtraRotations(Math.random()),
+        durationMs: resolveWheelLiveDurationMs(Math.random()),
+        startedAt,
+        spinIdSeed: String(startedAt)
+      });
+      if (!plan) return;
+      const { sliceAngle, endAngle, durationMs: duration, startAngle } = plan;
+      const startTime = performance.now();
+      vm._gameSpectatorSpinAnimation = plan.spectatorAnimation;
+      if (shouldRecordLiveSession) {
+        if (!isCurrentOutcome()) return;
+        await vm.recordSpinResult(targetIndex);
+        if (!isCurrentOutcome()) return;
+      } else {
+        vm.recordPreviewSpinResult(targetIndex);
+      }
       vm.saveWheelSession();
-      vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
-    };
 
-    if (typeof document !== "undefined") {
-      visibilityChangeHandler = () => {
-        if (document.visibilityState !== "visible" || spinCompleted) return;
+      // Pointer wobble: detect when slice dividers cross the pointer position
+      let prevBoundaryCount = 0;
+      const pointerEl = (vm.$refs?.wheelOuter as HTMLElement | null)
+        ?.querySelector(".wheel-pointer") as HTMLElement | null;
+      const centerIcon = getWheelCenterIcon(vm);
+      const spinFrameIntervalMs = getSpinFrameIntervalMs(vm);
+      let lastSpinFrameTime = startTime - spinFrameIntervalMs;
+      let spinFrameId: number | undefined;
+      let spinCompleted = false;
+      let visibilityChangeHandler: (() => void) | undefined;
+      const cleanupSpinLoop = () => {
+        spinCompleted = true;
         if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
           cancelAnimationFrame(spinFrameId);
           spinFrameId = undefined;
         }
-        void tick(performance.now());
+        if (visibilityChangeHandler && typeof document !== "undefined") {
+          document.removeEventListener("visibilitychange", visibilityChangeHandler);
+          visibilityChangeHandler = undefined;
+        }
       };
-      document.addEventListener("visibilitychange", visibilityChangeHandler);
-    }
+      const scheduleSpinFrame = () => {
+        spinFrameId = requestAnimationFrame(tick);
+      };
 
-    scheduleSpinFrame();
+      const tick = async (now: number) => {
+        if (spinCompleted) return;
+        if (!ownsWheelSpin(vm, operationId)) {
+          cleanupSpinLoop();
+          return;
+        }
+        if (!isCurrentOutcome()) {
+          cleanupSpinLoop();
+          releaseWheelSpin(vm, operationId);
+          return;
+        }
+        try {
+          const t = Math.min((now - startTime) / duration, 1);
+          const currentOffset = startAngle + (endAngle - startAngle) * easeOutQuart(t);
+          const shouldDrawFrame = t >= 1 || spinFrameIntervalMs <= 0 || now - lastSpinFrameTime >= spinFrameIntervalMs;
+          if (shouldDrawFrame) {
+            lastSpinFrameTime = now;
+            setWheelAnimatedAngle(vm, currentOffset, centerIcon);
+            vm.drawWheel(currentOffset);
+          }
+
+          // Wobble pointer when a divider crosses
+          if (pointerEl) {
+            const totalAngleSwept = Math.abs(currentOffset - startAngle);
+            const boundaryCount = Math.floor(totalAngleSwept / sliceAngle);
+            if (boundaryCount > prevBoundaryCount) {
+              prevBoundaryCount = boundaryCount;
+              pointerEl.classList.remove("wheel-pointer--tick");
+              void pointerEl.offsetWidth; // force reflow to restart animation
+              pointerEl.classList.add("wheel-pointer--tick");
+              // Tick volume fades as the wheel slows down
+              const tickVolume = 0.04 + 0.06 * (1 - t);
+              if (shouldPlayWheelSounds(vm)) {
+                playWheelTick(tickVolume);
+              }
+            }
+          }
+
+          if (t < 1) {
+            scheduleSpinFrame();
+            return;
+          }
+
+          cleanupSpinLoop();
+          vm.wheelCurrentAngle = endAngle;
+          clearWheelAnimatedAngle(vm);
+          vm.drawWheel(endAngle);
+          pointerEl?.classList.remove("wheel-pointer--tick");
+          const config = vm.wheelDisplayConfig || vm.activeWheelConfig;
+          const spinNumber = Number(shouldRecordLiveSession
+            ? (vm.wheelTotalSpins || 0)
+            : (spinController.wheelPreviewTotalSpins || 0));
+          let verificationUrl = buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
+            slotLabel: slots[targetIndex]?.name,
+            wheelName: config?.name,
+            spinNumber,
+            slots
+          });
+          if (fairnessResult.seed && fairnessResult.clientSeed) {
+            try {
+              const proofLink = await createWheelFairnessProofLink({
+                serverSeed: fairnessResult.seed,
+                clientSeed: fairnessResult.clientSeed,
+                slotCount: slots.length,
+                layoutHash: fairnessResult.layoutHash,
+                layout: serializeWheelLayoutForFairness(slots),
+                slotLabel: slots[targetIndex]?.name,
+                wheelName: config?.name,
+                spinNumber
+              });
+              verificationUrl = proofLink.verificationUrl;
+            } catch {
+              // Fall back to the short GET proof URL without the full ordered layout payload.
+            }
+          }
+          if (!ownsWheelSpin(vm, operationId) || !isCurrentOutcome()) return;
+          const readableFairnessResult = {
+            ...fairnessResult,
+            verificationUrl
+          };
+          vm._gameSpectatorSpinAnimation = null;
+          finalizeWheelSpinProof(vm, readableFairnessResult);
+          vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm, {
+            fairnessResult: readableFairnessResult,
+            slots,
+            targetIndex,
+            shouldRecordLiveSession
+          }), { preview: !shouldRecordLiveSession });
+          vm.saveWheelSession();
+          vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
+        } catch (error) {
+          console.warn("[whatfees] Wheel spin completion failed", error);
+          // A failed visual or completion effect must not leave the owning spin locked.
+          cleanupSpinLoop();
+        } finally {
+          if (spinCompleted) releaseWheelSpin(vm, operationId);
+        }
+      };
+
+      if (typeof document !== "undefined") {
+        visibilityChangeHandler = () => {
+          if (document.visibilityState !== "visible" || spinCompleted) return;
+          if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
+            cancelAnimationFrame(spinFrameId);
+            spinFrameId = undefined;
+          }
+          void tick(performance.now());
+        };
+        document.addEventListener("visibilitychange", visibilityChangeHandler);
+      }
+
+      scheduleSpinFrame();
+    animationStarted = true;
+    } finally {
+      if (!animationStarted) releaseWheelSpin(vm, operationId);
+    }
   },
 
   recordPreviewSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {
