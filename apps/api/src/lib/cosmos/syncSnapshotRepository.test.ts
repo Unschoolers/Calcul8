@@ -68,7 +68,10 @@ function createSyncSnapshotsContainer() {
     items: {
       query: vi.fn(),
       upsert: vi.fn(),
-      batch: vi.fn()
+      batch: vi.fn(async (operations: Array<unknown>, _partitionKey: string) => ({
+        statusCode: 200,
+        result: operations.map(() => ({ statusCode: 200 }))
+      }))
     },
     item: vi.fn()
   };
@@ -156,7 +159,7 @@ test("getEffectiveSyncSnapshot reconstructs lots and omits preset sales when ent
   });
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -225,12 +228,12 @@ test("getEffectiveSyncSnapshot follows the meta preset set and ignores orphaned 
 
   syncSnapshots.items.query.mockReturnValue({
     fetchAll: vi.fn().mockResolvedValue({
-      resources: presetDocuments
+      resources: presetDocuments.filter((document) => document.presetSetId === "current")
     })
   });
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -311,7 +314,7 @@ test("getEffectiveSyncSnapshot normalizes legacy preset sales and meta wheel con
   });
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -377,7 +380,7 @@ test("getEffectiveSyncSnapshot returns wheel-only snapshot when meta contains wh
   });
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -632,7 +635,7 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
   syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
   syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     }),
     delete: vi.fn().mockResolvedValue({ id, userId })
   }));
@@ -718,10 +721,13 @@ test("upsertSyncSnapshotIncremental writes changed presets and meta in one ETag 
       resources: []
     })
   });
-  syncSnapshots.items.batch.mockResolvedValue({ result: [] });
+  syncSnapshots.items.batch.mockImplementation(async (operations: Array<unknown>) => ({
+    statusCode: 200,
+    result: operations.map(() => ({ statusCode: 200 }))
+  }) as never);
   syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     }),
     delete: vi.fn().mockResolvedValue({ id, userId })
   }));
@@ -808,10 +814,13 @@ test("upsertSyncSnapshotIncremental writes a versioned preset set before swappin
       resources: existingPresetDocuments
     })
   });
-  syncSnapshots.items.batch.mockResolvedValue({ result: [] });
+  syncSnapshots.items.batch.mockImplementation(async (operations: Array<unknown>) => ({
+    statusCode: 200,
+    result: operations.map(() => ({ statusCode: 200 }))
+  }) as never);
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -894,7 +903,7 @@ test("upsertSyncSnapshotIncremental keeps large writes behind the final meta CAS
   syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     }),
     replace: replaceMock
   }));
@@ -947,7 +956,7 @@ test("upsertSyncSnapshotIncremental rejects stale expected versions before writi
   });
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -1011,10 +1020,13 @@ test("upsertSyncSnapshotIncremental ignores orphaned preset sets when checking e
       resources: [legacyDocument, orphanedDocument]
     })
   });
-  syncSnapshots.items.batch.mockResolvedValue({ result: [] });
+  syncSnapshots.items.batch.mockImplementation(async (operations: Array<unknown>) => ({
+    statusCode: 200,
+    result: operations.map(() => ({ statusCode: 200 }))
+  }) as never);
   syncSnapshots.item.mockImplementation((id: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     })
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -1067,7 +1079,7 @@ test("upsertSyncSnapshotIncremental updates meta when only wheel config data cha
   syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
   syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     }),
     delete: vi.fn().mockResolvedValue({ id, userId })
   }));
@@ -1153,7 +1165,7 @@ test("upsertSyncSnapshotIncremental updates meta when only system pricing defaul
   syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
   syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     }),
     delete: vi.fn().mockResolvedValue({ id, userId })
   }));
@@ -1233,7 +1245,7 @@ test("upsertSyncSnapshotIncremental preserves system pricing defaults when clien
   syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
   syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
     read: vi.fn().mockResolvedValue({
-      resource: id === "sync:meta:user-1" ? metaDocument : null
+      resource: id === "sync:meta:user-1" ? { ...metaDocument, _etag: (metaDocument as SyncMetaDocument & { _etag?: string })._etag ?? "test-etag" } : null
     }),
     delete: vi.fn().mockResolvedValue({ id, userId })
   }));
@@ -1258,3 +1270,125 @@ test("upsertSyncSnapshotIncremental preserves system pricing defaults when clien
   });
   assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
 });
+
+test("upsertSyncSnapshotIncremental fails closed when existing metadata lacks an ETag", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z"
+  };
+  syncSnapshots.items.query.mockReturnValue({ fetchAll: vi.fn().mockResolvedValue({ resources: [] }) });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({ resource: id === "sync:meta:user-1" ? metaDocument : null })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  await assert.rejects(() => upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [{ id: 1, name: "New" }],
+    salesByLot: { "1": [] },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 4,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  }), /Cloud data changed since your last sync/);
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+});
+
+test("upsertSyncSnapshotIncremental does not report success for a resolved batch with a failed operation", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const metaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta" as const,
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    _etag: "etag-3"
+  };
+  syncSnapshots.items.query.mockReturnValue({ fetchAll: vi.fn().mockResolvedValue({ resources: [] }) });
+  syncSnapshots.items.batch.mockImplementation(async (operations: Array<unknown>) => ({
+    statusCode: 200,
+    result: operations.map((_, index) => ({ statusCode: index === 0 ? 424 : 201 }))
+  }) as never);
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({ resource: id === "sync:meta:user-1" ? metaDocument : null })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  await assert.rejects(() => upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [{ id: 1, name: "New" }],
+    salesByLot: { "1": [] },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 4,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  }), /Cosmos transactional batch operation 1 returned an invalid status/);
+});
+
+test.each(["staging", "final-meta"] as const)(
+  "large staged write failure at %s leaves the prior generation readable and skips retention",
+  async (failurePoint) => {
+    const syncSnapshots = createSyncSnapshotsContainer();
+    const oldDocuments = [{
+      id: "sync:preset-set:user-1:old-generation:old-lot",
+      docType: "sync_preset" as const,
+      userId: "user-1",
+      presetId: "old-lot",
+      presetSetId: "old-generation",
+      preset: { id: "old-lot", name: "Prior generation" },
+      sales: [],
+      version: 3,
+      updatedAt: "2026-03-18T09:00:00.000Z",
+      _etag: "preset-etag"
+    } as SyncPresetDocument];
+    const oldMeta = {
+      id: "sync:meta:user-1",
+      docType: "sync_meta" as const,
+      userId: "user-1",
+      version: 3,
+      presetSetId: "old-generation",
+      updatedAt: "2026-03-18T09:00:00.000Z",
+      _etag: "meta-etag"
+    };
+    const lots = Array.from({ length: 101 }, (_, index) => ({ id: index + 1, name: `Lot ${index + 1}` }));
+    syncSnapshots.items.query.mockReturnValue({ fetchAll: vi.fn().mockResolvedValue({ resources: oldDocuments }) });
+    syncSnapshots.items.upsert.mockImplementation(async () => {
+      if (failurePoint === "staging") throw new Error("staging failed");
+      return { resource: null };
+    });
+    const replace = vi.fn(async () => {
+      if (failurePoint === "final-meta") throw { statusCode: 412 };
+      return { resource: null };
+    });
+    const replacePreset = vi.fn().mockResolvedValue({ resource: null });
+    const remove = vi.fn().mockResolvedValue({});
+    syncSnapshots.item.mockImplementation((id: string) => ({
+      read: vi.fn().mockResolvedValue({ resource: id === "sync:meta:user-1" ? oldMeta : null }),
+      replace: id === "sync:meta:user-1" ? replace : replacePreset,
+      delete: remove
+    }));
+    getContainersMock.mockReturnValue({ syncSnapshots });
+
+    await assert.rejects(() => upsertSyncSnapshotIncremental(createConfig(), {
+      userId: "user-1",
+      lots,
+      salesByLot: Object.fromEntries(lots.map((lot) => [String(lot.id), []])),
+      wheelConfigs: [],
+      activeWheelConfigId: null,
+      version: 4,
+      updatedAt: "2026-03-18T15:00:00.000Z"
+    }));
+
+    assert.equal(oldMeta.presetSetId, "old-generation");
+    const readablePriorSnapshot = await getEffectiveSyncSnapshot(createConfig(), "user-1");
+    assert.deepEqual(readablePriorSnapshot?.lots, [{ id: "old-lot", name: "Prior generation" }]);
+    assert.equal(replacePreset.mock.calls.length, 0);
+    assert.equal(remove.mock.calls.length, 0);
+    assert.equal(syncSnapshots.items.query.mock.calls.length, 2);
+  }
+);

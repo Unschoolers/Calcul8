@@ -11,7 +11,7 @@ export type PortfolioSortOption<Key extends string> = {
 
 export type PortfolioCopyFn = (key: string, fallback: string) => string;
 
-export type PortfolioLotPerformanceRow = Record<string, unknown> & {
+export type PortfolioLotPerformanceRow = {
   lotName?: string;
   salesCount?: number;
   soldPacks?: number;

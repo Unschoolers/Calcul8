@@ -280,6 +280,28 @@ test("lotSalesUpsert writes sale docs with baseVersion and mutationId", async ()
   assert.equal((response.jsonBody as { sale: { version: number } }).sale.version, 3);
 });
 
+test("lotSalesUpsert preserves omitted baseVersion for the repository's create-only default", async () => {
+  publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
+  upsertSaleDocumentMock.mockResolvedValue({
+    sale: { id: 12, type: "wheel", quantity: 1, packsCount: 0 },
+    version: 1,
+    updatedAt: "2026-03-17T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "sale:new"
+  });
+
+  const response = await lotSalesUpsert(
+    createRequest("POST", {
+      sale: { id: 12, type: "wheel", quantity: 1, packsCount: 0 },
+      mutationId: "sale:new"
+    }, { lotId: "10" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.baseVersion, undefined);
+});
+
 test("lotSalesUpsert rejects negative sale money before repository writes", async () => {
   const response = await lotSalesUpsert(
     createRequest("POST", {

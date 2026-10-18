@@ -1,9 +1,12 @@
 import AppDialogShell from "../../../ui/AppDialogShell.vue";
-import { setupTypedGameContext } from "../coordinator/gameContext.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 
 export const WheelCreateGameDialog = {
   name: "WheelCreateGameDialog",
   components: { AppDialogShell },
-  setup: setupTypedGameContext
+  props: {
+    ctx: gameContextProp
+  },
+  setup: setupGameContext
 };
 

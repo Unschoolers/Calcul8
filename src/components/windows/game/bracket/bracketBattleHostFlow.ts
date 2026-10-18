@@ -32,6 +32,7 @@ export type BracketBattleSessionStatePayload = {
   lastRolls: BracketBattleRoll[];
   rolling: boolean;
   showcaseMatchId: string | null;
+  publishLive: boolean;
 };
 
 type BracketBattleLifecycleEvent =
@@ -205,21 +206,26 @@ export function buildBracketBattleSessionStatePayload(input: {
   lastRolls: BracketBattleRoll[];
   rolling: boolean;
   showcaseMatchId: string | null;
+  publishLive?: boolean;
 }): BracketBattleSessionStatePayload {
   return {
     session: input.session,
     lastRolls: input.lastRolls,
     rolling: input.rolling,
-    showcaseMatchId: input.showcaseMatchId
+    showcaseMatchId: input.showcaseMatchId,
+    publishLive: input.publishLive === true
   };
 }
 
-export function applyBracketBattleHostState(
+export async function applyBracketBattleHostState(
   target: BracketBattleHostStateTarget,
   payload: BracketBattleSessionStatePayload
-): void {
+): Promise<void> {
   target.bracketBattleSession = payload.session;
   target.bracketBattleLastRolls = payload.lastRolls;
   target.bracketBattleRolling = payload.rolling;
   target.bracketBattleShowcaseMatchId = payload.showcaseMatchId;
+  if (payload.publishLive) {
+    await (target.publishGameSpectatorSessionSnapshot?.() ?? Promise.resolve());
+  }
 }

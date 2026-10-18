@@ -5,14 +5,58 @@ import { defineComponent, h, nextTick, provide, reactive } from "vue";
 import WheelHistoryPanel from "../../src/components/windows/game/inspector/WheelHistoryPanel.vue";
 import WheelInspector from "../../src/components/windows/game/inspector/WheelInspector.vue";
 import WheelSessionPanel from "../../src/components/windows/game/inspector/WheelSessionPanel.vue";
+import WheelStageTopbar from "../../src/components/windows/game/stage/WheelStageTopbar.vue";
 import WheelTierCard from "../../src/components/windows/game/inspector/WheelTierCard.vue";
 import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
+import { createGameHostState } from "../../src/components/windows/game/services/gameHostState.ts";
 import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
 import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
 import MysteryGridSurface from "../../src/components/windows/game/stage/MysteryGridSurface.vue";
 import { renderWithApp } from "./render.ts";
 
 describe("game inspector scenarios", () => {
+  test("Wheel stage toolbar resolves its typed game boundary and dispatches commands", async () => {
+    const openWheelCreateDialog = vi.fn();
+    const context = reactive({
+      ...createGameHostState(),
+      ...createWheelControllerState(),
+      preferredLanguage: "en",
+      t: (key: string) => key,
+      wheelStageTitle: "Wheel stage",
+      wheelStageSlotsLabel: "9 slots",
+      wheelStageSpinPriceLabel: "$5.00 per spin",
+      wheelPresentationToggleTitle: "Toggle presentation",
+      wheelSoundToggleTitle: "Toggle sound",
+      wheelMotionToggleTitle: "Toggle motion",
+      gameSpectatorActionLabel: "Spectators",
+      gameSpectatorSessionStatus: "inactive",
+      gameSpectatorSessionId: "",
+      wheelConfigItems: [],
+      activeWheelConfig: null,
+      wheelDisplayConfig: null,
+      wheelIsCompactLayout: false,
+      openWheelCreateDialog,
+      openWheelManageDialog: vi.fn(),
+      toggleWheelSound: vi.fn(),
+      toggleWheelReducedMotion: vi.fn(),
+      handleWheelModeChange: vi.fn(),
+      openGameSpectatorDialog: vi.fn()
+    });
+
+    const controller = createGameController(context as never);
+    const ProvidedWheelStageTopbar = defineComponent({
+      setup() {
+        provide(gameControllerKey, controller);
+        return () => h(WheelStageTopbar);
+      }
+    });
+    renderWithApp(ProvidedWheelStageTopbar);
+
+    expect(screen.getByText("9 slots")).toBeVisible();
+    await fireEvent.click(screen.getByRole("button", { name: "wheelInspectorNewGameAction" }));
+    expect(openWheelCreateDialog).toHaveBeenCalledOnce();
+  });
+
   test("Game overlays use the shared dialog shell", () => {
     const paths = [
       "src/components/windows/game/coordinator/GameWindow.html",
@@ -53,7 +97,6 @@ describe("game inspector scenarios", () => {
       }]
     };
     const context = {
-      ...createWheelControllerState(),
       wheelMobileInspectorOpen: false,
       wheelIsCompactLayout: false,
       wheelInspectorTab: "config",
@@ -92,16 +135,13 @@ describe("game inspector scenarios", () => {
       focusWheelInspector: vi.fn((tab: string) => {
         context.wheelInspectorTab = tab;
       }),
-      requestWheelReset: vi.fn(),
-      requestWheelSessionEnd: vi.fn(),
       closeWheelInspector: vi.fn()
     };
 
     renderWithApp(WheelInspector, {
+      props: { ctx: context },
       global: {
-        provide: {
-          [gameControllerKey]: createGameController(context as never)
-        },
+        provide: { gameCtx: context },
         stubs: {
           WheelTierCard: { template: "<div data-testid=\"wheel-tier-card\">{{ tier.label }}</div>", props: ["tier"] },
           WheelSessionPanel: { template: "<div />" },
@@ -239,7 +279,6 @@ describe("game inspector scenarios", () => {
       loadSalesForLotId: vi.fn(() => []),
       wheelEndingSession: false,
       wheelChaseDialog: false,
-      spinWheel: vi.fn(async () => undefined),
       requestWheelReset: vi.fn(),
       requestWheelSessionEnd: vi.fn(),
       t: (key: string) => key,
@@ -263,11 +302,11 @@ describe("game inspector scenarios", () => {
     const warnings: string[] = [];
     const Harness = defineComponent({
       setup() {
-      provide(gameControllerKey, createGameController(context as never));
+        provide("gameCtx", context);
         return () => h("div", [
-          h(MysteryGridSurface),
-          h(WheelSessionPanel),
-          h(WheelHistoryPanel)
+          h(MysteryGridSurface, { ctx: context }),
+          h(WheelSessionPanel, { ctx: context }),
+          h(WheelHistoryPanel, { ctx: context })
         ]);
       },
     });

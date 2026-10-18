@@ -23,7 +23,7 @@ function inlineExternalTemplate(source, templatePath, template) {
   const escapedPath = templatePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const templateTag = new RegExp(`<template\\s+src=(['"])${escapedPath}\\1\\s*(?:\\/\\s*>|>\\s*<\\/template\\s*>)`);
   if (!templateTag.test(source)) throw new Error(`Could not inline template src ${templatePath}`);
-  return source.replace(templateTag, `<template>\n${template}\n</template>`);
+  return source.replace(templateTag, () => `<template>\n${template}\n</template>`);
 }
 
 try {

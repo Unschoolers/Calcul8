@@ -17,6 +17,7 @@ import {
 } from "./workspace-realtime-recovery.ts";
 import {
   getDesiredRealtimeSubscription,
+  markWorkspaceRealtimeDataChanged,
   type RealtimeEventPayload
 } from "./workspace-realtime-state.ts";
 
@@ -161,6 +162,7 @@ export function applyRealtimeMessage(app: WorkspaceRealtimeContext, room: string
   }
 
   if (eventType === "wheel.session.updated") {
+    markWorkspaceRealtimeDataChanged(app as object);
     handleWheelSessionUpdatedEvent(app, data);
     return;
   }
@@ -174,6 +176,13 @@ export function applyRealtimeMessage(app: WorkspaceRealtimeContext, room: string
 
   const payload = parseRealtimeEventPayload(app, data);
   if (!payload) return;
+
+  if (eventType === "sale.upserted"
+    || eventType === "sale.deleted"
+    || eventType === "livePricing.updated"
+    || eventType === "lot.config.updated") {
+    markWorkspaceRealtimeDataChanged(app as object);
+  }
 
   if (eventType === "sale.upserted") {
     handleSaleUpsertEvent(app, payload);

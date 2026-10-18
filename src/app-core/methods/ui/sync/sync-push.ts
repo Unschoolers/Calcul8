@@ -2,6 +2,7 @@ import type { SyncPushResponseBody } from "./sync-network.ts";
 import type { SyncPushOptions } from "./sync-service.ts";
 import type { SyncSession } from "./sync-session.ts";
 import { recoverFromLocalSyncCacheReset } from "./sync-storage-reset-recovery.ts";
+import { getLocalSalesSignature } from "./sync-local-sales.ts";
 import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
 
 export async function performCloudSyncPush(
@@ -31,6 +32,7 @@ export async function performCloudSyncPush(
   if (!force && app.lastSyncedPayloadHash === payloadSignature) {
     return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
   }
+  const localSalesSignature = getLocalSalesSignature(app);
   deps.startSyncStatus(app);
 
   try {
@@ -56,8 +58,10 @@ export async function performCloudSyncPush(
         app,
         deps,
         scope,
+        session,
         options,
-        attemptedPayloadSignature: payloadSignature
+        attemptedPayloadSignature: payloadSignature,
+        isLocalSalesCurrent: () => getLocalSalesSignature(app) === localSalesSignature
       });
     }
 

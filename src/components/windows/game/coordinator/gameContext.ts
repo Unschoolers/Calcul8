@@ -1,5 +1,5 @@
 import { inject, type InjectionKey } from "vue";
-import type { GameController } from "./gameControllerState.ts";
+import type { GameController } from "../gamePorts.ts";
 
 export const gameControllerKey: InjectionKey<GameController> = Symbol("gameController");
 

@@ -2,7 +2,7 @@ import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
 import type { SalesEntityContext } from "../context/commerce.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
-import { captureWorkspaceScopeGuard } from "../workspace-scope.ts";
+import { captureWorkspaceScopeGuard, resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { normalizeSyncSaleDto } from "./ui/sync/sync-contracts.ts";
 import {
   canUseAuthoritativeSalesLiveApi,
@@ -13,6 +13,7 @@ import {
   SalesLiveApiError,
   type ScopedApiApp
 } from "./entity-api-shared.ts";
+import { getWorkspaceRealtimeApplyRevision } from "./ui/workspace/workspace-realtime-state.ts";
 
 type SaleResponse = {
   sales?: unknown;
@@ -107,6 +108,29 @@ export function normalizeLotSalesSyncMeta(value: unknown): LotSalesSyncMeta | nu
   };
 }
 
+export type AuthoritativeSalesRequestOptions = {
+  cache?: boolean;
+  scope?: {
+    scopeType: "personal" | "workspace";
+    workspaceId: string | null;
+  };
+  isRequestCurrent?: () => boolean;
+};
+
+function requestScope(
+  app: Pick<SalesEntityContext, "activeScopeType" | "activeWorkspaceId">,
+  options?: AuthoritativeSalesRequestOptions
+): Pick<SalesEntityContext, "activeScopeType" | "activeWorkspaceId"> {
+  if (options?.scope) {
+    return {
+      activeScopeType: options.scope.scopeType,
+      activeWorkspaceId: options.scope.workspaceId
+    };
+  }
+  const scope = resolveWorkspaceScopeContext(app);
+  return { activeScopeType: scope.scopeType, activeWorkspaceId: scope.workspaceId };
+}
+
 function persistSalesCache(
   app: Pick<SalesEntityContext, "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId">,
   lotId: number,
@@ -122,23 +146,30 @@ function persistSalesCache(
 
 export async function fetchAuthoritativeSales(
   app: SalesEntityContext,
-  lotId: number
+  lotId: number,
+  options: AuthoritativeSalesRequestOptions = {}
 ): Promise<Sale[] | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
   const isCurrentScope = captureWorkspaceScopeGuard(app);
+  const realtimeRevision = getWorkspaceRealtimeApplyRevision(app as object);
+  const scope = requestScope(app, options);
+  const isRequestCurrent = () => isCurrentScope()
+    && getWorkspaceRealtimeApplyRevision(app as object) === realtimeRevision
+    && (options.isRequestCurrent?.() ?? true);
 
   const body = await requestJson(
     app,
-    `/lots/${encodeURIComponent(String(lotId))}/sales${getScopeQuery(app)}`,
+    `/lots/${encodeURIComponent(String(lotId))}/sales${getScopeQuery(scope)}`,
     {
       method: "GET"
     },
-    "Failed to load lot sales."
+    "Failed to load lot sales.",
+    { isRequestCurrent }
   ) as SaleResponse | null;
 
-  if (!isCurrentScope()) return null;
+  if (!isRequestCurrent()) return null;
   const sales = normalizeSales(body?.sales);
-  persistSalesCache(app, lotId, sales);
+  if (options.cache !== false) persistSalesCache(app, lotId, sales);
   return sales;
 }
 

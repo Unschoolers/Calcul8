@@ -10,7 +10,7 @@ import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-c
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
 import AppDialogShell from "../../../ui/AppDialogShell.vue";
 import AppFormLayout from "../../../ui/AppFormLayout.vue";
-import type { GameController } from "../coordinator/gameControllerState.ts";
+import type { GameController } from "../gamePorts.ts";
 import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 

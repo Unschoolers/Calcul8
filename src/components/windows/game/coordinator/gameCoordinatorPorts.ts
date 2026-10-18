@@ -7,7 +7,7 @@ const gameCoordinatorPortKeys = [
   "activeScopeType", "activeWorkspaceId", "googleAuthEpoch", "hasProAccess", "wheelSpinning", "activeWheelSlots",
   "wheelPreviewSlots", "wheelInventoryWarning", "wheelShowSeed", "wheelFairnessHistoryOpen",
   "wheelHighlightedSlotIndex", "wheelCurrentAngle", "wheelTotalSpins", "wheelSpinCounts", "wheelLastResult",
-  "wheelSessionUpdatedAt", "wheelSessionLotSelections", "wheelPendingInventoryIssues", "wheelSessionNetRevenue",
+  "wheelSessionUpdatedAt", "wheelSessionLotSelections", "wheelPendingInventoryIssues", "wheelPendingChase", "wheelSessionNetRevenue",
   "wheelSessionCostAdjustment", "wheelFairnessHistory", "wheelChaseTallyHistory", "wheelGridLayoutSeed",
   "wheelPreviewGridLayoutSeed", "wheelGridReveals", "wheelPreviewGridReveals", "wheelPreviewSpinCounts",
   "wheelPreviewTotalSpins", "wheelPreviewFairnessHistory", "wheelPreviewChaseTallyHistory", "wheelLastResultColor",

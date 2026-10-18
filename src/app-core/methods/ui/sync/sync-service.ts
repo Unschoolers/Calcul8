@@ -55,6 +55,8 @@ export type SyncPushOptions = {
 
 export type SyncPullOptions = {
   forceApply?: boolean;
+  expectedPayloadSignature?: string;
+  isRequestCurrent?: () => boolean;
 };
 
 const defaultDeps: SyncServiceDeps = {
@@ -113,8 +115,19 @@ export async function runCloudSyncPull(
   const session = createSyncSession(app, resolvedDeps);
   const state = session.state;
   const shouldForceApply = options.forceApply === true;
+  const isGuardedPull = Boolean(options.isRequestCurrent || options.expectedPayloadSignature);
+  if (!isGuardedPull && !shouldForceApply && state.cleanConflictRecovery) {
+    return state.cleanConflictRecovery.promise;
+  }
   return new Promise((resolve) => {
-    if (state.activeOperation === "pull" && !shouldForceApply) {
+    if (isGuardedPull) {
+      state.pendingGuardedPulls.push({
+        forceApply: shouldForceApply,
+        expectedPayloadSignature: options.expectedPayloadSignature,
+        isRequestCurrent: options.isRequestCurrent,
+        completion: resolve
+      });
+    } else if (state.activeOperation === "pull" && !shouldForceApply) {
       state.activePullCompletions.push(resolve);
     } else {
       state.pendingPull = true;

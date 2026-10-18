@@ -114,4 +114,18 @@ describe("customer performance", () => {
     assert.equal(summary.lastActiveCustomer?.username, "Bob");
     assert.equal(summary.topFiveSharePercent, 100);
   });
+
+  test("converts USD customer gross spend to CAD once", () => {
+    const usdLot: Lot = { ...lot(3, "USD lot"), sellingCurrency: "USD", exchangeRate: 1.35 };
+    const rows = buildCustomerPerformanceRows({
+      lots: [lot(1, "CAD lot"), usdLot],
+      salesByLotId: new Map([
+        [1, [sale({ customer: "Alex", price: 100 })]],
+        [3, [sale({ customer: "Alex", price: 100 })]]
+      ])
+    });
+    assert.equal(rows[0]?.totalSpent, 235);
+    assert.equal(rows[0]?.topLotSpent, 135);
+    assert.equal(buildCustomerPerformanceSummary(rows).totalSpent, 235);
+  });
 });

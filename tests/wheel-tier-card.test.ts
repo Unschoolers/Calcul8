@@ -151,6 +151,7 @@ test("required pending lot selections use a persistent shared modal instead of t
   assert.match(template, /<app-dialog-shell[\s\S]*v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
   assert.match(template, /class="wheel-pending-lot-dialog"/);
   assert.match(template, /v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/);
+  assert.equal([...template.matchAll(/:disabled="wheelBatchRecordAllDisabled"/g)].length, 2);
 });
 
 test("required pending lot selections suppress duplicate stage warnings", () => {
@@ -262,7 +263,8 @@ test("multi-lot tier status keeps Bulk as the type without using Multi-lot as a 
 
 test("multi-lot tiers are grouped under Multi-lot with source lot names for the info menu", () => {
   const groups = WheelInspector.computed!.wheelBuilderTierGroups.call({
-    game: testGame({ preferredLanguage: "en", editingWheelConfig: {
+    preferredLanguage: "en",
+    editingWheelConfig: {
       tiers: [{
         id: "multi",
         label: "Tier 4",
@@ -281,7 +283,6 @@ test("multi-lot tiers are grouped under Multi-lot with source lot names for the 
       { id: 20, name: "Bleach vol3", lotType: "bulk", boxesPurchased: 1, packsPerBox: 28 }
     ],
     loadSalesForLotId: () => []
-  })
   } as never);
 
   assert.equal(groups[0]?.title, "Multi-lot");

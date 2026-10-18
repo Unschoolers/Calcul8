@@ -538,7 +538,7 @@ test("confirmSinglesPurchasesCsvImport merges matching item + card number into e
   assert.equal(rows.length, 2);
   const pikachu = rows.find((entry) => entry.item === "Pikachu" && entry.cardNumber === "025");
   const charmander = rows.find((entry) => entry.item === "Charmander" && entry.cardNumber === "004");
-  assert.equal(pikachu?.quantity, 4);
+  assert.equal(pikachu?.quantity, 8); // Existing 2 + imported 5 + imported 1.
   assert.equal(charmander?.quantity, 2);
   assert.equal(
     (ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0],

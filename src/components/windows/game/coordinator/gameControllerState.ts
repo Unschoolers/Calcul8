@@ -1,5 +1,6 @@
 import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 import type { WheelConfig } from "../../../../types/app.ts";
+import type { FocusedGameCommands, FocusedGameView, GameController } from "../gamePorts.ts";
 import { createGameHostState, type GameHostState } from "../services/gameHostState.ts";
 import {
     createWheelControllerState,
@@ -26,15 +27,10 @@ export type GameWindowHostState = GameHostState
   activeWheelConfig: WheelConfig | null;
   wheelDisplayConfig: WheelConfig | null;
   wheelDisplaySlots: WheelSlot[];
-  mysteryGridCells: import("../commands/mysteryGridMethods.ts").MysteryGridCell[];
   wheelIsCompactLayout: boolean;
   wheelCompactStageSummaryLabel: string;
   wheelCompactStageSummaryValue: string;
   wheelCompactStageSummaryColor: string;
-  expectedMarginDisplay: string;
-  wheelSessionMarginDisplay: string;
-  expectedMarginColor: string;
-  wheelSessionMarginColor: string;
   wheelStageTitle: string;
   wheelStageSlotsLabel: string;
   wheelStageSpinPriceLabel: string;
@@ -47,6 +43,10 @@ export type GameWindowHostState = GameHostState
   bulkTierSourceItems: Array<{ title: string; value: number }>;
   wheelConfigItems: Array<{ title: string; value: number }>;
   wheelStageSummaryCards: Array<{ id: string; label: string; value: string; valueClass?: string; valueStyle?: string; meta: string }>;
+  expectedMarginDisplay: string;
+  wheelSessionMarginDisplay: string;
+  expectedMarginColor: string;
+  wheelSessionMarginColor: string;
   wheelSpinBlockedReason: string;
   wheelHasRequiredLotSelection: boolean;
   wheelIsMysteryGrid: boolean;
@@ -55,6 +55,7 @@ export type GameWindowHostState = GameHostState
   wheelContextSecondaryActions: import("../../../shell/ContextActionDock.ts").ContextActionDockAction[];
   currentLotCostPerPack: number;
   hasPendingWheelChanges: boolean;
+  wheelBatchRecordAllDisabled: boolean;
   canApplyWheelConfig: boolean;
 
   // ===== Private internal state =====
@@ -104,11 +105,13 @@ export type GameCommandPorts = {
   runMysteryGridAutoPreviewAnimation(): Promise<void>;
   saveWheelSession(): void;
   loadWheelFromSession(): boolean;
-  resetPreviewSession(): Promise<void>;
-  resetWheelSession(): Promise<void>;
-  startEndWheelSession(): Promise<void>;
+  resetPreviewSession(): void;
+  resetWheelSession(): void;
+  startEndWheelSession(): void;
   recordChaseSale(tierId: string): void;
+  reopenPendingChaseDecision(): void;
   confirmBatchSale(index: number): void;
+  isPendingChaseInventoryIssue(entry: import("../../../../types/app.ts").PendingWheelInventoryIssue): boolean;
   deleteWheelConfig(): void;
   persistLastWheelConfigSelection(): void;
   restoreLastWheelConfigSelection(): void;
@@ -128,7 +131,6 @@ export type GameCommandPorts = {
   ensureWheelEditorState(): void;
   showWheelConfigSaved?(): void;
   stopWheelAutospin(): void;
-  cancelWheelSpinAnimation(): void;
   startWheelAutospin(): void;
   scheduleNextWheelAutospin(delayMs?: number): void;
   normalizeWheelCompactInspectorState(): void;
@@ -167,7 +169,7 @@ export type GameCommandPorts = {
 export type GameCommandContext = GameWindowHostState & GameCommandPorts;
 export type GameWindowThis = GameCommandContext;
 
-export type GameControllerCommands = Pick<
+type GameControllerFactoryCommands = Pick<
   GameCommandPorts,
   "spinWheel" | "revealMysteryGridCell" | "requestWheelSessionEnd" | "requestWheelReset"
   | "focusWheelInspector" | "addTier" | "closeWheelInspector"
@@ -181,50 +183,44 @@ export type GameControllerCommands = Pick<
   | "applyWheelConfig" | "canTierBeChase"
 >;
 
-/** Explicit game boundary shared with nested game components. */
-export type GameController = {
-  session: WheelControllerState;
-  view: GameWindowThis;
-  commands: GameControllerCommands;
-};
-
 export function createGameController(view: GameWindowThis): GameController {
+  const commands: GameControllerFactoryCommands = {
+    spinWheel: (...args) => view.spinWheel(...args),
+    revealMysteryGridCell: (...args) => view.revealMysteryGridCell(...args),
+    requestWheelSessionEnd: (...args) => view.requestWheelSessionEnd(...args),
+    requestWheelReset: (...args) => view.requestWheelReset(...args),
+    focusWheelInspector: (...args) => view.focusWheelInspector(...args),
+    addTier: (...args) => view.addTier(...args),
+    closeWheelInspector: (...args) => view.closeWheelInspector(...args),
+    openWheelCreateDialog: (...args) => view.openWheelCreateDialog(...args),
+    openWheelManageDialog: (...args) => view.openWheelManageDialog(...args),
+    toggleWheelSound: (...args) => view.toggleWheelSound(...args),
+    toggleWheelReducedMotion: (...args) => view.toggleWheelReducedMotion(...args),
+    handleWheelModeChange: (...args) => view.handleWheelModeChange(...args),
+    openGameSpectatorDialog: (...args) => view.openGameSpectatorDialog(...args),
+    createNewGameConfig: (...args) => view.createNewGameConfig(...args),
+    closeWheelCreateDialog: (...args) => view.closeWheelCreateDialog(...args),
+    startGameSpectatorMode: (...args) => view.startGameSpectatorMode(...args),
+    endGameSpectatorMode: (...args) => view.endGameSpectatorMode(...args),
+    copyGameSpectatorLink: (...args) => view.copyGameSpectatorLink(...args),
+    openGameSpectatorPage: (...args) => view.openGameSpectatorPage(...args),
+    closeGameSpectatorDialog: (...args) => view.closeGameSpectatorDialog(...args),
+    publishGameSpectatorSessionSnapshot: (...args) => view.publishGameSpectatorSessionSnapshot?.(...args) ?? Promise.resolve(),
+    getSinglesItemsForTier: (...args) => view.getSinglesItemsForTier(...args),
+    getTierInventoryMeta: (...args) => view.getTierInventoryMeta(...args),
+    isBoundLotSingles: (...args) => view.isBoundLotSingles(...args),
+    onTierPacksChange: (...args) => view.onTierPacksChange(...args),
+    onTierMultiLotChange: (...args) => view.onTierMultiLotChange(...args),
+    onTierSinglesChange: (...args) => view.onTierSinglesChange(...args),
+    toggleTierChase: (...args) => view.toggleTierChase(...args),
+    removeTier: (...args) => view.removeTier(...args),
+    applyWheelConfig: (...args) => view.applyWheelConfig(...args),
+    canTierBeChase: (...args) => view.canTierBeChase(...args)
+  };
   return {
     session: getWheelController(view),
-    view,
-    commands: {
-      spinWheel: (...args) => view.spinWheel(...args),
-      revealMysteryGridCell: (...args) => view.revealMysteryGridCell(...args),
-      requestWheelSessionEnd: (...args) => view.requestWheelSessionEnd(...args),
-      requestWheelReset: (...args) => view.requestWheelReset(...args),
-      focusWheelInspector: (...args) => view.focusWheelInspector(...args),
-      addTier: (...args) => view.addTier(...args),
-      closeWheelInspector: (...args) => view.closeWheelInspector(...args),
-      openWheelCreateDialog: (...args) => view.openWheelCreateDialog(...args),
-      openWheelManageDialog: (...args) => view.openWheelManageDialog(...args),
-      toggleWheelSound: (...args) => view.toggleWheelSound(...args),
-      toggleWheelReducedMotion: (...args) => view.toggleWheelReducedMotion(...args),
-      handleWheelModeChange: (...args) => view.handleWheelModeChange(...args),
-      openGameSpectatorDialog: (...args) => view.openGameSpectatorDialog(...args),
-      createNewGameConfig: (...args) => view.createNewGameConfig(...args),
-      closeWheelCreateDialog: (...args) => view.closeWheelCreateDialog(...args),
-      startGameSpectatorMode: (...args) => view.startGameSpectatorMode(...args),
-      endGameSpectatorMode: (...args) => view.endGameSpectatorMode(...args),
-      copyGameSpectatorLink: (...args) => view.copyGameSpectatorLink(...args),
-      openGameSpectatorPage: (...args) => view.openGameSpectatorPage(...args),
-      closeGameSpectatorDialog: (...args) => view.closeGameSpectatorDialog(...args),
-      publishGameSpectatorSessionSnapshot: (...args) => view.publishGameSpectatorSessionSnapshot?.(...args) ?? Promise.resolve(),
-      getSinglesItemsForTier: (...args) => view.getSinglesItemsForTier(...args),
-      getTierInventoryMeta: (...args) => view.getTierInventoryMeta(...args),
-      isBoundLotSingles: (...args) => view.isBoundLotSingles(...args),
-      onTierPacksChange: (...args) => view.onTierPacksChange(...args),
-      onTierMultiLotChange: (...args) => view.onTierMultiLotChange(...args),
-      onTierSinglesChange: (...args) => view.onTierSinglesChange(...args),
-      toggleTierChase: (...args) => view.toggleTierChase(...args),
-      removeTier: (...args) => view.removeTier(...args),
-      applyWheelConfig: (...args) => view.applyWheelConfig(...args),
-      canTierBeChase: (...args) => view.canTierBeChase(...args)
-    }
+    view: view as unknown as FocusedGameView,
+    commands: commands as unknown as FocusedGameCommands
   };
 }
 

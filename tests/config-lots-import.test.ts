@@ -139,7 +139,7 @@ test("parseSinglesCsvRowsWithMapping sanitizes invalid currency-like numbers", (
   assert.equal(parsed.entries[0]?.marketValue, 0);
 });
 
-test("applySinglesCsvImportRows merge mode merges on item+card and increments quantity by one per duplicate row", () => {
+test("applySinglesCsvImportRows merge mode adds incoming quantities for exact-key duplicates", () => {
   const existingRows = [
     { id: 1, item: "Pikachu", cardNumber: "025", cost: 1, quantity: 2, marketValue: 3 }
   ];
@@ -161,9 +161,24 @@ test("applySinglesCsvImportRows merge mode merges on item+card and increments qu
   assert.equal(applied.mergedCount, 2);
   assert.equal(applied.addedCount, 1);
   assert.equal(applied.rows.length, 2);
-  assert.equal(applied.rows[0]?.quantity, 4);
+  assert.equal(applied.rows[0]?.quantity, 8);
   assert.equal(applied.rows[1]?.item, "Charmander");
   assert.equal(existingRows[0]?.quantity, 2);
+});
+
+test("applySinglesCsvImportRows adds an exact-key incoming quantity to the existing quantity", () => {
+  const applied = applySinglesCsvImportRows({
+    existingRows: [
+      { id: 1, item: "Pikachu", cardNumber: "025", cost: 1, quantity: 2, marketValue: 3 }
+    ],
+    parsedRows: [
+      { item: "Pikachu", cardNumber: "025", cost: 2, quantity: 10, marketValue: 4 }
+    ],
+    importMode: "merge",
+    now: 1500
+  });
+
+  assert.equal(applied.rows[0]?.quantity, 12);
 });
 
 test("applySinglesCsvImportRows append mode never merges", () => {
@@ -198,7 +213,7 @@ test("applySinglesCsvImportRows sync mode replaces existing rows and still merge
     ],
     parsedRows: [
       { item: "Pikachu", cardNumber: "025", cost: 2, quantity: 5, marketValue: 4 },
-      { item: "Pikachu", cardNumber: "025", cost: 2, quantity: 1, marketValue: 4 },
+      { item: "Pikachu", cardNumber: "025", cost: 2, quantity: 2, marketValue: 4 },
       { item: "Charmander", cardNumber: "004", cost: 2, quantity: 2, marketValue: 4 }
     ],
     importMode: "sync",
@@ -211,7 +226,7 @@ test("applySinglesCsvImportRows sync mode replaces existing rows and still merge
   assert.equal(applied.addedCount, 2);
   assert.equal(applied.rows.length, 2);
   assert.equal(applied.rows[0]?.item, "Pikachu");
-  assert.equal(applied.rows[0]?.quantity, 6);
+  assert.equal(applied.rows[0]?.quantity, 7);
 });
 
 test("applySinglesCsvImportRows does not merge when card number is missing", () => {
@@ -273,7 +288,7 @@ test("applySinglesCsvImportRows does not merge when condition or language differ
   assert.equal(applied.rows.length, 3);
 });
 
-test("applySinglesCsvImportRows merges blank condition/language row into a unique item+number match", () => {
+test("applySinglesCsvImportRows adds incoming quantity to a unique item+number fallback match", () => {
   const applied = applySinglesCsvImportRows({
     existingRows: [
       {
@@ -283,7 +298,7 @@ test("applySinglesCsvImportRows merges blank condition/language row into a uniqu
         condition: "Near Mint",
         language: "English",
         cost: 2,
-        quantity: 1,
+        quantity: 2,
         marketValue: 3
       }
     ],
@@ -306,7 +321,7 @@ test("applySinglesCsvImportRows merges blank condition/language row into a uniqu
   assert.equal(applied.ambiguousCount, 0);
   assert.equal(applied.addedCount, 0);
   assert.equal(applied.rows.length, 1);
-  assert.equal(applied.rows[0]?.quantity, 2);
+  assert.equal(applied.rows[0]?.quantity, 12);
 });
 
 test("applySinglesCsvImportRows keeps blank condition/language row separate when item+number match is ambiguous", () => {

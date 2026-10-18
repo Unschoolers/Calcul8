@@ -9,6 +9,15 @@ export async function performCloudSyncPull(
 ): Promise<PersistenceOutcome> {
   const { app, deps, scope, baseUrl } = session;
   let cloudSnapshotReceived = false;
+  const isCurrentRequest = () => session.isCurrentScope() && options.isRequestCurrent?.() !== false;
+  const staleRequestOutcome = (): PersistenceOutcome => {
+    if (session.isCurrentScope() && options.expectedPayloadSignature) {
+      deps.setSyncStatusError(app);
+      return { kind: "conflict", latestState: "unavailable" };
+    }
+    return { kind: "skipped", reason: "stale-scope" };
+  };
+  if (!isCurrentRequest()) return staleRequestOutcome();
   if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
   if (!baseUrl) return { kind: "skipped", reason: "unavailable" };
   if (!deps.isOnline()) {
@@ -18,8 +27,21 @@ export async function performCloudSyncPull(
 
   deps.startSyncStatus(app);
 
+  const localEditsConflict = (): PersistenceOutcome => {
+    deps.setSyncStatusError(app);
+    app.notify("Cloud data changed. Your local changes were kept. Pull latest data before retrying.", "warning");
+    console.warn("[whatfees] Cloud sync pull recovery: local edits changed during clean conflict recovery");
+    return { kind: "conflict", latestState: "unavailable" };
+  };
+
+  if (options.expectedPayloadSignature
+      && session.getCurrentPayloadSignature() !== options.expectedPayloadSignature) {
+    return localEditsConflict();
+  }
+
   try {
     const response = await session.requestPull();
+    if (!isCurrentRequest()) return staleRequestOutcome();
     if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
 
     if (response.status === 401) {
@@ -41,12 +63,20 @@ export async function performCloudSyncPull(
       return { kind: "failure", error: new Error(`Cloud sync pull failed: ${response.statusText}`), stage: "sync", status: response.status };
     }
 
+    if (options.expectedPayloadSignature
+        && session.getCurrentPayloadSignature() !== options.expectedPayloadSignature) {
+      return localEditsConflict();
+    }
+
     const body = (await response.json()) as SyncPullResponseBody;
+    if (!isCurrentRequest()) return staleRequestOutcome();
     cloudSnapshotReceived = true;
     if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
+    if (options.expectedPayloadSignature
+        && session.getCurrentPayloadSignature() !== options.expectedPayloadSignature) {
+      return localEditsConflict();
+    }
     if (!body.snapshot) {
-      const signature = session.getCurrentPayloadSignature();
-      session.setLastSyncedPayloadHash(signature);
       deps.setSyncStatusSuccess(app);
       return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
     }
@@ -65,12 +95,16 @@ export async function performCloudSyncPull(
         cloudHasData: parsedSnapshot.hasData
       });
     if (!shouldApplyCloud) {
-      const signature = session.getCurrentPayloadSignature();
-      session.setLastSyncedPayloadHash(signature);
       deps.setSyncStatusSuccess(app);
       return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
     }
 
+    if (options.expectedPayloadSignature
+        && session.getCurrentPayloadSignature() !== options.expectedPayloadSignature) {
+      return localEditsConflict();
+    }
+
+    if (!isCurrentRequest()) return staleRequestOutcome();
     deps.applyCloudSnapshotToLocal(app, parsedSnapshot);
     const signature = session.getCurrentPayloadSignature();
     session.setLastSyncedPayloadHash(signature);

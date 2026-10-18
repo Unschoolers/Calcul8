@@ -694,7 +694,57 @@ function normalizeSyncInventoryIssueDto(value) {
     if (value.requiresLotSelection === true) {
         issue.requiresLotSelection = true;
     }
+    if (value.writeAttempted === true)
+        issue.writeAttempted = true;
     return issue;
+}
+function normalizeSyncWheelChaseObligationDto(value) {
+    var _a, _b, _c;
+    if (!isSyncEntityRecord(value))
+        return null;
+    const configId = (_a = normalizeOptionalSyncId(value.configId)) !== null && _a !== void 0 ? _a : -1;
+    const spinNumber = (_b = normalizeNonNegativeInteger(value.spinNumber)) !== null && _b !== void 0 ? _b : 0;
+    const slotIndex = (_c = normalizeNonNegativeInteger(value.slotIndex)) !== null && _c !== void 0 ? _c : 0;
+    const tierId = normalizeLimitedString(value.tierId, 120) || "__unresolved_chase_source__";
+    const originalConfig = normalizeSyncWheelConfigDto(value.originalConfig);
+    const originalSourceJson = normalizeLimitedString(value.originalSourceJson, 250000);
+    const originalTier = normalizeSyncWheelTierDto(value.originalTier);
+    const rawPrize = isSyncEntityRecord(value.originalPrize) ? value.originalPrize : null;
+    const originalPrize = rawPrize && typeof rawPrize.slotLabel === "string"
+        ? {
+            slotLabel: normalizeLimitedString(rawPrize.slotLabel, 200),
+            slotColor: normalizeLimitedString(rawPrize.slotColor, 80),
+            lotId: normalizeOptionalSyncId(rawPrize.lotId),
+            singlesEntryId: normalizeOptionalSyncId(rawPrize.singlesEntryId),
+            ...(rawPrize.lotType === "bulk" || rawPrize.lotType === "singles" ? { lotType: rawPrize.lotType } : {}),
+            itemLabel: normalizeLimitedString(rawPrize.itemLabel, 200),
+            ...(typeof rawPrize.image === "string" ? { image: normalizeLimitedString(rawPrize.image, 2000) } : {}),
+            ...(typeof rawPrize.singlesSourceFingerprint === "string"
+                ? { singlesSourceFingerprint: normalizeLimitedString(rawPrize.singlesSourceFingerprint, 2000) } : {}),
+            ...(typeof rawPrize.singlesSourceSnapshot === "string"
+                ? { singlesSourceSnapshot: normalizeLimitedString(rawPrize.singlesSourceSnapshot, 4000) } : {})
+        }
+        : null;
+    const saleDraft = value.saleDraft === null ? null : normalizeSyncSaleDto(value.saleDraft);
+    const valid = value.version === 1 && configId > 0 && spinNumber > 0 && tierId !== "__unresolved_chase_source__"
+        && (originalConfig === null || originalConfig === void 0 ? void 0 : originalConfig.id) === configId && originalSourceJson.length > 0
+        && (originalTier === null || originalTier === void 0 ? void 0 : originalTier.id) === tierId && (originalPrize === null || originalPrize === void 0 ? void 0 : originalPrize.slotLabel) && originalPrize.itemLabel
+        && (originalPrize.singlesEntryId == null || Boolean(originalPrize.singlesSourceFingerprint))
+        && (value.saleDraft === null || (saleDraft === null || saleDraft === void 0 ? void 0 : saleDraft.type) === "wheel");
+    return {
+        version: 1,
+        ...(!valid ? { unresolvedSource: true } : {}),
+        configId,
+        spinNumber,
+        tierId,
+        slotIndex,
+        ...(originalConfig ? { originalConfig } : {}),
+        ...(originalSourceJson ? { originalSourceJson } : {}),
+        ...(originalTier ? { originalTier } : {}),
+        ...(originalPrize ? { originalPrize } : {}),
+        saleDraft: value.saleDraft === null ? null : (saleDraft !== null && saleDraft !== void 0 ? saleDraft : null),
+        ...(value.saleAttempted === true ? { saleAttempted: true } : {})
+    };
 }
 function normalizeSyncGameSessionDto(value, fallbackUpdatedAt = Date.now()) {
     const raw = isSyncEntityRecord(value) ? value : {};
@@ -752,7 +802,8 @@ function normalizeSyncGameSessionDto(value, fallbackUpdatedAt = Date.now()) {
         wheelLastResultColor: normalizeLimitedString(raw.wheelLastResultColor, 80),
         wheelSessionUpdatedAt: normalizeNonNegativeFloor(raw.wheelSessionUpdatedAt, fallbackUpdatedAt),
         wheelPendingInventoryIssues: pendingInventoryIssues.length > 0 ? pendingInventoryIssues : skippedDeductions,
-        wheelSkippedDeductions: skippedDeductions
+        wheelSkippedDeductions: skippedDeductions,
+        wheelPendingChase: normalizeSyncWheelChaseObligationDto(raw.wheelPendingChase)
     };
 }
 function hasValidSalesByLotCollection(value) {

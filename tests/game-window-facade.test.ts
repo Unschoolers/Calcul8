@@ -108,7 +108,7 @@ test("game leaf modules do not depend on the coordinator host context", () => {
   for (const file of visit(gameRoot)) {
     assert.doesNotMatch(
       readFileSync(file, "utf8"),
-      /(?:GameCommandContext|GameWindowThis)/,
+      /(?:from\s+["'][^"']*\/coordinator\/gameControllerState\.ts["']|GameCommandContext|GameWindowThis)/,
       `${file} must depend on focused game ports, not the coordinator host context`
     );
   }
@@ -127,8 +127,7 @@ test("game window children use the game context without the wheelCtx compatibili
     "src/components/windows/game/inspector/WheelTierCard.ts"
   ];
 
-  assert.doesNotMatch(definition, /gameCtx/);
-  assert.match(definition, /\[gameControllerKey\]: gameController/);
+  assert.match(definition, /gameCtx: this/);
   assert.doesNotMatch(definition, /wheelCtx:/);
   for (const file of contextConsumers) {
     const source = readFileSync(file, "utf8");
@@ -211,21 +210,29 @@ test("Bracket Battle stage mounts the overlay shell inside the existing stage ch
   assert.equal(typeof GameWindow.methods?.syncBracketBattleState, "function");
 });
 
-test("GameWindow applies bracket session state before typed publication commands run", () => {
+test("GameWindow publishes bracket session-state updates through the spectator host flow in any mode", async () => {
+  const publishes: Array<"starting" | "live" | "ended" | undefined> = [];
   const vm = {
     bracketBattleSession: null,
     bracketBattleLastRolls: [],
     bracketBattleRolling: false,
-    bracketBattleShowcaseMatchId: null
+    bracketBattleShowcaseMatchId: null,
+    wheelMode: "config",
+    publishGameSpectatorSessionSnapshot(status?: "starting" | "live" | "ended") {
+      publishes.push(status);
+      return Promise.resolve();
+    }
   };
 
-  GameWindow.methods!.syncBracketBattleState.call(vm as never, {
+  await GameWindow.methods!.syncBracketBattleState.call(vm as never, {
     session: { id: "session-1" } as never,
     lastRolls: [{ id: "roll-1", value: 6 }] as never,
     rolling: true,
-    showcaseMatchId: "match-1"
+    showcaseMatchId: "match-1",
+    publishLive: true
   });
 
+  assert.deepEqual(publishes, [undefined]);
   assert.deepEqual(vm.bracketBattleLastRolls, [{ id: "roll-1", value: 6 }]);
   assert.equal(vm.bracketBattleRolling, true);
   assert.equal(vm.bracketBattleShowcaseMatchId, "match-1");

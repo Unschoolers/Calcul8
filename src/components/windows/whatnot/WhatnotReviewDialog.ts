@@ -326,8 +326,9 @@ export const WhatnotReviewDialog = {
     }
   },
   methods: {
-    findLotItemByValue(this: { lotItems: LotOptionItem[] }, value: number | null | undefined): LotOptionItem | undefined {
-      return this.lotItems.find(item => item.value === value);
+    findLotItemByValue(this: { lotItems: LotOptionItem[] }, value: unknown): LotOptionItem | undefined {
+      if (value == null) return undefined;
+      return this.lotItems.find(item => item.value === Number(value));
     },
     whatnotOrderStatusLabel(this: any, rawStatus: string): string {
       return formatWhatnotOrderStatus(rawStatus, getWhatnotPreferredLanguage(this));
@@ -645,7 +646,7 @@ export const WhatnotReviewDialog = {
       this.syncWhatnotManualDuplicateCandidatesForGroup(row);
     },
 
-    handleWhatnotPacksCountChange(this: any, row: WhatnotImportReviewRow, value: number | null): void {
+    handleWhatnotPacksCountChange(this: any, row: WhatnotImportReviewRow, value: unknown): void {
       row.selectedPacksCount = value == null ? null : Math.max(1, Math.floor(Number(value) || 0)) || null;
       this.applyWhatnotSelectionToSimilarRows(row, {
         selectedPacksCount: row.selectedPacksCount

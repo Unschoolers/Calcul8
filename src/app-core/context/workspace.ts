@@ -159,6 +159,7 @@ export type WorkspaceRealtimeContext = Pick<
   | "activeScopeType"
   | "activeWorkspaceId"
   | "currentLotId"
+  | "lotHydrationRevision"
   | "currentTab"
   | "isOffline"
   | "lots"

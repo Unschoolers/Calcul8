@@ -22,8 +22,10 @@ export async function runGameSessionLifecycle<TState, TEvent>(
   ports: GameSessionEnginePorts<TState>
 ): Promise<TState> {
   const next = adapter.transition(state, event);
-  await ports.persist(next);
-  if (adapter.shouldPublish(event)) await ports.publish(next);
+  const persisted = ports.persist(next);
+  const published = adapter.shouldPublish(event) ? ports.publish(next) : undefined;
+  await persisted;
+  await published;
   return next;
 }
 

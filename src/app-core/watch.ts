@@ -9,14 +9,12 @@ import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { hydrateMissingWhatnotScopeSales } from "./methods/whatnot-fee-hydration.ts";
 import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
 import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
-import { resetWhatnotSignedOutState } from "./methods/ui/whatnot/whatnot.ts";
+import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot/whatnot.ts";
 import { resetShopifySignedOutState } from "./methods/ui/shopify/shopify-state.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace/workspace-realtime.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { scheduleTabPrewarm } from "./tab-prewarm.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
-import { resetActiveSales } from "./feature-state/sales-state.ts";
-import { resetIntegrationScopeState } from "./feature-state/integration-state.ts";
 
 const TAB_SALES_FRESHNESS_DELAY_MS = 500;
 const TAB_CHART_SETTLE_DELAY_MS = 250;
@@ -87,11 +85,11 @@ export const appWatch: AppWatchObject = {
     deep: true
   },
   activeScopeType() {
-    const devNoLogin = isDevNoLoginRoute();
-    resetIntegrationScopeState(this, { resetWhatnot: !devNoLogin });
-    if (devNoLogin) return;
+    this.resetShopifyBindings?.();
+    if (isDevNoLoginRoute()) return;
     void this.hydrateBuyerProfiles();
     refreshWorkspaceRealtime(this);
+    resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
       void this.refreshShopifyStatus();
@@ -99,11 +97,11 @@ export const appWatch: AppWatchObject = {
   },
 
   activeWorkspaceId() {
-    const devNoLogin = isDevNoLoginRoute();
-    resetIntegrationScopeState(this, { resetWhatnot: !devNoLogin });
-    if (devNoLogin) return;
+    this.resetShopifyBindings?.();
+    if (isDevNoLoginRoute()) return;
     void this.hydrateBuyerProfiles();
     refreshWorkspaceRealtime(this);
+    resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
       void this.refreshShopifyStatus();
@@ -298,7 +296,14 @@ export const appWatch: AppWatchObject = {
     if (!newVal) {
       stopWorkspaceRealtime(this);
       this.currentTab = "config";
-      resetActiveSales(this);
+      this.sales = [];
+      if (this.salesChart) {
+        const maybeDestroy = (this.salesChart as { destroy?: () => void }).destroy;
+        if (typeof maybeDestroy === "function") {
+          maybeDestroy.call(this.salesChart);
+        }
+        this.salesChart = null;
+      }
       return;
     }
 

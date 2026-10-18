@@ -81,7 +81,6 @@ import {
   whatnotDialogPortsKey,
   type WhatnotDialogPorts
 } from "./components/windows/whatnot/whatnotDialogPorts.ts";
-import { createFeatureStatePorts, featureStatePortsKey } from "./app-core/feature-state/feature-state-ports.ts";
 import type { AppState, Lot } from "./types/app.ts";
 
 export const appOptions = {
@@ -110,10 +109,9 @@ export const appOptions = {
     LotImageEditor
   },
   data: createInitialState,
-  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds" | "salesFeatureState" | "integrationFeatureState" | "gameSessionFeatureState">) {
+  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts & Pick<AppState, "visibleShellContextActionIds">) {
     return {
       [buyerProfilePortsKey]: createBuyerProfilePorts(this),
-      [featureStatePortsKey]: createFeatureStatePorts(this),
       [commerceDialogPortsKey]: createCommerceDialogPorts(this),
       [configWindowPortsKey]: createConfigWindowPorts(this),
       [gameCoordinatorPortsKey]: createGameCoordinatorPorts(this),
@@ -133,6 +131,9 @@ export const appOptions = {
   computed: { ...appComputed },
   methods: {
     ...appMethods,
+    openSinglesPurchaseDialog(this: { $refs: { singlesConfigWindow?: { handleAddSinglesPurchase?: () => void } } }): void {
+      this.$refs.singlesConfigWindow?.handleAddSinglesPurchase?.();
+    },
     getSavedCurrentLot(this: Pick<AppState, "lots" | "currentLotId">): Lot | undefined {
       return this.lots.find(candidate => candidate.id === this.currentLotId);
     }

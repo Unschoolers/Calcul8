@@ -1,4 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
+import { convertAmountToCad, normalizeUsdToCadRate } from "../../domain/currency.ts";
 import {
   calculateLotPerformanceSummary,
   calculatePortfolioTotals,
@@ -42,6 +43,19 @@ function lotMatchesPortfolioTypeFilter(
 ): boolean {
   if (filter === "both") return true;
   return getLotType(lot) === filter;
+}
+
+function lotForNativeCalculations(lot: Lot): Lot {
+  return { ...lot, exchangeRate: normalizeUsdToCadRate(lot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE) };
+}
+
+function toPortfolioCad(amount: number, lot: Lot): number {
+  return convertAmountToCad(amount, lot.sellingCurrency, lot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
+}
+
+function portfolioCadToNative(amount: number, lot: Lot): number {
+  const rate = normalizeUsdToCadRate(lot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
+  return lot.sellingCurrency === "USD" ? amount / rate : amount;
 }
 
 function normalizePortfolioDashboardPreset(value: unknown): PortfolioDashboardPreset {
@@ -163,12 +177,13 @@ export const portfolioComputed: PortfolioComputedObject = {
     for (const lot of selectedLots) {
       const row = performanceByLotId.get(lot.id);
       if (!row) continue;
+      const nativeLot = lotForNativeCalculations(lot);
       const projections = computeLotModeProjections({
-        lot,
+        lot: nativeLot,
         summary: {
           soldPacks: row.soldPacks,
           totalPacks: row.totalPacks,
-          totalCost: row.totalCost
+          totalCost: portfolioCadToNative(row.totalCost, nativeLot)
         },
         isCurrentLot: lot.id === this.currentLotId,
         hasProAccess: this.hasProAccess,
@@ -180,18 +195,18 @@ export const portfolioComputed: PortfolioComputedObject = {
 
       if (projections.item) {
         modeTotals.item.units += projections.item.units;
-        modeTotals.item.gross += projections.item.gross;
-        modeTotals.item.estimatedNetRemaining += projections.item.estimatedNetRemaining;
+        modeTotals.item.gross += toPortfolioCad(projections.item.gross, nativeLot);
+        modeTotals.item.estimatedNetRemaining += toPortfolioCad(projections.item.estimatedNetRemaining, nativeLot);
       }
       if (projections.box) {
         modeTotals.box.units += projections.box.units;
-        modeTotals.box.gross += projections.box.gross;
-        modeTotals.box.estimatedNetRemaining += projections.box.estimatedNetRemaining;
+        modeTotals.box.gross += toPortfolioCad(projections.box.gross, nativeLot);
+        modeTotals.box.estimatedNetRemaining += toPortfolioCad(projections.box.estimatedNetRemaining, nativeLot);
       }
       if (projections.rtyh) {
         modeTotals.rtyh.units += projections.rtyh.units;
-        modeTotals.rtyh.gross += projections.rtyh.gross;
-        modeTotals.rtyh.estimatedNetRemaining += projections.rtyh.estimatedNetRemaining;
+        modeTotals.rtyh.gross += toPortfolioCad(projections.rtyh.gross, nativeLot);
+        modeTotals.rtyh.estimatedNetRemaining += toPortfolioCad(projections.rtyh.estimatedNetRemaining, nativeLot);
       }
     }
 
@@ -309,7 +324,8 @@ export const portfolioComputed: PortfolioComputedObject = {
       .filter((lot) => selectedLotIdSet.has(lot.id))
       .map((lot) => {
         const sales = salesByLotId.get(lot.id) ?? [];
-        const summary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+        const nativeLot = lotForNativeCalculations(lot);
+        const summary = calculateLotPerformanceSummary(nativeLot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
         const realizedProfit = sales.reduce((sum, sale) => {
           return sum + calculateSaleProfit({
             sale,
@@ -318,21 +334,20 @@ export const portfolioComputed: PortfolioComputedObject = {
             sellingTaxPercent: lot.sellingTaxPercent,
             totalCaseCost: summary.totalCost,
             totalPacks: summary.totalPacks,
-            purchaseCurrency: lot.currency,
-            sellingCurrency: lot.sellingCurrency,
-            exchangeRate: lot.exchangeRate,
+            purchaseCurrency: nativeLot.currency,
+            sellingCurrency: nativeLot.sellingCurrency,
+            exchangeRate: nativeLot.exchangeRate,
             singlesPurchases: lot.singlesPurchases,
             defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
-            feeProfileInput: lot
+            feeProfileInput: nativeLot
           });
         }, 0);
-        const realizedRevenue = summary.totalRevenue;
-        const realizedCost = Math.max(0, realizedRevenue - realizedProfit);
-        const realizedMarginPercent = realizedRevenue > 0
-          ? ((realizedProfit / realizedRevenue) * 100)
+        const realizedRevenueNative = summary.totalRevenue;
+        const realizedMarginPercent = realizedRevenueNative > 0
+          ? ((realizedProfit / realizedRevenueNative) * 100)
           : null;
         const projections = computeLotModeProjections({
-          lot,
+          lot: nativeLot,
           summary: {
             soldPacks: summary.soldPacks,
             totalPacks: summary.totalPacks,
@@ -354,14 +369,17 @@ export const portfolioComputed: PortfolioComputedObject = {
         const lotType: "Bulk" | "Singles" = getLotType(lot) === "singles" ? "Singles" : "Bulk";
         return {
           ...summary,
+          totalRevenue: toPortfolioCad(summary.totalRevenue, nativeLot),
+          totalCost: toPortfolioCad(summary.totalCost, nativeLot),
+          totalProfit: toPortfolioCad(summary.totalProfit, nativeLot),
+          realizedCost: toPortfolioCad(Math.max(0, realizedRevenueNative - realizedProfit), nativeLot),
+          realizedProfit: toPortfolioCad(realizedProfit, nativeLot),
           lotId: summary.lotId,
           lotName: summary.lotName,
           lotType,
-          realizedCost,
-          realizedProfit,
           realizedMarginPercent,
-          forecastProfitAverage: forecastSummary.forecastProfitAverage,
-          forecastRevenueAverage: forecastSummary.forecastRevenueAverage,
+          forecastProfitAverage: forecastSummary.forecastProfitAverage == null ? null : toPortfolioCad(forecastSummary.forecastProfitAverage, nativeLot),
+          forecastRevenueAverage: forecastSummary.forecastRevenueAverage == null ? null : toPortfolioCad(forecastSummary.forecastRevenueAverage, nativeLot),
           forecastScenarioCount: forecastSummary.forecastScenarioCount
         };
       });

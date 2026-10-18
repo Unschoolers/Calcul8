@@ -183,6 +183,34 @@ export interface PendingWheelInventoryIssue {
   slotSinglesId?: number | null;
   candidateLotIds?: number[];
   requiresLotSelection?: boolean;
+  writeAttempted?: boolean;
+}
+
+export interface PendingWheelChaseObligation {
+  version: 1;
+  unresolvedSource?: true;
+  configId: number;
+  spinNumber: number;
+  tierId: string;
+  slotIndex: number;
+  originalConfig: WheelConfig;
+  originalSourceJson: string;
+  originalTier: WheelTier;
+  originalPrize: {
+    slotLabel: string;
+    slotColor: string;
+    lotId: number | null;
+    singlesEntryId: number | null;
+    lotType?: LotType;
+    itemLabel: string;
+    image?: string;
+    /** Stable description of the captured singles entry; quantity is intentionally excluded. */
+    singlesSourceFingerprint?: string;
+    /** Full immutable entry snapshot for audit and retry context, including its spin-time price. */
+    singlesSourceSnapshot?: string;
+  };
+  saleDraft: Sale | null;
+  saleAttempted?: boolean;
 }
 
 export interface WheelFairnessEntry {
@@ -601,10 +629,6 @@ export interface BuyerProfilePendingMutation {
 }
 
 export interface AppState extends LotSetup {
-  /** Focused owners are assembled by the composition root; legacy field names remain reactive aliases. */
-  salesFeatureState?: SalesFeatureOwner;
-  integrationFeatureState?: IntegrationFeatureOwner;
-  gameSessionFeatureState?: GameSessionOwner;
   hasProAccess: boolean;
   preferredLanguage: string;
   guidedOnboardingStatus: GuidedOnboardingStatus;
@@ -840,6 +864,7 @@ export interface AppState extends LotSetup {
   wheelSessionUpdatedAt: number;
   wheelSessionLotSelections: Record<string, number | null>;
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
+  wheelPendingChase: PendingWheelChaseObligation | null;
   wheelSessionNetRevenue: number | null;
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: WheelFairnessEntry[];
@@ -859,45 +884,3 @@ export interface AppState extends LotSetup {
   wheelSpinVerificationUrl: string;
   wheelSpinAlgorithm: string;
 }
-
-export interface SalesFeatureOwner {
-  sales: Sale[];
-  salesByLotId: Map<number, Sale[]>;
-  showAddSaleModal: boolean;
-  editingSale: Sale | null;
-  newSale: NewSaleDraft;
-  salesChart: ChartJS | null;
-  chartView: ChartViewMode;
-  salesCacheEpoch: number;
-}
-
-export type IntegrationFeatureOwner = Pick<AppState,
-  | "whatnotFeeDateOnly" | "whatnotConnectionStatus" | "whatnotSyncStatus" | "whatnotConnectionSummary"
-  | "whatnotCallbackStatus" | "whatnotCallbackMessage" | "whatnotCsvRawInput" | "whatnotCsvSellerAccountId"
-  | "whatnotCsvHeaders" | "whatnotCsvRows" | "whatnotCsvMapExternalSaleId" | "whatnotCsvMapOrderId"
-  | "whatnotCsvMapOrderItemId" | "whatnotCsvMapSellerAccountId" | "whatnotCsvMapTitle" | "whatnotCsvMapListingTitle"
-  | "whatnotCsvMapBuyerName" | "whatnotCsvMapOrderPlacedAt" | "whatnotCsvMapOriginalItemPrice" | "whatnotCsvMapSku"
-  | "whatnotCsvMapProductCategory" | "whatnotCsvMapQuantity" | "whatnotCsvMapPrice" | "whatnotCsvMapBuyerShipping"
-  | "whatnotCsvMapDate" | "whatnotCsvMapOrderStatus" | "whatnotReviewBatchId" | "whatnotReviewRows"
-  | "isConfirmingWhatnotImport" | "whatnotConfirmationRetryPayload" | "showWhatnotReviewDialog" | "showWhatnotCsvImportDialog"
-  | "shopifyConnectionStatus" | "shopifyConnectionShop" | "shopifyLastSyncedAt" | "shopifySyncError" | "shopifyShopDraft"
-  | "showShopifyConnectDialog" | "shopifyBindingsSummary" | "shopifyBindingsStatus" | "shopifyBindingsStale" | "shopifyBindingsScope"
-  | "shopifyEditListing" | "shopifyEditSearchQuery" | "shopifyEditSearchResults" | "shopifyEditSearchCursor"
-  | "shopifyEditSearchHasMore" | "shopifyEditSearchCompleted" | "shopifyEditSelectedVariantId" | "shopifyEditSelectedLocationId"
-  | "shopifyEditLoading" | "shopifyEditSaving" | "shopifyEditError" | "shopifyEditRecovery" | "shopifyEditErrorOperation"
-  | "shopifyEditRequestRevision" | "shopifyEditListingStatus" | "shopifyEditSessionAuthEpoch" | "shopifyEditSessionScope"
-  | "shopifyEditSessionLotId" | "shopifyEditBindingVersion" | "shopifyEditGeneration" | "shopifyEditOperationId"
-  | "shopifyEditPendingOwnerScope" | "shopifyEditPendingBindingMutation" | "shopifyEditPendingDetailsMutation"
-  | "shopifyEditPendingCreateMutation" | "shopifyEditDetailsOutcome" | "shopifyEditManagerOpen"
->;
-
-export type GameSessionOwner = Pick<AppState,
-  | "wheelSpinning" | "activeWheelSlots" | "wheelPreviewSlots" | "wheelInventoryWarning"
-  | "wheelShowSeed" | "wheelFairnessHistoryOpen" | "wheelHighlightedSlotIndex" | "wheelCurrentAngle"
-  | "wheelTotalSpins" | "wheelSpinCounts" | "wheelLastResult" | "wheelSessionUpdatedAt"
-  | "wheelSessionLotSelections" | "wheelPendingInventoryIssues" | "wheelSessionNetRevenue" | "wheelSessionCostAdjustment"
-  | "wheelFairnessHistory" | "wheelChaseTallyHistory" | "wheelGridLayoutSeed" | "wheelPreviewGridLayoutSeed"
-  | "wheelGridReveals" | "wheelPreviewGridReveals" | "wheelPreviewSpinCounts" | "wheelPreviewTotalSpins"
-  | "wheelPreviewFairnessHistory" | "wheelPreviewChaseTallyHistory" | "wheelLastResultColor" | "wheelSpinHash"
-  | "wheelSpinSeed" | "wheelSpinClientSeed" | "wheelSpinVerificationUrl" | "wheelSpinAlgorithm"
->;

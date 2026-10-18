@@ -4,4 +4,3 @@ export const WheelStageTopbar = {
   name: "WheelStageTopbar",
   setup: setupTypedGameContext
 };
-

@@ -36,14 +36,14 @@
         <div class="portfolio-performance-summary-stat is-error">
           <span class="portfolio-performance-summary-label">{{ model.lossLabel }}</span>
           <app-metric-value kind="money" tone="negative" value-class="portfolio-performance-summary-value">
-            ${{ model.lossAmount }}
+            ${{ model.lossAmount }} CAD
           </app-metric-value>
         </div>
         <div class="portfolio-performance-summary-divider" aria-hidden="true"></div>
         <div class="portfolio-performance-summary-stat is-success">
           <span class="portfolio-performance-summary-label">{{ model.gainLabel }}</span>
           <app-metric-value kind="money" tone="positive" value-class="portfolio-performance-summary-value">
-            ${{ model.gainAmount }}
+            ${{ model.gainAmount }} CAD
           </app-metric-value>
         </div>
       </div>

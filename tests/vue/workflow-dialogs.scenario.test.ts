@@ -12,9 +12,6 @@ import { createInitialState } from "../../src/app-core/state.ts";
 import { configLotMethods } from "../../src/app-core/methods/config-lots.ts";
 import WorkspaceModals from "../../src/components/shell/WorkspaceModals.vue";
 import WheelCreateGameDialog from "../../src/components/windows/game/dialogs/WheelCreateGameDialog.vue";
-import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
-import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
-import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
 import WhatnotCsvImportDialog from "../../src/components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import { commerceDialogPortsKey } from "../../src/components/modals/commerceDialogPorts.ts";
 import { shellPortsKey } from "../../src/components/shell/shellPorts.ts";
@@ -61,6 +58,7 @@ function translate(key: string): string {
     configSystemConfigurationHelp: "Default seller assumptions stay separate from lot overrides.",
     configSystemDefaultsTitle: "System defaults",
     configSystemDefaultsHelp: "These defaults apply to new lots.",
+    portfolioAmountsCurrencyLabel: "All monetary amounts in CAD",
     configSellingTaxesLabel: "Selling taxes",
     configAverageBuyerShippingLabel: "Average buyer shipping",
     configFeeProfileLabel: "Fee profile",
@@ -176,6 +174,7 @@ describe("workflow dialog scenarios", () => {
     expect(appStyles).toMatch(/\.app-responsive-segment-toggle\s*\{[^}]*flex-wrap:\s*wrap;[^}]*height:\s*auto\s*!important;/s);
     expect(appStyles).toMatch(/@media \(max-width:\s*360px\)[\s\S]*\.app-responsive-segment-toggle \.v-btn\s*\{[^}]*flex:\s*1 1 100%;/);
     expect(reportTemplate).toMatch(/class="portfolio-report-secondary-actions"/);
+    expect(reportTemplate).toMatch(/t\('portfolioAmountsCurrencyLabel'\)/);
     expect(reportStyles).toMatch(/\.portfolio-report-secondary-actions\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;/s);
     expect(reportStyles).toMatch(/@media \(max-width:\s*360px\)[\s\S]*\.portfolio-report-secondary-actions > \*\s*\{[^}]*flex:\s*1 1 100%;/);
   });
@@ -295,8 +294,7 @@ describe("workflow dialog scenarios", () => {
 
   test("creates a wheel game from the game-type chooser", async () => {
     const createNewGameConfig = vi.fn();
-    const view = { gameSessionFeatureState: createWheelControllerState(), wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() };
-    renderWithApp(WheelCreateGameDialog, { global: { provide: { [gameControllerKey]: createGameController(view as never) } } });
+    renderWithApp(WheelCreateGameDialog, { props: { ctx: { wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() } } });
 
     await fireEvent.click(screen.getByRole("button", { name: /Wheel/ }));
 
@@ -305,16 +303,14 @@ describe("workflow dialog scenarios", () => {
 
   test("creates a grid game from the game-type chooser", async () => {
     const createNewGameConfig = vi.fn();
-    const view = { gameSessionFeatureState: createWheelControllerState(), wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() };
-    renderWithApp(WheelCreateGameDialog, { global: { provide: { [gameControllerKey]: createGameController(view as never) } } });
+    renderWithApp(WheelCreateGameDialog, { props: { ctx: { wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() } } });
     await fireEvent.click(screen.getByRole("button", { name: /Grid/ }));
     expect(createNewGameConfig).toHaveBeenCalledWith("grid");
   });
 
   test("creates a bracket game from the game-type chooser", async () => {
     const createNewGameConfig = vi.fn();
-    const view = { gameSessionFeatureState: createWheelControllerState(), wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() };
-    renderWithApp(WheelCreateGameDialog, { global: { provide: { [gameControllerKey]: createGameController(view as never) } } });
+    renderWithApp(WheelCreateGameDialog, { props: { ctx: { wheelCreateDialog: true, t: translate, createNewGameConfig, closeWheelCreateDialog: vi.fn() } } });
     await fireEvent.click(screen.getByRole("button", { name: /Bracket/ }));
     expect(createNewGameConfig).toHaveBeenCalledWith("bracket");
   });
@@ -363,6 +359,41 @@ describe("workflow dialog scenarios", () => {
 
     expect(cancelSale).toHaveBeenCalledOnce();
     expect(saveSale).not.toHaveBeenCalled();
+  });
+
+  test("sale image errors hide the line thumbnail column and only the menu thumbnail", async () => {
+    const base = saleEditorContext();
+    const ctx = {
+      ...base,
+      currentLotType: "singles",
+      newSale: {
+        ...base.newSale,
+        singlesItems: [{ lineId: "line-1", singlesPurchaseEntryId: 7, quantity: 1, price: 12 }]
+      },
+      singlesSaleCardOptions: [{ value: 7, title: "Card", item: "Card", image: "broken-card.png", quantity: 1, costBasis: 2 }],
+      getSinglesSaleLineMaxQuantity: () => 1,
+      onSinglesSaleLineCardSelectionChange: vi.fn(),
+      saleEditorLineProfitPreviews: [],
+      saleEditorProfitPreview: null,
+      addSinglesSaleLine: vi.fn(),
+      onSinglesSaleLinePriceChange: vi.fn()
+    };
+    renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, ctx);
+
+    const lineColumn = document.querySelector<HTMLElement>(".sale-editor-line-thumb-col");
+    const lineImage = document.querySelector<HTMLImageElement>(".sale-editor-line-thumb");
+    expect(lineColumn).not.toBeNull();
+    expect(lineImage).not.toBeNull();
+    await fireEvent.error(lineImage!);
+    expect(lineColumn!.style.display).toBe("none");
+
+    const itemPicker = screen.getByRole("combobox", { name: "saleEditorItemOptionalLabel" });
+    await fireEvent.mouseDown(itemPicker);
+    await screen.findAllByText("Card");
+    const menuImage = document.querySelector<HTMLImageElement>(".sale-editor-dropdown-thumb");
+    expect(menuImage).not.toBeNull();
+    await fireEvent.error(menuImage!);
+    expect(menuImage!.hidden).toBe(true);
   });
 
   test("selects a sale type and saves through the shared form actions", async () => {

@@ -1,7 +1,8 @@
 <script lang="ts">
+import { defineComponent as defineVueComponent } from "vue";
 import { WheelStageTopbar } from "./WheelStageTopbar.ts";
 
-export default WheelStageTopbar;
+export default defineVueComponent(WheelStageTopbar);
 </script>
 
 <template src="./WheelStageTopbar.html"></template>

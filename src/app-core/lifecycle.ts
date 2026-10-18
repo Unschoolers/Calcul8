@@ -16,7 +16,6 @@ import {
 } from "./storageKeys.ts";
 import { cancelTabPrewarm, scheduleTabPrewarm } from "./tab-prewarm.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
-import { disposeSalesChart } from "./feature-state/sales-state.ts";
 import { getTodayDate } from "./methods/config-shared.ts";
 
 function isAppTab(value: unknown): value is AppTab {
@@ -263,7 +262,13 @@ export const appLifecycle: AppLifecycleObject = {
     stopWorkspaceConfigSyncPush(this);
     stopWorkspaceRealtime(this);
     this.stopOfflineReconnectScheduler();
-    disposeSalesChart(this);
+    if (this.salesChart) {
+      const maybeDestroy = (this.salesChart as { destroy?: () => void }).destroy;
+      if (typeof maybeDestroy === "function") {
+        maybeDestroy.call(this.salesChart);
+      }
+      this.salesChart = null;
+    }
     if (this.portfolioChart) {
       const maybeDestroy = (this.portfolioChart as { destroy?: () => void }).destroy;
       if (typeof maybeDestroy === "function") {

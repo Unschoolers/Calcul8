@@ -7,7 +7,7 @@ import {
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { BracketBattleConfig, BracketBattleConfigPrize, Lot, WheelConfig } from "../../../../types/app.ts";
 import AppFormLayout from "../../../ui/AppFormLayout.vue";
-import type { GameController } from "../coordinator/gameControllerState.ts";
+import type { GameController } from "../gamePorts.ts";
 import { setupTypedGameContext } from "../coordinator/gameContext.ts";
 import {
   applyBracketBattlePrizeCatalogSelection,

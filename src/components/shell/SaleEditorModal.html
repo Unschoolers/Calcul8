@@ -43,7 +43,7 @@
                   <img :src="findSinglesSaleCardOption(line.singlesPurchaseEntryId)?.image"
                     :alt="findSinglesSaleCardOption(line.singlesPurchaseEntryId)?.item"
                     class="sale-editor-line-thumb" loading="lazy"
-                    @error="hideSaleItemImage" />
+                    @error="hideSaleLineImage" />
                 </div>
                 <div class="sale-editor-line-fields">
                   <v-row density="comfortable" class="sale-editor-singles-grid">

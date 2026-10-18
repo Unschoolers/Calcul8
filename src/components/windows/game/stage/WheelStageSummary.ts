@@ -1,7 +1,10 @@
-import { setupTypedGameContext } from "../coordinator/gameContext.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 
 export const WheelStageSummary = {
   name: "WheelStageSummary",
-  setup: setupTypedGameContext
+  props: {
+    ctx: gameContextProp
+  },
+  setup: setupGameContext
 };
 

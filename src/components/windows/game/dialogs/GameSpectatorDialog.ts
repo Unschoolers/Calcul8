@@ -1,6 +1,6 @@
 import AppActionButton from "../../../ui/AppActionButton.vue";
 import AppDialogShell from "../../../ui/AppDialogShell.vue";
-import { setupTypedGameContext } from "../coordinator/gameContext.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 
 export const GameSpectatorDialog = {
   name: "GameSpectatorDialog",
@@ -8,6 +8,9 @@ export const GameSpectatorDialog = {
     AppActionButton,
     AppDialogShell
   },
-  setup: setupTypedGameContext
+  props: {
+    ctx: gameContextProp
+  },
+  setup: setupGameContext
 };
 

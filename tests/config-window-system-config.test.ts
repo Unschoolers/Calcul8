@@ -126,12 +126,12 @@ test("Shopify linking and marketplace SKU are edited with the lot, not system as
   const systemTemplate = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
   const pickerTemplate = readFileSync("src/components/windows/shopify/ShopifyProductPicker.vue", "utf8");
   assert.match(appTemplate, /v-model="renameLotExternalSku"/);
-  assert.match(appTemplate, /<shopify-lot-integration[\s\S]*?v-if="showRenameLotModal && currentLotType !== 'singles'"[\s\S]*?:state="\{ listing: shopifyEditListing[\s\S]*?@query-change="onShopifyEditQueryChange"/);
+  assert.match(appTemplate, /<section v-if="currentLotType !== 'singles'" class="edit-inventory-shopify">[\s\S]*?<shopify-lot-integration[\s\S]*?v-if="showRenameLotModal"[\s\S]*?:state="\{ listing: shopifyEditListing[\s\S]*?@query-change="onShopifyEditQueryChange"[\s\S]*?<\/section>/);
   assert.match(appTemplate, /saveBinding: applyShopifyBinding, saveDetails: saveShopifyProductDetails/);
   assert.match(appTemplate, /@manager-open="shopifyEditManagerOpen = \$event"/);
   assert.match(pickerTemplate, /t\('configShopifySectionTitle'\)/);
   assert.match(pickerTemplate, /t\('configShopifyPickerOpen'\)/);
   assert.match(appTemplate, /searchShopifyEditProducts/);
-  assert.match(appTemplate, /v-if="currentLotType !== 'singles' && shopifyEditListing\?\.mode === 'managed'" v-model="renameLotShopifyEnabled"/);
+  assert.match(appTemplate, /<section v-if="currentLotType !== 'singles'" class="edit-inventory-shopify">[\s\S]*?<v-switch v-if="shopifyEditListing\?\.mode === 'managed'" v-model="renameLotShopifyEnabled"/);
   assert.doesNotMatch(systemTemplate, /configMarketplaceSkuLabel|configShopifyPublishLabel|shopifyEnabled/);
 });

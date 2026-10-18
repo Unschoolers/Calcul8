@@ -53,7 +53,7 @@ export function buildPortfolioBreakdownChartConfig(params: {
             label: (context) => {
               const row = rows[context.dataIndex ?? 0];
               if (!row) return String(context.label ?? "");
-              return `${row.lotName}: $${params.formatCurrency(row.totalRevenue)}`;
+              return `${row.lotName}: $${params.formatCurrency(row.totalRevenue)} CAD`;
             }
           }
         }
@@ -193,7 +193,7 @@ export function buildPortfolioSalesByUserChartConfig(params: {
               if (params.metric === "count") {
                 return `${context.dataset.label}: ${params.formatCurrency(value, 0)} sale${value === 1 ? "" : "s"}`;
               }
-              return `${context.dataset.label}: $${params.formatCurrency(value)}`;
+              return `${context.dataset.label}: $${params.formatCurrency(value)} CAD`;
             }
           }
         }
@@ -211,12 +211,12 @@ export function buildPortfolioSalesByUserChartConfig(params: {
               if (params.metric === "count") {
                 return params.formatCurrency(numericValue, 0);
               }
-              return `$${params.formatCurrency(numericValue, 0)}`;
+              return `$${params.formatCurrency(numericValue, 0)} CAD`;
             }
           },
           title: {
             display: !params.compactMode,
-            text: metricLabel
+            text: params.metric === "count" ? metricLabel : `${metricLabel} (CAD)`
           }
         }
       }

@@ -176,7 +176,7 @@
                 @update:model-value="game.commands.onTierSinglesChange(editorTier, $event)"
               >
                 <template #item="{ props, item }">
-                  <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                        <v-list-item v-bind="props" :title="''" :subtitle="''">
                     <template #prepend>
                       <div class="wheel-card-thumb" v-if="resolveVuetifySlotString(item, ['image'])">
                         <img :src="resolveVuetifySlotString(item, ['image'])" alt="" loading="lazy">

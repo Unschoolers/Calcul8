@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync/sync-apply.ts";
 import { getSyncScopeKey, resolveSyncScopeContext, toSyncScopeContext } from "../src/app-core/methods/ui/sync/sync-scope.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
+import { getSyncPayloadSignature } from "../src/app-core/methods/ui/sync/sync-payload.ts";
 import { setActiveWorkspaceScope } from "../src/app-core/workspace-scope.ts";
 
 const {
@@ -208,6 +209,102 @@ test("runCloudSyncPull recovers the coordinator after an unexpected setup error"
   warnSpy.mockRestore();
 });
 
+test.each([
+  ["an empty response", {}],
+  ["a same-version snapshot", {
+    snapshot: {
+      lots: [{ id: 1, name: "Cloud lot" }],
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
+      version: 2
+    }
+  }]
+])("a pull with %s preserves the dirty baseline so the next push uploads local edits", async (_label, body) => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = "previously-confirmed-signature";
+  app.lots = [{ id: 1, name: "Offline edit" }];
+  const localPayload = () => ({
+    lots: app.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  });
+  const signature = (payload: unknown) => JSON.stringify(payload);
+  const requestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => body
+  });
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+  const deps = {
+    requestCloudSyncPull,
+    requestCloudSyncPush,
+    createSyncPayload: localPayload,
+    getSyncPayloadSignature: signature,
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  };
+
+  await runCloudSyncPull(app, deps);
+  assert.equal(app.lastSyncedPayloadHash, "previously-confirmed-signature");
+
+  await runCloudSyncPush(app, false, deps);
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(app.lastSyncedPayloadHash, signature(localPayload()));
+});
+
+test("an unapplied pull does not write a clean unchanged payload signature", async () => {
+  const app = createApp();
+  const payload = {
+    lots: app.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  };
+  const signature = JSON.stringify(payload);
+  app.lastSyncedPayloadHash = signature;
+  const setItem = vi.fn();
+  vi.stubGlobal("localStorage", {
+    getItem: () => "2",
+    setItem,
+    removeItem: vi.fn()
+  });
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull: vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({
+        snapshot: {
+          lots: [{ id: 1 }],
+          salesByLot: {},
+          wheelConfigs: [],
+          activeWheelConfigId: null,
+          version: 2
+        }
+      })
+    }),
+    createSyncPayload: () => payload,
+    getSyncPayloadSignature: () => signature,
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(app.lastSyncedPayloadHash, signature);
+  assert.equal(setItem.mock.calls.length, 0);
+});
+
 test("runCloudSyncPull shares one in-flight request across overlapping callers", async () => {
   const app = createApp();
   const pullDeferred = createDeferred<{
@@ -261,6 +358,53 @@ test("runCloudSyncPull shares one in-flight request across overlapping callers",
   assert.equal(requestCloudSyncPull.mock.calls.length, 1);
   assert.equal(app.syncStatus, "success");
   assert.deepEqual(outcomes.map((outcome) => outcome.kind), ["confirmed", "confirmed"]);
+});
+
+test("guarded pull does not coalesce into an ordinary pull and retains its apply predicate", async () => {
+  const app = createApp();
+  const firstResponse = createDeferred<Response>();
+  const guardedResponse = createDeferred<Response>();
+  const requestCloudSyncPull = vi.fn()
+    .mockReturnValueOnce(firstResponse.promise)
+    .mockReturnValueOnce(guardedResponse.promise);
+  const applyCloudSnapshotToLocal = vi.fn();
+  const deps = {
+    requestCloudSyncPull,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig",
+    applyCloudSnapshotToLocal,
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  };
+
+  const ordinaryPull = runCloudSyncPull(app, deps);
+  await flushMicrotasks();
+  let isRequestCurrent = true;
+  const guardedPull = runCloudSyncPull(app, deps, { isRequestCurrent: () => isRequestCurrent });
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+
+  firstResponse.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({})
+  } as Response);
+  assert.equal((await ordinaryPull).kind, "confirmed");
+  await flushMicrotasks();
+  assert.equal(requestCloudSyncPull.mock.calls.length, 2);
+
+  isRequestCurrent = false;
+  guardedResponse.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ snapshot: { lots: [{ id: 2 }], salesByLot: {}, wheelConfigs: [], version: 3 } })
+  } as Response);
+  const guardedOutcome = await guardedPull;
+
+  assert.deepEqual(guardedOutcome, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(applyCloudSnapshotToLocal.mock.calls.length, 0);
 });
 
 test("push cache failure reports a confirmed cloud write without requesting it again", async () => {
@@ -351,37 +495,218 @@ test("runCloudSyncPush reports manual recovery on stale-version conflict", async
   );
 });
 
-test("runCloudSyncPush pulls latest cloud data when a conflict has no local edits", async () => {
+test("clean 409 applies one recovery response and confirms both queued ordinary pulls", async () => {
   const app = createApp();
-  app.lastSyncedPayloadHash = "clean-sig";
-  const requestCloudSyncPush = vi.fn().mockResolvedValue({
-    ok: false,
-    status: 409,
-    statusText: "Conflict",
-    json: async () => ({
-      error: "Cloud data changed since your last sync. Pull latest data and retry."
-    })
+  const push = createDeferred<Response>();
+  const requestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true, status: 200,
+    json: async () => ({ snapshot: { lots: [{ id: 3 }], salesByLot: {}, wheelConfigs: [], version: 3 } })
   });
+  const createPayload = (target: ReturnType<typeof createApp>) => ({
+    lots: target.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null
+  });
+  app.lastSyncedPayloadHash = getSyncPayloadSignature(createPayload(app) as any);
+  const apply = vi.fn((target, snapshot) => { target.lots = snapshot.lots; });
+  const deps = {
+    requestCloudSyncPush: vi.fn(() => push.promise), requestCloudSyncPull,
+    createSyncPayload: createPayload, getSyncPayloadSignature,
+    applyCloudSnapshotToLocal: apply
+  };
+  const pending = [runCloudSyncPush(app, true, deps), runCloudSyncPull(app, deps), runCloudSyncPull(app, deps)];
+  push.resolve({ ok: false, status: 409 } as Response);
+  const outcomes = await Promise.all(pending);
+  assert.deepEqual(outcomes.map((outcome) => outcome.kind), ["confirmed", "confirmed", "confirmed"]);
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
+  assert.equal(apply.mock.calls.length, 1);
+  assert.deepEqual(app.lots, [{ id: 3 }]);
+  assert.equal(app.lastSyncedPayloadHash, getSyncPayloadSignature(createPayload(app) as any));
+});
 
-  await runCloudSyncPush(app, true, {
-    requestCloudSyncPush,
-    createSyncPayload: () => ({ lots: app.lots, salesByLot: { "1": [] }, wheelConfigs: [], activeWheelConfigId: null }),
-    getSyncPayloadSignature: () => "clean-sig",
-    startSyncStatus: (target) => {
-      target.syncStatus = "syncing";
-    },
-    setSyncStatusSuccess: (target) => {
-      target.syncStatus = "success";
-    },
-    setSyncStatusError: (target) => {
-      target.syncStatus = "error";
+for (const editDuring of ["push", "pull"] as const) {
+  test(`clean 409 preserves local sale edits during ${editDuring} with the real payload and snapshot apply`, async () => {
+    const app = createApp();
+    const initial = { id: 11, type: "pack", quantity: 1, packsCount: 1, price: 10 };
+    app.sales = [initial];
+    app.salesByLotId = new Map([[1, [initial]]]);
+    localStorage.setItem(app.getSalesStorageKey(1), JSON.stringify([initial]));
+    app.loadSalesForLotId.mockImplementation((id: number) => JSON.parse(localStorage.getItem(app.getSalesStorageKey(id)) || "[]"));
+    const { createSyncPayload } = await import("../src/app-core/methods/ui/sync/sync-payload.ts");
+    app.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(app));
+    const push = createDeferred<Response>();
+    const pull = createDeferred<Response>();
+    const requestCloudSyncPull = vi.fn(() => pull.promise);
+    const deps = { requestCloudSyncPush: vi.fn(() => push.promise), requestCloudSyncPull };
+    const pending = [runCloudSyncPush(app, true, deps), runCloudSyncPull(app, deps), runCloudSyncPull(app, deps)];
+    if (editDuring === "pull") {
+      push.resolve({ ok: false, status: 409 } as Response);
+      await flushMicrotasks(12);
+      assert.equal(requestCloudSyncPull.mock.calls.length, 1);
     }
+    const edited = { ...initial, price: 25 };
+    app.sales = [edited];
+    app.salesByLotId.set(1, [edited]);
+    localStorage.setItem(app.getSalesStorageKey(1), JSON.stringify([edited]));
+    // Metadata signatures deliberately exclude sales; recovery must fence them separately.
+    assert.equal(app.lastSyncedPayloadHash, getSyncPayloadSignature(createSyncPayload(app)));
+    push.resolve({ ok: false, status: 409 } as Response);
+    pull.resolve({ ok: true, status: 200, json: async () => ({ snapshot: {
+      lots: [{ id: 1 }], salesByLot: { "1": [initial] }, wheelConfigs: [], version: 99
+    } }) } as Response);
+    const outcomes = await Promise.all(pending);
+    assert.deepEqual(outcomes.map((outcome) => outcome.kind), ["conflict", "conflict", "conflict"]);
+    assert.equal(requestCloudSyncPull.mock.calls.length, editDuring === "pull" ? 1 : 0);
+    assert.deepEqual(app.sales, [edited]);
+    assert.deepEqual(app.salesByLotId.get(1), [edited]);
+    assert.deepEqual(JSON.parse(localStorage.getItem(app.getSalesStorageKey(1))!), [edited]);
+    assert.equal(app.loadLot.mock.calls.length, 0);
+    assert.equal(app.syncStatus, "error");
   });
+}
 
+test("clean 409 keeps a concurrent edit and settles queued pulls without dispatching recovery GET", async () => {
+  const app = createApp();
+  const push = createDeferred<Response>();
+  const requestCloudSyncPush = vi.fn(() => push.promise);
+  const requestCloudSyncPull = vi.fn();
+  const createPayload = (target: ReturnType<typeof createApp>) => ({
+    lots: target.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  });
+  const signature = getSyncPayloadSignature(createPayload(app) as any);
+  app.lastSyncedPayloadHash = signature;
+  const deps = {
+    requestCloudSyncPush,
+    requestCloudSyncPull,
+    createSyncPayload: createPayload,
+    getSyncPayloadSignature,
+    startSyncStatus: (target: ReturnType<typeof createApp>) => { target.syncStatus = "syncing"; },
+    setSyncStatusSuccess: (target: ReturnType<typeof createApp>) => { target.syncStatus = "success"; },
+    setSyncStatusError: (target: ReturnType<typeof createApp>) => { target.syncStatus = "error"; }
+  };
+
+  const pushPromise = runCloudSyncPush(app, true, deps);
+  const queuedPulls = [runCloudSyncPull(app, deps), runCloudSyncPull(app, deps)];
+  app.lots = [{ id: 1, name: "edited while push was in flight" }];
+  push.resolve({ status: 409, ok: false, statusText: "Conflict", json: async () => ({}) } as Response);
+
+  const [pushOutcome, ...pullOutcomes] = await Promise.all([pushPromise, ...queuedPulls]);
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
-  assert.equal(app.pullCloudSync.mock.calls.length, 1);
-  assert.equal(app.notify.mock.calls.length, 0);
-  assert.notEqual(app.syncStatus, "error");
+  assert.equal(requestCloudSyncPull.mock.calls.length, 0);
+  assert.equal(pushOutcome.kind, "conflict");
+  assert.deepEqual(pullOutcomes.map((outcome) => outcome.kind), ["conflict", "conflict"]);
+  assert.deepEqual(app.lots, [{ id: 1, name: "edited while push was in flight" }]);
+  assert.equal(app.syncStatus, "error");
+});
+
+test("clean 409 shares a guarded recovery GET outcome with queued pulls when a local edit arrives during GET", async () => {
+  const app = createApp();
+  const push = createDeferred<Response>();
+  const pull = createDeferred<Response>();
+  const requestCloudSyncPush = vi.fn(() => push.promise);
+  const requestCloudSyncPull = vi.fn(() => pull.promise);
+  const createPayload = (target: ReturnType<typeof createApp>) => ({
+    lots: target.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  });
+  const signature = getSyncPayloadSignature(createPayload(app) as any);
+  app.lastSyncedPayloadHash = signature;
+  const applyCloudSnapshotToLocal = vi.fn((target: ReturnType<typeof createApp>) => {
+    target.lots = [{ id: 2, name: "cloud overwrite" }];
+  });
+  const deps = {
+    requestCloudSyncPush,
+    requestCloudSyncPull,
+    createSyncPayload: createPayload,
+    getSyncPayloadSignature,
+    applyCloudSnapshotToLocal,
+    startSyncStatus: (target: ReturnType<typeof createApp>) => { target.syncStatus = "syncing"; },
+    setSyncStatusSuccess: (target: ReturnType<typeof createApp>) => { target.syncStatus = "success"; },
+    setSyncStatusError: (target: ReturnType<typeof createApp>) => { target.syncStatus = "error"; }
+  };
+
+  const pushPromise = runCloudSyncPush(app, true, deps);
+  const queuedPulls = [runCloudSyncPull(app, deps), runCloudSyncPull(app, deps)];
+  push.resolve({ status: 409, ok: false, statusText: "Conflict", json: async () => ({}) } as Response);
+  await flushMicrotasks();
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+
+  app.lots = [{ id: 1, name: "edited while recovery GET was in flight" }];
+  pull.resolve({
+    status: 200,
+    ok: true,
+    statusText: "OK",
+    json: async () => ({ snapshot: { lots: [{ id: 2, name: "cloud" }], salesByLot: {}, wheelConfigs: [], version: 3 } })
+  } as Response);
+
+  const [pushOutcome, ...pullOutcomes] = await Promise.all([pushPromise, ...queuedPulls]);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(applyCloudSnapshotToLocal.mock.calls.length, 0);
+  assert.equal(pushOutcome.kind, "conflict");
+  assert.deepEqual(pullOutcomes.map((outcome) => outcome.kind), ["conflict", "conflict"]);
+  assert.deepEqual(app.lots, [{ id: 1, name: "edited while recovery GET was in flight" }]);
+  assert.equal(app.syncStatus, "error");
+});
+
+test("forceApply pull queued behind clean 409 remains an explicit overwrite", async () => {
+  const app = createApp();
+  const push = createDeferred<Response>();
+  const recoveryPull = createDeferred<Response>();
+  const requestCloudSyncPush = vi.fn(() => push.promise);
+  const requestCloudSyncPull = vi.fn()
+    .mockReturnValueOnce(recoveryPull.promise)
+    .mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      statusText: "OK",
+      json: async () => ({ snapshot: { lots: [{ id: 3, name: "explicit cloud overwrite" }], salesByLot: {}, wheelConfigs: [], version: 4 } })
+    } as Response);
+  const createPayload = (target: ReturnType<typeof createApp>) => ({
+    lots: target.lots,
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  });
+  app.lastSyncedPayloadHash = getSyncPayloadSignature(createPayload(app) as any);
+  const applyCloudSnapshotToLocal = vi.fn((target: ReturnType<typeof createApp>, snapshot: { lots: any[] }) => {
+    target.lots = snapshot.lots;
+  });
+  const deps = {
+    requestCloudSyncPush,
+    requestCloudSyncPull,
+    createSyncPayload: createPayload,
+    getSyncPayloadSignature,
+    applyCloudSnapshotToLocal,
+    startSyncStatus: (target: ReturnType<typeof createApp>) => { target.syncStatus = "syncing"; },
+    setSyncStatusSuccess: (target: ReturnType<typeof createApp>) => { target.syncStatus = "success"; },
+    setSyncStatusError: (target: ReturnType<typeof createApp>) => { target.syncStatus = "error"; }
+  };
+
+  const pushPromise = runCloudSyncPush(app, true, deps);
+  const forcePull = runCloudSyncPull(app, deps, { forceApply: true });
+  push.resolve({ status: 409, ok: false, statusText: "Conflict", json: async () => ({}) } as Response);
+  await flushMicrotasks();
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  app.lots = [{ id: 1, name: "local edit kept by automatic recovery" }];
+  recoveryPull.resolve({
+    status: 200,
+    ok: true,
+    statusText: "OK",
+    json: async () => ({ snapshot: { lots: [{ id: 2, name: "automatic recovery" }], salesByLot: {}, wheelConfigs: [], version: 3 } })
+  } as Response);
+  await flushMicrotasks(8);
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 2);
+  assert.equal(applyCloudSnapshotToLocal.mock.calls.length, 1);
+  assert.deepEqual(app.lots, [{ id: 3, name: "explicit cloud overwrite" }]);
+  const [pushOutcome, forceOutcome] = await Promise.all([pushPromise, forcePull]);
+  assert.equal(pushOutcome.kind, "conflict");
+  assert.equal(forceOutcome.kind, "confirmed");
 });
 
 test("runCloudSyncPush keeps local edits intact on stale-version conflict", async () => {

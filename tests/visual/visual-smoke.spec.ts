@@ -102,6 +102,12 @@ test.describe("@visual-smoke real app screens", () => {
         await page.getByRole("button", { name: "Commandes du jeu" }).click();
         await expect(page.getByText("Historique", { exact: true })).toBeVisible();
         await expect(page.getByText("Construction", { exact: true })).toBeVisible();
+        const inspector = page.locator(".wheel-inspector-panel");
+        await page.locator(".app-context-action-dock__menu").getByText("Construction", { exact: true }).click();
+        await expect(inspector).toHaveClass(/wheel-inspector-panel--mobile-open/);
+        await expectNoPageOverflow(page);
+        await page.locator(".wheel-inspector-mobile-close").click();
+        await expect(inspector).not.toHaveClass(/wheel-inspector-panel--mobile-open/);
       }
       await expectNoPageOverflow(page);
       await page.screenshot({

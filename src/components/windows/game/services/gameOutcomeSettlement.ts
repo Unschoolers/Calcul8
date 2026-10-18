@@ -111,7 +111,29 @@ export async function settleSessionGameOutcomeSale(
 }
 
 const settlementRevisions = new WeakMap<object, number>();
-type SettlementContext = ScopeState & { googleAuthEpoch: number; activeWheelConfigId: number | null };
+type SettlementContext = ScopeState & {
+  googleAuthEpoch: number;
+  activeWheelConfigId: number | null;
+  wheelMode?: "config" | "live";
+  activeWheelConfig?: unknown;
+  editingWheelConfig?: unknown;
+  wheelDisplayConfig?: unknown;
+  wheelDisplaySlots?: unknown;
+};
+
+function snapshotOutcomeSource(context: SettlementContext): string {
+  const safeStringify = (value: unknown): string => {
+    try { return JSON.stringify(value) ?? "undefined"; }
+    catch { return "[unserializable]"; }
+  };
+  return [
+    String(context.wheelMode ?? ""),
+    safeStringify(context.activeWheelConfig),
+    safeStringify(context.editingWheelConfig),
+    safeStringify(context.wheelDisplayConfig),
+    safeStringify(context.wheelDisplaySlots)
+  ].join("\u0000");
+}
 
 export function invalidateGameOutcomeSettlements(context: object): void {
   settlementRevisions.set(context, (settlementRevisions.get(context) ?? 0) + 1);
@@ -121,6 +143,8 @@ export function captureGameOutcomeGuard(context: SettlementContext): () => boole
   const isCurrentScope = captureWorkspaceScopeGuard(context);
   const configId = context.activeWheelConfigId;
   const revision = settlementRevisions.get(context);
+  const sourceSnapshot = snapshotOutcomeSource(context);
   return () => isCurrentScope() && context.activeWheelConfigId === configId
-    && settlementRevisions.get(context) === revision;
+    && settlementRevisions.get(context) === revision
+    && snapshotOutcomeSource(context) === sourceSnapshot;
 }

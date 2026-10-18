@@ -2,8 +2,8 @@ import { fireEvent, screen } from "@testing-library/vue";
 import { defineComponent, h, reactive } from "vue";
 import { expect, test, vi } from "vitest";
 import WheelInspector from "../../src/components/windows/game/inspector/WheelInspector.vue";
-import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
 import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
+import type { FocusedGameCommands, FocusedGameView, GameController } from "../../src/components/windows/game/gamePorts.ts";
 import WheelActionRail from "../../src/components/windows/game/stage/WheelActionRail.vue";
 import WheelStageTopbar from "../../src/components/windows/game/stage/WheelStageTopbar.vue";
 import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
@@ -60,9 +60,43 @@ function makeGameContext(overrides: { activeWheelConfig?: { id: number; name: st
   return context;
 }
 
+function makeController(context: object, commands: Partial<FocusedGameCommands> = {}): GameController {
+  const ports: FocusedGameCommands = {
+    applyWheelConfig: vi.fn(),
+    canTierBeChase: vi.fn(() => false),
+    getSinglesItemsForTier: vi.fn(() => []),
+    getTierInventoryMeta: vi.fn(() => null),
+    handleWheelModeChange: vi.fn(),
+    isBoundLotSingles: vi.fn(() => false),
+    onTierMultiLotChange: vi.fn(),
+    onTierPacksChange: vi.fn(),
+    onTierSinglesChange: vi.fn(),
+    openGameSpectatorDialog: vi.fn(),
+    openWheelCreateDialog: vi.fn(),
+    openWheelManageDialog: vi.fn(),
+    removeTier: vi.fn(),
+    toggleTierChase: vi.fn(),
+    toggleWheelReducedMotion: vi.fn(),
+    toggleWheelSound: vi.fn(),
+    ...commands
+  };
+  return {
+    session: createWheelControllerState(),
+    view: context as unknown as FocusedGameView,
+    commands: ports
+  };
+}
+
 function renderTopbar(context: ReturnType<typeof makeGameContext>) {
   return renderWithApp(WheelStageTopbar, {
-    global: { provide: { [gameControllerKey as symbol]: createGameController(context as never) } }
+    global: { provide: { [gameControllerKey]: makeController(context, {
+      handleWheelModeChange: context.handleWheelModeChange,
+      openGameSpectatorDialog: context.openGameSpectatorDialog,
+      openWheelCreateDialog: context.openWheelCreateDialog,
+      openWheelManageDialog: context.openWheelManageDialog,
+      toggleWheelReducedMotion: context.toggleWheelReducedMotion,
+      toggleWheelSound: context.toggleWheelSound
+    }) } }
   });
 }
 
@@ -213,6 +247,7 @@ function makeInspectorFixture(tabItems = [
     editingWheelConfig: config,
     preferredLanguage: "en",
     lots: [],
+    addTier: vi.fn(),
     t: (key: string) => ({
       wheelInspectorSpinPriceLabel: "Price per play",
       wheelInspectorOutcomeCountLabel: "Outcomes",
@@ -231,8 +266,9 @@ function makeInspectorFixture(tabItems = [
 
 function renderInspector(context: ReturnType<typeof makeInspectorFixture>["context"]) {
   return renderWithApp(WheelInspector, {
+    props: { ctx: context },
     global: {
-      provide: { [gameControllerKey as symbol]: createGameController(context as never) },
+      provide: { [gameControllerKey]: makeController(context) },
       stubs: {
         WheelTierCard: { template: "<div />", props: ["tier", "tierIndex"] },
         WheelSessionPanel: { template: "<div data-testid='session-panel'>Session details</div>" },

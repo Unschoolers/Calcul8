@@ -287,7 +287,7 @@
                       color="error"
                       class="live-singles-step-btn app-touch-target"
                       :aria-label="t('liveSinglesDecreasePriceAction')"
-                      @click="adjustIndividualPrice(entry.id, -1)"
+                      @click="adjustIndividualPrice(entry, -1)"
                     ></v-btn>
                     <v-btn
                       icon="mdi-plus"
@@ -296,7 +296,7 @@
                       color="success"
                       class="live-singles-step-btn app-touch-target"
                       :aria-label="t('liveSinglesIncreasePriceAction')"
-                      @click="adjustIndividualPrice(entry.id, 1)"
+                      @click="adjustIndividualPrice(entry, 1)"
                     ></v-btn>
                     </div>
                   </div>

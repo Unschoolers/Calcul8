@@ -488,7 +488,6 @@ test("mystery grid selector can animate through the surface without updating the
 
 test("mystery grid surface local selector state controls highlighted cells", () => {
   const vm = {
-    game: { view: { wheelGridHighlightCellIndex: -1, wheelGridRevealAnimating: false } },
     localGridSelectorAnimating: false,
     localGridHighlightCellIndex: -1,
     wheelGridRevealAnimating: false,
@@ -626,6 +625,219 @@ test("completing a live mystery grid session starts a fresh shuffled board", asy
   assert.notEqual(controller.activeWheelSlots, initialSlots);
   assert.notEqual(controller.wheelGridLayoutSeed, initialSeed);
   assert.notEqual(controller.wheelGridLayoutSeed, "");
+});
+
+test("last live grid reveal keeps a failed persisted sale after auto-reset timers", async () => {
+  vi.useFakeTimers();
+  const config = createGridConfig({
+    outcomeCount: 4,
+    gridCellCount: 4,
+    tiers: [{
+      id: "tier-a",
+      label: "Pack",
+      color: "#2563eb",
+      chancePercent: 100,
+      slots: 4,
+      costPerTier: 4,
+      packsCount: 1,
+      deductionType: "packs",
+      boundLotId: 10,
+      sets: []
+    }]
+  });
+  const vm = createGridVm("live", config);
+  vm.wheelReducedMotion = true;
+  vm.lots = [{ id: 10, name: "Lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10 }];
+  vm.addWheelSaleToLot = vi.fn()
+    .mockReturnValueOnce(true)
+    .mockReturnValueOnce(true)
+    .mockReturnValueOnce(true)
+    .mockReturnValueOnce(false);
+  const persisted = new Set<string>();
+  vm.saveWheelSession = vi.fn(() => {
+    persisted.add(JSON.stringify(vm.wheelPendingInventoryIssues));
+  });
+
+  for (let cellIndex = 0; cellIndex < 4; cellIndex += 1) {
+    await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
+  }
+  await vi.runAllTimersAsync();
+
+  const issues = vm.wheelPendingInventoryIssues as Array<{ pendingSale?: { id: number }; pendingSaleLotId?: number }>;
+  assert.equal(issues.length, 1);
+  assert.ok(issues[0]?.pendingSale);
+  assert.equal(issues[0]?.pendingSaleLotId, 10);
+  assert.equal(vm._wheelGridAutoResetTimer, undefined);
+  assert.ok([...persisted].some((entry) => entry.includes('"pendingSale"')));
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 4);
+});
+
+test("last live grid reveal keeps a required multi-lot selection after auto-reset", async () => {
+  vi.useFakeTimers();
+  const config = createGridConfig({
+    outcomeCount: 4,
+    gridCellCount: 4,
+    tiers: [{
+      id: "tier-a",
+      label: "Packs",
+      color: "#2563eb",
+      chancePercent: 100,
+      slots: 4,
+      costPerTier: 4,
+      packsCount: 1,
+      deductionType: "packs",
+      boundLotId: 10,
+      boundLotIds: [10, 20],
+      sets: []
+    }]
+  });
+  const vm = createGridVm("live", config);
+  vm.wheelReducedMotion = true;
+  vm.lots = [
+    { id: 10, name: "Lot A", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10 },
+    { id: 20, name: "Lot B", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10 }
+  ];
+  vm.wheelGridReveals = [0, 1, 2].map((cellIndex) => ({
+    cellIndex,
+    slotIndex: cellIndex,
+    label: "Packs",
+    color: "#2563eb",
+    tier: "tier-a",
+    spinNumber: cellIndex + 1,
+    timestamp: Date.now()
+  }));
+
+  await mysteryGridMethods.revealMysteryGridCell.call(vm, 3, true);
+  await vi.runAllTimersAsync();
+
+  const issues = vm.wheelPendingInventoryIssues as Array<{ requiresLotSelection?: boolean }>;
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0]?.requiresLotSelection, true);
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 4);
+});
+
+test("live grid auto-reset rechecks obligations added after scheduling", async () => {
+  vi.useFakeTimers();
+  const vm = createGridVm("live", createGridConfig({ outcomeCount: 4, gridCellCount: 4 }));
+  for (let cellIndex = 0; cellIndex < 4; cellIndex += 1) {
+    await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
+  }
+
+  vm.wheelPendingInventoryIssues = [{
+    slotName: "Pending pack",
+    slotColor: "#2563eb",
+    slotCost: 4,
+    slotTier: "tier-a",
+    slotPacksCount: 1,
+    slotDeductionType: "packs",
+    slotIndex: 0,
+    selectedLotId: 10,
+    spinNumber: 4
+  }];
+  await vi.advanceTimersByTimeAsync(0);
+
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 4);
+  assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
+  assert.equal(vm.wheelGridResetAnimating, false);
+});
+
+test("live grid auto-reset rechecks obligations during its reset animation", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("window", { matchMedia: vi.fn(() => ({ matches: false })) });
+  const scheduledResetCallbacks: Array<{ handler: () => void; delay: number }> = [];
+  vi.spyOn(globalThis, "setTimeout").mockImplementation((handler, delay) => {
+    if (typeof handler === "function" && (delay === 1800 || delay === 680)) {
+      scheduledResetCallbacks.push({ handler, delay });
+      return scheduledResetCallbacks.length as never;
+    }
+    if (typeof handler === "function") handler();
+    return 0 as never;
+  });
+  const vm = createGridVm("live", createGridConfig({ outcomeCount: 4, gridCellCount: 4 }));
+  vm.wheelReducedMotion = true;
+  for (let cellIndex = 0; cellIndex < 3; cellIndex += 1) {
+    await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
+  }
+  vm.wheelReducedMotion = false;
+  await mysteryGridMethods.revealMysteryGridCell.call(vm, 3, true);
+
+  const startReset = scheduledResetCallbacks.find((entry) => entry.delay === 1800)?.handler;
+  assert.ok(startReset);
+  startReset();
+  assert.equal(vm.wheelGridResetAnimating, true);
+  vm.wheelPendingInventoryIssues = [{
+    slotName: "Pending pack",
+    slotColor: "#2563eb",
+    slotCost: 4,
+    slotTier: "tier-a",
+    slotPacksCount: 1,
+    slotDeductionType: "packs",
+    slotIndex: 0,
+    selectedLotId: 10,
+    spinNumber: 4
+  }];
+  const finishReset = scheduledResetCallbacks.find((entry) => entry.delay === 680)?.handler;
+  assert.ok(finishReset);
+  finishReset();
+
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 4);
+  assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
+  assert.equal(vm.wheelGridResetAnimating, false);
+});
+
+test("full live grid resets after the normal-motion reveal and reset delays", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("window", { matchMedia: vi.fn(() => ({ matches: false })) });
+  const scheduledResetCallbacks: Array<{ handler: () => void; delay: number }> = [];
+  vi.spyOn(globalThis, "setTimeout").mockImplementation((handler, delay) => {
+    if (typeof handler === "function" && (delay === 1800 || delay === 680)) {
+      scheduledResetCallbacks.push({ handler, delay });
+      return scheduledResetCallbacks.length as never;
+    }
+    if (typeof handler === "function") handler();
+    return 0 as never;
+  });
+  const vm = createGridVm("live", createGridConfig({ outcomeCount: 4, gridCellCount: 4 }));
+  vm.wheelReducedMotion = true;
+  for (let cellIndex = 0; cellIndex < 3; cellIndex += 1) {
+    await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
+  }
+  vm.wheelReducedMotion = false;
+  await mysteryGridMethods.revealMysteryGridCell.call(vm, 3, true);
+
+  scheduledResetCallbacks.find((entry) => entry.delay === 1800)?.handler();
+  assert.equal(vm.wheelGridResetAnimating, true);
+  scheduledResetCallbacks.find((entry) => entry.delay === 680)?.handler();
+
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+  assert.equal(Number(vm.wheelTotalSpins), 0);
+  assert.equal(vm.wheelGridResetAnimating, false);
+});
+
+test("preview grid auto-reset remains independent of live pending obligations", async () => {
+  vi.useFakeTimers();
+  const vm = createGridVm("config", createGridConfig({ outcomeCount: 4, gridCellCount: 4 }));
+  const pendingIssue = {
+    slotName: "Pending pack",
+    slotColor: "#2563eb",
+    slotCost: 4,
+    slotTier: "tier-a",
+    slotPacksCount: 1,
+    slotDeductionType: "packs" as const,
+    slotIndex: 0,
+    selectedLotId: 10,
+    spinNumber: 4,
+    requiresLotSelection: true
+  };
+  vm.wheelPendingInventoryIssues = [pendingIssue];
+
+  for (let cellIndex = 0; cellIndex < 4; cellIndex += 1) {
+    await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
+  }
+  await vi.runAllTimersAsync();
+
+  assert.equal((vm.wheelPreviewGridReveals as unknown[]).length, 0);
+  assert.deepEqual(vm.wheelPendingInventoryIssues, [pendingIssue]);
 });
 
 

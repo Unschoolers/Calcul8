@@ -20,6 +20,7 @@ import {
     type GameStageOverlayCommand
 } from "../overlay/gameStageOverlayTypes.ts";
 import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
+import { invalidateGameOutcomeSettlements } from "../services/gameOutcomeSettlement.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
 import { gameComputeds } from "./gameComputeds.ts";
 import {
@@ -117,13 +118,17 @@ export const gameWindowDefinition = {
     },
     mysteryGridCells(this: GameWindowThis) {
       return buildMysteryGridCells(this as unknown as Record<string, unknown>);
+    },
+    wheelBatchRecordAllDisabled(this: GameWindowThis): boolean {
+      return this.wheelPendingInventoryIssues.every((entry) => this.isPendingChaseInventoryIssue(entry) || !entry.selectedLotId);
     }
   },
   provide(this: GameWindowThis) {
     const gameController = createGameController(this);
     return {
+      gameCtx: this,
       [gameControllerKey]: gameController,
-      gameController,
+      gameController
     };
   },
   watch: {
@@ -233,6 +238,13 @@ export const gameWindowDefinition = {
         : [];
       this.persistLastWheelConfigSelection();
       this.ensureWheelEditorState();
+      if (this.wheelPendingChase) {
+        this.reopenPendingChaseDecision();
+      } else if (this.wheelChaseDialog && !this.wheelChasePreviewMode) {
+        this.wheelChaseDialog = false;
+        this.wheelChasePendingTierId = "";
+        this.wheelChaseReplacementSinglesId = null;
+      }
       this.syncGameStageOverlayState();
     },
     handleGameStageOverlayMountedChange(this: GameWindowOverlayThis, mounted: boolean): void {
@@ -245,7 +257,7 @@ export const gameWindowDefinition = {
       }
     },
     syncBracketBattleState(this: GameWindowThis, payload: BracketBattleSessionStatePayload): void {
-      applyBracketBattleHostState(this, payload);
+      void applyBracketBattleHostState(this, payload);
     },
     syncGameStageOverlayState(this: GameWindowOverlayThis): void {
       const nextEnabled = this.currentTab === "wheel" && this.wheelIsBracketBattle === true;
@@ -273,6 +285,7 @@ export const gameWindowDefinition = {
     },
     handleWheelModeChange(this: GameWindowThis, nextMode: "config" | "live"): void {
       if (nextMode === this.wheelMode) return;
+      invalidateGameOutcomeSettlements(this);
       this.stopWheelAutospin?.();
       if (nextMode === "live") {
         this.wheelRequestedMode = nextMode;
@@ -288,6 +301,7 @@ export const gameWindowDefinition = {
         && this.gameSpectatorStartAfterLiveConfirm === true;
       this.gameSpectatorStartAfterLiveConfirm = false;
       if (requestedMode) {
+        if (requestedMode !== this.wheelMode) invalidateGameOutcomeSettlements(this);
         if (requestedMode !== "config") {
           this.stopWheelAutospin?.();
         }
@@ -409,6 +423,9 @@ export const gameWindowDefinition = {
         });
       }
     },
+    getWindowComponentContext(this: GameWindowThis): Record<string, unknown> {
+      return this;
+    },
     focusWheelInspector(this: GameWindowThis, tab: "config" | "session" | "history"): void {
       this.wheelInspectorTab = tab;
       if (isWheelCompactViewport((this.wheelViewportWidth as number) || getCurrentViewportWidth())) {
@@ -508,9 +525,6 @@ export const gameWindowDefinition = {
         clearTimeout(timeoutId);
         this._wheelAutospinTimeoutId = undefined;
       }
-    },
-    cancelWheelSpinAnimation(this: GameWindowThis): void {
-      this._wheelSpinAnimationCancel?.();
     },
     scheduleNextWheelAutospin(this: GameWindowThis, delayMs = WHEEL_AUTOSPIN_DELAY_MS): void {
       const existingTimeoutId = this._wheelAutospinTimeoutId as number | undefined;
@@ -634,7 +648,6 @@ export const gameWindowDefinition = {
     });
   },
   beforeUnmount(this: GameWindowThis) {
-    this.cancelWheelSpinAnimation();
     const ro = this._wheelResizeObserver as ResizeObserver | undefined;
     if (ro) {
       ro.disconnect();

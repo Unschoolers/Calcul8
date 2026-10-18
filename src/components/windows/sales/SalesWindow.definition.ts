@@ -157,10 +157,10 @@ export const SalesWindowDefinition = {
       return Math.min(SALES_HISTORY_RENDER_BATCH_SIZE, remaining);
     },
 
-    visibleLiveForecastScenarios(this: Record<string, unknown>): Array<Record<string, unknown>> {
+    visibleLiveForecastScenarios(this: Record<string, unknown>): import("../../../app-core/context/commerce.ts").CommerceComputedState["liveForecastScenarios"] {
       const vm = this as Record<string, unknown>;
       const scenarios = Array.isArray(vm.liveForecastScenarios)
-        ? (vm.liveForecastScenarios as Array<Record<string, unknown>>)
+        ? (vm.liveForecastScenarios as import("../../../app-core/context/commerce.ts").CommerceComputedState["liveForecastScenarios"])
         : [];
       if (scenarios.length === 0) return [];
       const isMobile = Boolean(

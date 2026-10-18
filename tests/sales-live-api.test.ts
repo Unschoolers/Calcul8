@@ -13,7 +13,8 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/auth/index.ts", () => ({
+vi.mock("../src/app-core/auth/index.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/app-core/auth/index.ts")>(),
   hasAuthSignal: hasAuthSignalMock
 }));
 
@@ -43,6 +44,10 @@ import {
 } from "../src/app-core/methods/sales-live-api.ts";
 import { requestJson } from "../src/app-core/methods/entity-api-shared.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
+import { setActiveWorkspaceScope } from "../src/app-core/workspace-scope.ts";
+import { markWorkspaceRealtimeDataChanged } from "../src/app-core/methods/ui/workspace/workspace-realtime-state.ts";
+import { applyCloudSnapshotToLocal } from "../src/app-core/methods/ui/sync/sync-apply.ts";
+import { configLotMethods } from "../src/app-core/methods/config-lots.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -280,6 +285,157 @@ test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests,
   assert.deepEqual(app.salesByLotId.get(42), sales);
 });
 
+test("sales GET started before a realtime event cannot replace or cache that event", async () => {
+  let resolveResponse!: (response: Response) => void;
+  fetchAuthenticatedApiResponseMock.mockReturnValueOnce(new Promise<Response>((resolve) => {
+    resolveResponse = resolve;
+  }));
+  const app = createApp({ activeScopeType: "workspace", activeWorkspaceId: "team-1", currentLotId: 42 });
+  cacheAuthoritativeSales(app, 42, [{ id: 7, type: "pack", quantity: 1, packsCount: 1, price: 3, date: "2026-10-17" }] as any);
+
+  const pending = fetchAuthoritativeSales(app, 42);
+  markWorkspaceRealtimeDataChanged(app);
+  resolveResponse(new Response(JSON.stringify({ sales: [{
+    id: 6, type: "pack", quantity: 1, packsCount: 1, price: 2, date: "2026-10-16"
+  }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+  assert.equal(await pending, null);
+  assert.equal(app.salesByLotId.get(42)?.[0]?.id, 7);
+});
+
+test("live-pricing GET started before a realtime event is discarded", async () => {
+  let resolveResponse!: (response: Response) => void;
+  fetchAuthenticatedApiResponseMock.mockReturnValueOnce(new Promise<Response>((resolve) => {
+    resolveResponse = resolve;
+  }));
+  const app = createApp({ activeScopeType: "workspace", activeWorkspaceId: "team-1" });
+
+  const pending = fetchAuthoritativeLivePricing(app, 42);
+  markWorkspaceRealtimeDataChanged(app);
+  resolveResponse(new Response(JSON.stringify({ livePricing: {
+    livePackPrice: 2, liveBoxPriceSell: 3, liveSpotPrice: 4, version: 8
+  } }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+  assert.equal(await pending, null);
+});
+
+test("full snapshot apply runs real loadLot child GETs and fences both after a realtime event", async () => {
+  let resolvePricing!: (response: Response) => void;
+  let resolveSales!: (response: Response) => void;
+  fetchAuthenticatedApiResponseMock
+    .mockReturnValueOnce(new Promise<Response>((resolve) => { resolvePricing = resolve; }))
+    .mockReturnValueOnce(new Promise<Response>((resolve) => { resolveSales = resolve; }));
+
+  const app = createApp({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "team-1",
+    currentLotId: 42,
+    lotHydrationRevision: 3,
+    lots: [{ id: 42, name: "Cloud lot", packPrice: 10, boxPriceSell: 20, spotPrice: 30 }],
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    sales: [],
+    salesByLotId: new Map([[42, [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 5, date: "2026-10-16" }]]]),
+    liveSpotPrice: 30,
+    liveBoxPriceSell: 20,
+    livePackPrice: 10,
+    currentLivePricingVersion: null,
+    livePricingHydrationStatus: "idle",
+    livePricingHydratedLotId: null,
+    hasProAccess: false,
+    newLotCatalogSource: "whatnot",
+    currentTab: "live",
+    systemPricingDefaults: null,
+    $nextTick: (callback: () => void) => callback(),
+    syncLivePricesFromDefaults() {
+      this.liveSpotPrice = this.spotPrice;
+      this.liveBoxPriceSell = this.boxPriceSell;
+      this.livePackPrice = this.packPrice;
+    },
+    loadSalesFromStorage() { this.sales = this.salesByLotId.get(42) ?? []; },
+    getSalesCacheEntry: () => ({ status: "loaded", sales: [] }),
+    initSalesChart: vi.fn(),
+    initPortfolioChart: vi.fn()
+  });
+  app.loadLot = () => configLotMethods.loadLot.call(app);
+
+  applyCloudSnapshotToLocal(app, {
+    lots: [{ id: 42, name: "Cloud lot", packPrice: 10, boxPriceSell: 20, spotPrice: 30 }],
+    salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null, version: 2, hasData: true
+  } as any);
+
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 2);
+  assert.match(String(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1]), /live-pricing/);
+  assert.match(String(fetchAuthenticatedApiResponseMock.mock.calls[1]?.[1]), /sales/);
+  const realtimeSale = { id: 9, type: "pack", quantity: 1, packsCount: 1, price: 99, date: "2026-10-17" };
+  const realtimePricing = { liveSpotPrice: 70, liveBoxPriceSell: 80, livePackPrice: 90, version: 9 };
+  app.salesByLotId.set(42, [realtimeSale]);
+  app.sales = [realtimeSale];
+  app.liveSpotPrice = realtimePricing.liveSpotPrice;
+  app.liveBoxPriceSell = realtimePricing.liveBoxPriceSell;
+  app.livePackPrice = realtimePricing.livePackPrice;
+  app.currentLivePricingVersion = realtimePricing.version;
+  markWorkspaceRealtimeDataChanged(app);
+
+  resolvePricing(new Response(JSON.stringify({ livePricing: {
+    liveSpotPrice: 1, liveBoxPriceSell: 2, livePackPrice: 3, version: 5
+  } }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  resolveSales(new Response(JSON.stringify({ sales: [{
+    id: 2, type: "pack", quantity: 1, packsCount: 1, price: 2, date: "2026-10-15"
+  }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(app.sales, [realtimeSale]);
+  assert.deepEqual(app.salesByLotId.get(42), [realtimeSale]);
+  assert.equal(app.liveSpotPrice, 70);
+  assert.equal(app.liveBoxPriceSell, 80);
+  assert.equal(app.livePackPrice, 90);
+  assert.equal(app.currentLivePricingVersion, 9);
+});
+
+test("fetchAuthoritativeSales can skip cache writes for guarded catch-up reads", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({ sales: [] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  }));
+  const app = createApp({ activeScopeType: "workspace", activeWorkspaceId: "team-a" });
+  const isRequestCurrent = vi.fn(() => true);
+
+  const sales = await fetchAuthoritativeSales(app, 42, {
+    cache: false,
+    scope: { scopeType: "workspace", workspaceId: "team-a" },
+    isRequestCurrent
+  });
+
+  assert.deepEqual(sales, []);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1], "/lots/42/sales?workspaceId=team-a");
+  assert.equal(typeof fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3]?.isRequestCurrent, "function");
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3]?.isRequestCurrent(), true);
+  assert.equal(localStorage.getItem("sales:42"), null);
+  assert.equal(app.salesByLotId.has(42), false);
+});
+
+test("fetchAuthoritativeSales rejects a response after scope A-to-B-to-A", async () => {
+  let resolveResponse!: (response: Response) => void;
+  const response = new Promise<Response>((resolve) => { resolveResponse = resolve; });
+  fetchAuthenticatedApiResponseMock.mockReturnValueOnce(response);
+  const app = createApp({ activeScopeType: "workspace", activeWorkspaceId: "team-a" });
+
+  const salesPromise = fetchAuthoritativeSales(app, 42);
+  setActiveWorkspaceScope(app, "workspace", "team-b");
+  setActiveWorkspaceScope(app, "workspace", "team-a");
+  resolveResponse(new Response(JSON.stringify({ sales: [] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  }));
+
+  assert.equal(await salesPromise, null);
+  assert.equal(localStorage.getItem("sales:42"), null);
+  assert.equal(app.salesByLotId.has(42), false);
+});
+
 test("fetchAuthoritativeLotSalesSyncMeta normalizes the cloud freshness payload", async () => {
   fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
     salesMeta: {
@@ -398,7 +554,8 @@ test("requestJson surfaces API message bodies and requests default 401 auth expi
       return true;
     }
   );
-  assert.deepEqual(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3], {});
+  assert.equal(typeof fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3]?.isRequestCurrent, "function");
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3]?.isRequestCurrent(), true);
 
   fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     error: "Lot sync conflict"
@@ -620,6 +777,41 @@ test("normalizeLivePricing rejects negative pricing payloads", () => {
     liveBoxPriceSell: 2,
     liveSpotPrice: 3
   }), null);
+});
+
+test("live pricing requests use captured scope while retaining the original app for auth effects", async () => {
+  const app = createApp({ activeScopeType: "workspace", activeWorkspaceId: "workspace-new" });
+  const isRequestCurrent = vi.fn(() => true);
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ livePricing: null }), { status: 200 }));
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ livePricing: {
+    livePackPrice: 5,
+    liveBoxPriceSell: 50,
+    liveSpotPrice: 2,
+    version: 8
+  } }), { status: 200 }));
+
+  await fetchAuthoritativeLivePricing(app, 6, {
+    scope: { scopeType: "workspace", workspaceId: "workspace-original" },
+    isRequestCurrent
+  });
+  await saveAuthoritativeLivePricing(app, 6, {
+    livePackPrice: 5,
+    liveBoxPriceSell: 50,
+    liveSpotPrice: 2,
+    currentLivePricingVersion: 7
+  }, {
+    scope: { scopeType: "workspace", workspaceId: "workspace-original" },
+    isRequestCurrent
+  });
+
+  const [fetchApp, fetchPath, , fetchOptions] = fetchAuthenticatedApiResponseMock.mock.calls.at(-2)!;
+  const [saveApp, , saveInit, saveOptions] = fetchAuthenticatedApiResponseMock.mock.calls.at(-1)!;
+  assert.equal(fetchApp, app);
+  assert.equal(fetchPath, "/lots/6/live-pricing?workspaceId=workspace-original");
+  assert.equal(fetchOptions.isRequestCurrent(), true);
+  assert.equal(saveApp, app);
+  assert.equal(JSON.parse(String(saveInit.body)).workspaceId, "workspace-original");
+  assert.equal(saveOptions.isRequestCurrent, isRequestCurrent);
 });
 
 test("normalizeLivePricing uses the shared sync contract for metadata", () => {

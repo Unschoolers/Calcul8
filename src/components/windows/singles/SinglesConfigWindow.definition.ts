@@ -138,6 +138,9 @@ export type SinglesWindowThis = {
   singlesPurchases: SinglesPurchaseEntry[];
   singlesSoldCountByPurchaseId: Record<number, number>;
   sellingCurrency: CurrencyCode;
+  currency: CurrencyCode;
+  singlesPurchaseTotalCost: number;
+  singlesPurchaseTotalMarketValue: number;
   exchangeRate: number;
   preferredLanguage: string;
   currentSinglesCatalogSource: SinglesCatalogSource | undefined;
@@ -197,10 +200,12 @@ export type SinglesWindowThis = {
   conditionShortLabel(value: unknown): string;
   languageShortLabel(value: unknown): string;
   cancelSinglesItemSearch(): void;
-  disposeSinglesItemSearch(): void;
   requestSinglesCardSuggestions(query: string, signal?: AbortSignal): Promise<SinglesCardSuggestion[]>;
   refreshSinglesMarketPricesFromCatalog(): Promise<void>;
   openSinglesRowEditor(entry: SinglesPurchaseEntry): void;
+  openSinglesImagePreview(image: unknown, title?: unknown): void;
+  getSinglesEntryPreviewImage(entry: SinglesPurchaseEntry): string;
+  confirmRemoveSinglesPurchaseRow(rowId: number, closeEditor?: boolean): void;
 
   // ===== Row editor spread methods =====
   [key: string]: unknown;
@@ -840,7 +845,7 @@ export const singlesConfigWindowDefinition = {
     this.resetMobileRowsPagination();
   },
   beforeUnmount(this: SinglesWindowThis) {
-    this.disposeSinglesItemSearch();
+    this.cancelSinglesItemSearch();
   },
   provide(this: SinglesWindowThis) {
     return {
