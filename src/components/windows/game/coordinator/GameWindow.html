@@ -1,4 +1,4 @@
-<div class="wheel-layout pa-2" :class="{
+<div class="wheel-layout" :class="{
     'wheel-presentation': wheelPresentationMode,
     'wheel-layout--reduced-motion': wheelReducedMotion,
     'wheel-layout--config': wheelMode === 'config',
@@ -15,7 +15,7 @@
 
     <!-- SPINNER PANEL -->
     <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
-        <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
+        <div class="wheel-stage-shell app-operational-surface" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
             <wheel-stage-topbar></wheel-stage-topbar>
 
             <div v-if="wheelIsBracketBattle" class="game-stage-overlay-surface">
