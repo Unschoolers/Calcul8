@@ -108,7 +108,7 @@ jobs:
         run: npm ci
 
       - name: Web verification
-        run: npm run verify
+        run: npm run verify:ci
 
   validate-api:
     name: Validate API
@@ -132,7 +132,7 @@ jobs:
 
       - name: API verification
         working-directory: apps/api
-        run: npm run verify
+        run: npm run verify:ci
 
   validate-realtime:
     name: Validate realtime

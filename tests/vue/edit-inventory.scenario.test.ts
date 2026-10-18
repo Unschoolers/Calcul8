@@ -14,10 +14,10 @@ import { vuetify } from "../../src/vuetify.ts";
 const source = readFileSync("src/App.html", "utf8");
 const template = source.slice(source.indexOf('<app-dialog-shell :model-value="showRenameLotModal'), source.indexOf('<!-- Verify Play Purchase Modal -->'));
 
-afterEach(() => { vuetify.theme.global.name.value = "unionArenaDark"; });
+afterEach(() => { vuetify.theme.change("unionArenaDark"); });
 
 test.each(["unionArenaDark", "unionArenaLight"])("%s: linked inventory hides the local reference and keeps actions in the fixed dialog footer", async theme => {
-  vuetify.theme.global.name.value = theme;
+  vuetify.theme.change(theme);
   const save = vi.fn();
   const ctx = reactive({
     ...createInitialState(),

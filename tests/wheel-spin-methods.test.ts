@@ -42,6 +42,7 @@ vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
 }));
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   fairnessMock.resolve.mockReset();
   fairnessMock.resolve.mockResolvedValue({ resultIndex: 0, hash: "hash", seed: "seed" });
@@ -56,10 +57,10 @@ function completeGameSession<T extends Record<string, unknown>>(context: T): T {
   return context;
 }
 
-function stubFinishedAnimation(): void {
-  vi.spyOn(performance, "now").mockReturnValue(0);
+function stubFinishedAnimation(startTime = 0): void {
+  vi.spyOn(performance, "now").mockReturnValue(startTime);
   vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) => {
-    callback(10_000);
+    callback(startTime + 10_000);
     return 1;
   }) as typeof requestAnimationFrame);
 }
@@ -98,7 +99,7 @@ function createSpinVm(mode: "config" | "live") {
 }
 
 test("config spins always record preview session data even if spinWheelInternal is called with recordSession=true", async () => {
-  stubFinishedAnimation();
+  stubFinishedAnimation(20_000);
   const vm = createSpinVm("config");
 
   await wheelSpinMethods.spinWheelInternal.call(vm as never, true);
@@ -132,6 +133,7 @@ test("live spins keep recording live session data", async () => {
 });
 
 test("a live spin owns the guard before fairness resolves and records at most one actual sale", async () => {
+  stubFinishedAnimation();
   const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
   fairnessMock.resolve.mockReturnValue(deferred.promise);
   const vm = createSpinVm("live");
@@ -189,6 +191,7 @@ test("mode A-B-A transitions invalidate fairness work even when the final mode m
 });
 
 test("a rejected old spin cannot release a newer operation's lock", async () => {
+  stubFinishedAnimation();
   const firstFairness = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
   const secondFairness = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
   fairnessMock.resolve.mockReturnValueOnce(firstFairness.promise).mockReturnValueOnce(secondFairness.promise);

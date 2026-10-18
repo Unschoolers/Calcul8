@@ -10,7 +10,7 @@ type BridgeOptions = {
   blockedKeys?: Array<string | symbol>;
 };
 
-const WINDOW_BRIDGE_SOURCE = Symbol("windowBridgeSource");
+const bridgeSources = new WeakMap<object, WindowContext>();
 
 function isReservedVueKey(key: string | symbol): boolean {
   return typeof key === "string" && (key.startsWith("$") || key.startsWith("_"));
@@ -63,7 +63,7 @@ export function getGameContextSource(context: WindowContext): WindowContext {
 }
 
 export function unwrapWindowBridgeContext(ctx: WindowContext): WindowContext {
-  const bridgedSource = Reflect.get(ctx, WINDOW_BRIDGE_SOURCE) as WindowContext | undefined;
+  const bridgedSource = bridgeSources.get(ctx);
   if (bridgedSource && typeof bridgedSource === "object") {
     return bridgedSource;
   }
@@ -104,7 +104,7 @@ function createBridgeFromSource(sourceCtx: WindowContext, options: BridgeOptions
     return false;
   };
 
-  return new Proxy(
+  const bridge = new Proxy(
     {},
     {
       has(_target, key: string | symbol) {
@@ -122,9 +122,6 @@ function createBridgeFromSource(sourceCtx: WindowContext, options: BridgeOptions
         };
       },
       get(_target, key: string | symbol) {
-        if (key === WINDOW_BRIDGE_SOURCE) {
-          return sourceCtx;
-        }
         const value = readValue(key);
         if (typeof value === "function") {
           return value.bind(sourceCtx);
@@ -149,4 +146,6 @@ function createBridgeFromSource(sourceCtx: WindowContext, options: BridgeOptions
       }
     }
   );
+  bridgeSources.set(bridge, sourceCtx);
+  return bridge;
 }

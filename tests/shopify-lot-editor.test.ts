@@ -45,7 +45,7 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-beforeEach(() => apiCall.mockReset());
+beforeEach(() => { apiCall.mockReset(); });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 test("search explains when Shopify matches are excluded by inventory eligibility", async () => {

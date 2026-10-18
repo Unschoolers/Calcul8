@@ -106,9 +106,10 @@ function withMockedLocalStorage(
 }
 
 function stubFinishedAnimation(): void {
-  vi.spyOn(performance, "now").mockReturnValue(0);
+  const startTime = 20_000;
+  vi.spyOn(performance, "now").mockReturnValue(startTime);
   vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) => {
-    callback(10_000);
+    callback(startTime + 10_000);
     return 1;
   }) as typeof requestAnimationFrame);
 }

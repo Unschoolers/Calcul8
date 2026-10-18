@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/vue";
+import { fireEvent, screen, waitFor } from "@testing-library/vue";
 import { defineComponent, reactive, type Component } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
@@ -37,6 +37,8 @@ function gameConfig(gameType: "wheel" | "grid" | "bracket"): WheelConfig {
 }
 
 function renderGameWindow(gameType: "wheel" | "grid" | "bracket") {
+  const vueWarnings: string[] = [];
+  const vueErrors: string[] = [];
   const config = gameConfig(gameType);
   const context = reactive({
     ...createInitialState(),
@@ -61,19 +63,21 @@ function renderGameWindow(gameType: "wheel" | "grid" | "bracket") {
 
   const view = renderWithApp(mountedGameWindow, {
     global: {
+      config: {
+        warnHandler: (message, _instance, trace) => vueWarnings.push(`${message}\n${trace}`),
+        errorHandler: (error, _instance, info) => vueErrors.push(`${String(error)} (${info})`)
+      },
       provide: {
         [gameCoordinatorPortsKey as symbol]: createGameCoordinatorPorts(context as never),
         [shellActionPresenceKey as symbol]: createShellActionPresence(context)
       }
     }
   });
-  return { view, context };
+  return { view, context, vueWarnings, vueErrors };
 }
 
 test("mounted GameWindow uses its provided controller for the wheel toolbar and create-game chooser", async () => {
-  const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-  const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-  const { view } = renderGameWindow("wheel");
+  const { view, vueWarnings, vueErrors } = renderGameWindow("wheel");
 
   expect(view.container.querySelector(".wheel-stage-game-toolbar")).not.toBeNull();
   expect(view.container.querySelector(".wheel-outer")).not.toBeNull();
@@ -81,22 +85,27 @@ test("mounted GameWindow uses its provided controller for the wheel toolbar and 
   await fireEvent.click(view.getByRole("button", { name: "wheelInspectorNewGameAction" }));
   expect(await screen.findByRole("dialog", { name: "wheelCreateGameTitle" })).toBeTruthy();
 
-  expect(`${consoleError.mock.calls.flat().join(" ")} ${consoleWarn.mock.calls.flat().join(" ")}`)
-    .not.toMatch(/Cannot convert object to primitive value|Unhandled error during execution/i);
+  expect(vueWarnings).toEqual([]);
+  expect(vueErrors).toEqual([]);
 });
 
 test.each([
   ["grid", ".mystery-grid-stage"],
   ["bracket", ".bracket-battle-setup"]
-] as const)("mounted GameWindow renders the real %s child tree", (gameType, selector) => {
-  const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-  const view = renderGameWindow(gameType).view;
+] as const)("mounted GameWindow renders the real %s child tree", async (gameType, selector) => {
+  const { view, vueWarnings, vueErrors } = renderGameWindow(gameType);
   expect(view.container.querySelector(selector)).not.toBeNull();
   if (gameType === "bracket") {
     expect(view.container.querySelector(".bracket-battle-builder")).not.toBeNull();
     expect(view.getByText("bracketBattleTitle")).toBeTruthy();
     expect(view.getAllByText("bracketBattleSetupTitle").length).toBeGreaterThan(0);
+  } else {
+    expect(view.container.querySelectorAll(".mystery-grid-cell")).toHaveLength(100);
+    const firstCell = view.getByRole("button", { name: "1" });
+    expect(firstCell).toBeEnabled();
+    await fireEvent.click(firstCell);
+    await waitFor(() => expect(firstCell).toHaveTextContent("Prize"));
   }
-  expect(consoleError.mock.calls.flat().join(" "))
-    .not.toMatch(/Cannot convert object to primitive value|Unhandled error during execution/i);
+  expect(vueWarnings).toEqual([]);
+  expect(vueErrors).toEqual([]);
 });
