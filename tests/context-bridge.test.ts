@@ -11,7 +11,8 @@ vi.mock("vue", () => ({
 
 import {
     createNestedWindowContextBridge,
-    getGameContextSource
+    getGameContextSource,
+    unwrapWindowBridgeContext
 } from "../src/components/windows/shared/contextBridge.ts";
 
 type AppCtxLike = Record<string, unknown>;
@@ -62,4 +63,20 @@ test("game context source resolves a child context through one nested bridge", (
   const childComponent: AppCtxLike = { ctx: bridgedChild };
 
   assert.equal(getGameContextSource(childComponent), gameContext);
+});
+
+test("bridge unwrapping preserves its canonical source without probing unrelated proxies", () => {
+  const source: AppCtxLike = { wheelSpinHash: "seed-hash" };
+  const bridge = createNestedWindowContextBridge(source);
+  let symbolWasRead = false;
+  const unrelatedProxy = new Proxy({}, {
+    get(_target, key) {
+      if (typeof key === "symbol") symbolWasRead = true;
+      return undefined;
+    }
+  });
+
+  assert.equal(unwrapWindowBridgeContext(bridge), source);
+  assert.equal(unwrapWindowBridgeContext(unrelatedProxy), unrelatedProxy);
+  assert.equal(symbolWasRead, false);
 });

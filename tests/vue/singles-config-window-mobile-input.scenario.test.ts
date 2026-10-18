@@ -1,5 +1,5 @@
 import { fireEvent, screen } from "@testing-library/vue";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi, type Mock } from "vitest";
 import { defineComponent, nextTick, ref } from "vue";
 import { createInitialState } from "../../src/app-core/state.ts";
 import {
@@ -8,6 +8,9 @@ import {
 } from "../../src/components/windows/singles/singlesConfigPorts.ts";
 import SinglesConfigWindow from "../../src/components/windows/singles/SinglesConfigWindow.vue";
 import { renderWithApp } from "./render.ts";
+
+type CardSearch = (url: string, init: RequestInit) => Response | Promise<Response>;
+type FilterOptionsRequest = (url: string, init: RequestInit) => void;
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -25,10 +28,10 @@ function cardSearchResponse(name: string): Response {
 }
 
 async function mountSinglesEditor(
-  searchResponse: ReturnType<typeof vi.fn>,
+  searchResponse: Mock<CardSearch>,
   catalogSource: "ua" | "pokemon" = "ua",
   filterOptions: Array<{ value: string; label: string }> = [],
-  filterOptionsRequest?: ReturnType<typeof vi.fn>
+  filterOptionsRequest?: Mock<FilterOptionsRequest>
 ) {
   const storage = new Map<string, string>([["whatfees_api_base_url", "https://api.example.test"]]);
   vi.stubGlobal("localStorage", {
@@ -102,7 +105,7 @@ async function typeNativeValue(input: HTMLInputElement, value: string): Promise<
   await nextTick();
 }
 
-function requestedQuery(searchResponse: ReturnType<typeof vi.fn>, callIndex: number): string | null {
+function requestedQuery(searchResponse: Mock<CardSearch>, callIndex: number): string | null {
   return new URL(String(searchResponse.mock.calls[callIndex]?.[0] || "")).searchParams.get("q");
 }
 
@@ -115,7 +118,7 @@ async function selectCatalogFilterOption(filter: HTMLElement, label: string): Pr
 }
 
 test("sends each later two-character-plus native input value to card search", async () => {
-  const searchResponse = vi.fn((url: string) => cardSearchResponse(
+  const searchResponse = vi.fn<CardSearch>((url: string) => cardSearchResponse(
     `Match for ${new URL(url).searchParams.get("q")}`
   ));
   const { input } = await mountSinglesEditor(searchResponse);
@@ -135,7 +138,7 @@ test("sends each later two-character-plus native input value to card search", as
 }, 10_000);
 
 test("waits for slower mobile typing to settle before searching the final query", async () => {
-  const searchResponse = vi.fn((url: string) => cardSearchResponse(
+  const searchResponse = vi.fn<CardSearch>((url: string) => cardSearchResponse(
     `Match for ${new URL(url).searchParams.get("q")}`
   ));
   const { input } = await mountSinglesEditor(searchResponse);
@@ -160,7 +163,7 @@ test("waits for slower mobile typing to settle before searching the final query"
 test("ignores an older mobile search response after later characters are typed", async () => {
   let resolveLo: ((response: Response) => void) | undefined;
   let resolveLoyd: ((response: Response) => void) | undefined;
-  const searchResponse = vi.fn((url: string) => {
+  const searchResponse = vi.fn<CardSearch>((url: string) => {
     const query = new URL(url).searchParams.get("q");
     if (query === "Lo") {
       return new Promise<Response>((resolve) => {
@@ -190,7 +193,7 @@ test("ignores an older mobile search response after later characters are typed",
 
 test("shows a delayed result while the autocomplete input remains focused", async () => {
   let resolveSearch: ((response: Response) => void) | undefined;
-  const searchResponse = vi.fn(() => new Promise<Response>((resolve) => {
+  const searchResponse = vi.fn<CardSearch>(() => new Promise<Response>((resolve) => {
     resolveSearch = resolve;
   }));
   const { editor, input } = await mountSinglesEditor(searchResponse);
@@ -207,7 +210,7 @@ test("shows a delayed result while the autocomplete input remains focused", asyn
 
 test("leaves the query visible but closes the menu when card search is rate limited", async () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-  const searchResponse = vi.fn(() => new Response(JSON.stringify({
+  const searchResponse = vi.fn<CardSearch>(() => new Response(JSON.stringify({
     error: "Too many card search requests. Please retry shortly."
   }), { status: 429 }));
   const { editor, input } = await mountSinglesEditor(searchResponse);
@@ -227,10 +230,10 @@ test("mobile Pokemon selector sends its selected Set and omits it after clearing
   vi.stubGlobal("innerWidth", 375);
   vi.stubGlobal("innerHeight", 667);
   window.dispatchEvent(new Event("resize"));
-  const searchResponse = vi.fn((url: string) => cardSearchResponse(
+  const searchResponse = vi.fn<CardSearch>((url: string) => cardSearchResponse(
     `Match for ${new URL(url).searchParams.get("q")}`
   ));
-  const filterOptionsRequest = vi.fn();
+  const filterOptionsRequest = vi.fn<FilterOptionsRequest>();
   const { editor, input } = await mountSinglesEditor(
     searchResponse,
     "pokemon",
@@ -280,10 +283,10 @@ test("mobile Pokemon selector sends its selected Set and omits it after clearing
 }, 10_000);
 
 test("uses the Series selector for Union Arena, reuses options, and clears the filter when the editor resets", async () => {
-  const searchResponse = vi.fn((url: string) => cardSearchResponse(
+  const searchResponse = vi.fn<CardSearch>((url: string) => cardSearchResponse(
     `Match for ${new URL(url).searchParams.get("q")}`
   ));
-  const filterOptionsRequest = vi.fn();
+  const filterOptionsRequest = vi.fn<FilterOptionsRequest>();
   const { editor } = await mountSinglesEditor(
     searchResponse,
     "ua",

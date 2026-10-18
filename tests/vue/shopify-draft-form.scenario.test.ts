@@ -22,7 +22,7 @@ test("edited title and independent price request a final validated preview befor
 test("a failed creation locks its exact input and retries its recorded preview without refreshing", async () => {
   const h = scenario(); h.create.mockRejectedValueOnce(new TypeError("lost response"));
   await screen.findByRole("textbox", { name: "shopifyDraftTitleLabel" }); await fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-  await screen.findByRole("alert");
+  await screen.findByText("configShopifyErrorUnavailable");
   expect(screen.getByRole("textbox", { name: "shopifyDraftTitleLabel" })).toBeDisabled();
   const reads = h.load.mock.calls.length;
   await fireEvent.click(screen.getByRole("button", { name: "Submit" }));

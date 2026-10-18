@@ -240,9 +240,10 @@ test("preview spin persists updated preview session state through completion", a
     return proofResult;
   });
 
-  vi.stubGlobal("performance", { now: () => 0 });
+  const animationStartTime = 20_000;
+  vi.stubGlobal("performance", { now: () => animationStartTime });
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(9_999);
+      cb(animationStartTime + 9_999);
       return 1;
     });
 

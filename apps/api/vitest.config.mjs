@@ -18,7 +18,13 @@ export default defineConfig({
         "**/*.test.ts",
         "**/dist/**",
         "**/node_modules/**"
-      ]
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 71,
+        functions: 86,
+        lines: 84
+      }
     }
   }
 });
