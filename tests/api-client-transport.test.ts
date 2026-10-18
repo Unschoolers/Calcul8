@@ -257,6 +257,47 @@ test("an unsafe authenticated request is replayed after a successful 401 refresh
   }
 });
 
+test("a late 401 from an obsolete auth epoch does not refresh or expire the new session", async () => {
+  const originalStorage = (globalThis as { localStorage?: Storage }).localStorage;
+  const values = new Map<string, string>([["whatfees_session_user_id_v1", "new-user"]]);
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key)
+    }
+  });
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  let finishRequest: ((response: Response) => void) | undefined;
+  const started = new Promise<void>(resolve => {
+    const fetchMock = vi.fn<typeof fetch>(async input => {
+      if (String(input).endsWith("/auth/refresh")) throw new Error("stale request must not refresh");
+      resolve();
+      return await new Promise<Response>(finish => { finishRequest = finish; });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  const fetchMock = vi.mocked(fetch);
+  const app = { googleAuthEpoch: 1, hasProAccess: false, notify: vi.fn() };
+  let ownsRequest = true;
+  try {
+    const pending = fetchAuthenticatedApiResponse(app as never, "/lots/1/live-pricing", { method: "GET" }, {
+      isRequestCurrent: () => ownsRequest
+    });
+    await started;
+    app.googleAuthEpoch = 2;
+    ownsRequest = false;
+    finishRequest?.(new Response("unauthorized", { status: 401 }));
+    await assert.rejects(pending, (error: unknown) => error instanceof DOMException && error.name === "AbortError");
+    assert.equal(fetchMock.mock.calls.length, 1);
+    assert.equal(values.get("whatfees_session_user_id_v1"), "new-user");
+    assert.equal(app.googleAuthEpoch, 2);
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: originalStorage });
+  }
+});
+
 test("an unsafe authenticated request can replay after caller-provided credential bootstrap", async () => {
   const originalStorage = (globalThis as { localStorage?: Storage }).localStorage;
   Object.defineProperty(globalThis, "localStorage", {

@@ -21,6 +21,11 @@ export function markLivePricingPollingBaseline(
   livePricingBaselineHashes.set(app, pricing ? createLivePricingPollingHash(pricing) : null);
 }
 
+export function hasUnsavedLivePricingChanges(app: SyncPollingContext): boolean {
+  const baselineHash = livePricingBaselineHashes.get(app as object);
+  return baselineHash != null && createLivePricingPollingHash(app) !== baselineHash;
+}
+
 function applyLivePricingSnapshot(app: SyncPollingContext, livePricing: LotLivePricingRecord): void {
   app.liveSpotPrice = livePricing.liveSpotPrice;
   app.liveBoxPriceSell = livePricing.liveBoxPriceSell;

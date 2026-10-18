@@ -353,7 +353,7 @@ export function applySinglesCsvImportRows(params: {
         const existingQuantity = Math.max(0, Math.floor(Number(existing.quantity) || 0));
         nextRows[existingIndex] = {
           ...existing,
-          quantity: existingQuantity + 1
+          quantity: existingQuantity + row.quantity
         };
         mergedCount += 1;
         return;
@@ -373,7 +373,7 @@ export function applySinglesCsvImportRows(params: {
             const existingQuantity = Math.max(0, Math.floor(Number(existing.quantity) || 0));
             nextRows[existingIndex] = {
               ...existing,
-              quantity: existingQuantity + 1
+              quantity: existingQuantity + row.quantity
             };
             mergedCount += 1;
             return;

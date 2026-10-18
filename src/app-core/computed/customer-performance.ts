@@ -1,4 +1,6 @@
 import type { Lot, Sale } from "../../types/app.ts";
+import { DEFAULT_VALUES } from "../../constants.ts";
+import { convertAmountToCad, normalizeUsdToCadRate } from "../../domain/currency.ts";
 import { normalizeBuyerKey, saleGrossBuyerSpend } from "./buyer-quick-view.ts";
 
 export interface CustomerPerformanceRow {
@@ -52,6 +54,7 @@ function getLotNameById(lots: Lot[]): Map<number, string> {
 export function buildCustomerPerformanceRows(params: BuildCustomerPerformanceRowsParams): CustomerPerformanceRow[] {
   const lots = Array.isArray(params.lots) ? params.lots : [];
   const lotNames = getLotNameById(lots);
+  const lotsById = new Map(lots.map((lot) => [Number(lot.id), lot] as const));
   const customers = new Map<string, MutableCustomerPerformanceRow>();
 
   for (const [rawLotId, rawSales] of params.salesByLotId instanceof Map ? params.salesByLotId.entries() : []) {
@@ -75,7 +78,14 @@ export function buildCustomerPerformanceRows(params: BuildCustomerPerformanceRow
         topLotSpent: 0,
         lotSpendById: new Map<number, number>()
       };
-      const spend = saleGrossBuyerSpend(sale);
+      const lot = lotsById.get(lotId);
+      const exchangeRate = normalizeUsdToCadRate(lot?.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
+      const spend = convertAmountToCad(
+        saleGrossBuyerSpend(sale),
+        lot?.sellingCurrency === "USD" ? "USD" : "CAD",
+        exchangeRate,
+        DEFAULT_VALUES.EXCHANGE_RATE
+      );
       current.totalSpent += spend;
       current.purchaseCount += 1;
       current.lastPurchaseDate = latestDate(current.lastPurchaseDate, sale.date);

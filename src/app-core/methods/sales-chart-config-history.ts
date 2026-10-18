@@ -6,6 +6,8 @@ import {
   calculatePortfolioSellThroughTimeline,
   calculateSaleNetRevenue,
 } from "../../domain/calculations.ts";
+import { convertAmountToCad, normalizeUsdToCadRate } from "../../domain/currency.ts";
+import { DEFAULT_VALUES } from "../../constants.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { calculateSaleConsumption } from "../../domain/box-inventory.ts";
 import type {
@@ -130,8 +132,16 @@ export function buildPortfolioHistoryChartConfig(params: {
       if (!lotFromMap) continue;
       const saleDate = toDateOnly(sale.date);
       if (!saleDate) continue;
-      const netRevenue = calculateSaleNetRevenue(sale, lotFromMap.sellingTaxPercent, lotFromMap);
-      netByDate.set(saleDate, (netByDate.get(saleDate) ?? 0) + netRevenue);
+      const nativeLot = {
+        ...lotFromMap,
+        exchangeRate: normalizeUsdToCadRate(lotFromMap.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE)
+      };
+      const netRevenue = calculateSaleNetRevenue(sale, nativeLot.sellingTaxPercent, nativeLot);
+      netByDate.set(
+        saleDate,
+        (netByDate.get(saleDate) ?? 0)
+          + convertAmountToCad(netRevenue, nativeLot.sellingCurrency, nativeLot.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE)
+      );
       const consumption = calculateSaleConsumption(lot, sale);
       const soldUnits = consumption.valid ? consumption.units : 0;
       if (soldUnits > 0) {
@@ -322,7 +332,7 @@ export function buildPortfolioHistoryChartConfig(params: {
           callbacks: {
             label: (context: TooltipItem<"line">) => {
               const datasetLabel = String(context.dataset?.label || "Value");
-              return `${datasetLabel}: $${params.formatCurrency(Number(context.parsed?.y || 0))}`;
+              return `${datasetLabel}: $${params.formatCurrency(Number(context.parsed?.y || 0))} CAD`;
             }
           }
         }

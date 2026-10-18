@@ -1,4 +1,6 @@
 import type { Lot, Sale } from "../../types/app.ts";
+import { DEFAULT_VALUES } from "../../constants.ts";
+import { convertAmountToCad, normalizeUsdToCadRate } from "../../domain/currency.ts";
 
 export interface BuyerLotPurchaseSummary {
   lotId: number;
@@ -67,6 +69,7 @@ export function buildBuyerQuickViewSummary(params: BuildBuyerQuickViewSummaryPar
     ? Number(params.currentLotId)
     : null;
   const namesById = lotNameById(Array.isArray(params.lots) ? params.lots : []);
+  const lotsById = new Map((Array.isArray(params.lots) ? params.lots : []).map((lot) => [Number(lot.id), lot] as const));
   const grouped = new Map<number, BuyerLotPurchaseSummary>();
   let totalSpentAllLots = 0;
   let purchasesAllLots = 0;
@@ -79,7 +82,14 @@ export function buildBuyerQuickViewSummary(params: BuildBuyerQuickViewSummaryPar
 
     for (const sale of sales) {
       if (normalizeBuyerKey(sale.customer) !== normalizedKey) continue;
-      const spend = saleGrossBuyerSpend(sale);
+      const lot = lotsById.get(lotId);
+      const exchangeRate = normalizeUsdToCadRate(lot?.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
+      const spend = convertAmountToCad(
+        saleGrossBuyerSpend(sale),
+        lot?.sellingCurrency === "USD" ? "USD" : "CAD",
+        exchangeRate,
+        DEFAULT_VALUES.EXCHANGE_RATE
+      );
       const current = grouped.get(lotId) ?? {
         lotId,
         lotName: namesById.get(lotId) ?? `Lot ${lotId}`,

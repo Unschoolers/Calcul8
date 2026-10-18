@@ -23,6 +23,7 @@ import type { PersistenceOutcome } from "../../../../app-core/shared/persistence
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
 import { getWheelController } from "../services/gameSessionState.ts";
+import { invalidateGameOutcomeSettlements } from "../services/gameOutcomeSettlement.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { cloneGameConfig, createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
@@ -166,6 +167,7 @@ export const wheelConfigMethods = {
   },
 
   loadWheelConfig(this: GameConfigContext, options: { preserveLiveWheelState?: boolean } = {}): void {
+    invalidateGameOutcomeSettlements(this);
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
@@ -228,6 +230,14 @@ export const wheelConfigMethods = {
   deleteWheelConfig(this: GameConfigContext): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
+    const pendingChase = this.wheelPendingChase;
+    if (pendingChase && pendingChase.configId === activeId) {
+      getWheelController(this).wheelInventoryWarning = "This wheel still has an unresolved chase. Restore and settle it before deleting the wheel.";
+      this.wheelChaseDialog = true;
+      this.wheelChasePreviewMode = false;
+      this.wheelChasePendingTierId = pendingChase.tierId;
+      return;
+    }
     const idx = configs.findIndex((c) => c.id === activeId);
     if (idx < 0) return;
     configs.splice(idx, 1);
@@ -242,11 +252,21 @@ export const wheelConfigMethods = {
   },
 
   applyWheelConfig(this: GameConfigContext): void {
+    const pendingChase = this.wheelPendingChase;
+    if (pendingChase) {
+      const controller = getWheelController(this as Record<string, unknown>);
+      controller.wheelInventoryWarning = "Settle the unresolved chase before applying a wheel change.";
+      this.wheelChaseDialog = true;
+      this.wheelChasePreviewMode = false;
+      this.wheelChasePendingTierId = pendingChase.tierId;
+      return;
+    }
     const editing = this.editingWheelConfig;
     if (!editing) {
       this.wheelConfigSyncPending = false;
       return;
     }
+    invalidateGameOutcomeSettlements(this);
     clearQueuedWheelConfigSync(this);
     this.wheelConfigSyncPending = true;
     stopWorkspaceConfigSyncPush(this as object);

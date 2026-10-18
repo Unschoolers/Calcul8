@@ -17,6 +17,8 @@ export interface FetchRetryOptions {
   maxRetryDelayMs?: number;
   /** Opt in only when the request carries a stable mutation identity. */
   retryUnsafeMethods?: boolean;
+  /** Stop dispatch and auth side effects when the request's owning view/session changes. */
+  isRequestCurrent?: () => boolean;
 }
 
 const API_MAX_RETRY_ATTEMPTS = 3;
@@ -64,6 +66,10 @@ function createAbortError(): DOMException {
 
 function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw createAbortError();
+}
+
+function throwIfRequestIsStale(isRequestCurrent: (() => boolean) | undefined): void {
+  if (isRequestCurrent && !isRequestCurrent()) throw createAbortError();
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -235,7 +241,8 @@ export async function fetchWithRetry(
     baseDelayMs = API_BASE_RETRY_DELAY_MS,
     timeoutMs = API_FETCH_TIMEOUT_MS,
     maxRetryDelayMs = API_MAX_RETRY_DELAY_MS,
-    retryUnsafeMethods = false
+    retryUnsafeMethods = false,
+    isRequestCurrent
   }: FetchRetryOptions = {}
 ): Promise<Response> {
   const callerSignal = init.signal ?? undefined;
@@ -244,6 +251,7 @@ export async function fetchWithRetry(
 
   while (true) {
     throwIfAborted(callerSignal);
+    throwIfRequestIsStale(isRequestCurrent);
     attempt += 1;
 
     const requestHeaders = new Headers(init.headers ?? {});
@@ -270,6 +278,10 @@ export async function fetchWithRetry(
         signal: controller.signal
       });
       throwIfAborted(callerSignal);
+      if (isRequestCurrent && !isRequestCurrent()) {
+        await response.body?.cancel().catch(() => undefined);
+        throw createAbortError();
+      }
       if (timedOut) throw new DOMException("The request timed out.", "TimeoutError");
       const responseCsrfToken = (response.headers.get("x-csrf-token") || "").trim();
       if (responseCsrfToken) {
@@ -312,6 +324,7 @@ export async function fetchAuthenticatedApiResponse(
     expireAuthOn401?: boolean;
     retryUnsafeMethods?: boolean;
     bootstrapAuthOn401?: (signal?: AbortSignal) => Promise<boolean>;
+    isRequestCurrent?: () => boolean;
   } = {}
 ): Promise<Response> {
   const baseUrl = resolveApiBaseUrl();
@@ -328,23 +341,35 @@ export async function fetchAuthenticatedApiResponse(
   const response = await fetchWithRetry(requestUrl, buildRequestInit(), options);
 
   if (response.status === 401 && (options.expireAuthOn401 !== false || options.bootstrapAuthOn401)) {
+    throwIfRequestIsStale(options.isRequestCurrent);
     let refreshed = await waitForCallerOrShared(refreshAuthSessionSingleFlight(baseUrl), init.signal ?? undefined);
+    throwIfRequestIsStale(options.isRequestCurrent);
     if (!refreshed && options.bootstrapAuthOn401) {
+      throwIfRequestIsStale(options.isRequestCurrent);
       refreshed = await waitForCallerOrShared(options.bootstrapAuthOn401(init.signal ?? undefined), init.signal ?? undefined);
+      throwIfRequestIsStale(options.isRequestCurrent);
     }
     if (refreshed) {
       // A 401 is an explicit auth denial. Replay it once after recovery even
       // for mutations; ambiguous failures still require an explicit policy.
       await response.body?.cancel().catch(() => undefined);
+      throwIfRequestIsStale(options.isRequestCurrent);
       const retryResponse = await fetchWithRetry(requestUrl, buildRequestInit(), options);
+      throwIfRequestIsStale(options.isRequestCurrent);
       if (retryResponse.status !== 401) {
         return retryResponse;
       }
-      if (options.expireAuthOn401 !== false) handleExpiredAuth(app);
+      if (options.expireAuthOn401 !== false) {
+        throwIfRequestIsStale(options.isRequestCurrent);
+        handleExpiredAuth(app);
+      }
       return retryResponse;
     }
 
-    if (options.expireAuthOn401 !== false) handleExpiredAuth(app);
+    if (options.expireAuthOn401 !== false) {
+      throwIfRequestIsStale(options.isRequestCurrent);
+      handleExpiredAuth(app);
+    }
   }
 
   return response;

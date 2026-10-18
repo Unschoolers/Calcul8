@@ -6,7 +6,11 @@ import {
   resolveUserId,
   revokeSessionFromRequest
 } from "../../lib/auth";
-import { revokeAllRefreshSessionsForUser, revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
+import {
+  clearRefreshSessionAssociationsForUser,
+  revokeAllRefreshSessionsForUser,
+  revokeAllSessionsForUser
+} from "../../lib/cosmos/sessionRepository";
 import { getUserProfile } from "../../lib/cosmos/entitlementRepository";
 import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { logApiTelemetry } from "../../lib/telemetry";
@@ -87,8 +91,9 @@ export async function authLogout(
     fallbackErrorMessage: "Failed to logout.",
     operation: async ({ config }) => {
     // Keep this endpoint idempotent: missing auth still clears cookie client-side.
+    let verifiedUserId: string | null = null;
     try {
-      await resolveUserId(request, config, {
+      verifiedUserId = await resolveUserId(request, config, {
         issueSessionCookie: false,
         telemetry: {
           logger: context,
@@ -96,10 +101,11 @@ export async function authLogout(
           workspaceScope: "unknown"
         }
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 403) throw error;
       // Ignore and continue to cookie/session cleanup.
     }
-    const revokedCurrentSession = await revokeSessionFromRequest(request, config);
+    const revokedCurrentSession = await revokeSessionFromRequest(request, config, verifiedUserId);
 
     return jsonResponse(request, config, 200, {
       ok: true,
@@ -153,8 +159,9 @@ export async function authLogoutAll(
         workspaceScope: "unknown"
       }
     });
-    const revokedSessionCount = await revokeAllSessionsForUser(config, userId);
     const revokedRefreshSessionCount = await revokeAllRefreshSessionsForUser(config, userId);
+    const revokedSessionCount = await revokeAllSessionsForUser(config, userId);
+    await clearRefreshSessionAssociationsForUser(config, userId);
     await clearSessionCookie(request, config);
 
     return jsonResponse(request, config, 200, {

@@ -116,7 +116,20 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
         wheelLastResultColor: "#ff0000",
         wheelSessionUpdatedAt: "12345",
         wheelPendingInventoryIssues: Array.from({ length: 3 }, (_, index) => ({ slotIndex: index })),
-        wheelSkippedDeductions: Array.from({ length: 501 }, (_, index) => index)
+        wheelSkippedDeductions: Array.from({ length: 501 }, (_, index) => index),
+        wheelPendingChase: {
+          version: 1,
+          configId: 77,
+          spinNumber: 4,
+          tierId: "tier-1",
+          slotIndex: 0,
+          originalConfig: { id: 77, name: "Grid Night", spinPrice: 10, targetMargin: 40, tiers: [{ id: "tier-1" }] },
+          originalSourceJson: "{\"id\":77,\"name\":\"Grid Night\",\"spinPrice\":10,\"targetMargin\":40,\"tiers\":[{\"id\":\"tier-1\"}]}",
+          originalTier: { id: "tier-1", label: "Prize", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs" },
+          originalPrize: { slotLabel: "Prize", slotColor: "#f00", lotId: 77, singlesEntryId: null, itemLabel: "Original prize", singlesSourceFingerprint: "original-source" },
+          saleDraft: { id: 888, type: "wheel", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-01-01" },
+          saleAttempted: true
+        }
       }
     }) as never,
     createContext() as never
@@ -127,6 +140,8 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
   assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[1], "user-a");
   assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
   assert.equal(publishWorkspaceWheelRealtimeEventMock.mock.calls.length, 1);
+  const publishedSession = publishWorkspaceWheelRealtimeEventMock.mock.calls[0]?.[1] as { data: { wheelPendingChase?: { originalPrize?: { singlesSourceFingerprint?: string } } } };
+  assert.equal(publishedSession.data.wheelPendingChase?.originalPrize?.singlesSourceFingerprint, "original-source");
 
   const publishArgs = publishWorkspaceWheelRealtimeEventMock.mock.calls[0]?.[1] as {
     workspaceId: string;
@@ -146,6 +161,7 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
       wheelSessionUpdatedAt: number;
       wheelPendingInventoryIssues: unknown[];
       wheelSkippedDeductions: number[];
+      wheelPendingChase: { saleDraft: { id: number } | null; saleAttempted?: boolean } | null;
     };
   };
 
@@ -176,6 +192,8 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
   assert.equal(publishArgs.data.wheelSessionUpdatedAt, 12345);
   assert.equal(publishArgs.data.wheelPendingInventoryIssues.length, 3);
   assert.equal(publishArgs.data.wheelSkippedDeductions.length, 0);
+  assert.equal(publishArgs.data.wheelPendingChase?.saleDraft?.id, 888);
+  assert.equal(publishArgs.data.wheelPendingChase?.saleAttempted, true);
 });
 
 test("wheelBroadcast validates required workspaceId and session body", async () => {

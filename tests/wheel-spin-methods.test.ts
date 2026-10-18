@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
-import { afterEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import { createGameWindowState, ensureWheelControllerState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import { wheelSessionMethods } from "../src/components/windows/game/commands/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelSpinMethods.ts";
 import { wheelConfigComputeds } from "../src/components/windows/game/inspector/wheelConfigComputeds.ts";
+import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
+import { createWheelFairnessProofLink } from "../src/app-core/methods/wheel-fairness-api.ts";
+
+const fairnessMock = vi.hoisted(() => ({ resolve: vi.fn() }));
+
+vi.mock("../src/components/windows/game/services/wheelSpinFairness.ts", () => ({
+  resolveWheelFairnessSpin: fairnessMock.resolve
+}));
 
 const wheelLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
 
@@ -35,6 +43,12 @@ vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
 
 afterEach(() => {
   vi.restoreAllMocks();
+  fairnessMock.resolve.mockReset();
+  fairnessMock.resolve.mockResolvedValue({ resultIndex: 0, hash: "hash", seed: "seed" });
+});
+
+beforeEach(() => {
+  fairnessMock.resolve.mockResolvedValue({ resultIndex: 0, hash: "hash", seed: "seed" });
 });
 
 function completeGameSession<T extends Record<string, unknown>>(context: T): T {
@@ -115,6 +129,152 @@ test("live spins keep recording live session data", async () => {
   assert.equal(controller.wheelPreviewFairnessHistory.length, 0);
   assert.deepEqual(vm.appendWheelFairnessHistory.mock.calls[0]?.[1], { preview: false });
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: true });
+});
+
+test("a live spin owns the guard before fairness resolves and records at most one actual sale", async () => {
+  const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  fairnessMock.resolve.mockReturnValue(deferred.promise);
+  const vm = createSpinVm("live");
+  vm.activeWheelConfig = {
+    id: 1, name: "Live wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "1 Pack", color: "#e74c3c", costPerTier: 6.125,
+      packsCount: 1, deductionType: "packs", boundLotId: 1
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.lots = [{ id: 1, name: "Lot", boxesPurchased: 1, packsPerBox: 10, sales: [] }];
+  vm.addWheelSaleToLot = vi.fn().mockResolvedValue(true);
+
+  const first = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(vm.wheelSpinning, true);
+  const second = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(fairnessMock.resolve.mock.calls.length, 1);
+  deferred.resolve({ resultIndex: 0, hash: "hash", seed: "seed" });
+  await Promise.all([first, second]);
+
+  assert.equal((vm.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(vm.wheelTotalSpins, 1);
+});
+
+test("fairness rejection releases only the spin lock it acquired", async () => {
+  const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  fairnessMock.resolve.mockReturnValue(deferred.promise);
+  const vm = createSpinVm("live");
+  const spinning = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(vm.wheelSpinning, true);
+  deferred.reject(new Error("fairness unavailable"));
+  await assert.rejects(spinning, /fairness unavailable/);
+  assert.equal(vm.wheelSpinning, false);
+});
+
+test("mode A-B-A transitions invalidate fairness work even when the final mode matches", async () => {
+  const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  fairnessMock.resolve.mockReturnValue(deferred.promise);
+  const vm = createSpinVm("live");
+  vm.activeWheelConfig = { id: 1, name: "Real", spinPrice: 10, tiers: [] };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.editingWheelConfig = { id: 1, name: "Draft", spinPrice: 20, tiers: [] };
+  vm.addWheelSaleToLot = vi.fn();
+
+  const spinning = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "config");
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "live");
+  GameWindow.methods!.confirmWheelModeChange.call(vm as never);
+  assert.equal(vm.wheelMode, "live");
+  deferred.resolve({ resultIndex: 0, hash: "hash", seed: "seed" });
+  await spinning;
+
+  assert.equal((vm.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal(vm.wheelTotalSpins, 0);
+});
+
+test("a rejected old spin cannot release a newer operation's lock", async () => {
+  const firstFairness = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  const secondFairness = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  fairnessMock.resolve.mockReturnValueOnce(firstFairness.promise).mockReturnValueOnce(secondFairness.promise);
+  const vm = createSpinVm("live");
+  const first = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  vm.wheelSpinning = false;
+  const second = wheelSpinMethods.spinWheelInternal.call(vm, true);
+
+  firstFairness.reject(new Error("old request failed"));
+  await assert.rejects(first, /old request failed/);
+  assert.equal(vm.wheelSpinning, true);
+
+  secondFairness.resolve({ resultIndex: 0, hash: "hash", seed: "seed" });
+  await second;
+});
+
+test("a stale deferred animation frame cannot complete into the changed mode", async () => {
+  const vm = createSpinVm("live");
+  let pendingFrame: FrameRequestCallback | undefined;
+  vi.spyOn(performance, "now").mockReturnValue(0);
+  vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) => {
+    pendingFrame = callback;
+    return 44;
+  }) as typeof requestAnimationFrame);
+
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(vm.wheelSpinning, true);
+  assert.ok(pendingFrame);
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "config");
+  pendingFrame!(10_000);
+  await vi.waitFor(() => assert.equal(vm.wheelSpinning, false));
+
+  assert.equal(vm.appendWheelFairnessHistory.mock.calls.length, 0);
+  assert.equal(vm.landOnSlot.mock.calls.length, 0);
+});
+
+test("spin lock stays owned through a deferred proof and stale proof completion writes nothing", async () => {
+  const proofDeferred = createDeferred<{ verificationUrl: string; jsonUrl: string }>();
+  vi.mocked(createWheelFairnessProofLink).mockReturnValue(proofDeferred.promise);
+  fairnessMock.resolve.mockResolvedValue({ resultIndex: 0, hash: "hash", seed: "seed", clientSeed: "client" });
+  stubFinishedAnimation();
+  const vm = createSpinVm("live");
+  const firstSpin = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await firstSpin;
+  assert.equal(vi.mocked(createWheelFairnessProofLink).mock.calls.length, 1);
+  assert.equal(vm.wheelSpinning, true);
+
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(fairnessMock.resolve.mock.calls.length, 1, "a second spin must wait until proof completion releases the operation");
+
+  const savesBeforeInvalidation = (vm.saveWheelSession as ReturnType<typeof vi.fn>).mock.calls.length;
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "config");
+  proofDeferred.resolve({ verificationUrl: "https://example.test/proof", jsonUrl: "https://example.test/proof.json" });
+  await vi.waitFor(() => assert.equal(vm.wheelSpinning, false));
+
+  assert.equal(vm.appendWheelFairnessHistory.mock.calls.length, 0);
+  assert.equal(vm.landOnSlot.mock.calls.length, 0);
+  assert.equal((vm.saveWheelSession as ReturnType<typeof vi.fn>).mock.calls.length, savesBeforeInvalidation);
+  assert.equal(getWheelController(vm).wheelFairnessHistory.length, 0);
+});
+
+test("a live-to-config change during fairness cannot settle a draft as a live sale", async () => {
+  const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  fairnessMock.resolve.mockReturnValue(deferred.promise);
+  const vm = createSpinVm("live");
+  const realConfig = { id: 1, name: "Real", spinPrice: 10, tiers: [{
+    id: "tier-1", label: "Real prize", color: "#f00", costPerTier: 5,
+    packsCount: 1, deductionType: "packs", boundLotId: 1
+  }] };
+  const draftConfig = { ...realConfig, spinPrice: 20, tiers: [{ ...realConfig.tiers[0], label: "Draft prize", costPerTier: 10 }] };
+  const liveSlots = [{ name: "Real prize", color: "#f00", cost: 5, tier: "tier-1", packsCount: 1, deductionType: "packs", isChase: false }];
+  const draftSlots = [{ name: "Draft prize", color: "#0f0", cost: 10, tier: "tier-1", packsCount: 1, deductionType: "packs", isChase: false }];
+  vm.activeWheelConfig = realConfig;
+  vm.editingWheelConfig = draftConfig;
+  Object.defineProperty(vm, "wheelDisplayConfig", { configurable: true, get: () => vm.wheelMode === "config" ? draftConfig : realConfig });
+  Object.defineProperty(vm, "wheelDisplaySlots", { configurable: true, get: () => vm.wheelMode === "config" ? draftSlots : liveSlots });
+  vm.lots = [{ id: 1, name: "Lot", boxesPurchased: 1, packsPerBox: 10, sales: [] }];
+  vm.addWheelSaleToLot = vi.fn().mockResolvedValue(true);
+
+  const spinning = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  vm.wheelMode = "config";
+  deferred.resolve({ resultIndex: 0, hash: "hash", seed: "seed" });
+  await spinning;
+
+  assert.equal((vm.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal(vm.wheelTotalSpins, 0);
 });
 
 test("spinWheelInternal publishes spectator animation during the spin and clears it after landing", async () => {

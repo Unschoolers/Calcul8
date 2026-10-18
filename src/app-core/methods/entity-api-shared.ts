@@ -48,6 +48,7 @@ export async function requestJson(
   options: {
     expireAuthOn401?: boolean;
     retryUnsafeMethods?: boolean;
+    isRequestCurrent?: () => boolean;
   } = {}
 ): Promise<unknown> {
   const baseUrl = resolveApiBaseUrl();

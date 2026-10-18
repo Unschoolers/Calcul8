@@ -241,6 +241,31 @@ export interface SyncInventoryIssueDto {
     slotSinglesId: number | null;
     candidateLotIds?: number[];
     requiresLotSelection?: boolean;
+    writeAttempted?: boolean;
+}
+export interface SyncWheelChaseObligationDto {
+    version: 1;
+    unresolvedSource?: true;
+    configId: number;
+    spinNumber: number;
+    tierId: string;
+    slotIndex: number;
+    originalConfig?: SyncWheelConfigDto;
+    originalSourceJson?: string;
+    originalTier?: SyncWheelTierDto;
+    originalPrize?: {
+        slotLabel: string;
+        slotColor: string;
+        lotId: number | null;
+        singlesEntryId: number | null;
+        lotType?: "bulk" | "singles";
+        itemLabel: string;
+        image?: string;
+        singlesSourceFingerprint?: string;
+        singlesSourceSnapshot?: string;
+    };
+    saleDraft: SyncSaleDto | null;
+    saleAttempted?: boolean;
 }
 export interface SyncGameSessionDto {
     wheelConfigs: SyncWheelConfigDto[];
@@ -261,6 +286,7 @@ export interface SyncGameSessionDto {
     wheelSessionUpdatedAt: number;
     wheelPendingInventoryIssues: SyncInventoryIssueDto[];
     wheelSkippedDeductions: SyncInventoryIssueDto[];
+    wheelPendingChase: SyncWheelChaseObligationDto | null;
 }
 declare function isSyncEntityRecord(value: unknown): value is SyncEntityRecord;
 declare function normalizeSyncSystemPricingDefaultsDto(value: unknown): SyncSystemPricingDefaultsDto | null;

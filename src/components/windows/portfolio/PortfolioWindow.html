@@ -257,7 +257,7 @@
                                 {{ fmtCurrency(portfolioSalesByUserTotalValue(), 0) }}
                               </template>
                               <template v-else>
-                                ${{ fmtCurrency(portfolioSalesByUserTotalValue()) }}
+                                ${{ fmtCurrency(portfolioSalesByUserTotalValue()) }} CAD
                               </template>
                             </app-metric-value>
                               </v-chip>
@@ -269,8 +269,8 @@
                               variant="tonal"
                               class="portfolio-sales-by-user-toggle"
                             >
-                              <v-btn value="revenue">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</v-btn>
-                              <v-btn value="profit">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</v-btn>
+                              <v-btn value="revenue">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }} (CAD)</v-btn>
+                              <v-btn value="profit">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }} (CAD)</v-btn>
                               <v-btn value="count">{{ portfolioCopy('portfolioSalesByUserMetricCountLabel', 'Count') }}</v-btn>
                             </v-btn-toggle>
                           </div>
@@ -326,7 +326,7 @@
                                     {{ fmtCurrency(item.total, 0) }}
                                   </template>
                                   <template v-else>
-                                    ${{ fmtCurrency(item.total) }}
+                                    ${{ fmtCurrency(item.total) }} CAD
                                   </template>
                                 </app-metric-value>
                               </div>
@@ -366,7 +366,7 @@
                                 {{ fmtCurrency(week.total, 0) }}
                               </template>
                               <template v-else>
-                                ${{ fmtCurrency(week.total) }}
+                                  ${{ fmtCurrency(week.total) }} CAD
                               </template>
                             </app-metric-value>
                           </button>
@@ -419,7 +419,7 @@
                               {{ row.realizedMarginPercent != null ? `${row.realizedMarginPercent >= 0 ? '+' : ''}${fmtCurrency(row.realizedMarginPercent, 1)}%` : portfolioCopy('portfolioLotNoSoldMarginLabel', 'No sold margin') }}
                             </span>
                             <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioLotColumnRiskLabel', 'At risk')">
-                              ${{ fmtCurrency(Math.max(0, -(row.totalProfit ?? 0))) }}
+                              ${{ fmtCurrency(Math.max(0, -(row.totalProfit ?? 0))) }} CAD
                             </span>
                             <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioLotColumnProfitLabel', 'Profit')">
                               <span
@@ -468,7 +468,7 @@
                                 :profile="getBuyerProfile(row.username)"
                               ></buyer-identity-label>
                             </span>
-                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioCustomerColumnSpentLabel', 'Spent')">${{ fmtCurrency(row.totalSpent) }}</span>
+                            <span class="portfolio-performance-grid__cell--number" :data-label="`${portfolioCopy('portfolioCustomerColumnSpentLabel', 'Spent')} (CAD)`">${{ fmtCurrency(row.totalSpent) }} CAD</span>
                             <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioCustomerColumnPurchasesLabel', 'Purchases')">{{ row.purchaseCount }}</span>
                             <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioCustomerColumnLotsLabel', 'Lots')">{{ row.lotCount }}</span>
                             <span :data-label="portfolioCopy('portfolioCustomerColumnLastLabel', 'Last purchase')">
@@ -554,8 +554,8 @@
                               <th>{{ portfolioCopy('portfolioSalesByUserDrilldownLotLabel', 'Lot') }}</th>
                               <th>{{ portfolioCopy('portfolioSalesByUserDrilldownDateLabel', 'Date') }}</th>
                               <th>{{ portfolioCopy('portfolioSalesByUserDrilldownSellerLabel', 'Sold by') }}</th>
-                              <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</th>
-                              <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</th>
+                              <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }} (CAD)</th>
+                              <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }} (CAD)</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -576,7 +576,7 @@
                               <td>{{ row.sellerLabel }}</td>
                               <td class="text-right">
                                 <app-metric-value kind="money" tone="neutral" cell>
-                                  ${{ fmtCurrency(row.revenue) }}
+                                  ${{ fmtCurrency(row.revenue) }} CAD
                                 </app-metric-value>
                               </td>
                               <td class="text-right">
@@ -621,15 +621,15 @@
                               <dd>{{ row.sellerLabel }}</dd>
                             </div>
                             <div class="app-mobile-preview-card__field">
-                              <dt>{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</dt>
+                              <dt>{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }} (CAD)</dt>
                               <dd>
                                 <app-metric-value kind="money" tone="neutral" cell>
-                                  ${{ fmtCurrency(row.revenue) }}
+                                  ${{ fmtCurrency(row.revenue) }} CAD
                                 </app-metric-value>
                               </dd>
                             </div>
                             <div class="app-mobile-preview-card__field">
-                              <dt>{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</dt>
+                              <dt>{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }} (CAD)</dt>
                               <dd>
                                 <app-metric-value
                                   kind="money"

@@ -1,4 +1,5 @@
 import { EntityVersionConflictError } from "../../lib/cosmos/salesRepository";
+import { HttpError } from "../../lib/auth";
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { createApiConfig } from "../../test-support/function-test-helpers";
@@ -257,6 +258,55 @@ test("createWhatnotImportBatchFromRowsForActor attaches a manual duplicate candi
   assert.equal(batch.rows[0]?.manualDuplicateCandidate?.confidence, "high");
 });
 
+test.each([251, 1000])("createWhatnotImportBatchFromRowsForActor rejects %i rows without replacing the pending batch", async (count) => {
+  const pendingBatch = {
+    batchId: "pending-before-oversized-upload",
+    status: "pending_review",
+    rows: [{ externalSaleId: "preserved-row" }]
+  };
+  listPendingWhatnotImportBatchesMock.mockResolvedValue([pendingBatch]);
+  const rows = Array.from({ length: count }, (_, index) => ({
+    externalOrderId: `order-${index}`,
+    externalOrderItemId: `item-${index}`,
+    title: "Lot A",
+    quantity: 1,
+    price: 10,
+    date: "2026-03-25"
+  }));
+
+  await assert.rejects(
+    createWhatnotImportBatchFromRowsForActor(createApiConfig(), "user-a", { rows }),
+    (error: unknown) => error instanceof HttpError && error.status === 400
+  );
+
+  assert.equal(listPendingWhatnotImportBatchesMock.mock.calls.length, 0);
+  assert.equal(upsertWhatnotImportBatchMock.mock.calls.length, 0);
+  assert.equal(createPendingWhatnotImportBatchMock.mock.calls.length, 0);
+  assert.equal(getWhatnotSaleImportMappingByExternalSaleKeyHashMock.mock.calls.length, 0);
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 0);
+  assert.deepEqual(pendingBatch, {
+    batchId: "pending-before-oversized-upload",
+    status: "pending_review",
+    rows: [{ externalSaleId: "preserved-row" }]
+  });
+});
+
+test("createWhatnotImportBatchFromRowsForActor processes all 250 allowed rows", async () => {
+  const rows = Array.from({ length: 250 }, (_, index) => ({
+    externalOrderId: `order-${index}`,
+    externalOrderItemId: `item-${index}`,
+    title: "Lot A",
+    quantity: 1,
+    price: 10,
+    date: "2026-03-25"
+  }));
+
+  const batch = await createWhatnotImportBatchFromRowsForActor(createApiConfig(), "user-a", { rows });
+
+  assert.equal(batch.rows.length, 250);
+  assert.equal(createPendingWhatnotImportBatchMock.mock.calls[0]?.[1].rows.length, 250);
+});
+
 test("createWhatnotImportBatchFromRowsForActor groups same customer and listing title rows against one manual sale", async () => {
   getEffectiveSyncSnapshotMock.mockResolvedValue({
     lots: [{
@@ -493,6 +543,7 @@ test("confirmWhatnotImportBatchForActor updates a manual candidate sale and pres
     updatedCount: 1,
     skippedCount: 0
   });
+  assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.trustedExternal, true);
   assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.baseVersion, 1);
   assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.saleId, "7");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).customer, "Jordan Lee");

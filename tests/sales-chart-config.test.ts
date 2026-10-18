@@ -230,6 +230,23 @@ test("buildPortfolioHistoryChartConfig uses stored net revenue so the final poin
   assert.deepEqual(config?.data.datasets[0]?.data, [-100, -70]);
 });
 
+test("portfolio history chart converts native USD sale revenue to CAD", () => {
+  const lot = makeLot({ sellingCurrency: "USD", exchangeRate: 1.35 });
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "trend",
+    filteredLots: [lot],
+    allLotPerformance: [makePerformance({ totalCost: 135, totalProfit: -94.5 })],
+    salesByLotId: new Map([[lot.id, [makeSale({ date: "2026-02-20", price: 50, packsCount: 1, netRevenue: 30 })]]]),
+    formatCurrency,
+    formatDate,
+    todayDate: "2026-02-22"
+  });
+  assert.deepEqual(config?.data.datasets[0]?.data, [-135, -94.5]);
+  const tooltip = config?.options?.plugins?.tooltip?.callbacks?.label as ((context: unknown) => string) | undefined;
+  assert.ok(tooltip);
+  assert.match(tooltip?.({ dataset: { label: "Actual cumulative P/L" }, parsed: { y: -94.5 } }) ?? "", /CAD$/);
+});
+
 test("buildPortfolioHistoryChartConfig uses compact mobile labels and legend settings", () => {
   const config = buildPortfolioHistoryChartConfig({
     portfolioChartView: "trend",

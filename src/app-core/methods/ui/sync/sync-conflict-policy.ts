@@ -3,20 +3,27 @@ import type { SyncPushOptions } from "./sync-service.ts";
 import type { SyncServiceDeps } from "./sync-service.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
 import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import type { SyncSession } from "./sync-session.ts";
+import { beginCleanConflictRecovery } from "./sync-coordinator.ts";
+import { performCloudSyncPull } from "./sync-pull.ts";
 
 export type SyncPushConflictPolicyArgs = {
   app: SyncServiceContext;
   deps: SyncServiceDeps;
   scope: SyncScopeContext;
+  session: SyncSession;
   options: SyncPushOptions;
   attemptedPayloadSignature: string;
+  isLocalSalesCurrent?: () => boolean;
 };
 
 export async function handleSyncPushConflict({
   app,
   deps,
+  session,
   options,
-  attemptedPayloadSignature
+  attemptedPayloadSignature,
+  isLocalSalesCurrent
 }: SyncPushConflictPolicyArgs): Promise<PersistenceOutcome> {
   if (options.treatConflictAsSuccess === true) {
     deps.setSyncStatusSuccess(app);
@@ -27,7 +34,13 @@ export async function handleSyncPushConflict({
   const lastSyncedPayloadHash = String(app.lastSyncedPayloadHash || "");
   if (lastSyncedPayloadHash && lastSyncedPayloadHash === attemptedPayloadSignature) {
     console.info("[whatfees] Cloud sync push conflict: pulling latest clean state");
-    const pullOutcome = await app.pullCloudSync();
+    const pullOutcome = await beginCleanConflictRecovery(
+      session,
+      () => performCloudSyncPull(session, {
+        expectedPayloadSignature: attemptedPayloadSignature,
+        isRequestCurrent: isLocalSalesCurrent
+      })
+    );
     return pullOutcome.kind === "confirmed"
       ? { kind: "confirmed", persistence: "cloud", cache: pullOutcome.cache, cloud: "confirmed" }
       : { kind: "conflict", latestState: "unavailable" };

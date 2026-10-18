@@ -341,7 +341,7 @@ export const PortfolioWindowDefinition = {
           key: "top-customer",
           label: getCopy("portfolioCustomerHighlightTopLabel", "Top customer"),
           value: summary.topCustomer?.username || getCopy("portfolioCustomerNoneLabel", "None"),
-          meta: summary.topCustomer ? formatMoney(summary.topCustomer.totalSpent) : getCopy("portfolioCustomerNoSalesMeta", "No named customer sales"),
+          meta: summary.topCustomer ? `${formatMoney(summary.topCustomer.totalSpent)} CAD` : getCopy("portfolioCustomerNoSalesMeta", "No named customer sales"),
           icon: "mdi-account-star-outline"
         },
         {
@@ -355,7 +355,7 @@ export const PortfolioWindowDefinition = {
           key: "top-five-share",
           label: getCopy("portfolioCustomerHighlightConcentrationLabel", "Top 5 share"),
           value: formatPercent(summary.topFiveSharePercent),
-          meta: formatMoney(summary.totalSpent),
+          meta: `${formatMoney(summary.totalSpent)} CAD`,
           icon: "mdi-chart-pie"
         }
       ];
@@ -460,7 +460,7 @@ export const PortfolioWindowDefinition = {
       const formatted = typeof format === "function"
         ? format.call(this, Math.abs(normalized))
         : Math.abs(normalized).toFixed(2);
-      return `${sign}$${formatted}`;
+      return `${sign}$${formatted} CAD`;
     },
 
     portfolioPulseProfitTone(this: Record<string, unknown>): PortfolioPulseTone {
@@ -799,7 +799,7 @@ export const PortfolioWindowDefinition = {
       const formatted = typeof format === "function"
         ? format.call(this, Math.abs(profit.value), 0)
         : String(Math.round(Math.abs(profit.value)));
-      return `${profit.projected ? "~" : ""}${profit.value >= 0 ? "+" : "-"}$${formatted}`;
+      return `${profit.projected ? "~" : ""}${profit.value >= 0 ? "+" : "-"}$${formatted} CAD`;
     },
 
     portfolioLotPrimaryProfitTone(this: Record<string, unknown>, row: {
@@ -897,10 +897,11 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioSalesByUserMetricLabel(this: Record<string, unknown>): string {
-      return getPortfolioSalesByUserMetricLabel(
+      const label = getPortfolioSalesByUserMetricLabel(
         this.portfolioSalesByUserMetric,
         getPortfolioCopy(this)
       );
+      return this.portfolioSalesByUserMetric === "count" ? label : `${label} (CAD)`;
     },
 
     portfolioSalesByUserTotalValue(this: Record<string, unknown>): number {
@@ -1014,7 +1015,7 @@ export const PortfolioWindowDefinition = {
       const signedProfit = (value: number): string => (
         typeof formatSigned === "function"
           ? formatSigned.call(this, value)
-          : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`
+          : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)} CAD`
       );
       const revenue = rows.reduce((sum, row) => sum + (Number(row.revenue) || 0), 0);
       const profit = rows.reduce((sum, row) => sum + (Number(row.profit) || 0), 0);
@@ -1022,18 +1023,20 @@ export const PortfolioWindowDefinition = {
       const revenueLabel = getCopy("portfolioSalesByUserMetricRevenueLabel", "revenue").toLowerCase();
       const profitLabel = getCopy("portfolioSalesByUserMetricProfitLabel", "profit").toLowerCase();
 
-      return `${rows.length} ${saleLabel}${rows.length === 1 ? "" : "s"} - ${formatCurrency(revenue)} ${revenueLabel} - ${signedProfit(profit)} ${profitLabel}`;
+      return `${rows.length} ${saleLabel}${rows.length === 1 ? "" : "s"} - ${formatCurrency(revenue)} CAD ${revenueLabel} - ${signedProfit(profit)} ${profitLabel}`;
     },
 
-    portfolioSalesByUserSubtitle(): string {
-      return getPortfolioSalesByUserSubtitle(getPortfolioCopy(this));
+    portfolioSalesByUserSubtitle(this: Record<string, unknown>): string {
+      const subtitle = getPortfolioSalesByUserSubtitle(getPortfolioCopy(this));
+      return this.portfolioSalesByUserMetric === "count" ? subtitle : `${subtitle} · CAD`;
     },
 
     portfolioSalesByUserAriaLabel(this: Record<string, unknown>): string {
-      return getPortfolioSalesByUserAriaLabel(
+      const label = getPortfolioSalesByUserAriaLabel(
         this.portfolioSalesByUserMetric,
         getPortfolioCopy(this)
       );
+      return this.portfolioSalesByUserMetric === "count" ? label : `${label} (CAD)`;
     },
 
     portfolioCopy(this: Record<string, unknown>, key: string, fallback: string): string {

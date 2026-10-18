@@ -1107,6 +1107,117 @@ test("allLotPerformance uses cached lot sales without hydrating storage during r
   assert.equal(rows[0]?.salesCount, 1);
 });
 
+test("portfolio summary converts mixed native revenue, cost, and profit to CAD exactly once", () => {
+  const salesByLot = new Map<number, Sale[]>([
+    [901, [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 100, buyerShipping: 0, date: "2026-10-17" }]],
+    [902, [{ id: 2, type: "pack", quantity: 1, packsCount: 1, price: 100, buyerShipping: 0, date: "2026-10-17" }]]
+  ]);
+  const makeLot = (
+    id: number,
+    sellingCurrency: "CAD" | "USD",
+    exchangeRate: number,
+    fees: typeof NO_FEES | typeof WHATNOT_FEES = NO_FEES
+  ) => ({
+    id,
+    name: `Lot ${id}`,
+    lotType: "bulk" as const,
+    boxPriceCost: 10,
+    boxesPurchased: 1,
+    packsPerBox: 2,
+    spotsPerBox: 2,
+    costInputMode: "perBox" as const,
+    currency: sellingCurrency,
+    sellingCurrency,
+    exchangeRate,
+    purchaseDate: "2026-10-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0,
+    ...fees,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 50,
+    targetProfitPercent: 15
+  });
+  const rows = appComputed.allLotPerformance.call({
+    salesCacheEpoch: 0,
+    portfolioSelectedLotIds: [901, 902],
+    lots: [makeLot(901, "CAD", 1), makeLot(902, "USD", 1.35, WHATNOT_FEES)],
+    currentLotId: -1,
+    getSalesCacheEntry: (id: number) => ({ status: "loaded" as const, sales: salesByLot.get(id) ?? [] }),
+    sales: [],
+    hasProAccess: false,
+    livePackPrice: 0,
+    liveBoxPriceSell: 0,
+    liveSpotPrice: 0
+  } as unknown as ThisParameterType<typeof appComputed.allLotPerformance>);
+  const totals = appComputed.portfolioTotals.call({ allLotPerformance: rows } as never);
+  assert.equal(totals.totalRevenue, 219.88);
+  assert.equal(totals.totalCost, 24.175);
+  assert.ok(Math.abs(totals.totalProfit - 195.705) < 0.000001);
+  assert.ok(Math.abs(rows.reduce((sum, row) => sum + (row.realizedProfit ?? 0), 0) - 207.7925) < 0.000001);
+  const scenarios = appComputed.portfolioForecastScenarios.call({
+    lots: [makeLot(901, "CAD", 1), makeLot(902, "USD", 1.35, WHATNOT_FEES)],
+    portfolioSelectedLotIds: [901, 902],
+    allLotPerformance: rows,
+    currentLotId: -1,
+    hasProAccess: false,
+    livePackPrice: 0,
+    liveBoxPriceSell: 0,
+    liveSpotPrice: 0,
+    whatnotFeeSummary: null,
+    sales: [],
+    salesCacheEpoch: 0,
+    getSalesCacheEntry: (id: number) => ({ status: "loaded" as const, sales: salesByLot.get(id) ?? [] })
+  } as unknown as ThisParameterType<typeof appComputed.portfolioForecastScenarios>);
+  const itemForecast = scenarios.find((scenario) => scenario.id === "item");
+  assert.ok(Math.abs((itemForecast?.forecastRevenue ?? 0) - 329.6175) < 0.000001);
+  assert.ok(Math.abs((itemForecast?.forecastProfit ?? 0) - 305.4425) < 0.000001);
+});
+
+test.each([Number.POSITIVE_INFINITY, -1, 0, Number.NaN])("portfolio calculation normalizes invalid USD rates before native costs (%s)", (exchangeRate) => {
+  const rows = appComputed.allLotPerformance.call({
+    salesCacheEpoch: 0,
+    portfolioSelectedLotIds: [903],
+    lots: [{
+      id: 903,
+      name: "CAD cost USD sale",
+      lotType: "bulk",
+      boxPriceCost: 100,
+      boxesPurchased: 1,
+      packsPerBox: 2,
+      spotsPerBox: 2,
+      costInputMode: "perBox",
+      currency: "CAD",
+      sellingCurrency: "USD",
+      exchangeRate,
+      purchaseDate: "2026-10-01",
+      purchaseShippingCost: 0,
+      purchaseTaxPercent: 0,
+      sellingTaxPercent: 0,
+      sellingShippingPerOrder: 0,
+      ...NO_FEES,
+      includeTax: false,
+      spotPrice: 0,
+      boxPriceSell: 0,
+      packPrice: 0,
+      targetProfitPercent: 15
+    }],
+    currentLotId: -1,
+    getSalesCacheEntry: () => ({ status: "loaded" as const, sales: [{ id: 3, type: "pack", quantity: 1, packsCount: 1, price: 100, buyerShipping: 0, date: "2026-10-17" }] }),
+    sales: [],
+    hasProAccess: false,
+    livePackPrice: 0,
+    liveBoxPriceSell: 0,
+    liveSpotPrice: 0
+  } as unknown as ThisParameterType<typeof appComputed.allLotPerformance>);
+  assert.equal(rows[0]?.totalRevenue, 140);
+  assert.ok(Math.abs(rows[0]!.totalCost - 100) < 0.000001);
+  assert.ok(Math.abs((rows[0]?.totalProfit ?? 0) - 40) < 0.000001);
+});
+
 test("portfolio sales by user profit uses realized per-sale profit only", () => {
   const data = buildPortfolioSalesByUserChartData({
     lots: [
@@ -1204,6 +1315,49 @@ test("portfolio sales by user revenue uses stored net revenue when available", (
 
   assert.equal(data.series.length, 1);
   assert.equal(data.series[0]?.total, 31);
+});
+
+test("portfolio seller chart and drilldown convert native USD revenue and profit to CAD", () => {
+  const lot = {
+    id: 904,
+    name: "USD lot",
+    lotType: "bulk" as const,
+    boxPriceCost: 20,
+    boxesPurchased: 1,
+    packsPerBox: 2,
+    spotsPerBox: 2,
+    costInputMode: "perBox" as const,
+    currency: "USD" as const,
+    sellingCurrency: "USD" as const,
+    exchangeRate: 1.35,
+    purchaseDate: "2026-10-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0,
+    ...NO_FEES,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 15
+  };
+  const sale: Sale = { id: 9, type: "pack", quantity: 1, packsCount: 1, price: 100, buyerShipping: 0, date: "2026-10-17", updatedBy: "seller" };
+  const base = {
+    lots: [lot],
+    salesByLotId: new Map([[904, [sale]]]),
+    selectedLotIds: [904],
+    scopeType: "personal" as const,
+    workspaceMembers: [],
+    todayDate: "2026-10-17"
+  };
+  const revenue = buildPortfolioSalesByUserChartData({ ...base, metric: "revenue" });
+  const profit = buildPortfolioSalesByUserChartData({ ...base, metric: "profit" });
+  const drilldown = buildPortfolioSalesByUserDrilldownRows(base);
+  assert.equal(revenue.series[0]?.total, 135);
+  assert.ok(Math.abs((profit.series[0]?.total ?? 0) - 120.825) < 0.000001);
+  assert.equal(drilldown[0]?.revenue, 135);
+  assert.ok(Math.abs((drilldown[0]?.profit ?? 0) - 120.825) < 0.000001);
 });
 
 test("portfolio sales by user keeps real negative sale profit series instead of hiding the chart", () => {

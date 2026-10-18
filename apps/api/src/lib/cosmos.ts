@@ -40,14 +40,20 @@ export {
 } from "./cosmos/salesRepository";
 
 export {
+  clearRefreshSessionAssociations,
+  clearRefreshSessionAssociationsForUser,
   createRefreshSession,
   createSession,
   deleteSession,
+  deleteSessionIfUnchanged,
+  findRefreshSessionForSession,
   getRefreshSession,
   getSession,
+  linkSessionToRefreshFamily,
+  listSessionsForRefreshFamily,
   revokeAllRefreshSessionsForUser,
   revokeAllSessionsForUser,
-  revokeRefreshSessionForSession,
+  revokeRefreshSessionFamily,
   rotateRefreshSession,
   touchSession
 } from "./cosmos/sessionRepository";

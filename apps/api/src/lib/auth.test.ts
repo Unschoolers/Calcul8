@@ -9,20 +9,30 @@ const {
   getSessionMock,
   touchSessionMock,
   deleteSessionMock,
+  deleteSessionIfUnchangedMock,
   createRefreshSessionMock,
   getRefreshSessionMock,
   rotateRefreshSessionMock,
-  revokeRefreshSessionForSessionMock,
+  linkSessionToRefreshFamilyMock,
+  findRefreshSessionForSessionMock,
+  revokeRefreshSessionFamilyMock,
+  clearRefreshSessionAssociationsMock,
+  listSessionsForRefreshFamilyMock,
   upsertUserProfileMock
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   getSessionMock: vi.fn(),
   touchSessionMock: vi.fn(),
   deleteSessionMock: vi.fn(),
+  deleteSessionIfUnchangedMock: vi.fn(),
   createRefreshSessionMock: vi.fn(),
   getRefreshSessionMock: vi.fn(),
   rotateRefreshSessionMock: vi.fn(),
-  revokeRefreshSessionForSessionMock: vi.fn(),
+  linkSessionToRefreshFamilyMock: vi.fn(),
+  findRefreshSessionForSessionMock: vi.fn(),
+  revokeRefreshSessionFamilyMock: vi.fn(),
+  clearRefreshSessionAssociationsMock: vi.fn(),
+  listSessionsForRefreshFamilyMock: vi.fn(),
   upsertUserProfileMock: vi.fn()
 }));
 
@@ -31,10 +41,15 @@ vi.mock("./cosmos", () => ({
   getSession: getSessionMock,
   touchSession: touchSessionMock,
   deleteSession: deleteSessionMock,
+  deleteSessionIfUnchanged: deleteSessionIfUnchangedMock,
   createRefreshSession: createRefreshSessionMock,
   getRefreshSession: getRefreshSessionMock,
   rotateRefreshSession: rotateRefreshSessionMock,
-  revokeRefreshSessionForSession: revokeRefreshSessionForSessionMock
+  linkSessionToRefreshFamily: linkSessionToRefreshFamilyMock,
+  findRefreshSessionForSession: findRefreshSessionForSessionMock,
+  revokeRefreshSessionFamily: revokeRefreshSessionFamilyMock,
+  clearRefreshSessionAssociations: clearRefreshSessionAssociationsMock,
+  listSessionsForRefreshFamily: listSessionsForRefreshFamilyMock
 }));
 
 vi.mock("./cosmos/entitlementRepository", () => ({
@@ -61,6 +76,8 @@ interface TestRefreshSessionDocument {
   lastUsedAt: string;
   expiresAt: string;
   revokedAt?: string | null;
+  previousTokenHash?: string | null;
+  previousSessionId?: string | null;
 }
 
 const REFRESH_SECRET_OLD = "secret-old-secret-old-secret-old-12345";
@@ -164,11 +181,19 @@ beforeEach(() => {
   getSessionMock.mockResolvedValue(null);
   touchSessionMock.mockResolvedValue(undefined);
   deleteSessionMock.mockResolvedValue(undefined);
+  deleteSessionIfUnchangedMock.mockResolvedValue("deleted");
   createSessionMock.mockImplementation(async (_config: ApiConfig, input: SessionDocument) => input);
   createRefreshSessionMock.mockImplementation(async (_config: ApiConfig, input: unknown) => input);
   getRefreshSessionMock.mockResolvedValue(null);
   rotateRefreshSessionMock.mockResolvedValue(undefined);
-  revokeRefreshSessionForSessionMock.mockResolvedValue(undefined);
+  linkSessionToRefreshFamilyMock.mockResolvedValue(undefined);
+  findRefreshSessionForSessionMock.mockResolvedValue(null);
+  revokeRefreshSessionFamilyMock.mockImplementation(async (config: ApiConfig, input: { refreshSessionId: string }) => {
+    const family = await getRefreshSessionMock(config, input.refreshSessionId) as TestRefreshSessionDocument | null;
+    return { ...(family ?? buildRefreshSession()), id: input.refreshSessionId, revokedAt: new Date().toISOString() };
+  });
+  clearRefreshSessionAssociationsMock.mockResolvedValue(undefined);
+  listSessionsForRefreshFamilyMock.mockResolvedValue([]);
   upsertUserProfileMock.mockResolvedValue(undefined);
 });
 
@@ -305,7 +330,7 @@ test("valid bearer token is rejected unless bearer auth is explicitly allowed", 
   }
 });
 
-test("repeated bearer bootstrap requests reuse the same session id for the same token", async () => {
+test("repeated bearer bootstrap requests issue independent sessions and refresh families", async () => {
   const requestA = makeRequest({ authorization: "Bearer token-abc" });
   const requestB = makeRequest({ authorization: "Bearer token-abc" });
 
@@ -331,11 +356,11 @@ test("repeated bearer bootstrap requests reuse the same session id for the same 
     const secondSession = createSessionMock.mock.calls[1]?.[1] as SessionDocument;
     assert.equal(firstSession.userId, "google-user-42");
     assert.equal(secondSession.userId, "google-user-42");
-    assert.equal(firstSession.id, secondSession.id);
+    assert.notEqual(firstSession.id, secondSession.id);
 
     const cookiesA = consumeAuthResponseCookies(requestA);
     const cookiesB = consumeAuthResponseCookies(requestB);
-    assert.equal(findLastCookie(cookiesA, "whatfees_session")?.value, findLastCookie(cookiesB, "whatfees_session")?.value);
+    assert.notEqual(findLastCookie(cookiesA, "whatfees_session")?.value, findLastCookie(cookiesB, "whatfees_session")?.value);
     assert.notEqual(findLastCookie(cookiesA, "whatfees_refresh")?.value ?? "", "");
     assert.notEqual(findLastCookie(cookiesB, "whatfees_refresh")?.value ?? "", "");
   } finally {
@@ -619,16 +644,24 @@ test("refresh token rejects replayed or revoked cookies and clears refresh cooki
   assert.equal(clearedRefreshCookie?.maxAge, 0);
 });
 
-test("logout revokes the refresh token tied to the current session", async () => {
+test("logout with only a valid refresh cookie revokes its family before deleting both associated sessions", async () => {
   const request = makeRequest({
-    cookie: `whatfees_session=session-1; whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+    cookie: `whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
   }, "POST");
+  getRefreshSessionMock.mockResolvedValue(buildRefreshSession({
+    sessionId: "session-new",
+    previousSessionId: "session-old"
+  }));
 
   const revoked = await revokeSessionFromRequest(request, makeConfig());
 
   assert.equal(revoked, true);
-  assert.equal(deleteSessionMock.mock.calls.length, 1);
-  assert.deepEqual(revokeRefreshSessionForSessionMock.mock.calls[0]?.slice(1), ["session-1"]);
+  assert.deepEqual(revokeRefreshSessionFamilyMock.mock.calls[0]?.[1], {
+    refreshSessionId: "refresh-1",
+    expectedTokenHashes: [hashRefreshSecret(REFRESH_SECRET_OLD)]
+  });
+  assert.deepEqual(deleteSessionMock.mock.calls.map((call) => call[1]).sort(), ["session-new", "session-old"]);
+  assert.equal(clearRefreshSessionAssociationsMock.mock.calls.length, 1);
   const cookies = consumeAuthResponseCookies(request);
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_session" && cookie.maxAge === 0));
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_refresh" && cookie.maxAge === 0));
@@ -636,17 +669,18 @@ test("logout revokes the refresh token tied to the current session", async () =>
 
 test("logout fails when server-side session revocation cannot be confirmed", async () => {
   const request = makeRequest({
-    cookie: `whatfees_session=session-1; whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+    cookie: `whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
   }, "POST");
+  getRefreshSessionMock.mockResolvedValue(buildRefreshSession());
   deleteSessionMock.mockRejectedValue(new Error("Cosmos unavailable"));
 
   await assert.rejects(
     () => revokeSessionFromRequest(request, makeConfig()),
-    /Failed to revoke server session/
+    /Cosmos unavailable/
   );
 
-  assert.equal(revokeRefreshSessionForSessionMock.mock.calls.length, 1);
+  assert.equal(revokeRefreshSessionFamilyMock.mock.calls.length, 1);
   const cookies = consumeAuthResponseCookies(request);
-  assert.equal(findLastCookie(cookies, "whatfees_session")?.maxAge, 0);
-  assert.equal(findLastCookie(cookies, "whatfees_refresh")?.maxAge, 0);
+  assert.equal(findLastCookie(cookies, "whatfees_session")?.maxAge, undefined);
+  assert.equal(findLastCookie(cookies, "whatfees_refresh")?.maxAge, undefined);
 });

@@ -58,6 +58,7 @@ function translate(key: string): string {
     configSystemConfigurationHelp: "Default seller assumptions stay separate from lot overrides.",
     configSystemDefaultsTitle: "System defaults",
     configSystemDefaultsHelp: "These defaults apply to new lots.",
+    portfolioAmountsCurrencyLabel: "All monetary amounts in CAD",
     configSellingTaxesLabel: "Selling taxes",
     configAverageBuyerShippingLabel: "Average buyer shipping",
     configFeeProfileLabel: "Fee profile",
@@ -173,6 +174,7 @@ describe("workflow dialog scenarios", () => {
     expect(appStyles).toMatch(/\.app-responsive-segment-toggle\s*\{[^}]*flex-wrap:\s*wrap;[^}]*height:\s*auto\s*!important;/s);
     expect(appStyles).toMatch(/@media \(max-width:\s*360px\)[\s\S]*\.app-responsive-segment-toggle \.v-btn\s*\{[^}]*flex:\s*1 1 100%;/);
     expect(reportTemplate).toMatch(/class="portfolio-report-secondary-actions"/);
+    expect(reportTemplate).toMatch(/t\('portfolioAmountsCurrencyLabel'\)/);
     expect(reportStyles).toMatch(/\.portfolio-report-secondary-actions\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;/s);
     expect(reportStyles).toMatch(/@media \(max-width:\s*360px\)[\s\S]*\.portfolio-report-secondary-actions > \*\s*\{[^}]*flex:\s*1 1 100%;/);
   });

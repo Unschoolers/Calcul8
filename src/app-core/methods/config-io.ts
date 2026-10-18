@@ -61,10 +61,10 @@ function buildPortfolioReportTsv(context: PortfolioReportContext): string {
     `Data Analysis On\t${sanitizeTsvCell(context.formatDate(exportedDateOnly))}`,
     `Exported At\t${sanitizeTsvCell(exportedAt)}`,
     "",
-    "Section\tLot Count\tProfitable Lots\tSales Count\tTotal Revenue\tTotal Cost\tTotal Profit",
+    "Section\tLot Count\tProfitable Lots\tSales Count\tTotal Revenue (CAD)\tTotal Cost (CAD)\tTotal Profit (CAD)",
     `Totals\t${totals.lotCount}\t${totals.profitableLotCount}\t${totals.totalSalesCount}\t${context.formatCurrency(totals.totalRevenue)}\t${context.formatCurrency(totals.totalCost)}\t${context.formatCurrency(totals.totalProfit)}`,
     "",
-    "Lot\tType\tRealized Status\tSales\tSold Items\tTotal Items\tSold Revenue\tSold Cost\tRealized Profit\tCurrent Lot P/L\tSold Margin %\tForecast Avg\tLast Sale"
+    "Lot\tType\tRealized Status\tSales\tSold Items\tTotal Items\tSold Revenue (CAD)\tSold Cost (CAD)\tRealized Profit (CAD)\tCurrent Lot P/L (CAD)\tSold Margin %\tForecast Avg (CAD)\tLast Sale"
   ];
 
   for (const row of context.allLotPerformance) {

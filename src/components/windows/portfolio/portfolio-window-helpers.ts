@@ -79,7 +79,7 @@ export function getPortfolioChartToggleIcon(next: PortfolioChartView): string {
 export function getPortfolioChartSubtitle(current: unknown, translate?: PortfolioCopyFn): string {
   const normalized = String(current || "trend");
   if (normalized === "breakdown") {
-    return resolvePortfolioCopy(translate, "portfolioChartBreakdownSubtitle", "Revenue by lot");
+    return `${resolvePortfolioCopy(translate, "portfolioChartBreakdownSubtitle", "Revenue by lot")} (CAD)`;
   }
   if (normalized === "sellthrough") {
     return resolvePortfolioCopy(translate, "portfolioChartSellThroughSubtitle", "Sell-through over time");
@@ -87,7 +87,7 @@ export function getPortfolioChartSubtitle(current: unknown, translate?: Portfoli
   if (normalized === "margin") {
     return resolvePortfolioCopy(translate, "portfolioChartMarginSubtitle", "Sold margin by lot");
   }
-  return resolvePortfolioCopy(translate, "portfolioChartTrendSubtitle", "Profit trend over time");
+  return `${resolvePortfolioCopy(translate, "portfolioChartTrendSubtitle", "Profit trend over time")} (CAD)`;
 }
 
 export function getPortfolioChartAriaLabel(current: unknown, translate?: PortfolioCopyFn): string {

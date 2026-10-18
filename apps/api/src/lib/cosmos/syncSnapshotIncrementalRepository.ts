@@ -6,6 +6,7 @@ import { getContainers, isConflictError, isPreconditionFailedError, withCosmosRe
 import { syncMetaId, syncPresetSetId } from "./ids";
 import {
   buildIncomingPresetStates,
+  loadCoherentSyncSnapshotInputs,
   type IncrementalSyncUpsertInput,
   type IncrementalSyncUpsertResult,
   normalizeActiveWheelConfigId,
@@ -14,12 +15,11 @@ import {
   SyncSnapshotConflictError,
   toPresetState
 } from "./syncSnapshotRepository.shared";
-import {
-  getSyncMetaDocument,
-  getSyncPresetDocuments
-} from "./syncSnapshotPresetRepository";
+import { assertSuccessfulCosmosBatch } from "./batchResponse";
+import { getSyncMetaDocument } from "./syncSnapshotPresetRepository";
 
 const COSMOS_TRANSACTIONAL_BATCH_OPERATION_LIMIT = 100;
+const SYNC_PRESET_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 function readCosmosEtag(document: unknown): string {
   if (!document || typeof document !== "object") return "";
@@ -89,11 +89,12 @@ function buildMetaOperation(
   }
 
   const etag = readCosmosEtag(existingMetaDocument);
+  if (!etag) throw new SyncSnapshotConflictError();
   return {
     operationType: "Replace",
     id: metaDocument.id,
     resourceBody: metaDocument as never,
-    ...(etag ? { ifMatch: etag } : {})
+    ifMatch: etag
   };
 }
 
@@ -172,7 +173,8 @@ async function executeSyncSnapshotOperations(
 
   try {
     if (operations.length <= COSMOS_TRANSACTIONAL_BATCH_OPERATION_LIMIT) {
-      await withCosmosRetry(() => syncSnapshots.items.batch(operations, partitionKey));
+      const response = await withCosmosRetry(() => syncSnapshots.items.batch(operations, partitionKey));
+      assertSuccessfulCosmosBatch(response, operations.length);
       return;
     }
 
@@ -188,12 +190,115 @@ async function executeSyncSnapshotOperations(
   }
 }
 
+function readPresetEtag(document: SyncPresetDocument): string {
+  return String((document as SyncPresetDocument & { _etag?: unknown })._etag ?? "").trim();
+}
+
+function metaPointerSignature(document: SyncMetaDocument | null): string {
+  if (!document) return "<null>";
+  const etag = readCosmosEtag(document);
+  const version = Number(document.version);
+  if (!etag || !Number.isSafeInteger(version) || version < 0) return "<invalid>";
+  return `${version}\u0000${normalizePresetSetId(document.presetSetId)}\u0000${etag}`;
+}
+
+async function markSupersededPresetSet(
+  config: ApiConfig,
+  userId: string,
+  documents: SyncPresetDocument[]
+): Promise<void> {
+  if (documents.length === 0 || documents.some((document) => !normalizePresetSetId(document.presetSetId))) return;
+  const supersededAt = new Date().toISOString();
+  const { syncSnapshots } = getContainers(config);
+  for (const document of documents) {
+    const etag = readPresetEtag(document);
+    if (!etag) throw new SyncSnapshotConflictError();
+    const marked = { ...document, supersededAt };
+    await withCosmosRetry(() => syncSnapshots.item(document.id, userId).replace(
+      marked as never,
+      etag ? { accessCondition: { type: "IfMatch", condition: etag } } : undefined
+    ));
+  }
+}
+
+export async function cleanupExpiredSupersededPresetSets(config: ApiConfig, userId: string): Promise<void> {
+  const { syncSnapshots } = getContainers(config);
+  const allPresetDocuments = await (async () => {
+    const iterator = syncSnapshots.items.query<SyncPresetDocument>({
+      query: "SELECT * FROM c WHERE c.userId = @userId AND c.docType = @docType",
+      parameters: [
+        { name: "@userId", value: userId },
+        { name: "@docType", value: "sync_preset" }
+      ]
+    }, { partitionKey: userId });
+    const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+    return resources ?? [];
+  })();
+  const now = Date.now();
+  const eligibleSets = new Set<string>();
+  for (const document of allPresetDocuments) {
+    const presetSetId = normalizePresetSetId(document.presetSetId);
+    const supersededAt = Date.parse(String(document.supersededAt ?? ""));
+    if (presetSetId && Number.isFinite(supersededAt) && now - supersededAt >= SYNC_PRESET_RETENTION_MS) {
+      eligibleSets.add(presetSetId);
+    }
+  }
+
+  for (const presetSetId of eligibleSets) {
+    const metaBefore = await getSyncMetaDocument(config, userId);
+    if (metaBefore && metaPointerSignature(metaBefore) === "<invalid>") continue;
+    if (normalizePresetSetId(metaBefore?.presetSetId) === presetSetId) continue;
+    const exactSetQuery = syncSnapshots.items.query<SyncPresetDocument>({
+      query: "SELECT * FROM c WHERE c.userId = @userId AND c.docType = @docType AND c.presetSetId = @presetSetId",
+      parameters: [
+        { name: "@userId", value: userId },
+        { name: "@docType", value: "sync_preset" },
+        { name: "@presetSetId", value: presetSetId }
+      ]
+    }, { partitionKey: userId });
+    const { resources } = await withCosmosRetry(() => exactSetQuery.fetchAll());
+    const candidates = (resources ?? []).filter((document) => {
+      const supersededAt = Date.parse(String(document.supersededAt ?? ""));
+      return normalizePresetSetId(document.presetSetId) === presetSetId
+        && Number.isFinite(supersededAt)
+        && now - supersededAt >= SYNC_PRESET_RETENTION_MS;
+    });
+    if (candidates.length === 0) continue;
+    const metaAfter = await getSyncMetaDocument(config, userId);
+    if (metaAfter && metaPointerSignature(metaAfter) === "<invalid>") continue;
+    if (metaPointerSignature(metaBefore) !== metaPointerSignature(metaAfter)
+      || normalizePresetSetId(metaAfter?.presetSetId) === presetSetId) continue;
+
+    for (const document of candidates) {
+      await withCosmosRetry(() => syncSnapshots.item(document.id, userId).delete());
+    }
+  }
+}
+
+export async function finishSupersessionRetention(
+  config: ApiConfig,
+  userId: string,
+  supersededDocuments: SyncPresetDocument[]
+): Promise<void> {
+  try {
+    await markSupersededPresetSet(config, userId, supersededDocuments);
+  } catch (error) {
+    console.warn("Unable to mark superseded sync preset documents for retention cleanup.", error);
+  }
+  try {
+    await cleanupExpiredSupersededPresetSets(config, userId);
+  } catch (error) {
+    console.warn("Unable to clean up expired superseded sync preset documents.", error);
+  }
+}
+
 export async function upsertSyncSnapshotIncremental(
   config: ApiConfig,
   input: IncrementalSyncUpsertInput
 ): Promise<IncrementalSyncUpsertResult> {
-  const existingDocuments = await getSyncPresetDocuments(config, input.userId);
-  const existingMetaDocument = await getSyncMetaDocument(config, input.userId);
+  const { syncSnapshots } = getContainers(config);
+  const { presetDocuments: existingDocuments, metaDocument: existingMetaDocument } =
+    await loadCoherentSyncSnapshotInputs(syncSnapshots, input.userId);
   const currentDocuments = selectCurrentSyncPresetDocuments(existingDocuments, existingMetaDocument);
   const existingStates = currentDocuments.map(toPresetState);
   const incomingStates = buildIncomingPresetStates(input.lots, input.salesByLot);
@@ -262,6 +367,12 @@ export async function upsertSyncSnapshotIncremental(
     );
     operations.push(buildMetaOperation(existingMetaDocument, metaDocument));
     await executeSyncSnapshotOperations(config, input.userId, operations);
+    if (presetSetChanged) {
+      const supersededDocuments = existingPresetSetId
+        ? existingDocuments.filter((document) => normalizePresetSetId(document.presetSetId) === existingPresetSetId)
+        : [];
+      await finishSupersessionRetention(config, input.userId, supersededDocuments);
+    }
   }
 
   return {

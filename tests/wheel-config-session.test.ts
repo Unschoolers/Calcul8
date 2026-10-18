@@ -9,6 +9,7 @@ import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-con
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import { ensureWheelControllerState, getWheelController, getGameWindowLocalKeys } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import {
+    captureGameOutcomeGuard,
     settleGameOutcomeSale,
     type GameOutcomeSaleInput
 } from "../src/components/windows/game/services/gameOutcomeSettlement.ts";
@@ -212,10 +213,12 @@ test("loadWheelConfig restores autosaved draft without mutating the live config"
     loadWheelFromSession: vi.fn(() => false),
     drawWheel: vi.fn()
   };
+  const outcomeIsCurrent = captureGameOutcomeGuard(vm as never);
 
   GameWindow.methods!.loadWheelConfig.call(completeGameSession(vm) as never);
   assert.equal((vm.editingWheelConfig as WheelConfig).spinPrice, 15);
   assert.equal(((vm.wheelConfigs as WheelConfig[])[0]!.spinPrice), 10);
+  assert.equal(outcomeIsCurrent(), false, "loading draft data for the same config id invalidates an in-flight outcome");
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
@@ -490,7 +493,10 @@ test("applyWheelConfig clears pending changes and cancels queued draft sync", as
     (vm.saveWheelDraft as () => void)();
   }, 1200);
 
+  const outcomeIsCurrent = captureGameOutcomeGuard(vm as never);
+
   GameWindow.methods!.applyWheelConfig.call(completeGameSession(vm) as never);
+  assert.equal(outcomeIsCurrent(), false, "applying a config invalidates an in-flight outcome even when its id stays the same");
   await vi.advanceTimersByTimeAsync(2000);
 
   assert.equal(pushCloudSync.mock.calls.length, 1);

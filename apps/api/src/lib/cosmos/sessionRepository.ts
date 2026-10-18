@@ -13,12 +13,29 @@ interface TouchSessionInput {
   idleExpiresAt: string;
 }
 
+interface DeleteSessionIfUnchangedInput {
+  sessionId: string;
+  etag: string;
+}
+
 interface RotateRefreshSessionInput {
   refreshSessionId: string;
   expectedTokenHash: string;
   tokenHash: string;
   sessionId: string;
   lastUsedAt: string;
+}
+
+interface LinkSessionToRefreshFamilyInput {
+  sessionId: string;
+  refreshFamilyId: string;
+  userId: string;
+}
+
+interface RevokeRefreshSessionFamilyInput {
+  refreshSessionId: string;
+  expectedTokenHashes?: string[];
+  userId?: string;
 }
 
 export class RefreshSessionConflictError extends Error {
@@ -118,6 +135,24 @@ export async function deleteSession(
   }
 }
 
+/** Deletes only the exact access-session version observed by the caller. */
+export async function deleteSessionIfUnchanged(
+  config: ApiConfig,
+  input: DeleteSessionIfUnchangedInput
+): Promise<"deleted" | "changed" | "missing"> {
+  const etag = String(input.etag || "").trim();
+  if (!etag) throw new Error("Access session is missing an ETag.");
+  const { sessions } = getContainers(config);
+  try {
+    await withCosmosRetry(() => sessions.item(input.sessionId, input.sessionId).delete(buildIfMatchOptions(etag)));
+    return "deleted";
+  } catch (error) {
+    if (isPreconditionFailedError(error) || isConflictError(error)) return "changed";
+    if (isNotFoundError(error)) return "missing";
+    throw error;
+  }
+}
+
 export async function createRefreshSession(
   config: ApiConfig,
   refreshSession: RefreshSessionDocument
@@ -161,17 +196,26 @@ export async function rotateRefreshSession(
     throw new RefreshSessionConflictError();
   }
   const etag = readCosmosEtag(existing);
-  if (!etag || existing.tokenHash !== input.expectedTokenHash) {
+  if (
+    !etag ||
+    existing.docType !== "refresh_session" ||
+    String(existing.revokedAt || "").trim() ||
+    !Number.isFinite(Date.parse(existing.expiresAt)) ||
+    Date.now() >= Date.parse(existing.expiresAt) ||
+    existing.tokenHash !== input.expectedTokenHash
+  ) {
     throw new RefreshSessionConflictError();
   }
 
   const { sessions } = getContainers(config);
   const updatedDocument: RefreshSessionDocument = {
     ...existing,
+    previousTokenHash: existing.tokenHash,
+    previousSessionId: existing.sessionId,
     tokenHash: input.tokenHash,
     sessionId: input.sessionId,
     lastUsedAt: input.lastUsedAt,
-    revokedAt: null
+    revokedAt: existing.revokedAt ?? null
   };
   try {
     await withCosmosRetry(() =>
@@ -187,39 +231,131 @@ export async function rotateRefreshSession(
   }
 }
 
-export async function revokeRefreshSessionForSession(
+/** Backfills legacy access rows before a refresh-family rotation can change its association. */
+export async function linkSessionToRefreshFamily(
+  config: ApiConfig,
+  input: LinkSessionToRefreshFamilyInput
+): Promise<void> {
+  const { sessions } = getContainers(config);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const existing = await getSession(config, input.sessionId);
+    if (!existing || existing.userId !== input.userId) {
+      throw new Error("Refresh family access session is missing or owned by another user.");
+    }
+    if (existing.refreshFamilyId) {
+      if (existing.refreshFamilyId !== input.refreshFamilyId) {
+        throw new Error("Access session is linked to a different refresh family.");
+      }
+      return;
+    }
+    const etag = readCosmosEtag(existing);
+    if (!etag) throw new Error("Access session is missing an ETag.");
+    try {
+      await withCosmosRetry(() => sessions.item(existing.id, existing.id).replace<SessionDocument>({
+        ...existing,
+        refreshFamilyId: input.refreshFamilyId
+      }, buildIfMatchOptions(etag)));
+      return;
+    } catch (error) {
+      if (isPreconditionFailedError(error) || isConflictError(error)) continue;
+      throw error;
+    }
+  }
+  throw new Error("Failed to link access session to refresh family after concurrent updates.");
+}
+
+/** Conditionally revokes a fresh family row; retries races without ever upserting it. */
+export async function revokeRefreshSessionFamily(
+  config: ApiConfig,
+  input: RevokeRefreshSessionFamilyInput
+): Promise<RefreshSessionDocument | null> {
+  const { sessions } = getContainers(config);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const existing = await getRefreshSession(config, input.refreshSessionId);
+    if (!existing) return null;
+    if (input.userId && existing.userId !== input.userId) return null;
+    if (input.expectedTokenHashes?.length && !input.expectedTokenHashes.includes(existing.tokenHash) &&
+      !input.expectedTokenHashes.includes(String(existing.previousTokenHash || ""))) return null;
+    const etag = readCosmosEtag(existing);
+    if (!etag) throw new Error("Refresh session is missing an ETag.");
+    if (existing.revokedAt) return existing;
+    const updated: RefreshSessionDocument = {
+      ...existing,
+      revokedAt: new Date().toISOString()
+    };
+    try {
+      const { resource } = await withCosmosRetry(() =>
+        sessions.item(existing.id, existing.id).replace<RefreshSessionDocument>(updated, buildIfMatchOptions(etag))
+      );
+      return resource ?? updated;
+    } catch (error) {
+      if (isPreconditionFailedError(error) || isConflictError(error)) continue;
+      if (isNotFoundError(error)) return null;
+      throw error;
+    }
+  }
+  throw new Error("Failed to conditionally revoke refresh session after concurrent updates.");
+}
+
+export async function clearRefreshSessionAssociations(
+  config: ApiConfig,
+  refreshSessionId: string
+): Promise<void> {
+  const { sessions } = getContainers(config);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const existing = await getRefreshSession(config, refreshSessionId);
+    if (!existing) throw new Error("Refresh session disappeared before association cleanup.");
+    if (!existing.revokedAt) throw new Error("Cannot clear active refresh session associations.");
+    if (existing.sessionId === null && existing.previousSessionId == null) return;
+    const etag = readCosmosEtag(existing);
+    if (!etag) throw new Error("Refresh session is missing an ETag.");
+    const updated: RefreshSessionDocument = { ...existing, sessionId: null, previousSessionId: null };
+    try {
+      await withCosmosRetry(() =>
+        sessions.item(existing.id, existing.id).replace<RefreshSessionDocument>(updated, buildIfMatchOptions(etag))
+      );
+      return;
+    } catch (error) {
+      if (isPreconditionFailedError(error) || isConflictError(error)) continue;
+      if (isNotFoundError(error)) throw new Error("Refresh session disappeared before association cleanup.");
+      throw error;
+    }
+  }
+  throw new Error("Failed to clear refresh session associations after concurrent updates.");
+}
+
+export async function findRefreshSessionForSession(
   config: ApiConfig,
   sessionId: string
-): Promise<number> {
+): Promise<RefreshSessionDocument | null> {
   const { sessions } = getContainers(config);
-  const now = new Date().toISOString();
-  const querySpec = {
-    query: "SELECT * FROM c WHERE c.docType = @docType AND c.sessionId = @sessionId",
+  const iterator = sessions.items.query<RefreshSessionDocument>({
+    query: "SELECT * FROM c WHERE c.docType = @docType AND (c.sessionId = @sessionId OR c.previousSessionId = @sessionId)",
     parameters: [
       { name: "@docType", value: "refresh_session" },
       { name: "@sessionId", value: sessionId }
     ]
-  };
-  const iterator = sessions.items.query<RefreshSessionDocument>(querySpec);
+  });
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
-  const rows = resources ?? [];
-  let revokedCount = 0;
+  return (resources ?? []).find((row) => row.docType === "refresh_session") ?? null;
+}
 
-  for (const row of rows) {
-    const id = String(row.id || "").trim();
-    if (!id) continue;
-    const revoked: RefreshSessionDocument = {
-      ...row,
-      sessionId: null,
-      revokedAt: row.revokedAt || now
-    };
-    await withCosmosRetry(() =>
-      sessions.items.upsert<RefreshSessionDocument>(revoked)
-    );
-    revokedCount += 1;
-  }
-
-  return revokedCount;
+export async function listSessionsForRefreshFamily(
+  config: ApiConfig,
+  refreshFamilyId: string,
+  userId: string
+): Promise<SessionDocument[]> {
+  const { sessions } = getContainers(config);
+  const iterator = sessions.items.query<SessionDocument>({
+    query: "SELECT * FROM c WHERE c.docType = @docType AND c.refreshFamilyId = @refreshFamilyId AND c.userId = @userId",
+    parameters: [
+      { name: "@docType", value: "session" },
+      { name: "@refreshFamilyId", value: refreshFamilyId },
+      { name: "@userId", value: userId }
+    ]
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return (resources ?? []).filter((row) => row.docType === "session" && row.refreshFamilyId === refreshFamilyId && row.userId === userId);
 }
 
 export async function revokeAllRefreshSessionsForUser(
@@ -227,7 +363,6 @@ export async function revokeAllRefreshSessionsForUser(
   userId: string
 ): Promise<number> {
   const { sessions } = getContainers(config);
-  const now = new Date().toISOString();
   const querySpec = {
     query: "SELECT * FROM c WHERE c.docType = @docType AND c.userId = @userId",
     parameters: [
@@ -239,22 +374,33 @@ export async function revokeAllRefreshSessionsForUser(
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
   const rows = resources ?? [];
   let revokedCount = 0;
-
   for (const row of rows) {
     const id = String(row.id || "").trim();
     if (!id) continue;
-    const revoked: RefreshSessionDocument = {
-      ...row,
-      sessionId: null,
-      revokedAt: row.revokedAt || now
-    };
-    await withCosmosRetry(() =>
-      sessions.items.upsert<RefreshSessionDocument>(revoked)
-    );
-    revokedCount += 1;
+    const revoked = await revokeRefreshSessionFamily(config, { refreshSessionId: id, userId });
+    if (revoked) revokedCount += 1;
   }
-
   return revokedCount;
+}
+
+export async function clearRefreshSessionAssociationsForUser(
+  config: ApiConfig,
+  userId: string
+): Promise<void> {
+  const { sessions } = getContainers(config);
+  const iterator = sessions.items.query<RefreshSessionDocument>({
+    query: "SELECT * FROM c WHERE c.docType = @docType AND c.userId = @userId",
+    parameters: [
+      { name: "@docType", value: "refresh_session" },
+      { name: "@userId", value: userId }
+    ]
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  for (const row of resources ?? []) {
+    if (row.revokedAt && (row.sessionId !== null || row.previousSessionId != null)) {
+      await clearRefreshSessionAssociations(config, row.id);
+    }
+  }
 }
 
 export async function revokeAllSessionsForUser(

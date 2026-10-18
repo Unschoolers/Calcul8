@@ -23,3 +23,5 @@ export {
   isSyncSnapshotConflictError,
   SyncSnapshotConflictError
 } from "./syncSnapshotRepository.shared";
+
+export { loadCoherentSyncSnapshotInputs } from "./syncSnapshotRepository.shared";

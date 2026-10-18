@@ -110,6 +110,7 @@
   "portfolioReportShowDetailsAction": "Show details",
   "portfolioReportStatusRealizedSales": "Realized sales",
   "portfolioReportTitle": "Portfolio report",
+  "portfolioAmountsCurrencyLabel": "All monetary amounts in CAD",
   "portfolioLotProjectedLabel": "Projected",
   "portfolioLotProfitLabel": "Profit",
   "portfolioLotRiskLabel": "At risk",

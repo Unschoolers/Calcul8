@@ -344,6 +344,7 @@ export function createInitialState(): AppState {
     wheelSessionUpdatedAt: 0,
     wheelSessionLotSelections: {},
     wheelPendingInventoryIssues: [],
+    wheelPendingChase: null,
     wheelSessionNetRevenue: null,
     wheelSessionCostAdjustment: 0,
     wheelFairnessHistory: [],

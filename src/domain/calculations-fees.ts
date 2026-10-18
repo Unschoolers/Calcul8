@@ -1,5 +1,6 @@
 import { DEFAULT_FEE_PROFILE_FIELDS, DEFAULT_VALUES, TAX_RATES } from "../constants.ts";
 import { calculateSaleConsumption } from "./box-inventory.ts";
+import { normalizeUsdToCadRate } from "./currency.ts";
 import { normalizeLotType } from "../shared/lot-types.ts";
 import type {
     AdditionalFeeAppliesTo,
@@ -137,7 +138,7 @@ export function calculateBoxPriceCostCad(
   defaultExchangeRate: number
 ): number {
   const price = Number(boxPriceCost) || 0;
-  const rate = Number(exchangeRate) || defaultExchangeRate;
+  const rate = normalizeUsdToCadRate(exchangeRate, defaultExchangeRate);
   if (buyCurrency === sellingCurrency) {
     return price;
   }

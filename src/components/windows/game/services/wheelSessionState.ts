@@ -1,5 +1,5 @@
 import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
-import type { Lot, MysteryGridReveal, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { Lot, MysteryGridReveal, PendingWheelChaseObligation, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import type { GameHostState } from "./gameHostState.ts";
 import type { WheelControllerState } from "./gameSessionState.ts";
@@ -110,6 +110,7 @@ export function createWheelSessionSnapshot(
     wheelGridReveals: controller.wheelGridReveals,
     wheelGridLayoutSeed: controller.wheelGridLayoutSeed,
     wheelPendingInventoryIssues: context.wheelPendingInventoryIssues,
+    wheelPendingChase: context.wheelPendingChase,
     wheelCurrentAngle: context.wheelCurrentAngle,
     wheelLastResult: context.wheelLastResult,
     wheelLastResultColor: controller.wheelLastResultColor,
@@ -204,6 +205,7 @@ type WheelResetState = {
 
 function resetWheelPreview(state: WheelResetState): WheelResetState {
   const { context, controller } = state;
+  const pendingChase = context.wheelPendingChase as PendingWheelChaseObligation | null;
   let previewSlots = state.slots;
   const config = state.reseedGrid ? getWheelTargetConfig(context, { preview: true }) : null;
   if (config?.gameType === "grid") {
@@ -219,6 +221,12 @@ function resetWheelPreview(state: WheelResetState): WheelResetState {
   controller.wheelFairnessHistoryOpen = false;
   clearWheelProofState(controller);
   clearWheelChaseDialogState(context);
+  if (pendingChase) {
+    context.wheelChaseDialog = true;
+    context.wheelChasePreviewMode = false;
+    context.wheelChasePendingTierId = pendingChase.tierId;
+    context.wheelChaseReplacementSinglesId = null;
+  }
   context.wheelGridHighlightCellIndex = -1;
   context.wheelGridRevealAnimating = false;
   context.wheelGridResetAnimating = false;
@@ -228,6 +236,10 @@ function resetWheelPreview(state: WheelResetState): WheelResetState {
 
 function resetWheelLive(state: WheelResetState): WheelResetState {
   const { context, controller } = state;
+  const pendingChase = context.wheelPendingChase as PendingWheelChaseObligation | null;
+  const chaseIssue = pendingChase?.saleDraft
+    ? (context.wheelPendingInventoryIssues || []).find((entry) => entry.pendingSale?.id === pendingChase.saleDraft?.id)
+    : undefined;
   let { slots } = state;
   const config = state.reseedGrid ? getWheelTargetConfig(context) : null;
   if (config?.gameType === "grid") {
@@ -248,6 +260,15 @@ function resetWheelLive(state: WheelResetState): WheelResetState {
   context.wheelEndSessionReviewActive = false;
   context.gameSpectatorPublishPending = false;
   assignWheelPendingInventoryIssues(context, []);
+  if (pendingChase) {
+    context.wheelPendingChase = pendingChase;
+    assignWheelPendingInventoryIssues(context, chaseIssue ? [chaseIssue] : []);
+    context.wheelChaseDialog = true;
+    context.wheelChasePreviewMode = false;
+    context.wheelChasePendingTierId = pendingChase.tierId;
+    context.wheelChaseReplacementSinglesId = null;
+    controller.wheelInventoryWarning = "A chase decision is still unresolved. Restore its original wheel source before settling it.";
+  }
   return { ...state, slots };
 }
 
@@ -264,6 +285,9 @@ export function runWheelSessionReset(
   ports: GameSessionEnginePorts<WheelResetState>,
   reseedGrid = true
 ): Promise<WheelResetState> {
+  if (execution === "live" && (context.wheelPendingInventoryIssues || []).length > 0) {
+    return Promise.resolve({ context, controller, slots, reseedGrid });
+  }
   return runGameSessionReset(
     { context, controller, slots, reseedGrid },
     execution,

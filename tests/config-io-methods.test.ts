@@ -189,6 +189,8 @@ test("copyPortfolioReportTable uses clipboard API when available", async () => {
     const writeCalls = writeText.mock.calls as unknown as Array<[string]>;
     const tsv = String(writeCalls[0]?.[0] ?? "");
     assert.equal(tsv.includes("WhatFees Portfolio"), true);
+    assert.equal(tsv.includes("Total Revenue (CAD)"), true);
+    assert.equal(tsv.includes("Realized Profit (CAD)"), true);
     assert.equal(tsv.includes("Lot A"), true);
     assert.equal(tsv.includes("Realized Status"), true);
     assert.equal(tsv.includes("Current Lot P/L"), true);
@@ -243,6 +245,8 @@ test("savePortfolioReportTable downloads the same TSV payload", () => {
     const blobInstance = createObjectUrlCalls[0]?.[0];
     const tsv = String(blobInstance?.parts?.[0] ?? "");
     assert.equal(tsv.includes("WhatFees Portfolio"), true);
+    assert.equal(tsv.includes("Total Revenue (CAD)"), true);
+    assert.equal(tsv.includes("Forecast Avg (CAD)"), true);
     assert.equal(tsv.includes("Lot A"), true);
     assert.equal(tsv.includes("Current Lot P/L"), true);
     assert.equal(ctx.notify.mock.calls.at(-1)?.[0], "Portfolio report saved.");

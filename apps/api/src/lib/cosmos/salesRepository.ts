@@ -17,13 +17,12 @@ import {
   saleDocumentId,
   syncMetaId
 } from "./ids";
-
-export class EntityVersionConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "EntityVersionConflictError";
-  }
-}
+import {
+  deleteInventorySale,
+  EntityVersionConflictError,
+  upsertInventorySale
+} from "./salesInventoryRepository";
+export { EntityVersionConflictError } from "./salesInventoryRepository";
 
 interface UpsertSaleDocumentInput {
   scopeKey: string;
@@ -33,6 +32,7 @@ interface UpsertSaleDocumentInput {
   updatedBy: string;
   mutationId: string;
   baseVersion?: number;
+  trustedExternal?: boolean;
 }
 
 interface DeleteSaleDocumentInput {
@@ -42,6 +42,7 @@ interface DeleteSaleDocumentInput {
   updatedBy: string;
   mutationId: string;
   baseVersion?: number;
+  trustedExternal?: boolean;
 }
 
 interface UpsertLotLivePricingInput {
@@ -348,119 +349,14 @@ export async function upsertSaleDocument(
   config: ApiConfig,
   input: UpsertSaleDocumentInput
 ): Promise<SaleDocument> {
-  const { syncSnapshots } = getContainers(config);
-  const scopeKey = normalizeId(input.scopeKey);
-  const lotId = normalizeId(input.lotId);
-  const saleId = normalizeId(input.saleId);
-  const existing = await getSaleDocumentFromContainer(syncSnapshots, scopeKey, lotId, saleId);
-  const existingVersion = existing?.version ?? 0;
-  const requestedBaseVersion = Number.isFinite(Number(input.baseVersion))
-    ? Math.max(0, Math.floor(Number(input.baseVersion)))
-    : undefined;
-
-  if (existing && requestedBaseVersion != null && requestedBaseVersion !== existingVersion) {
-    throw new EntityVersionConflictError("Sale changed since it was last loaded.");
-  }
-
-  if (!existing && requestedBaseVersion != null && requestedBaseVersion !== 0) {
-    throw new EntityVersionConflictError("Sale changed since it was last loaded.");
-  }
-
-  const nextVersion = existingVersion + 1;
-  const document: SaleDocument = {
-    id: saleDocumentId(scopeKey, lotId, saleId),
-    docType: "sale",
-    userId: scopeKey,
-    scopeKey,
-    lotId,
-    saleId,
-    sale: input.sale,
-    version: nextVersion,
-    createdAt: existing?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    updatedBy: normalizeId(input.updatedBy),
-    mutationId: normalizeId(input.mutationId),
-    deletedAt: null
-  };
-
-  let resource: SaleDocument | undefined;
-  try {
-    if (existing) {
-      const etag = readCosmosEtag(existing);
-      if (!etag) {
-        throwEntityConflict("Sale changed since it was last loaded.");
-      }
-      ({ resource } = await withCosmosRetry(() =>
-        syncSnapshots
-          .item(document.id, scopeKey)
-          .replace<SaleDocument>(document, buildIfMatchOptions(etag))
-      ));
-    } else {
-      ({ resource } = await withCosmosRetry(() =>
-        syncSnapshots.items.create<SaleDocument>(document)
-      ));
-    }
-  } catch (error) {
-    mapCosmosWriteConflict(error, "Sale changed since it was last loaded.");
-  }
-
-  if (!resource) {
-    throw new Error("Failed to upsert sale document.");
-  }
-
-  return resource;
+  return upsertInventorySale(config, input);
 }
 
 export async function deleteSaleDocument(
   config: ApiConfig,
   input: DeleteSaleDocumentInput
 ): Promise<SaleDocument | null> {
-  const { syncSnapshots } = getContainers(config);
-  const scopeKey = normalizeId(input.scopeKey);
-  const lotId = normalizeId(input.lotId);
-  const saleId = normalizeId(input.saleId);
-  const existing = await getSaleDocumentFromContainer(syncSnapshots, scopeKey, lotId, saleId);
-  if (!existing || existing.deletedAt) {
-    return null;
-  }
-
-  const requestedBaseVersion = Number.isFinite(Number(input.baseVersion))
-    ? Math.max(0, Math.floor(Number(input.baseVersion)))
-    : undefined;
-  if (requestedBaseVersion != null && requestedBaseVersion !== existing.version) {
-    throw new EntityVersionConflictError("Sale changed since it was last loaded.");
-  }
-
-  const document: SaleDocument = {
-    ...existing,
-    version: existing.version + 1,
-    updatedAt: new Date().toISOString(),
-    updatedBy: normalizeId(input.updatedBy),
-    mutationId: normalizeId(input.mutationId),
-    deletedAt: new Date().toISOString()
-  };
-
-  const etag = readCosmosEtag(existing);
-  if (!etag) {
-    throwEntityConflict("Sale changed since it was last loaded.");
-  }
-
-  let resource: SaleDocument | undefined;
-  try {
-    ({ resource } = await withCosmosRetry(() =>
-      syncSnapshots
-        .item(document.id, scopeKey)
-        .replace<SaleDocument>(document, buildIfMatchOptions(etag))
-    ));
-  } catch (error) {
-    mapCosmosWriteConflict(error, "Sale changed since it was last loaded.");
-  }
-
-  if (!resource) {
-    throw new Error("Failed to delete sale document.");
-  }
-
-  return resource;
+  return deleteInventorySale(config, input);
 }
 
 export async function getLotLivePricing(

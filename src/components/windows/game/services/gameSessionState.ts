@@ -8,7 +8,7 @@ export function createWheelControllerState(): WheelControllerState {
     wheelSpinning: false, activeWheelSlots: [], wheelPreviewSlots: [], wheelInventoryWarning: "",
     wheelShowSeed: false, wheelFairnessHistoryOpen: false, wheelHighlightedSlotIndex: -1, wheelCurrentAngle: 0,
     wheelTotalSpins: 0, wheelSpinCounts: [], wheelLastResult: "", wheelSessionUpdatedAt: 0,
-    wheelSessionLotSelections: {}, wheelPendingInventoryIssues: [], wheelSessionNetRevenue: null, wheelSessionCostAdjustment: 0,
+    wheelSessionLotSelections: {}, wheelPendingInventoryIssues: [], wheelPendingChase: null, wheelSessionNetRevenue: null, wheelSessionCostAdjustment: 0,
     wheelFairnessHistory: [], wheelChaseTallyHistory: [], wheelGridLayoutSeed: "", wheelPreviewGridLayoutSeed: "",
     wheelGridReveals: [], wheelPreviewGridReveals: [], wheelPreviewSpinCounts: [], wheelPreviewTotalSpins: 0,
     wheelPreviewFairnessHistory: [], wheelPreviewChaseTallyHistory: [], wheelLastResultColor: "rgb(var(--v-theme-primary))",

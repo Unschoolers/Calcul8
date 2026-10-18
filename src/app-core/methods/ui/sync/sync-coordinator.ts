@@ -4,6 +4,12 @@ import type { SyncSession } from "./sync-session.ts";
 import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
 
 type Completion = (outcome: PersistenceOutcome) => void;
+type GuardedPull = {
+  forceApply: boolean;
+  expectedPayloadSignature?: string;
+  isRequestCurrent?: () => boolean;
+  completion: Completion;
+};
 
 export type SyncCoordinatorState = {
   drainPromise: Promise<void> | null;
@@ -17,6 +23,11 @@ export type SyncCoordinatorState = {
   pendingPullCompletions: Completion[];
   activePullCompletions: Completion[];
   pendingPushCompletions: Completion[];
+  pendingGuardedPulls: GuardedPull[];
+  cleanConflictRecovery: {
+    promise: Promise<PersistenceOutcome>;
+    outcome?: PersistenceOutcome;
+  } | null;
 };
 
 const syncCoordinatorStateByApp = new WeakMap<object, Map<string, SyncCoordinatorState>>();
@@ -41,7 +52,9 @@ export function getSyncCoordinatorState(app: object, scopeKey: string): SyncCoor
       pendingPushTreatConflictAsSuccess: false,
       pendingPullCompletions: [],
       activePullCompletions: [],
-      pendingPushCompletions: []
+      pendingPushCompletions: [],
+      pendingGuardedPulls: [],
+      cleanConflictRecovery: null
     };
     scopeStates.set(scopeKey, state);
   }
@@ -52,12 +65,43 @@ async function drainSyncQueue(
   session: SyncSession
 ): Promise<void> {
   const { app, deps, state } = session;
-  while (state.pendingPull || state.pendingPush) {
+  while (state.pendingGuardedPulls.length > 0 || state.pendingPull || state.pendingPush) {
+    if (state.pendingGuardedPulls.length > 0) {
+      const guardedPull = state.pendingGuardedPulls.shift()!;
+      state.activeOperation = "pull";
+      let outcome: PersistenceOutcome;
+      try {
+        outcome = await performCloudSyncPull(session, {
+          forceApply: guardedPull.forceApply,
+          expectedPayloadSignature: guardedPull.expectedPayloadSignature,
+          isRequestCurrent: guardedPull.isRequestCurrent
+        });
+      } catch (error) {
+        if (!session.isCurrentScope()) outcome = { kind: "skipped", reason: "stale-scope" };
+        else {
+          deps.setSyncStatusError(app);
+          console.warn("[whatfees] Cloud sync guarded pull coordinator error", error);
+          outcome = { kind: "failure", error, stage: "sync" };
+        }
+      } finally {
+        state.activeOperation = null;
+      }
+      guardedPull.completion(outcome);
+      continue;
+    }
+
     if (state.pendingPull) {
       const forceApply = state.pendingPullForceApply;
       state.pendingPull = false;
       state.pendingPullForceApply = false;
       state.activePullCompletions = state.pendingPullCompletions.splice(0);
+      if (!forceApply && state.cleanConflictRecovery?.outcome) {
+        const recoveryOutcome = state.cleanConflictRecovery.outcome;
+        state.cleanConflictRecovery = null;
+        for (const complete of state.activePullCompletions.splice(0)) complete(recoveryOutcome);
+        continue;
+      }
+      state.cleanConflictRecovery = null;
       state.activeOperation = "pull";
       let outcome: PersistenceOutcome;
       try {
@@ -99,7 +143,32 @@ async function drainSyncQueue(
       state.activeOperation = null;
     }
     for (const complete of completions) complete(outcome);
+    if (!state.pendingPull) state.cleanConflictRecovery = null;
   }
+}
+
+export function beginCleanConflictRecovery(
+  session: SyncSession,
+  recover: () => Promise<PersistenceOutcome>
+): Promise<PersistenceOutcome> {
+  const existing = session.state.cleanConflictRecovery;
+  if (existing) return existing.promise;
+
+  const recovery: NonNullable<SyncCoordinatorState["cleanConflictRecovery"]> = {
+    promise: Promise.resolve({ kind: "failure", error: new Error("Clean conflict recovery did not start."), stage: "sync" })
+  };
+  session.state.cleanConflictRecovery = recovery;
+  recovery.promise = Promise.resolve().then(recover).then((outcome) => {
+    recovery.outcome = outcome;
+    return outcome;
+  }, (error): PersistenceOutcome => {
+    const outcome: PersistenceOutcome = session.isCurrentScope()
+      ? { kind: "failure", error, stage: "sync" }
+      : { kind: "skipped", reason: "stale-scope" };
+    recovery.outcome = outcome;
+    return outcome;
+  });
+  return recovery.promise;
 }
 
 export function scheduleSyncDrain(session: SyncSession): Promise<void> {
@@ -113,7 +182,7 @@ export function scheduleSyncDrain(session: SyncSession): Promise<void> {
       await drainSyncQueue(session);
     } finally {
       state.drainPromise = null;
-      if (state.pendingPull || state.pendingPush) void scheduleSyncDrain(session);
+      if (state.pendingGuardedPulls.length > 0 || state.pendingPull || state.pendingPush) void scheduleSyncDrain(session);
     }
   })();
 

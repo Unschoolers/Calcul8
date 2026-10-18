@@ -391,10 +391,10 @@ test("PortfolioWindow pulse stats explain forecast context in seller language", 
       ["forecast", "Forecast"]
     ]
   );
-  assert.equal(forecast?.value, "+$1,137.54");
+  assert.equal(forecast?.value, "+$1,137.54 CAD");
   assert.equal(
     forecast?.meta,
-    "If remaining inventory sells at forecast - Average revenue $6,090.27"
+    "If remaining inventory sells at forecast - Average revenue $6,090.27 CAD"
   );
 });
 
@@ -444,9 +444,9 @@ test("PortfolioWindow pulse insight display copy is action-oriented", () => {
   assert.deepEqual(
     insights.map((insight: { label: string; title: string; meta: string }) => [insight.label, insight.title, insight.meta]),
     [
-      ["Next best action", "Recover $91.08 on Nikke", "still at risk"],
-      ["Recovery target", "Needs $200.28 to break even", "One punch man"],
-      ["Best lot to keep moving", "Keep selling Union arena singles", "+$304.20 profit"]
+      ["Next best action", "Recover $91.08 CAD on Nikke", "still at risk"],
+      ["Recovery target", "Needs $200.28 CAD to break even", "One punch man"],
+      ["Best lot to keep moving", "Keep selling Union arena singles", "+$304.20 CAD profit"]
     ]
   );
 });
@@ -642,7 +642,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       totalPacks: 5,
       forecastProfitAverage: 12.34
     }),
-    "~+$12"
+    "~+$12 CAD"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -650,7 +650,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       totalPacks: 5,
       forecastProfitAverage: -12.34
     }),
-    "~-$12"
+    "~-$12 CAD"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -659,7 +659,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       soldPacks: 5,
       totalPacks: 5
     }),
-    "-$9"
+    "-$9 CAD"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -668,7 +668,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       soldPacks: 5,
       totalPacks: 5
     }),
-    "+$7"
+    "+$7 CAD"
   );
   assert.deepEqual(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitValueClass.call(vm as never, {
@@ -760,8 +760,8 @@ test("PortfolioWindow chart copy helpers return expected titles, icons, subtitle
   assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(sellthroughVm as never), "Show sold margin view");
   assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(marginVm as never), "Show breakdown view");
 
-  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(breakdownVm as never), "Revenue by lot");
-  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(trendVm as never), "Profit trend over time");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(breakdownVm as never), "Revenue by lot (CAD)");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(trendVm as never), "Profit trend over time (CAD)");
   assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sell-through over time");
   assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(marginVm as never), "Sold margin by lot");
 
@@ -794,17 +794,17 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
     portfolioSalesByUserMetric: "count"
   };
 
-  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(revenueVm as never), "Revenue");
-  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(profitVm as never), "Profit");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(revenueVm as never), "Revenue (CAD)");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(profitVm as never), "Profit (CAD)");
   assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(countVm as never), "Count");
 
   assert.equal(
     portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(revenueVm as never),
-    "Last 8 weeks by seller"
+    "Last 8 weeks by seller · CAD"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
-    "Portfolio sales by person chart for the last 8 weeks by profit."
+    "Portfolio sales by person chart for the last 8 weeks by profit. (CAD)"
   );
 });
 
@@ -886,7 +886,7 @@ test("PortfolioWindow sales per user drilldown opens rows for the selected week"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioSalesByUserDrilldownSummary.call(vm as never),
-    "1 sale - $25.00 revenue - +$10.00 profit"
+    "1 sale - $25.00 CAD revenue - +$10.00 CAD profit"
   );
 
   portfolioWindowDefinition.methods.closePortfolioSalesByUserWeekDrilldown.call(vm as never);

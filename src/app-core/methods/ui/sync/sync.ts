@@ -7,8 +7,8 @@ import {
 } from "./sync-service.ts";
 
 export const uiSyncMethods = {
-  async pullCloudSync(forceApply = false) {
-    return runCloudSyncPull(this, {}, { forceApply });
+  async pullCloudSync(forceApply = false, options = {}) {
+    return runCloudSyncPull(this, {}, { forceApply, ...options });
   },
 
   startCloudSyncScheduler(): void {
