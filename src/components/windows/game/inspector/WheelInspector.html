@@ -47,7 +47,6 @@
       <template v-if="editingWheelConfig">
         <bracket-battle-builder
           v-if="editingWheelConfig.gameType === 'bracket'"
-          :ctx="getWindowComponentContext()"
         ></bracket-battle-builder>
 
         <template v-else>
@@ -126,7 +125,6 @@
               <wheel-tier-card
                 v-for="entry in group.tiers"
                 :key="entry.tier.id"
-                :ctx="getWindowComponentContext()"
                 :tier="entry.tier"
                 :tier-index="entry.index"
               ></wheel-tier-card>

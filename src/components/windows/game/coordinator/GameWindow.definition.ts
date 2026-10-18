@@ -24,10 +24,11 @@ import { invalidateGameOutcomeSettlements } from "../services/gameOutcomeSettlem
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
 import { gameComputeds } from "./gameComputeds.ts";
 import {
-    createGameWindowState, getWheelController,
+    createGameController, createGameWindowState, getWheelController,
     type GameWindowThis
 } from "./gameControllerState.ts";
 import { useGameCoordinatorPorts } from "./gameCoordinatorPorts.ts";
+import { gameControllerKey } from "./gameContext.ts";
 import {
     WHEEL_COMPACT_LAYOUT_BREAKPOINT,
     isWheelCompactViewport,
@@ -117,11 +118,17 @@ export const gameWindowDefinition = {
     },
     mysteryGridCells(this: GameWindowThis) {
       return buildMysteryGridCells(this as unknown as Record<string, unknown>);
+    },
+    wheelBatchRecordAllDisabled(this: GameWindowThis): boolean {
+      return this.wheelPendingInventoryIssues.every((entry) => this.isPendingChaseInventoryIssue(entry) || !entry.selectedLotId);
     }
   },
   provide(this: GameWindowThis) {
+    const gameController = createGameController(this);
     return {
-      gameCtx: this
+      gameCtx: this,
+      [gameControllerKey]: gameController,
+      gameController
     };
   },
   watch: {
@@ -208,6 +215,9 @@ export const gameWindowDefinition = {
       else if (actionId === "builder") this.openWheelInspector("config");
       else if (actionId === "history") this.openWheelInspector("history");
       else if (actionId === "end") this.requestWheelSessionEnd();
+    },
+    hasUnselectedPendingWheelInventoryIssues(this: GameWindowThis): boolean {
+      return this.wheelPendingInventoryIssues.some(entry => !entry.selectedLotId);
     },
     applyRealtimeWheelSession(this: GameWindowOverlayThis): void {
       this._wheelAppliedRealtimeRevision = this.wheelRealtimeApplyRevision;

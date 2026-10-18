@@ -81,7 +81,7 @@ import {
   whatnotDialogPortsKey,
   type WhatnotDialogPorts
 } from "./components/windows/whatnot/whatnotDialogPorts.ts";
-import type { AppState } from "./types/app.ts";
+import type { AppState, Lot } from "./types/app.ts";
 
 export const appOptions = {
   components: {
@@ -129,5 +129,13 @@ export const appOptions = {
   beforeUnmount: appLifecycle.beforeUnmount,
   watch: { ...appWatch },
   computed: { ...appComputed },
-  methods: { ...appMethods }
+  methods: {
+    ...appMethods,
+    openSinglesPurchaseDialog(this: { $refs: { singlesConfigWindow?: { handleAddSinglesPurchase?: () => void } } }): void {
+      this.$refs.singlesConfigWindow?.handleAddSinglesPurchase?.();
+    },
+    getSavedCurrentLot(this: Pick<AppState, "lots" | "currentLotId">): Lot | undefined {
+      return this.lots.find(candidate => candidate.id === this.currentLotId);
+    }
+  }
 };

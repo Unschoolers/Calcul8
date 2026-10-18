@@ -66,13 +66,14 @@ const singlesPurchasingRequiredFunctionKeys = [
   "loadMoreMobileRows", "cycleMobileSort", "fmtCurrency"
 ] as const satisfies readonly (keyof SinglesWindowThis)[];
 
-export type SinglesPurchasingPorts = Pick<SinglesWindowThis, typeof singlesPurchasingPortKeys[number]>;
+export type SinglesPurchasingPorts = Pick<SinglesWindowThis, typeof singlesPurchasingPortKeys[number]>
+  & { t: NonNullable<SinglesWindowThis["t"]> };
 export const singlesPurchasingPortsKey: InjectionKey<SinglesPurchasingPorts> = Symbol("singlesPurchasingPorts");
 
 export function createSinglesPurchasingPorts(source: SinglesWindowThis): SinglesPurchasingPorts {
   return createCapabilityPorts(source, singlesPurchasingPortKeys, {
     requiredFunctions: singlesPurchasingRequiredFunctionKeys
-  });
+  }) as SinglesPurchasingPorts;
 }
 
 export function useSinglesPurchasingPorts(): SinglesPurchasingPorts {

@@ -2,7 +2,7 @@
   :model-value="showWhatnotCsvImportDialog"
   :title="t('whatnotCsvTitle')"
   :max-width="980"
-  @update:model-value="(value) => { if (!value) closeWhatnotCsvDialog(); }"
+  @update:model-value="!$event && closeWhatnotCsvDialog()"
 >
   <template #title>
     <div class="d-flex align-center justify-space-between ga-3 w-100">
@@ -388,7 +388,7 @@
           >
             <div class="app-mobile-preview-card__head">
               <div class="app-mobile-preview-card__title">
-                {{ t('whatnotCsvPreviewRowLabel', { number: rowIndex + 1 }) }}
+                {{ t('whatnotCsvPreviewRowLabel', { number: Number(rowIndex) + 1 }) }}
               </div>
               <v-chip size="x-small" variant="tonal">
                 {{ whatnotCsvPreviewColumns.length }} {{ t('whatnotCsvPreviewFieldsLabel') }}

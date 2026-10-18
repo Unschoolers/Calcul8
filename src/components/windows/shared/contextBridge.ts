@@ -1,4 +1,7 @@
 import { getCurrentInstance, inject, type PropType } from "vue";
+import type { GameWindowThis } from "../game/coordinator/gameControllerState.ts";
+import type { gameComputeds } from "../game/coordinator/gameComputeds.ts";
+import type { buildMysteryGridCells } from "../game/commands/mysteryGridMethods.ts";
 
 export type WindowContext = Record<string, unknown>;
 export type GameContextProps = { ctx: WindowContext };
@@ -37,8 +40,16 @@ export const gameContextProp = {
   required: true
 } as const;
 
-export function setupGameContext(props: GameContextProps): Record<string, unknown> {
-  return useGameNestedWindowContextBridge(props);
+type GameTemplateContext = GameWindowThis & {
+  [Key in keyof typeof gameComputeds]: ReturnType<typeof gameComputeds[Key]>;
+} & { mysteryGridCells: ReturnType<typeof buildMysteryGridCells> };
+
+export function setupGameContext(props: GameContextProps): GameTemplateContext {
+  const ctx = props.ctx;
+  if (!ctx || typeof ctx !== "object") {
+    throw new Error("A window context is required for this game component.");
+  }
+  return useGameNestedWindowContextBridge({ ctx: ctx as WindowContext }) as unknown as GameTemplateContext;
 }
 
 export function getGameContextSource(context: WindowContext): WindowContext {

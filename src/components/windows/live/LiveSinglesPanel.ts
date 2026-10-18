@@ -110,7 +110,6 @@ type LiveSinglesPanelThis = {
   getIndividualProfit(entry: SinglesPurchaseEntry): number;
   getSuggestedIndividualPrice(entry: SinglesPurchaseEntry): number;
   getBundleAllocationForEntry(entryId: number): { id: number; share: number; percent: number } | null;
-  getSinglesEntryMarketTotalInSellingCurrency(entry: SinglesPurchaseEntry): number;
   onIndividualPriceInput(entryId: number, value: unknown): void;
   addLiveSinglesSelection(id: number, source?: string): void;
   removeLiveSinglesSelection(id: number, source?: string): void;
@@ -126,7 +125,7 @@ type LiveSinglesPanelThis = {
   removeLiveSinglesEntry(entryId: number): void;
   clearLiveSinglesEntries(): void;
   convertLiveSinglesToSale(): void;
-  adjustIndividualPrice(entry: SinglesPurchaseEntry, direction: -1 | 1): void;
+  adjustIndividualPrice(entryOrId: SinglesPurchaseEntry | number, direction: -1 | 1): void;
   adjustBundlePrice(direction: -1 | 1): void;
   openLiveSinglesImagePreview(entry: SinglesPurchaseEntry): void;
   closeLiveSinglesImagePreview(): void;
@@ -572,8 +571,8 @@ export const LiveSinglesPanel = {
       };
     },
 
-    adjustIndividualPrice(this: LiveSinglesPanelThis, entryId: number, direction: -1 | 1): void {
-      const parsedId = toPositiveInt(entryId);
+    adjustIndividualPrice(this: LiveSinglesPanelThis, entryOrId: SinglesPurchaseEntry | number, direction: -1 | 1): void {
+      const parsedId = toPositiveInt(typeof entryOrId === "number" ? entryOrId : entryOrId.id);
       if (!parsedId) return;
       const step = 1;
       const existing = Number(this.liveSinglesIndividualPrices[parsedId]);

@@ -5,11 +5,58 @@ import { defineComponent, h, nextTick, provide, reactive } from "vue";
 import WheelHistoryPanel from "../../src/components/windows/game/inspector/WheelHistoryPanel.vue";
 import WheelInspector from "../../src/components/windows/game/inspector/WheelInspector.vue";
 import WheelSessionPanel from "../../src/components/windows/game/inspector/WheelSessionPanel.vue";
+import WheelStageTopbar from "../../src/components/windows/game/stage/WheelStageTopbar.vue";
+import WheelTierCard from "../../src/components/windows/game/inspector/WheelTierCard.vue";
 import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
+import { createGameHostState } from "../../src/components/windows/game/services/gameHostState.ts";
+import { createGameController } from "../../src/components/windows/game/coordinator/gameControllerState.ts";
+import { gameControllerKey } from "../../src/components/windows/game/coordinator/gameContext.ts";
 import MysteryGridSurface from "../../src/components/windows/game/stage/MysteryGridSurface.vue";
 import { renderWithApp } from "./render.ts";
 
 describe("game inspector scenarios", () => {
+  test("Wheel stage toolbar resolves its typed game boundary and dispatches commands", async () => {
+    const openWheelCreateDialog = vi.fn();
+    const context = reactive({
+      ...createGameHostState(),
+      ...createWheelControllerState(),
+      preferredLanguage: "en",
+      t: (key: string) => key,
+      wheelStageTitle: "Wheel stage",
+      wheelStageSlotsLabel: "9 slots",
+      wheelStageSpinPriceLabel: "$5.00 per spin",
+      wheelPresentationToggleTitle: "Toggle presentation",
+      wheelSoundToggleTitle: "Toggle sound",
+      wheelMotionToggleTitle: "Toggle motion",
+      gameSpectatorActionLabel: "Spectators",
+      gameSpectatorSessionStatus: "inactive",
+      gameSpectatorSessionId: "",
+      wheelConfigItems: [],
+      activeWheelConfig: null,
+      wheelDisplayConfig: null,
+      wheelIsCompactLayout: false,
+      openWheelCreateDialog,
+      openWheelManageDialog: vi.fn(),
+      toggleWheelSound: vi.fn(),
+      toggleWheelReducedMotion: vi.fn(),
+      handleWheelModeChange: vi.fn(),
+      openGameSpectatorDialog: vi.fn()
+    });
+
+    const controller = createGameController(context as never);
+    const ProvidedWheelStageTopbar = defineComponent({
+      setup() {
+        provide(gameControllerKey, controller);
+        return () => h(WheelStageTopbar);
+      }
+    });
+    renderWithApp(ProvidedWheelStageTopbar);
+
+    expect(screen.getByText("9 slots")).toBeVisible();
+    await fireEvent.click(screen.getByRole("button", { name: "wheelInspectorNewGameAction" }));
+    expect(openWheelCreateDialog).toHaveBeenCalledOnce();
+  });
+
   test("Game overlays use the shared dialog shell", () => {
     const paths = [
       "src/components/windows/game/coordinator/GameWindow.html",
@@ -113,6 +160,66 @@ describe("game inspector scenarios", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Session" }));
     expect(context.focusWheelInspector).toHaveBeenCalledWith("session");
     expect(context.wheelInspectorTab).toBe("session");
+  });
+
+  test("changing deducted units immediately updates the tier through the game command", async () => {
+    const tier = {
+      id: "tier-input",
+      label: "Pack prize",
+      color: "#f0a500",
+      slots: 1,
+      chancePercent: 100,
+      costPerTier: 2,
+      packsCount: 1,
+      deductionType: "packs" as const,
+      boundLotId: null,
+      boundLotIds: [],
+      sets: []
+    };
+    const config = {
+      id: 9,
+      name: "Input test",
+      gameType: "wheel" as const,
+      outcomeCount: 1,
+      spinPrice: 5,
+      targetMargin: 20,
+      createdAt: "",
+      tiers: [tier]
+    };
+    const onTierPacksChange = vi.fn((draft: typeof tier) => {
+      draft.costPerTier = draft.packsCount * 2;
+    });
+    const context = reactive({
+      ...createWheelControllerState(),
+      canApplyWheelConfig: false,
+      wheelConfigReady: true,
+      editingWheelConfig: config,
+      wheelDisplayConfig: config,
+      bulkTierSourceItems: [],
+      lots: [],
+      t: (key: string) => key,
+      onTierPacksChange,
+      getCostPerPackForTier: () => 2,
+      isBoundLotSingles: () => false,
+      getTierInventoryMeta: () => null,
+      getSinglesItemsForTier: () => [],
+      canTierBeChase: () => false,
+      applyWheelConfig: vi.fn(),
+      removeTier: vi.fn()
+    });
+    renderWithApp(WheelTierCard, {
+      props: { tier, tierIndex: 0 },
+      global: { provide: { [gameControllerKey as symbol]: createGameController(context as never) } }
+    });
+
+    await fireEvent.click(screen.getByRole("button", { name: "wheelTierEditAction" }));
+    const packsInputs = document.querySelectorAll<HTMLInputElement>(".wheel-tier-num-input");
+    const packsInput = packsInputs.item(packsInputs.length - 1);
+    expect(packsInput).not.toBeNull();
+    await fireEvent.update(packsInput!, "3");
+
+    expect(onTierPacksChange).toHaveBeenCalledOnce();
+    expect(onTierPacksChange).toHaveBeenCalledWith(expect.objectContaining({ packsCount: 3, costPerTier: 6 }));
   });
 
   test("clicking a Mystery Grid tile does not emit an inspector render warning", async () => {

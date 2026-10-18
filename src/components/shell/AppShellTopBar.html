@@ -290,7 +290,7 @@
           </template>
 
           <v-list-item :title="t('shellShopifyTitle')"
-            :subtitle="shopifyConnectionStatus === 'connected' ? shopifyConnectionShop : shopifyConnectionStatus === 'connecting' ? t('shellShopifyConnecting') : shopifyConnectionStatus === 'unconfigured' ? t('shellShopifyUnavailable') : shopifyConnectionStatus === 'error' ? t('shellShopifyError') : t('shellShopifyDisconnected')"
+            :subtitle="shopifyConnectionStatus === 'connected' ? (shopifyConnectionShop ?? undefined) : shopifyConnectionStatus === 'connecting' ? t('shellShopifyConnecting') : shopifyConnectionStatus === 'unconfigured' ? t('shellShopifyUnavailable') : shopifyConnectionStatus === 'error' ? t('shellShopifyError') : t('shellShopifyDisconnected')"
   prepend-icon="mdi-shopping-outline"
   :link="shopifyConnectionStatus !== 'unconfigured' && shopifyConnectionStatus !== 'connected' && shopifyConnectionStatus !== 'connecting' && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
   @click="openShopifyConnectDialog">

@@ -14,7 +14,7 @@ const configWindowPortKeys = [
   "currentLotId", "hasLotSelected", "lots", "whatnotVertical", "feeProfilePreset", "platformFeePercent", "additionalFeePercent", "additionalFeeAppliesTo", "fixedFeePerOrder", "whatnotFeeSummary", "setCurrentLotWhatnotVertical",
   "boxesPurchased", "costInputMode", "currency", "hasProAccess", "includeTax", "isAdminImportInProgress",
   "packsPerBox", "purchaseDate", "purchaseShippingCost", "purchaseShippingCostCAD", "purchaseTaxPercent", "purchaseUiMode", "purchaseCostInputLabel",
-  "sellingCurrency", "conversionInfo", "currentWorkspaceName", "purchaseCostInputValue", "totalCaseCost", "totalPacks",
+  "sellingCurrency", "exchangeRate", "conversionInfo", "currentWorkspaceName", "purchaseCostInputValue", "totalCaseCost", "totalPacks",
   "canUseAdminLotSyncTools", "formatDate", "importLotsFromUserId", "formatCurrency", "t",
   "onPurchaseConfigChange", "updatePurchaseCostInput", "requestPurchaseUiMode"
 ] as const satisfies readonly (keyof ConfigCapabilitySource)[];

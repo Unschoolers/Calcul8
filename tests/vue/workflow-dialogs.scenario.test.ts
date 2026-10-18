@@ -361,6 +361,41 @@ describe("workflow dialog scenarios", () => {
     expect(saveSale).not.toHaveBeenCalled();
   });
 
+  test("sale image errors hide the line thumbnail column and only the menu thumbnail", async () => {
+    const base = saleEditorContext();
+    const ctx = {
+      ...base,
+      currentLotType: "singles",
+      newSale: {
+        ...base.newSale,
+        singlesItems: [{ lineId: "line-1", singlesPurchaseEntryId: 7, quantity: 1, price: 12 }]
+      },
+      singlesSaleCardOptions: [{ value: 7, title: "Card", item: "Card", image: "broken-card.png", quantity: 1, costBasis: 2 }],
+      getSinglesSaleLineMaxQuantity: () => 1,
+      onSinglesSaleLineCardSelectionChange: vi.fn(),
+      saleEditorLineProfitPreviews: [],
+      saleEditorProfitPreview: null,
+      addSinglesSaleLine: vi.fn(),
+      onSinglesSaleLinePriceChange: vi.fn()
+    };
+    renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, ctx);
+
+    const lineColumn = document.querySelector<HTMLElement>(".sale-editor-line-thumb-col");
+    const lineImage = document.querySelector<HTMLImageElement>(".sale-editor-line-thumb");
+    expect(lineColumn).not.toBeNull();
+    expect(lineImage).not.toBeNull();
+    await fireEvent.error(lineImage!);
+    expect(lineColumn!.style.display).toBe("none");
+
+    const itemPicker = screen.getByRole("combobox", { name: "saleEditorItemOptionalLabel" });
+    await fireEvent.mouseDown(itemPicker);
+    await screen.findAllByText("Card");
+    const menuImage = document.querySelector<HTMLImageElement>(".sale-editor-dropdown-thumb");
+    expect(menuImage).not.toBeNull();
+    await fireEvent.error(menuImage!);
+    expect(menuImage!.hidden).toBe(true);
+  });
+
   test("selects a sale type and saves through the shared form actions", async () => {
     const ctx = saleEditorContext();
     renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, ctx);

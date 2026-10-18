@@ -44,7 +44,7 @@
         :key="action.id"
         :prepend-icon="action.icon"
         :title="action.label"
-        :base-color="action.color === 'surface' ? null : action.color"
+        :base-color="action.color === 'surface' ? undefined : action.color"
         :disabled="action.disabled"
         :aria-disabled="action.disabled ? 'true' : null"
         @click="activate(action.id)"

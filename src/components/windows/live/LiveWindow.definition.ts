@@ -151,6 +151,24 @@ export const liveWindowDefinition = {
       if (totalCost <= 0) return null;
       return (profit / totalCost) * 100;
     },
+    estimateItemProfitAtPrice(this: Record<string, unknown>, price: number): number | null {
+      return liveWindowDefinition.methods.liveScenarioProfitAtPrice.call(this as never, "item", price);
+    },
+    estimateItemPercentAtPrice(this: Record<string, unknown>, price: number): number | null {
+      return liveWindowDefinition.methods.liveScenarioPercentAtPrice.call(this as never, "item", price);
+    },
+    estimateBoxProfitAtPrice(this: Record<string, unknown>, price: number): number | null {
+      return liveWindowDefinition.methods.liveScenarioProfitAtPrice.call(this as never, "box", price);
+    },
+    estimateBoxPercentAtPrice(this: Record<string, unknown>, price: number): number | null {
+      return liveWindowDefinition.methods.liveScenarioPercentAtPrice.call(this as never, "box", price);
+    },
+    estimateRtyhProfitAtPrice(this: Record<string, unknown>, price: number): number | null {
+      return liveWindowDefinition.methods.liveScenarioProfitAtPrice.call(this as never, "rtyh", price);
+    },
+    estimateRtyhPercentAtPrice(this: Record<string, unknown>, price: number): number | null {
+      return liveWindowDefinition.methods.liveScenarioPercentAtPrice.call(this as never, "rtyh", price);
+    },
     getNeededPriceForMode(this: Record<string, unknown>, id: "item" | "box" | "rtyh"): number | null {
       const value = id === "item"
         ? this.requiredPackPriceFromNow

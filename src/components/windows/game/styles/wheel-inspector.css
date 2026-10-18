@@ -1,12 +1,12 @@
 .wheel-layout:not(.wheel-presentation) {
   display: grid;
-  grid-template-columns: minmax(0, 860px) minmax(320px, 380px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   gap: 24px;
   align-items: start;
   justify-content: center;
   justify-items: stretch;
   width: 100%;
-  max-width: 1400px;
+  max-width: none;
 }
 
 .wheel-layout:not(.wheel-presentation) .wheel-spinner-panel {
@@ -18,9 +18,8 @@
 
 .wheel-layout:not(.wheel-presentation) .wheel-stage-shell {
   width: 100%;
-  max-width: 860px;
+  max-width: none;
   margin: 0;
-  background: var(--wheel-stage-bg);
 }
 
 .wheel-inspector-panel {

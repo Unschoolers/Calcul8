@@ -186,8 +186,8 @@
                   <v-list-item
                     v-bind="props"
                     class="singles-card-suggestion-item"
-                    :title="null"
-                    :subtitle="null"
+                    :title="undefined"
+                    :subtitle="undefined"
                   >
                     <template #prepend>
                       <div class="singles-card-suggestion-media">
@@ -445,7 +445,7 @@
     variant="media"
     :max-width="420"
     class="singles-image-preview-dialog"
-    @update:model-value="(value) => { if (!value) closeSinglesImagePreview(); }"
+    @update:model-value="!$event && closeSinglesImagePreview()"
   >
     <button
       type="button"

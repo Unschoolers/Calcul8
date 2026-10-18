@@ -13,6 +13,7 @@ import ContextActionDock from "../../shell/ContextActionDock.vue";
 import AppDialogShell from "../../ui/AppDialogShell.vue";
 import AppFormLayout from "../../ui/AppFormLayout.vue";
 import { gameWindowDefinition } from "./coordinator/GameWindow.definition.ts";
+import type { PendingWheelInventoryIssue } from "../../../types/app.ts";
 
 export const GameWindow = {
   ...gameWindowDefinition,

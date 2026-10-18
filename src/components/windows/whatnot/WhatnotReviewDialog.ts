@@ -12,6 +12,7 @@ import {
   type WhatnotReviewChangeDiff
 } from "../../../app-core/methods/ui/whatnot/whatnot-review-decisions.ts";
 import { isSinglesLot } from "../../../app-core/shared/lot-types.ts";
+import type { LotOptionItem } from "../../../app-core/shared/lot-option-items.ts";
 import type {
   Sale,
   WhatnotImportReviewRow,
@@ -325,6 +326,10 @@ export const WhatnotReviewDialog = {
     }
   },
   methods: {
+    findLotItemByValue(this: { lotItems: LotOptionItem[] }, value: unknown): LotOptionItem | undefined {
+      if (value == null) return undefined;
+      return this.lotItems.find(item => item.value === Number(value));
+    },
     whatnotOrderStatusLabel(this: any, rawStatus: string): string {
       return formatWhatnotOrderStatus(rawStatus, getWhatnotPreferredLanguage(this));
     },
@@ -641,7 +646,7 @@ export const WhatnotReviewDialog = {
       this.syncWhatnotManualDuplicateCandidatesForGroup(row);
     },
 
-    handleWhatnotPacksCountChange(this: any, row: WhatnotImportReviewRow, value: number | null): void {
+    handleWhatnotPacksCountChange(this: any, row: WhatnotImportReviewRow, value: unknown): void {
       row.selectedPacksCount = value == null ? null : Math.max(1, Math.floor(Number(value) || 0)) || null;
       this.applyWhatnotSelectionToSimilarRows(row, {
         selectedPacksCount: row.selectedPacksCount

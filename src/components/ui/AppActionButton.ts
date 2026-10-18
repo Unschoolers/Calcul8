@@ -49,7 +49,7 @@ export const AppActionButton = defineComponent({
       default: undefined
     },
     density: {
-      type: String,
+      type: String as PropType<"default" | "comfortable" | "compact">,
       default: undefined
     },
     disabled: {

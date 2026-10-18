@@ -232,9 +232,9 @@ export const PortfolioWindowDefinition = {
       };
     },
 
-    sortedPortfolioLotPerformanceRows(this: Record<string, unknown>): Array<Record<string, unknown>> {
+    sortedPortfolioLotPerformanceRows(this: Record<string, unknown>): import("../../../app-core/context/portfolio.ts").PortfolioComputedState["allLotPerformance"] {
       const rows = Array.isArray(this.allLotPerformance)
-        ? this.allLotPerformance as Array<Record<string, unknown>>
+        ? this.allLotPerformance as import("../../../app-core/context/portfolio.ts").PortfolioComputedState["allLotPerformance"]
         : [];
       const key = String(this.portfolioLotPerformanceSortKey || "source") as PortfolioLotPerformanceSortKey;
       const direction = normalizePortfolioSortDirection(this.portfolioLotPerformanceSortDirection, "asc");

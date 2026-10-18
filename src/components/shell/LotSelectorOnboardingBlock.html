@@ -41,7 +41,7 @@
                   </v-icon>
                   {{ resolveLotSelectorDisplayItem(item).groupLabel }}
                 </div>
-                <v-list-item v-bind="props" :title="null" :subtitle="null">
+                <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
                   <template #prepend>
                     <span class="lot-selector-icon-stack mr-2">
                       <lot-thumbnail :image="resolveLotSelectorDisplayItem(item).image" :icon="resolveLotSelectorDisplayItem(item).symbolIcon" />

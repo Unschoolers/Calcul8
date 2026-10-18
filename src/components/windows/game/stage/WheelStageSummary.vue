@@ -1,7 +1,8 @@
 <script lang="ts">
+import { defineComponent as defineVueComponent } from "vue";
 import { WheelStageSummary } from "./WheelStageSummary.ts";
 
-export default WheelStageSummary;
+export default defineVueComponent(WheelStageSummary);
 </script>
 
 <template src="./WheelStageSummary.html"></template>

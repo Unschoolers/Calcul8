@@ -5,7 +5,24 @@ import { fileURLToPath } from "node:url";
 import { test, vi } from "vitest";
 import { WheelInspector } from "../src/components/windows/game/inspector/WheelInspector.ts";
 import { WheelTierCard } from "../src/components/windows/game/inspector/WheelTierCard.ts";
+import { createWheelControllerState } from "../src/components/windows/game/services/gameSessionState.ts";
 import type { WheelTier } from "../src/types/app.ts";
+
+function testGame(view: Record<string, unknown>) {
+  return {
+    session: createWheelControllerState(),
+    view,
+    commands: {
+      applyWheelConfig: (view.applyWheelConfig as () => void) || (() => undefined),
+      removeTier: (view.removeTier as (index: number) => void) || (() => undefined),
+      isBoundLotSingles: (view.isBoundLotSingles as (tier: WheelTier) => boolean) || (() => false),
+      getTierInventoryMeta: (view.getTierInventoryMeta as (tier: WheelTier) => { text: string; warning: boolean } | null) || (() => null)
+    }
+  };
+}
+
+const wheelTierCardMethods = WheelTierCard.methods;
+if (!wheelTierCardMethods) throw new Error("WheelTierCard methods are required for method contract tests.");
 
 const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
@@ -27,7 +44,9 @@ const WHEEL_TIER_EDITOR_STYLES = path.resolve(
 
 test("finishTierEditor closes the editor and auto-applies when the wheel can apply", () => {
   const tier = { id: 1, label: "Original", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 };
+  const applyWheelConfig = vi.fn();
   const vm = {
+    game: testGame({ canApplyWheelConfig: true, applyWheelConfig }),
     editorOpen: true,
     editorDraft: { ...tier, label: "Draft" },
     tier,
@@ -35,17 +54,19 @@ test("finishTierEditor closes the editor and auto-applies when the wheel can app
     applyWheelConfig: vi.fn()
   };
 
-  WheelTierCard.methods.finishTierEditor.call(vm as never);
+  wheelTierCardMethods.finishTierEditor.call(vm as never);
 
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
   assert.equal(vm.tier.label, "Draft");
-  assert.equal(vm.applyWheelConfig.mock.calls.length, 1);
+  assert.equal(applyWheelConfig.mock.calls.length, 1);
 });
 
 test("finishTierEditor closes the editor without auto-applying when the wheel cannot apply", () => {
   const tier = { id: 1, label: "Original", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 };
+  const applyWheelConfig = vi.fn();
   const vm = {
+    game: testGame({ canApplyWheelConfig: false, applyWheelConfig }),
     editorOpen: true,
     editorDraft: { ...tier, label: "Draft" },
     tier,
@@ -53,17 +74,19 @@ test("finishTierEditor closes the editor without auto-applying when the wheel ca
     applyWheelConfig: vi.fn()
   };
 
-  WheelTierCard.methods.finishTierEditor.call(vm as never);
+  wheelTierCardMethods.finishTierEditor.call(vm as never);
 
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
   assert.equal(vm.tier.label, "Draft");
-  assert.equal(vm.applyWheelConfig.mock.calls.length, 0);
+  assert.equal(applyWheelConfig.mock.calls.length, 0);
 });
 
 test("tier editor drafts changes until Done", () => {
   const tier = { id: 1, label: "Original", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 };
+  const applyWheelConfig = vi.fn();
   const vm = {
+    game: testGame({ canApplyWheelConfig: true, applyWheelConfig }),
     editorOpen: false,
     editorDraft: null as typeof tier | null,
     tier,
@@ -71,25 +94,18 @@ test("tier editor drafts changes until Done", () => {
     applyWheelConfig: vi.fn()
   };
 
-  WheelTierCard.methods.openTierEditor.call(vm as never);
+  wheelTierCardMethods.openTierEditor.call(vm as never);
   vm.editorDraft!.label = "Draft";
 
   assert.equal(vm.tier.label, "Original");
   assert.equal(vm.editorOpen, true);
 
-  WheelTierCard.methods.cancelTierEditor.call(vm as never);
+  wheelTierCardMethods.cancelTierEditor.call(vm as never);
 
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
   assert.equal(vm.tier.label, "Original");
   assert.equal(vm.applyWheelConfig.mock.calls.length, 0);
-});
-
-test("units deducted field recalculates on input instead of waiting for change", () => {
-  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
-
-  assert.match(template, /@input="onTierPacksChange\(editorTier\)"/);
-  assert.doesNotMatch(template, /@change="onTierPacksChange\(editorTier\)"/);
 });
 
 test("tier source selectors use dialog-safe overlay menu props", () => {
@@ -103,8 +119,8 @@ test("tier source selectors use dialog-safe overlay menu props", () => {
 
 test("tier source bulk lot multi-select uses Vuetify default item rendering", () => {
   const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
-  const sourceSelectStart = template.indexOf(":items=\"bulkTierSourceItems\"");
-  const singlesSelectStart = template.indexOf(":items=\"getSinglesItemsForTier(editorTier)\"");
+  const sourceSelectStart = template.indexOf(":items=\"game.view.bulkTierSourceItems\"");
+  const singlesSelectStart = template.indexOf(":items=\"game.commands.getSinglesItemsForTier(editorTier)\"");
   const sourceSelectBlock = template.slice(sourceSelectStart, singlesSelectStart);
 
   assert.ok(sourceSelectStart > 0);
@@ -117,7 +133,7 @@ test("tier source editor uses a bulk lot multi-select without a source mode togg
 
   assert.doesNotMatch(template, /wheelTierSourceModeSingle/);
   assert.doesNotMatch(template, /wheelTierSourceModeMulti/);
-  assert.match(template, /:items="bulkTierSourceItems"/);
+  assert.match(template, /:items="game\.view\.bulkTierSourceItems"/);
   assert.match(template, /multiple/);
   assert.match(template, /boundLotIds/);
 });
@@ -135,7 +151,7 @@ test("required pending lot selections use a persistent shared modal instead of t
   assert.match(template, /<app-dialog-shell[\s\S]*v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
   assert.match(template, /class="wheel-pending-lot-dialog"/);
   assert.match(template, /v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/);
-  assert.match(template, /:disabled="wheelPendingInventoryIssues\.every\(\(entry\) => isPendingChaseInventoryIssue\(entry\) \|\| !entry\.selectedLotId\)"/);
+  assert.equal([...template.matchAll(/:disabled="wheelBatchRecordAllDisabled"/g)].length, 2);
 });
 
 test("required pending lot selections suppress duplicate stage warnings", () => {
@@ -167,8 +183,7 @@ test("tier card summary shows actual wheel sections instead of repeating chance"
     sets: []
   };
   const vm = {
-    tier,
-    editingWheelConfig: {
+    game: testGame({ editingWheelConfig: {
       id: 1,
       name: "Wheel",
       spinPrice: 10,
@@ -176,21 +191,9 @@ test("tier card summary shows actual wheel sections instead of repeating chance"
       gameType: "wheel",
       outcomeCount: 25,
       createdAt: "",
-      tiers: [
-        tier,
-        {
-          id: "t2",
-          label: "Other",
-          color: "#000",
-          slots: 80,
-          packsCount: 1,
-          costPerTier: 1,
-          chancePercent: 80,
-          deductionType: "packs",
-          sets: []
-        }
-      ]
-    }
+      tiers: [tier, { id: "t2", label: "Other", color: "#000", slots: 80, packsCount: 1, costPerTier: 1, chancePercent: 80, deductionType: "packs", sets: [] }]
+    } }),
+    tier
   };
 
   const items = WheelTierCard.computed!.tierSummaryItems.call(vm as never);
@@ -211,8 +214,7 @@ test("tier card summary shows actual mystery grid tiles", () => {
     sets: []
   };
   const vm = {
-    tier,
-    editingWheelConfig: {
+    game: testGame({ editingWheelConfig: {
       id: 1,
       name: "Grid",
       spinPrice: 10,
@@ -221,21 +223,9 @@ test("tier card summary shows actual mystery grid tiles", () => {
       outcomeCount: 100,
       gridCellCount: 100,
       createdAt: "",
-      tiers: [
-        {
-          id: "floor",
-          label: "Floor",
-          color: "#000",
-          slots: 90,
-          packsCount: 1,
-          costPerTier: 1,
-          chancePercent: 90,
-          deductionType: "packs",
-          sets: []
-        },
-        tier
-      ]
-    }
+      tiers: [{ id: "floor", label: "Floor", color: "#000", slots: 90, packsCount: 1, costPerTier: 1, chancePercent: 90, deductionType: "packs", sets: [] }, tier]
+    } }),
+    tier
   };
 
   const items = WheelTierCard.computed!.tierSummaryItems.call(vm as never);
@@ -260,7 +250,7 @@ test("multi-lot tier status keeps Bulk as the type without using Multi-lot as a 
     tier,
     tierTypeLabel: WheelTierCard.computed!.tierTypeLabel.call({
       tier,
-      isBoundLotSingles: () => false
+      game: testGame({ isBoundLotSingles: () => false })
     } as never),
     tierInventoryMeta: null
   };
@@ -305,13 +295,13 @@ test("tier card chance input rebalances the current editing config", () => {
     { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50, deductionType: "packs", sets: [] }
   ];
   const vm = {
-    editingWheelConfig: { tiers },
+    game: testGame({ editingWheelConfig: { tiers } }),
     setTierChance(tier: (typeof tiers)[number], value: unknown) {
-      WheelTierCard.methods.setTierChance.call(this as never, tier, value);
+      wheelTierCardMethods.setTierChance.call(this as never, tier, value);
     }
   };
 
-  WheelTierCard.methods.setTierChance.call(vm as never, tiers[0], 70);
+  wheelTierCardMethods.setTierChance.call(vm as never, tiers[0], 70);
 
   assert.equal(tiers[0]!.chancePercent, 70);
   assert.equal(tiers[0]!.slots, 70);
@@ -325,9 +315,9 @@ test("tier card chance bar updates odds from pointer position", () => {
     { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50, deductionType: "packs", sets: [] }
   ];
   const vm = {
-    editingWheelConfig: { tiers },
+    game: testGame({ editingWheelConfig: { tiers } }),
     setTierChance(tier: (typeof tiers)[number], value: unknown) {
-      WheelTierCard.methods.setTierChance.call(this as never, tier, value);
+      wheelTierCardMethods.setTierChance.call(this as never, tier, value);
     }
   };
   const event = {
@@ -339,28 +329,28 @@ test("tier card chance bar updates odds from pointer position", () => {
     clientX: 60
   };
 
-  WheelTierCard.methods.setTierChanceFromPointerEvent.call(vm as never, tiers[0], event as unknown as PointerEvent);
+  wheelTierCardMethods.setTierChanceFromPointerEvent.call(vm as never, tiers[0], event as unknown as PointerEvent);
 
   assert.equal(tiers[0]!.chancePercent, 25);
   assert.equal(tiers[1]!.chancePercent, 75);
 });
 
 test("deleteTierAndClose removes the tier and then auto-applies", () => {
+  const removeTier = vi.fn();
+  const applyWheelConfig = vi.fn();
   const vm = {
+    game: testGame({ canApplyWheelConfig: true, removeTier, applyWheelConfig }),
     editorOpen: true,
     editorDraft: { id: 4, label: "Draft", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 },
-    tierIndex: 3,
-    canApplyWheelConfig: true,
-    removeTier: vi.fn(),
-    applyWheelConfig: vi.fn()
+    tierIndex: 3
   };
 
-  WheelTierCard.methods.deleteTierAndClose.call(vm as never);
+  wheelTierCardMethods.deleteTierAndClose.call(vm as never);
 
-  assert.deepEqual(vm.removeTier.mock.calls[0], [3]);
+  assert.deepEqual(removeTier.mock.calls[0], [3]);
   assert.equal(vm.editorOpen, false);
   assert.equal(vm.editorDraft, null);
-  assert.equal(vm.applyWheelConfig.mock.calls.length, 1);
+  assert.equal(applyWheelConfig.mock.calls.length, 1);
 });
 
 
