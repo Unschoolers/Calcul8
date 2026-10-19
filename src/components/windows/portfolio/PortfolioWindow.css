@@ -579,6 +579,15 @@
 }
 
 @media (max-width: 600px) {
+  .portfolio-sales-by-user-card .portfolio-chart-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .portfolio-sales-by-user-card .portfolio-section-head-main {
+    width: 100%;
+  }
+
   .portfolio-section-title-bar {
     padding-left: 0.95rem;
     padding-right: 0.95rem;

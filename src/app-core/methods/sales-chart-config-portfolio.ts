@@ -4,6 +4,7 @@ import type {
   PortfolioSalesByUserMetric
 } from "../../types/app.ts";
 import {
+  buildAdaptiveCurrencyTickCallback,
   buildBottomLegendOptions,
   buildCategoryTicks,
   buildCurrencyTickCallback,
@@ -206,13 +207,15 @@ export function buildPortfolioSalesByUserChartConfig(params: {
         y: {
           stacked: true,
           ticks: {
-            callback: (value) => {
-              const numericValue = Number(value);
-              if (params.metric === "count") {
-                return params.formatCurrency(numericValue, 0);
+            callback: params.metric === "profit"
+              ? buildAdaptiveCurrencyTickCallback(params.formatCurrency, { prefix: "$", suffix: " CAD" })
+              : (value) => {
+                const numericValue = Number(value);
+                if (params.metric === "count") {
+                  return params.formatCurrency(numericValue, 0);
+                }
+                return `$${params.formatCurrency(numericValue, 0)} CAD`;
               }
-              return `$${params.formatCurrency(numericValue, 0)} CAD`;
-            }
           },
           title: {
             display: !params.compactMode,
