@@ -332,7 +332,7 @@ export const LivePriceCard = defineComponent({
     onTargetLabel(): string {
       return this.translate(
         "livePriceCardOnTargetLabel",
-        "On target"
+        "Suggested price applied"
       );
     },
     onTargetSummaryLabel(): string {
