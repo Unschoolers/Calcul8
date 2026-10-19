@@ -64,6 +64,7 @@
   "configSystemConfigurationHelp": "Default seller assumptions stay out of the first setup step. New lots use them automatically, and each lot can override them when needed.",
   "configSystemConfigurationTitle": "System configuration",
   "configSystemDefaultsHelp": "These defaults apply to new lots and every current lot that is not customized.",
+  "configSystemDefaultsAutosaveHelp": "Changes are saved automatically as you edit. They take effect immediately for new lots and current lots that use system defaults.",
   "configSystemDefaultsTitle": "System defaults",
   "configUseSystemPricingDefaultsLabel": "Use system pricing defaults",
   "configViewFeeBreakdownAction": "View fee breakdown",

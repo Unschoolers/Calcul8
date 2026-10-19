@@ -64,6 +64,7 @@
   "configSystemConfigurationHelp": "Les hypothèses de vente par défaut restent hors de la première étape. Les nouveaux lots les utilisent automatiquement, et chaque lot peut les remplacer au besoin.",
   "configSystemConfigurationTitle": "Configuration système",
   "configSystemDefaultsHelp": "Ces valeurs s'appliquent aux nouveaux lots et à chaque lot actuel qui n'est pas personnalisé.",
+  "configSystemDefaultsAutosaveHelp": "Les modifications sont enregistrées automatiquement pendant la saisie. Elles s'appliquent immédiatement aux nouveaux lots et aux lots actuels qui utilisent les valeurs système.",
   "configSystemDefaultsTitle": "Valeurs système",
   "configUseSystemPricingDefaultsLabel": "Utiliser les valeurs système de tarification",
   "configViewFeeBreakdownAction": "Voir le détail des frais",
