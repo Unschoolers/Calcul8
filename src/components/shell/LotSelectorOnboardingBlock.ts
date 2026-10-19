@@ -1,4 +1,4 @@
-import { AppErrorState } from "../ui/AppErrorState.ts";
+import AppErrorState from "../ui/AppErrorState.vue";
 import AppFormLayout from "../ui/AppFormLayout.vue";
 import { useShellPorts } from "./shellPorts.ts";
 import "./LotSelectorOnboardingBlock.css";
