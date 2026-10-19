@@ -589,6 +589,11 @@
     font-size: 0.78rem;
   }
 
+  .portfolio-sales-by-user-card .portfolio-chart-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .portfolio-sales-by-user-toolbar {
     justify-content: flex-start;
     width: 100%;
