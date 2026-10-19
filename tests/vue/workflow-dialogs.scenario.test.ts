@@ -58,6 +58,7 @@ function translate(key: string): string {
     configSystemConfigurationHelp: "Default seller assumptions stay separate from lot overrides.",
     configSystemDefaultsTitle: "System defaults",
     configSystemDefaultsHelp: "These defaults apply to new lots.",
+    configSystemDefaultsAutosaveHelp: "Changes are saved automatically as you edit. They take effect immediately for new lots and current lots that use system defaults.",
     portfolioAmountsCurrencyLabel: "All monetary amounts in CAD",
     configSellingTaxesLabel: "Selling taxes",
     configAverageBuyerShippingLabel: "Average buyer shipping",
@@ -430,6 +431,7 @@ test("closes system configuration without changing its labeled inputs", async ()
     renderWithCapabilities(SystemConfigurationDialog, workspaceDialogPortsKey, ctx);
 
     expect(screen.getByRole("dialog", { name: "System configuration" })).toBeVisible();
+    expect(screen.getByText("Changes are saved automatically as you edit. They take effect immediately for new lots and current lots that use system defaults.")).toBeVisible();
     expect(screen.getAllByLabelText("Selling taxes")).toHaveLength(2);
     await fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
     expect(ctx.showSystemConfigurationDialog).toBe(false);
