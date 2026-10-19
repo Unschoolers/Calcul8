@@ -6,6 +6,9 @@
                   class="mb-3 config-card purchase-summary-card config-summary-hero"
                 >
                   <v-card-text class="config-summary-hero__body">
+                    <v-alert v-if="!hasLotSelected" type="info" density="compact" variant="tonal" class="mb-3">
+                      {{ t('configNoInventoryExampleValues') }}
+                    </v-alert>
                     <div class="config-summary-hero__eyebrow">{{ t('configCurrentCostBasisTitle') }}</div>
                     <div class="config-summary-hero__main">
                       <div class="config-summary-hero__value-wrap">

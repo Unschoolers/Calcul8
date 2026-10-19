@@ -28,6 +28,7 @@
   "configShopifyDayOnly": "jour seulement",
   "configMarketplaceSkuPlaceholder": "SKU ou référence d'annonce facultatif",
   "configNotSet": "Non défini",
+  "configNoInventoryExampleValues": "Aucun inventaire sélectionné. Ces valeurs de départ sont des exemples, pas des données d’inventaire enregistrées. Sélectionnez ou créez un lot pour voir son coût de base.",
   "configOpenPriceCalculatorAction": "Ouvrir le calculateur de prix",
   "configPerBoxLabel": "Par boîte",
   "configPerBoxModeLabel": "Par boîte",
