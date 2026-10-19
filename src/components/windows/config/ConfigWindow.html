@@ -136,6 +136,10 @@
                           </v-col>
                         </v-row>
 
+                        <v-alert v-if="conversionInfo" type="info" density="compact" class="mt-2">
+                          {{ conversionInfo }}
+                        </v-alert>
+
                         <v-text-field
                           id="guided-onboarding-bulk-boxes-input"
                           v-model.number="boxesPurchased"
@@ -200,10 +204,6 @@
                           hide-details
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
-
-                        <v-alert v-if="conversionInfo" type="info" density="compact" class="mt-2">
-                          {{ conversionInfo }}
-                        </v-alert>
 
                         <v-text-field
                           v-model.number="purchaseTaxPercent"

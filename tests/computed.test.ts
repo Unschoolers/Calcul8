@@ -553,6 +553,7 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     boxPriceCost: 100,
     currency: "USD",
     sellingCurrency: "CAD",
+    preferredLanguage: "en",
     exchangeRate: 1.4
   } as unknown as ThisParameterType<typeof appComputed.boxPriceCostCAD>);
   assert.equal(convertedBox, 140);
@@ -580,12 +581,60 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
   } as unknown as ThisParameterType<typeof appComputed.conversionInfo>);
   assert.ok(singlesConversion.includes("Converted purchase costs to CAD"));
 
+  const bulkConversion = appComputed.conversionInfo.call({
+    currentLotType: "bulk",
+    singlesPurchases: [],
+    currency: "USD",
+    sellingCurrency: "CAD",
+    preferredLanguage: "en",
+    exchangeRate: 1.36,
+    boxPriceCostCAD: 136,
+    boxesPurchased: 2,
+    purchaseShippingCostCAD: 13.6,
+    formatCurrency(value: number) {
+      return Number(value).toFixed(2);
+    }
+  } as unknown as ThisParameterType<typeof appComputed.conversionInfo>);
+  assert.equal(bulkConversion, "Purchase entered in USD. Rate: 1 USD = 1.36 CAD. Converted subtotal: 285.60 CAD.");
+
+  const fallbackRateConversion = appComputed.conversionInfo.call({
+    currentLotType: "bulk",
+    singlesPurchases: [],
+    currency: "USD",
+    sellingCurrency: "CAD",
+    preferredLanguage: "en",
+    exchangeRate: 0,
+    boxPriceCostCAD: 140,
+    boxesPurchased: 1,
+    purchaseShippingCostCAD: 0,
+    formatCurrency(value: number) {
+      return Number(value).toFixed(2);
+    }
+  } as unknown as ThisParameterType<typeof appComputed.conversionInfo>);
+  assert.equal(fallbackRateConversion, "Purchase entered in USD. Rate: 1 USD = 1.40 CAD. Converted subtotal: 140.00 CAD.");
+
+  const reverseBulkConversion = appComputed.conversionInfo.call({
+    currentLotType: "bulk",
+    singlesPurchases: [],
+    currency: "CAD",
+    sellingCurrency: "USD",
+    preferredLanguage: "fr-CA",
+    exchangeRate: 1.36,
+    boxPriceCostCAD: 73.53,
+    boxesPurchased: 1,
+    purchaseShippingCostCAD: 0,
+    formatCurrency(value: number) {
+      return Number(value).toFixed(2);
+    }
+  } as unknown as ThisParameterType<typeof appComputed.conversionInfo>);
+  assert.equal(reverseBulkConversion, "Achat saisi en CAD. Taux : 1 USD = 1.36 CAD. Sous-total converti : 73.53 USD.");
+
   const bulkNoConversion = appComputed.conversionInfo.call({
     currentLotType: "bulk",
     singlesPurchases: [],
     currency: "CAD",
     sellingCurrency: "CAD",
-    boxPriceCostCAD: 100,
+    boxPriceCostCAD: 73.53,
     boxesPurchased: 2,
     purchaseShippingCostCAD: 8,
     formatCurrency(value: number) {
