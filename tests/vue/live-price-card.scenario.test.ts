@@ -65,9 +65,18 @@ describe("live price card scenarios", () => {
     expect(screen.getByText("Set a profit target to see the average price you still need from here.")).toBeVisible();
   });
 
-  test("shows an on-target status when the current price matches the target", () => {
-    renderLivePriceCard({ avgPriceNeeded: 10, remainingUnits: 2 });
-    expect(screen.getByText("On target")).toBeVisible();
+  test("labels the applied suggested price without implying positive profit after selling costs", () => {
+    renderLivePriceCard({
+      avgPriceNeeded: 10,
+      remainingUnits: 2,
+      calculateProfit: () => -3,
+      forecastProfit: -3
+    });
+
+    expect(screen.getByText("Suggested price applied")).toBeVisible();
+    expect(screen.getByText("Projected net profit after selling costs")).toBeVisible();
+    expect(document.querySelector(".live-pricing-card__projection strong")).toHaveClass("text-error");
+    expect(screen.queryByText("On target")).toBeNull();
   });
 
   test("does not offer a negative-price scenario from zero", () => {
