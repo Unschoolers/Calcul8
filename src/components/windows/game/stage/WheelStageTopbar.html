@@ -154,5 +154,24 @@
         <span class="game-spectator-btn__label">{{ game.view.gameSpectatorActionLabel }}</span>
       </v-btn>
     </div>
+    <div v-if="game.view.wheelIsCompactLayout" class="wheel-stage-mobile-entry-actions">
+      <v-btn
+        size="small"
+        variant="tonal"
+        prepend-icon="mdi-plus"
+        @click="game.commands.openWheelCreateDialog"
+      >
+        {{ game.view.t('wheelInspectorNewGameAction') }}
+      </v-btn>
+      <v-btn
+        size="small"
+        color="primary"
+        variant="tonal"
+        prepend-icon="mdi-tune"
+        @click="game.commands.openWheelInspector('config')"
+      >
+        {{ game.view.t('wheelInspectorConfigTitle') }}
+      </v-btn>
+    </div>
   </div>
 </div>

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/vue";
+import { fireEvent, screen, waitFor, within } from "@testing-library/vue";
 import { defineComponent, reactive, type Component } from "vue";
 import { afterEach, expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
@@ -82,7 +82,9 @@ test("mounted GameWindow uses its provided controller for the wheel toolbar and 
   expect(view.container.querySelector(".wheel-stage-game-toolbar")).not.toBeNull();
   expect(view.container.querySelector(".wheel-outer")).not.toBeNull();
   expect(view.container.querySelector(".wheel-tier-card")).not.toBeNull();
-  await fireEvent.click(view.getByRole("button", { name: "wheelInspectorNewGameAction" }));
+  const mobileEntryActions = view.container.querySelector(".wheel-stage-mobile-entry-actions");
+  expect(mobileEntryActions).not.toBeNull();
+  await fireEvent.click(within(mobileEntryActions as HTMLElement).getByRole("button", { name: "wheelInspectorNewGameAction" }));
   expect(await screen.findByRole("dialog", { name: "wheelCreateGameTitle" })).toBeTruthy();
 
   expect(vueWarnings).toEqual([]);
