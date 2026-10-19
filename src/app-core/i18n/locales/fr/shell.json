@@ -128,6 +128,7 @@
   "workspaceRealtimeStaleSubtitle": "Actualisez pour récupérer les dernières données.",
   "workspaceRealtimeStaleTitle": "Les données de l'espace peuvent être en retard",
   "shellCreateWorkspaceBody": "Ceci cree un nouvel espace partage et y copie vos donnees Personnelles actuelles.",
+  "shellCreateWorkspaceAccessHint": "Vous en serez le premier membre et le propriétaire. Toute personne que vous invitez pourra accéder aux données copiées après avoir accepté l’invitation et rejoint l’espace.",
   "shellCreateWorkspaceConfirmAction": "Créer l'espace",
   "shellCreateWorkspaceTitle": "Créer un espace partage",
   "shellInviteAction": "Inviter",

@@ -128,6 +128,7 @@
   "workspaceRealtimeStaleSubtitle": "Refresh to recover the latest data.",
   "workspaceRealtimeStaleTitle": "Workspace data may be out of date",
   "shellCreateWorkspaceBody": "This starts a new shared workspace and copies your current Personal data into it.",
+  "shellCreateWorkspaceAccessHint": "You’ll be its first member and owner. Anyone you invite can access the copied data after they accept and join.",
   "shellCreateWorkspaceConfirmAction": "Create workspace",
   "shellCreateWorkspaceTitle": "Create shared workspace",
   "shellInviteAction": "Invite",

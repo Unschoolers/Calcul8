@@ -45,6 +45,7 @@ function translate(key: string): string {
     commonApply: "Apply",
     shellCreateWorkspaceTitle: "Create workspace",
     shellCreateWorkspaceBody: "Create a shared workspace.",
+    shellCreateWorkspaceAccessHint: "You’ll be its first member and owner. Anyone you invite can access the copied data after they accept and join.",
     shellWorkspaceNameLabel: "Workspace name",
     shellCreateWorkspaceConfirmAction: "Create workspace",
     shellSharedWorkspaceTitle: "Shared workspace",
@@ -275,6 +276,12 @@ describe("workflow dialog scenarios", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Create workspace" }));
 
     expect(ctx.createWorkspace).toHaveBeenCalledOnce();
+  });
+
+  test("explains who can access copied data when creating a shared workspace", () => {
+    renderWithCapabilities(WorkspaceModals, workspaceDialogPortsKey, workspaceContext("personal"));
+
+    expect(screen.getByText("You’ll be its first member and owner. Anyone you invite can access the copied data after they accept and join.")).toBeVisible();
   });
 
   test("keeps destructive workspace copy visible in the owner confirmation", () => {
