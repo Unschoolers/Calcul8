@@ -72,6 +72,18 @@ test("first-run onboarding uses seller-facing inventory language", () => {
   assert.equal(translateAppMessage("en", "shellLotLabel"), "Current inventory");
 });
 
+test("Lot inventory copy uses item language and explains RTYH", () => {
+  assert.equal(translateAppMessage("en", "lotOptionSinglesLotsLabel"), "Individual items");
+  assert.equal(translateAppMessage("en", "singlesPurchasingTitle"), "Item inventory");
+  assert.equal(translateAppMessage("en", "portfolioSalesByUserSaleTypeRtyh"), "Random hit (RTYH)");
+  assert.equal(translateAppMessage("en", "saleEditorRtyhSpotPriceLabel"), "Random hit price");
+
+  assert.equal(translateAppMessage("fr-CA", "lotOptionSinglesLotsLabel"), "Items individuels");
+  assert.equal(translateAppMessage("fr-CA", "singlesPurchasingTitle"), "Inventaire d’items");
+  assert.equal(translateAppMessage("fr-CA", "portfolioSalesByUserSaleTypeRtyh"), "Random hit (RTYH)");
+  assert.equal(translateAppMessage("fr-CA", "saleEditorRtyhSpotPriceLabel"), "Prix du random hit");
+});
+
 test("translation catalogs stay aligned across locales", () => {
   assert.deepEqual(
     Object.keys(APP_TRANSLATIONS["fr-CA"]).sort(),

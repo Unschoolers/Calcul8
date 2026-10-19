@@ -23,7 +23,7 @@
   "saleEditorRemoveLineAction": "Retirer la ligne",
   "saleEditorRtyhItemsWonLabel": "Items gagnés",
   "saleEditorRtyhItemsWonRequiredLabel": "Entrez les items gagnés",
-  "saleEditorRtyhSpotPriceLabel": "Prix RTYH",
+  "saleEditorRtyhSpotPriceLabel": "Prix du random hit",
   "saleEditorSectionDetailsLabel": "Details",
   "saleEditorSectionNotesLabel": "Notes",
   "saleEditorSinglesSubtitle": "Suivre les details de vente par item",

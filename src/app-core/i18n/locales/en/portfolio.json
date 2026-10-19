@@ -169,7 +169,7 @@
   "portfolioSalesByUserOpenWeekDrilldownLabel": "View sales for {{week}}",
   "portfolioSalesByUserSaleTypeBox": "Box",
   "portfolioSalesByUserSaleTypePack": "Pack",
-  "portfolioSalesByUserSaleTypeRtyh": "RTYH",
+  "portfolioSalesByUserSaleTypeRtyh": "Random hit (RTYH)",
   "portfolioSalesByUserSaleTypeWheel": "Wheel",
   "portfolioSalesByUserSubtitle": "Last 8 weeks by seller",
   "portfolioSalesByUserTitle": "Sales by person",

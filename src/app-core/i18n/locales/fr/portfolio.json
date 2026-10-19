@@ -169,7 +169,7 @@
   "portfolioSalesByUserOpenWeekDrilldownLabel": "Voir les ventes pour {{week}}",
   "portfolioSalesByUserSaleTypeBox": "Boîte",
   "portfolioSalesByUserSaleTypePack": "Paquet",
-  "portfolioSalesByUserSaleTypeRtyh": "RTYH",
+  "portfolioSalesByUserSaleTypeRtyh": "Random hit (RTYH)",
   "portfolioSalesByUserSaleTypeWheel": "Roue",
   "portfolioSalesByUserSubtitle": "8 dernières semaines par vendeur",
   "portfolioSalesByUserTitle": "Ventes par personne",
