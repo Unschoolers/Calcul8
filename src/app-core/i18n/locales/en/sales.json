@@ -23,7 +23,7 @@
   "saleEditorRemoveLineAction": "Remove line",
   "saleEditorRtyhItemsWonLabel": "Items won",
   "saleEditorRtyhItemsWonRequiredLabel": "Enter items won",
-  "saleEditorRtyhSpotPriceLabel": "RTYH price",
+  "saleEditorRtyhSpotPriceLabel": "Random hit price",
   "saleEditorSectionDetailsLabel": "Details",
   "saleEditorSectionNotesLabel": "Notes",
   "saleEditorSinglesSubtitle": "Track item-level sale details",
