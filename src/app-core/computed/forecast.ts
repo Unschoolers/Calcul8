@@ -1,4 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
+import { normalizeUsdToCadRate } from "../../domain/currency.ts";
 import {
   calculateBoxPriceCostCad,
   createForecastScenarioFromUnitPrice,
@@ -204,7 +205,15 @@ export const forecastComputed: Pick<
       if (this.currentLotType === "singles") {
         return `Converted purchase costs to ${this.sellingCurrency}. ≈ $${this.formatCurrency(convertedTotal)} ${this.sellingCurrency} total`;
       }
-      return `Converted purchase from ${this.currency} to ${this.sellingCurrency}. ≈ $${this.formatCurrency(convertedTotal)} ${this.sellingCurrency} total`;
+      const translationKey = this.currency !== this.sellingCurrency
+        ? "configPurchaseConversionSummary"
+        : "configPurchaseConversionSummaryNoRate";
+      return translateAppMessage(String(this.preferredLanguage || ""), translationKey, {
+        inputCurrency: this.currency,
+        rate: this.formatCurrency(normalizeUsdToCadRate(this.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE)),
+        amount: this.formatCurrency(convertedTotal),
+        outputCurrency: this.sellingCurrency
+      });
     }
     return "";
   },

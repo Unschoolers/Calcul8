@@ -58,6 +58,8 @@
   "configUpgradeToUnlockExpertHelp": "Passez au mode Expert quand vous voudrez ajuster les taxes, la livraison et les frais plus finement.",
   "configUpgradeToUnlockExpertMode": "Passez à Pro pour débloquer le mode Expert",
   "configUsdToCadRateLabel": "Taux USD vers CAD",
+  "configPurchaseConversionSummary": "Achat saisi en {{inputCurrency}}. Taux : 1 USD = {{rate}} CAD. Sous-total converti : {{amount}} {{outputCurrency}}.",
+  "configPurchaseConversionSummaryNoRate": "Achat saisi en {{inputCurrency}}. Sous-total converti : {{amount}} {{outputCurrency}}.",
   "configLotOverridesHelp": "Gardez le lot sélectionné sur les valeurs système, ou remplacez ces hypothèses de vente pour ce lot seulement.",
   "configLotOverridesTitle": "Remplacements du lot",
   "configLotUsingSystemDefaultsHelp": "Ce lot suit les valeurs système. Modifiez les valeurs à gauche, ou désactivez cette option pour personnaliser seulement ce lot.",

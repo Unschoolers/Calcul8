@@ -58,6 +58,8 @@
   "configUpgradeToUnlockExpertHelp": "Upgrade to Expert when you are ready to fine-tune taxes, shipping, and fee details.",
   "configUpgradeToUnlockExpertMode": "Upgrade to unlock Expert mode",
   "configUsdToCadRateLabel": "USD to CAD rate",
+  "configPurchaseConversionSummary": "Purchase entered in {{inputCurrency}}. Rate: 1 USD = {{rate}} CAD. Converted subtotal: {{amount}} {{outputCurrency}}.",
+  "configPurchaseConversionSummaryNoRate": "Purchase entered in {{inputCurrency}}. Converted subtotal: {{amount}} {{outputCurrency}}.",
   "configLotOverridesHelp": "Keep the selected lot on system defaults, or override these seller assumptions for this lot only.",
   "configLotOverridesTitle": "Lot overrides",
   "configLotUsingSystemDefaultsHelp": "This lot follows the system defaults. Change the system values on the left, or turn this off to customize only this lot.",
