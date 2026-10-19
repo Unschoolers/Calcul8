@@ -137,5 +137,7 @@
     state-class="app-shell-blocking-surface mb-4"
     :title="t('shellNoLotTitle')"
     :body="t('shellNoLotBody')"
+    :action-label="t('shellAddLotAction')"
+    @action="showNewLotModal = true"
   ></app-error-state>
 </div>
