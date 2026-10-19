@@ -1,4 +1,5 @@
 import { fireEvent, screen } from "@testing-library/vue";
+import { readFileSync } from "node:fs";
 import { defineComponent, h, reactive } from "vue";
 import { expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
@@ -17,6 +18,8 @@ const summary: WhatnotFeePeriodSummary = {
   previousPeriodStart: "2026-08-24", previousPeriodEndExclusive: "2026-09-21"
 };
 const t = (key: string, values?: Record<string, unknown>) => `${key} ${Object.values(values ?? {}).join(" ")}`;
+const enConfig = JSON.parse(readFileSync("src/app-core/i18n/locales/en/config.json", "utf8")) as Record<string, string>;
+const frConfig = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/config.json", "utf8")) as Record<string, string>;
 
 function SelectStub() {
   return defineComponent({
@@ -35,8 +38,11 @@ function SelectStub() {
 function createState(lotType: "bulk" | "singles", vertical: WhatnotVertical | null = "tcg") {
   const state = reactive({
     ...createInitialState(),
-    currentLotId: 1,
+    currentLotId: 1 as number | null,
     hasLotSelected: true,
+    totalCaseCost: 1288,
+    totalPacks: 256,
+    purchaseCostInputValue: 70,
     lots: [{ id: 1, name: "Test lot", lotType, singlesCatalogSource: "pokemon", whatnotVertical: vertical, feeProfilePreset: "whatnot" }],
     whatnotVertical: vertical,
     feeProfilePreset: "whatnot" as string,
@@ -81,6 +87,38 @@ test("bulk lot setup keeps live Whatnot fee status while category editing lives 
   await fireEvent.click(details!.querySelector("summary")!);
   expect(details?.open).toBe(true);
   expect(view.container.textContent).toContain("configWhatnotFeeStatusIncomplete");
+});
+
+test("bulk setup explains starter values with no inventory and hides the explanation for a selected lot", async () => {
+  const state = createState("bulk");
+  state.boxPriceCost = 70;
+  state.boxesPurchased = 16;
+  state.packsPerBox = 16;
+  state.currentLotId = null;
+  state.hasLotSelected = false;
+  state.lots = [];
+  state.t = ((key: string) => (state.preferredLanguage === "en" ? enConfig[key] : frConfig[key]) ?? key) as typeof state.t;
+  const view = renderWithApp(ConfigWindow, {
+    global: {
+      provide: { [configWindowPortsKey as symbol]: createConfigWindowPorts(state as never) },
+      stubs: { VSelect: SelectStub(), AdminSyncImportCard: true }
+    }
+  });
+
+  expect(screen.getByText(enConfig.configNoInventoryExampleValues!)).toBeVisible();
+  expect(view.container.querySelector(".config-summary-hero")?.textContent).toContain("$1288 CAD");
+  expect(view.container.querySelector(".config-summary-hero")?.textContent).toContain("16 boxes");
+  expect(view.container.querySelector(".config-summary-hero")?.textContent).toContain("256 items");
+  expect(view.container.querySelector<HTMLInputElement>("#guided-onboarding-bulk-cost-input")?.value).toBe("70");
+  expect(view.container.querySelector<HTMLInputElement>("#guided-onboarding-bulk-boxes-input")?.value).toBe("16");
+  expect(view.container.querySelector<HTMLInputElement>("#guided-onboarding-bulk-packs-input")?.value).toBe("16");
+
+  state.preferredLanguage = "fr";
+  await vi.waitFor(() => expect(screen.getByText(frConfig.configNoInventoryExampleValues!)).toBeVisible());
+  state.currentLotId = 1;
+  state.hasLotSelected = true;
+  state.lots = [{ id: 1, name: "Test lot", lotType: "bulk", singlesCatalogSource: "pokemon", whatnotVertical: "tcg", feeProfilePreset: "whatnot" }];
+  await vi.waitFor(() => expect(screen.queryByText(frConfig.configNoInventoryExampleValues!)).toBeNull());
 });
 
 test("singles setup retains the live fee summary without exposing the category editor", async () => {
