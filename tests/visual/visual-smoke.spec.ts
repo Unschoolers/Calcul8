@@ -40,6 +40,69 @@ function seedOptionsForProject(testInfo: TestInfo): Parameters<typeof seedVisual
 }
 
 test.describe("@visual-smoke real app screens", () => {
+  test("@layout-regression sales-by-person header stays readable across viewport sizes", async ({ page }, testInfo) => {
+    await seedVisualSmokeState(page, seedOptionsForProject(testInfo));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/nologin");
+    await waitForVisualAppReady(page);
+    await openSmokeTab(page, "portfolio");
+
+    const card = page.locator(".portfolio-sales-by-user-card");
+    await expect(card).toBeVisible();
+    const widths = testInfo.project.name === "mobile-smoke" ? [360, 412, 600] : [1366];
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 915 });
+      await card.scrollIntoViewIfNeeded();
+      await expect(async () => {
+        const geometry = await card.evaluate(element => {
+          const rect = (selector: string) => element.querySelector(selector)!.getBoundingClientRect();
+          const title = element.querySelector(".portfolio-section-eyebrow")!;
+          return {
+            head: rect(".portfolio-chart-head").toJSON(),
+            main: rect(".portfolio-section-head-main").toJSON(),
+            copy: rect(".portfolio-section-head-copy").toJSON(),
+            title: title.getBoundingClientRect().toJSON(),
+            titleLineHeight: Number.parseFloat(getComputedStyle(title).lineHeight),
+            toolbar: rect(".portfolio-sales-by-user-toolbar").toJSON()
+          };
+        });
+        expect(geometry.title.height).toBeLessThanOrEqual(geometry.titleLineHeight * 3);
+        if (width <= 600) {
+          expect(geometry.copy.width).toBeGreaterThan(120);
+          expect(geometry.main.bottom).toBeLessThanOrEqual(geometry.toolbar.top + 1);
+        }
+      }).toPass({ timeout: 2000 });
+      await expectNoPageOverflow(page);
+    }
+    await card.screenshot({ path: testInfo.outputPath("sales-by-person-header.png"), animations: "disabled" });
+  });
+
+  test("@layout-regression add-sale action fits its icon and translated label above navigation", async ({ page }, testInfo) => {
+    await seedVisualSmokeState(page, seedOptionsForProject(testInfo));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    if (testInfo.project.name === "mobile-smoke") await page.setViewportSize({ width: 360, height: 915 });
+    await page.goto("/nologin");
+    await waitForVisualAppReady(page);
+    await openSmokeTab(page, "sales");
+
+    const action = page.locator(".app-context-action-wrap .v-fab .v-btn");
+    await expect(action).toBeVisible();
+    await expect(action).toHaveAccessibleName(testInfo.project.name === "mobile-smoke" ? "Ajouter une vente" : "Add sale");
+    const bounds = await action.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThan(bounds!.height);
+    await expect(action.locator(".mdi-cart-plus")).toBeVisible();
+    const contentBounds = await action.locator(".v-btn__content").boundingBox();
+    expect(contentBounds!.x).toBeGreaterThanOrEqual(bounds!.x);
+    expect(contentBounds!.x + contentBounds!.width).toBeLessThanOrEqual(bounds!.x + bounds!.width);
+    const navigation = await page.locator(".app-shell-bottom-nav").boundingBox();
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(navigation!.y);
+    await expectNoPageOverflow(page);
+    await action.screenshot({ path: testInfo.outputPath("add-sale-action.png"), animations: "disabled" });
+    await action.click();
+    await expect(page.locator(".sales-speed-action").first()).toBeVisible();
+  });
+
   test("auth startup resolves into a visible sign-in gate without exposing app actions", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
 

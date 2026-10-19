@@ -7,6 +7,6 @@ defineProps<{
 </script>
 
 <template>
-  <v-fab v-bind="activatorProps" icon="mdi-cart-plus" color="primary" size="large" extended
+  <v-fab v-bind="activatorProps" prepend-icon="mdi-cart-plus" color="primary" size="large" extended
     :title="label" :aria-label="label" :disabled="disabled">{{ label }}</v-fab>
 </template>
