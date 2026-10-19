@@ -213,6 +213,12 @@ test("buildPortfolioHistoryChartConfig creates a trend config with target datase
   const segment = config?.data.datasets[0]?.segment as { borderColor?: unknown } | undefined;
   assert.equal(typeof segment?.borderColor, "function");
   assert.ok(Array.isArray(config?.data.datasets[0]?.pointBackgroundColor));
+  const tick = config?.options?.scales?.y?.ticks?.callback as ((value: number, index: number, ticks: Array<{ value: number }>) => string) | undefined;
+  const oneRange = [0, 0.2, 0.4, 0.6, 0.8, 1].map((value) => ({ value }));
+  const twoRange = [0, 0.4, 0.8, 1.2, 1.6, 2].map((value) => ({ value }));
+  assert.equal(tick?.(0.4, 2, oneRange), "$0.4");
+  assert.equal(tick?.(1.2, 3, twoRange), "$1.2");
+  assert.equal(tick?.(-0.0000004, 0, [{ value: -0.0000004 }, { value: 0 }]), "$0");
 });
 
 test("buildPortfolioHistoryChartConfig uses stored net revenue so the final point matches portfolio totals", () => {
@@ -394,4 +400,28 @@ test("buildPortfolioSalesByUserChartConfig creates a stacked area line chart wit
   assert.equal(config?.options?.scales?.y?.stacked, true);
   assert.equal(config?.options?.interaction?.mode, "index");
   assert.equal(config?.options?.interaction?.intersect, false);
+});
+
+test("portfolio sales by user profit ticks keep near-zero values precise without negative zero", () => {
+  const config = buildPortfolioSalesByUserChartConfig({
+    chartData: {
+      weeks: [{ key: "2026-03-02", label: "Mar 2" }],
+      series: [{ key: "owner-1", label: "Jules", values: [-0.4], total: -0.4, color: "#F7B500" }]
+    },
+    metric: "profit",
+    compactMode: true,
+    formatCurrency
+  });
+  const callback = config?.options?.scales?.y?.ticks?.callback;
+
+  assert.equal(typeof callback, "function");
+  const tick = callback as ((value: number, index: number, ticks: Array<{ value: number }>) => string) | undefined;
+  const oneRange = [0, 0.2, 0.4, 0.6, 0.8, 1].map((value) => ({ value }));
+  const twoRange = [0, 0.4, 0.8, 1.2, 1.6, 2].map((value) => ({ value }));
+  assert.equal(tick?.(-0.4, 0, oneRange), "$-0.4 CAD");
+  assert.equal(tick?.(0, 0, oneRange), "$0 CAD");
+  assert.equal(tick?.(0.4, 2, oneRange), "$0.4 CAD");
+  assert.equal(tick?.(1.2, 3, twoRange), "$1.2 CAD");
+  assert.equal(tick?.(-0.0000004, 0, [{ value: -0.0000004 }, { value: 0 }]), "$0 CAD");
+  assert.equal(tick?.(12, 1, [{ value: 0 }, { value: 12 }]), "$12 CAD");
 });

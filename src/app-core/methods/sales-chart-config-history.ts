@@ -16,6 +16,7 @@ import type {
 } from "../../types/app.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
 import {
+  buildAdaptiveCurrencyTickCallback,
   buildCategoryTicks,
   buildCurrencyTickCallback,
   type FormatCurrency,
@@ -343,7 +344,7 @@ export function buildPortfolioHistoryChartConfig(params: {
         },
         y: {
           ticks: {
-            callback: buildCurrencyTickCallback(params.formatCurrency, { prefix: "$", decimals: 0 })
+            callback: buildAdaptiveCurrencyTickCallback(params.formatCurrency, { prefix: "$" })
           }
         }
       }

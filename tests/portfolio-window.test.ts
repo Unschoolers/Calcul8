@@ -825,6 +825,21 @@ test("PortfolioWindow keeps sales per user week pills visible on mobile", () => 
   assert.match(css, /@media \(max-width: 600px\)[\s\S]*\.portfolio-sales-by-user-week-pill\s*{[\s\S]*flex:\s*0 0 auto/);
 });
 
+test("PortfolioWindow stacks sales by person title above metric controls on phone widths", () => {
+  const css = readFileSync("src/components/windows/portfolio/PortfolioWindow.css", "utf8");
+  const mobileBlockStart = css.indexOf("@media (max-width: 600px)");
+  const mobileBlock = mobileBlockStart >= 0 ? css.slice(mobileBlockStart) : "";
+
+  assert.match(
+    mobileBlock,
+    /\.portfolio-sales-by-user-card \.portfolio-chart-head\s*\{[^}]*flex-direction:\s*column/
+  );
+  assert.match(
+    mobileBlock,
+    /\.portfolio-sales-by-user-card \.portfolio-section-head-main\s*\{[^}]*width:\s*100%/
+  );
+});
+
 test("PortfolioWindow sales per user drilldown opens rows for the selected week", () => {
   const vm = {
     portfolioSalesByUserDrilldownDialog: false,

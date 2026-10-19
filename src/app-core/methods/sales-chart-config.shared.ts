@@ -44,6 +44,25 @@ export function buildBottomLegendOptions(compactMode: boolean | undefined) {
   };
 }
 
+export function buildAdaptiveCurrencyTickCallback(
+  formatCurrency: FormatCurrency,
+  options: { prefix?: string; suffix?: string } = {}
+) {
+  return (value: string | number, index = 0, ticks: Array<{ value: string | number }> = []) => {
+    const adjacentValues = [ticks[index - 1], ticks[index + 1]]
+      .filter((tick): tick is { value: string | number } => Boolean(tick))
+      .map((tick) => Math.abs(Number(tick.value) - Number(value)))
+      .filter((difference) => Number.isFinite(difference) && difference > 0);
+    const step = adjacentValues.length > 0 ? Math.min(...adjacentValues) : 1;
+    const decimals = Math.min(2, Math.max(0, Math.ceil(-Math.log10(step) - 1e-10)));
+    const roundedValue = Number(Number(value).toFixed(decimals));
+    const formattedValue = roundedValue === 0
+      ? formatCurrency(0, 0)
+      : formatCurrency(roundedValue, decimals);
+    return `${options.prefix ?? ""}${formattedValue}${options.suffix ?? ""}`;
+  };
+}
+
 export function buildCurrencyTickCallback(
   formatCurrency: FormatCurrency,
   options: {
