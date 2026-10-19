@@ -72,6 +72,7 @@ function makeController(context: object, commands: Partial<FocusedGameCommands> 
     onTierPacksChange: vi.fn(),
     onTierSinglesChange: vi.fn(),
     openGameSpectatorDialog: vi.fn(),
+    openWheelInspector: vi.fn(),
     openWheelCreateDialog: vi.fn(),
     openWheelManageDialog: vi.fn(),
     removeTier: vi.fn(),

@@ -156,6 +156,12 @@ export default defineVueComponent(WheelStageTopbar);
   min-width: 0;
 }
 
+.wheel-stage-mobile-entry-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .game-spectator-btn {
   min-width: 0;
   min-height: 38px;
@@ -296,6 +302,10 @@ export default defineVueComponent(WheelStageTopbar);
     grid-template-areas:
       "mode spectator";
     gap: 8px;
+  }
+
+  .wheel-stage-mobile-entry-actions .v-btn {
+    min-width: 0;
   }
 
   .wheel-mode-toggle {

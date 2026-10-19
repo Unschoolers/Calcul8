@@ -141,6 +141,17 @@
 
       <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
         {{ t('wheelInspectorEmptyState') }}
+        <div class="mt-2">
+          <v-btn
+            size="small"
+            color="primary"
+            variant="tonal"
+            prepend-icon="mdi-plus"
+            @click="openWheelCreateDialog"
+          >
+            {{ t('wheelCreateGameTitle') }}
+          </v-btn>
+        </div>
       </v-alert>
     </section>
 

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/vue";
+import { fireEvent, screen, within } from "@testing-library/vue";
 import { readFileSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
 import { defineComponent, h, nextTick, provide, reactive } from "vue";
@@ -327,4 +327,98 @@ describe("game inspector scenarios", () => {
     expect(warnings).toEqual([]);
   });
 
+});
+
+test("empty game builder offers an in-context create action", async () => {
+  const openWheelCreateDialog = vi.fn();
+  const context = {
+    wheelMobileInspectorOpen: true,
+    wheelIsCompactLayout: true,
+    wheelInspectorTab: "config",
+    wheelInspectorPanelMeta: { icon: "mdi-cog-outline", title: "Game Builder", subtitle: "Build tiers" },
+    wheelDisplayConfig: null,
+    editingWheelConfig: null,
+    wheelMode: "config",
+    preferredLanguage: "en",
+    t: (key: string) => key,
+    openWheelCreateDialog,
+    closeWheelInspector: vi.fn()
+  };
+
+  renderWithApp(WheelInspector, {
+    props: { ctx: context },
+    global: {
+      provide: { gameCtx: context },
+      stubs: {
+        WheelTierCard: { template: "<div />" },
+        WheelSessionPanel: { template: "<div />" },
+        WheelHistoryPanel: { template: "<div />" },
+        BracketBattleBuilder: { template: "<div />" }
+      }
+    }
+  });
+
+  expect(screen.getByText("wheelInspectorEmptyState")).toBeVisible();
+  await fireEvent.click(screen.getByRole("button", { name: "wheelCreateGameTitle" }));
+  expect(openWheelCreateDialog).toHaveBeenCalledOnce();
+});
+
+test("mobile Config stage shows direct New game and Builder entry points", async () => {
+  const openWheelCreateDialog = vi.fn();
+  const openWheelInspector = vi.fn();
+  const context = reactive({
+    ...createGameHostState(),
+    ...createWheelControllerState(),
+    preferredLanguage: "en",
+    t: (key: string) => ({
+      wheelInspectorNewGameAction: "New game",
+      wheelInspectorConfigTitle: "Game Builder"
+    }[key] || key),
+    wheelStageTitle: "Game stage",
+    wheelStageSlotsLabel: "No game configured",
+    wheelStageSpinPriceLabel: "",
+    wheelPresentationToggleTitle: "Toggle presentation",
+    wheelSoundToggleTitle: "Toggle sound",
+    wheelMotionToggleTitle: "Toggle motion",
+    gameSpectatorActionLabel: "Spectators",
+    gameSpectatorSessionStatus: "inactive",
+    gameSpectatorSessionId: "",
+    wheelConfigItems: [],
+    activeWheelConfig: null,
+    activeWheelConfigId: null,
+    wheelDisplayConfig: null,
+    wheelIsCompactLayout: true,
+    wheelMode: "config" as "config" | "live",
+    openWheelCreateDialog,
+    openWheelInspector,
+    openWheelManageDialog: vi.fn(),
+    toggleWheelSound: vi.fn(),
+    toggleWheelReducedMotion: vi.fn(),
+    handleWheelModeChange: vi.fn(),
+    openGameSpectatorDialog: vi.fn()
+  });
+  const controller = createGameController(context as never);
+  const ProvidedWheelStageTopbar = defineComponent({
+    setup() {
+      provide(gameControllerKey, controller);
+      return () => h(WheelStageTopbar);
+    }
+  });
+  renderWithApp(ProvidedWheelStageTopbar);
+
+  expect(screen.getByText("New game")).toBeVisible();
+  expect(screen.getByText("Game Builder")).toBeVisible();
+  const mobileEntryActions = document.querySelector(".wheel-stage-mobile-entry-actions");
+  expect(mobileEntryActions).not.toBeNull();
+  await fireEvent.click(within(mobileEntryActions as HTMLElement).getByRole("button", { name: "New game" }));
+  await fireEvent.click(screen.getByRole("button", { name: "Game Builder" }));
+  expect(openWheelCreateDialog).toHaveBeenCalledOnce();
+  expect(openWheelInspector).toHaveBeenCalledWith("config");
+
+  context.wheelMode = "live";
+  await nextTick();
+  expect(screen.getByRole("button", { name: "Game Builder" })).toBeVisible();
+  await fireEvent.click(screen.getByRole("button", { name: "Game Builder" }));
+  expect(openWheelInspector).toHaveBeenCalledTimes(2);
+  expect(openWheelInspector).toHaveBeenLastCalledWith("config");
 });

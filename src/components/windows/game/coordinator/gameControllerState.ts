@@ -179,6 +179,7 @@ type GameControllerFactoryCommands = Pick<
   | "endGameSpectatorMode" | "copyGameSpectatorLink" | "openGameSpectatorPage"
   | "closeGameSpectatorDialog" | "publishGameSpectatorSessionSnapshot"
   | "getSinglesItemsForTier" | "getTierInventoryMeta" | "isBoundLotSingles" | "removeTier"
+  | "openWheelInspector"
   | "onTierPacksChange" | "onTierMultiLotChange" | "onTierSinglesChange" | "toggleTierChase"
   | "applyWheelConfig" | "canTierBeChase"
 >;
@@ -198,6 +199,7 @@ export function createGameController(view: GameWindowThis): GameController {
     toggleWheelReducedMotion: (...args) => view.toggleWheelReducedMotion(...args),
     handleWheelModeChange: (...args) => view.handleWheelModeChange(...args),
     openGameSpectatorDialog: (...args) => view.openGameSpectatorDialog(...args),
+    openWheelInspector: (...args) => view.openWheelInspector(...args),
     createNewGameConfig: (...args) => view.createNewGameConfig(...args),
     closeWheelCreateDialog: (...args) => view.closeWheelCreateDialog(...args),
     startGameSpectatorMode: (...args) => view.startGameSpectatorMode(...args),

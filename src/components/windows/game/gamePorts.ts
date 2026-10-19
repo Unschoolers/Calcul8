@@ -42,6 +42,7 @@ export type FocusedGameCommands = {
   onTierPacksChange(tier: WheelTier): void;
   onTierSinglesChange(tier: WheelTier, singlesId: unknown): void;
   openGameSpectatorDialog(): void;
+  openWheelInspector(tab: "config" | "session" | "history"): void;
   openWheelCreateDialog(): void;
   openWheelManageDialog(): void;
   removeTier(index: number): void;
