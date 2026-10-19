@@ -10,6 +10,7 @@ import AppShellTopBar from "./components/shell/AppShellTopBar.vue";
 import LotSelectorOnboardingBlock from "./components/shell/LotSelectorOnboardingBlock.vue";
 import PortfolioReportModal from "./components/shell/PortfolioReportModal.vue";
 import SaleEditorModal from "./components/shell/SaleEditorModal.vue";
+import SalesFabActivator from "./components/shell/SalesFabActivator.vue";
 import SystemConfigurationDialog from "./components/shell/SystemConfigurationDialog.vue";
 import WorkspaceModals from "./components/shell/WorkspaceModals.vue";
 import AppDialogShell from "./components/ui/AppDialogShell.vue";
@@ -94,6 +95,7 @@ export const appOptions = {
     LotSelectorOnboardingBlock,
     PortfolioReportModal,
     SaleEditorModal,
+    SalesFabActivator,
     SystemConfigurationDialog,
     WorkspaceModals,
     ConfigWindow,
