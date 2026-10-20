@@ -2,7 +2,9 @@ import { WebSocket } from "ws";
 import {
   type BroadcastPayload,
   type ClientState,
-  sendJson
+  normalizeMaxBufferedBytes,
+  serializeJson,
+  sendSerialized
 } from "./realtime-helpers.js";
 import { buildWorkspacePresenceRealtimeRoom } from "./workspace-realtime-rooms.js";
 
@@ -10,6 +12,11 @@ export class RealtimeRoomStore {
   private readonly clients = new Map<string, ClientState>();
   private readonly roomMembers = new Map<string, Set<string>>();
   private nextClientId = 1;
+  private readonly maxBufferedBytes: number;
+
+  constructor(options: { maxBufferedBytes?: number } = {}) {
+    this.maxBufferedBytes = normalizeMaxBufferedBytes(options.maxBufferedBytes);
+  }
 
   get clientCount(): number {
     return this.clients.size;
@@ -77,8 +84,12 @@ export class RealtimeRoomStore {
 
   hasActivePresenceSubscription(workspaceId: string, userId: string): boolean {
     const presenceRoom = buildWorkspacePresenceRealtimeRoom(workspaceId);
-    for (const client of this.clients.values()) {
-      if (client.userId === userId && client.rooms.has(presenceRoom) && client.socket.readyState === WebSocket.OPEN) {
+    const members = this.roomMembers.get(presenceRoom);
+    if (!members) return false;
+    for (const clientId of members) {
+      const client = this.clients.get(clientId);
+      if (client?.userId === userId && client.socket.readyState === WebSocket.OPEN
+        && (client.authorizationExpiresAt == null || Date.now() < client.authorizationExpiresAt)) {
         return true;
       }
     }
@@ -90,20 +101,19 @@ export class RealtimeRoomStore {
     if (!members || members.size === 0) return 0;
 
     let delivered = 0;
-    const outgoingPayload = {
+    const outgoingPayload = serializeJson({
       type: "event",
       room: payload.room,
       eventType: payload.eventType,
       data: payload.data
-    };
+    });
 
     for (const clientId of members) {
       const state = this.clients.get(clientId);
       if (!state || state.socket.readyState !== WebSocket.OPEN) continue;
       // Timers may be delayed by a busy event loop; never deliver past expiry.
       if (state.authorizationExpiresAt != null && Date.now() >= state.authorizationExpiresAt) continue;
-      sendJson(state.socket, outgoingPayload);
-      delivered += 1;
+      if (sendSerialized(state.socket, outgoingPayload, this.maxBufferedBytes)) delivered += 1;
     }
 
     return delivered;

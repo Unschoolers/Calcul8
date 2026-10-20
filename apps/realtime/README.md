@@ -92,6 +92,38 @@ It prompts for:
   - optional in local development
   - required in production
   - when set, subscribe requests can include a signed token
+- `REALTIME_MAX_BUFFERED_BYTES`
+  - optional positive integer; default `4194304` (4 MiB)
+  - maximum queued bytes plus the next serialized outbound message per connection
+  - a connection exceeding this limit is terminated; the frontend reconnects and
+    reloads authoritative state through its existing catch-up path
+  - applies to events, presence snapshots and protocol responses; a single
+    message larger than the limit also disconnects its recipient
+
+## Delivery and performance
+
+The publish response's `delivered` count means the event was queued for that
+many eligible sockets. It does not acknowledge receipt or persistence on a
+client. Slow connections are excluded from that count when disconnected.
+
+Room events are serialized once per broadcast. Heartbeat pongs refresh internal
+last-seen timestamps without broadcasting unchanged presence. Joining, leaving
+and losing the last active tab still publish presence snapshots with the latest
+timestamp. Offline presence history remains available for the process lifetime.
+
+Run the repeatable CPU benchmark after building:
+
+```bash
+npm run build --prefix apps/realtime
+node apps/realtime/bench/fanout.mjs
+```
+
+It reports seven samples after warm-up for 100 clients, 200 broadcasts with
+16 KiB ASCII data, and one heartbeat cycle. Socket writes are replaced with
+counting sinks to isolate application fan-out and presence work. These timings
+exclude network, TLS, kernel queues and client processing and are not a
+production capacity estimate. An optional absolute path argument selects a
+different compiled `dist` directory for a revision comparison.
 
 ## Subscribe protocol
 

@@ -33,6 +33,17 @@ export type WorkspacePresenceMember = {
   lastSeenAt?: string;
 };
 
+export const DEFAULT_MAX_BUFFERED_BYTES = 4 * 1024 * 1024;
+
+export type SerializedMessage = { text: string; byteLength: number };
+
+export function normalizeMaxBufferedBytes(value = DEFAULT_MAX_BUFFERED_BYTES): number {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new RangeError("maxBufferedBytes must be a positive safe integer.");
+  }
+  return value;
+}
+
 export class JsonBodyError extends Error {
   readonly statusCode: number;
 
@@ -130,7 +141,32 @@ export function writeJson(response: ServerResponse, statusCode: number, body: un
   response.end(JSON.stringify(body));
 }
 
-export function sendJson(socket: WebSocket, body: unknown): void {
-  if (socket.readyState !== WebSocket.OPEN) return;
-  socket.send(JSON.stringify(body));
+export function serializeJson(body: unknown): SerializedMessage {
+  const text = JSON.stringify(body);
+  return { text, byteLength: Buffer.byteLength(text, "utf8") };
+}
+
+export function sendSerialized(
+  socket: WebSocket,
+  message: SerializedMessage,
+  maxBufferedBytes = DEFAULT_MAX_BUFFERED_BYTES
+): boolean {
+  if (socket.readyState !== WebSocket.OPEN) return false;
+  if (socket.bufferedAmount + message.byteLength > maxBufferedBytes) {
+    // A close frame can sit behind the same backlog. Terminate promptly so the
+    // normal disconnect cleanup runs and the client reconnects with catch-up.
+    socket.terminate();
+    return false;
+  }
+  socket.send(message.text);
+  return true;
+}
+
+export function sendJson(
+  socket: WebSocket,
+  body: unknown,
+  maxBufferedBytes = DEFAULT_MAX_BUFFERED_BYTES
+): boolean {
+  if (socket.readyState !== WebSocket.OPEN) return false;
+  return sendSerialized(socket, serializeJson(body), maxBufferedBytes);
 }

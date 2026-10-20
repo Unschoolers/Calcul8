@@ -11,6 +11,9 @@ const gateway = createRealtimeGateway({
   allowedOrigins: parseAllowedOrigins(process.env.REALTIME_ALLOWED_ORIGIN),
   internalApiKey: normalizeOptionalString(process.env.REALTIME_INTERNAL_API_KEY),
   tokenSecret: normalizeOptionalString(process.env.REALTIME_TOKEN_SECRET),
+  maxBufferedBytes: process.env.REALTIME_MAX_BUFFERED_BYTES == null
+    ? undefined
+    : Number(process.env.REALTIME_MAX_BUFFERED_BYTES),
   allowUnauthenticatedSubscribe: normalizeOptionalBoolean(
     process.env.REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE,
     process.env.NODE_ENV !== "production"

@@ -6,6 +6,7 @@ import {
   JsonBodyError,
   getQueryToken,
   normalizeOptionalString,
+  normalizeMaxBufferedBytes,
   readJsonBody,
   sendJson,
   writeJson
@@ -30,6 +31,7 @@ export type RealtimeGatewayOptions = {
   heartbeatMs?: number;
   maxJsonBodyBytes?: number;
   maxWebSocketPayloadBytes?: number;
+  maxBufferedBytes?: number;
 };
 
 export type RealtimeGateway = {
@@ -46,8 +48,9 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
   const heartbeatMs = options.heartbeatMs ?? 30000;
   const maxJsonBodyBytes = options.maxJsonBodyBytes ?? 1024 * 1024;
   const maxWebSocketPayloadBytes = options.maxWebSocketPayloadBytes ?? 64 * 1024;
+  const maxBufferedBytes = normalizeMaxBufferedBytes(options.maxBufferedBytes);
 
-  const roomStore = new RealtimeRoomStore();
+  const roomStore = new RealtimeRoomStore({ maxBufferedBytes });
   const presenceStore = new WorkspacePresenceStore();
   const authorizationTimers = new Map<ClientState, ReturnType<typeof setTimeout>>();
 
@@ -164,8 +167,9 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
     const queryToken = getQueryToken(request);
 
     socket.on("pong", () => {
+      if (!roomStore.hasClient(state)) return;
       state.isAlive = true;
-      syncClientPresenceState(state);
+      presenceStore.refreshClientLastSeen(state);
     });
 
     socket.on("message", (raw) => {
@@ -180,7 +184,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
       disconnectClient(state);
     });
 
-    sendJson(socket, {
+    sendClientJson(state, {
       type: "connected",
       clientId: state.id
     });
@@ -229,20 +233,20 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
     const message = parseClientMessage(rawMessage);
 
     if (message.type === "ping") {
-      sendJson(state.socket, { type: "pong" });
+      sendClientJson(state, { type: "pong" });
       return;
     }
 
     if (message.type === "unsubscribe") {
       const rooms = message.rooms ?? Array.from(state.rooms);
       for (const room of rooms) roomStore.removeClientFromRoom(state, room);
-      sendJson(state.socket, { type: "unsubscribed", rooms });
+      sendClientJson(state, { type: "unsubscribed", rooms });
       syncClientPresenceState(state);
       return;
     }
 
     if (message.type === "error") {
-      sendJson(state.socket, { type: "error", message: message.message });
+      sendClientJson(state, { type: "error", message: message.message });
       return;
     }
 
@@ -254,7 +258,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
       allowUnauthenticatedSubscribe
     });
     if (!authorizedPayload) {
-      sendJson(state.socket, { type: "error", message: "Subscribe request is not authorized." });
+      sendClientJson(state, { type: "error", message: "Subscribe request is not authorized." });
       return;
     }
 
@@ -277,12 +281,12 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
     }
 
     for (const room of message.rooms) roomStore.addClientToRoom(state, room);
-    sendJson(state.socket, { type: "subscribed", rooms: message.rooms });
+    sendClientJson(state, { type: "subscribed", rooms: message.rooms });
     syncClientPresenceState(state);
     for (const room of message.rooms) {
       const workspaceId = parseWorkspacePresenceRealtimeRoom(room);
       if (workspaceId) {
-        presenceStore.sendWorkspacePresenceSnapshot(state.socket, workspaceId);
+        presenceStore.sendWorkspacePresenceSnapshot(state.socket, workspaceId, maxBufferedBytes);
       }
     }
   }
@@ -293,6 +297,10 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
     if (roomStore.disconnectClient(state)) {
       syncClientPresenceState(state);
     }
+  }
+
+  function sendClientJson(state: ClientState, body: unknown): void {
+    sendJson(state.socket, body, maxBufferedBytes);
   }
 
   function syncClientPresenceState(state: ClientState): void {
