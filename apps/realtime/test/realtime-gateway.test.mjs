@@ -296,6 +296,7 @@ async function startGateway(options) {
   assert(address && typeof address === "object");
 
   return {
+    websocketServer: gateway.websocketServer,
     baseUrl: `http://127.0.0.1:${address.port}`,
     socketUrl: `ws://127.0.0.1:${address.port}/socket`,
     close: () => gateway.close()
@@ -387,6 +388,63 @@ function timeout(label) {
     setTimeout(() => reject(new Error(`Timed out waiting for ${label}.`)), TEST_TIMEOUT_MS);
   });
 }
+
+test("heartbeat pongs do not fan out unchanged presence snapshots", async () => {
+  const context = await startGateway({ tokenSecret: "presence-secret", heartbeatMs: 60000 });
+  try {
+    const socket = await openSocket(context.socketUrl);
+    const online = waitForPresence(socket, "alice", true);
+    subscribe(socket, "workspace:w1:presence", "presence-secret", "alice");
+    await online;
+    // A ping response is an ordered barrier after the initial snapshots.
+    let pong = waitForMessage(socket, message => message.type === "pong");
+    socket.send(JSON.stringify({ type: "ping" }));
+    await pong;
+    const messages = [];
+    socket.on("message", raw => messages.push(JSON.parse(raw.toString())));
+    for (const serverSocket of context.websocketServer.clients) serverSocket.emit("pong");
+    pong = waitForMessage(socket, message => message.type === "pong");
+    socket.send(JSON.stringify({ type: "ping" }));
+    await pong;
+    assert.equal(messages.filter(message => message.eventType === "workspace.presence").length, 0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("backpressure cleanup removes the slow member and announces offline presence", async () => {
+  const context = await startGateway({
+    tokenSecret: "presence-secret", internalApiKey: "key", maxBufferedBytes: 1024
+  });
+  try {
+    const alice = await openSocket(context.socketUrl);
+    const aliceOnline = waitForPresence(alice, "alice", true);
+    subscribe(alice, "workspace:w1:presence", "presence-secret", "alice");
+    await aliceOnline;
+    const aliceServer = [...context.websocketServer.clients][0];
+    const bob = await openSocket(context.socketUrl);
+    const bobOnline = waitForPresence(bob, "bob", true);
+    subscribe(bob, "workspace:w1:presence", "presence-secret", "bob");
+    await bobOnline;
+
+    const closed = once(alice, "close");
+    const aliceOffline = waitForPresence(bob, "alice", false);
+    Object.defineProperty(aliceServer, "bufferedAmount", { configurable: true, get: () => 1024 });
+    const event = waitForMessage(bob, message => message.eventType === "sale.updated");
+    const response = await postJson(context.baseUrl, "/internal/publish", {
+      room: "workspace:w1:presence", eventType: "sale.updated", data: { id: "sale-1" }
+    }, { "x-realtime-key": "key" });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).delivered, 1);
+    await event;
+    await Promise.race([closed, timeout("slow consumer close")]);
+    await aliceOffline;
+    const health = await (await fetch(`${context.baseUrl}/healthz`)).json();
+    assert.equal(health.clients, 1);
+  } finally {
+    await context.close();
+  }
+});
 
 test("expires an open subscription even when the client stays alive or adds another token", async () => {
   const tokenSecret = "expiry-secret";
