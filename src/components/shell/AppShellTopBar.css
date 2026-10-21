@@ -105,9 +105,15 @@
 }
 
 .account-menu-activator {
+  overflow: visible;
   position: relative;
   width: 40px;
   height: 40px;
+}
+
+.account-menu-activator > .v-btn__overlay,
+.account-menu-activator > .v-btn__underlay {
+  border-radius: inherit;
 }
 
 .account-menu-sync-badge {
