@@ -331,6 +331,12 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  portfolioSalesByUserPeriod() {
+    if (this.currentTab === "portfolio") {
+      this.$nextTick(() => this.initPortfolioChart());
+    }
+  },
+
   portfolioLotTypeFilter(newValue) {
     try {
       localStorage.setItem(STORAGE_KEYS.PORTFOLIO_FILTER_TYPE, newValue);

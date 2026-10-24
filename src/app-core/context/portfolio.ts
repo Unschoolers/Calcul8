@@ -95,6 +95,7 @@ type PortfolioState = Pick<
   | "portfolioLotFilterIds"
   | "portfolioLotTypeFilter"
   | "portfolioSalesByUserMetric"
+  | "portfolioSalesByUserPeriod"
   | "preferredLanguage"
   | "sales"
   | "salesByLotId"

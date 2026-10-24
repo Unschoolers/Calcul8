@@ -219,6 +219,18 @@
                             </div>
                           </div>
                           <div class="portfolio-sales-by-user-toolbar">
+                            <v-select
+                              v-model="portfolioSalesByUserPeriod"
+                              :items="portfolioSalesByUserPeriodItems()"
+                              item-title="title"
+                              item-value="value"
+                              :label="portfolioCopy('portfolioSalesByUserPeriodTitle', 'Period')"
+                              variant="outlined"
+                              density="compact"
+                              hide-details="auto"
+                              class="portfolio-sales-by-user-period-select"
+                              :aria-label="portfolioCopy('portfolioSalesByUserPeriodTitle', 'Period')"
+                            ></v-select>
                             <div
                               v-if="hasPortfolioSalesByUserData && !$vuetify?.display?.smAndDown"
                               class="portfolio-sales-by-user-summary"
@@ -245,7 +257,7 @@
                                 variant="tonal"
                                 class="portfolio-sales-by-user-stat-chip"
                               >
-                                {{ portfolioCopy('portfolioSalesByUserTotalLabel', '8-week total') }}
+                                {{ portfolioSalesByUserTotalLabel() }}
                             <app-metric-value
                               class="portfolio-sales-by-user-stat-chip__value"
                               :kind="portfolioSalesByUserMetric === 'count' ? 'count' : 'money'"
@@ -277,7 +289,7 @@
                         </div>
                         <app-empty-state
                           v-if="!hasPortfolioSalesByUserData"
-                          :body="portfolioCopy('portfolioSalesByUserEmptyBody', 'No recorded sales in the last 8 weeks yet.')"
+                          :body="portfolioCopy('portfolioSalesByUserEmptyBody', 'No recorded sales for this period.')"
                           compact
                           state-class="py-6"
                         ></app-empty-state>

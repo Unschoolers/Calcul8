@@ -1,3 +1,6 @@
+import { DEFAULT_PORTFOLIO_SALES_BY_USER_PERIOD, normalizePortfolioSalesByUserPeriod } from "../../../app-core/shared/portfolio-sales-period.ts";
+import type { PortfolioSalesByUserPeriod } from "../../../types/app.ts";
+
 type PortfolioChartView = "breakdown" | "trend" | "sellthrough" | "margin";
 export type PortfolioCopyFn = (key: string, fallback: string) => string;
 
@@ -188,11 +191,18 @@ export function getPortfolioSalesByUserWeekTotals(
     .filter((row) => Math.abs(row.total) > 0.000001);
 }
 
-export function getPortfolioSalesByUserSubtitle(translate?: PortfolioCopyFn): string {
-  return resolvePortfolioCopy(translate, "portfolioSalesByUserSubtitle", "Last 8 weeks by seller");
+export function getPortfolioSalesByUserPeriodLabel(period: unknown, translate?: PortfolioCopyFn): string {
+  const normalized = normalizePortfolioSalesByUserPeriod(period ?? DEFAULT_PORTFOLIO_SALES_BY_USER_PERIOD);
+  if (normalized === "all") return resolvePortfolioCopy(translate, "portfolioSalesByUserPeriodAll", "All history");
+  return resolvePortfolioCopy(translate, `portfolioSalesByUserPeriod${normalized}Weeks`, `${normalized} weeks`);
 }
 
-export function getPortfolioSalesByUserAriaLabel(metric: unknown, translate?: PortfolioCopyFn): string {
+export function getPortfolioSalesByUserSubtitle(translate?: PortfolioCopyFn, period?: PortfolioSalesByUserPeriod): string {
+  const template = resolvePortfolioCopy(translate, "portfolioSalesByUserSubtitle", "{{period}} by seller");
+  return template.replace(/\{\{period\}\}/g, getPortfolioSalesByUserPeriodLabel(period, translate));
+}
+
+export function getPortfolioSalesByUserAriaLabel(metric: unknown, translate?: PortfolioCopyFn, period?: PortfolioSalesByUserPeriod): string {
   const normalized = String(metric || "revenue");
   const metricLabel = normalized === "profit"
     ? resolvePortfolioCopy(translate, "portfolioSalesByUserMetricProfitLabel", "profit")
@@ -202,8 +212,8 @@ export function getPortfolioSalesByUserAriaLabel(metric: unknown, translate?: Po
   return resolvePortfolioCopy(
     translate,
     "portfolioSalesByUserAriaLabel",
-    `Portfolio sales by person chart for the last 8 weeks by ${metricLabel}.`
-  ).replace(/\{\{metricLabel\}\}/g, metricLabel);
+    "Portfolio sales by person chart for {{period}} by {{metricLabel}}."
+  ).replace(/\{\{metricLabel\}\}/g, metricLabel).replace(/\{\{period\}\}/g, getPortfolioSalesByUserPeriodLabel(period, translate));
 }
 
 function normalizePulseRows(rows: PortfolioPulseRow[] | undefined): Array<Required<Pick<PortfolioPulseRow, "lotId" | "lotName" | "salesCount" | "totalProfit" | "soldPacks" | "totalPacks">> & { realizedProfit: number }> {

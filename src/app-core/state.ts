@@ -5,6 +5,7 @@ import { getBrowserLocale, normalizeLanguagePreference } from "./i18n/index.ts";
 import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
+import { DEFAULT_PORTFOLIO_SALES_BY_USER_PERIOD } from "./shared/portfolio-sales-period.ts";
 import { STORAGE_KEYS } from "./storageKeys.ts";
 
 function getLocalTodayDate(): string {
@@ -215,6 +216,7 @@ export function createInitialState(): AppState {
     portfolioDashboardPreset: "all",
     portfolioLotFilterIds: [],
     portfolioSalesByUserMetric: "revenue",
+    portfolioSalesByUserPeriod: DEFAULT_PORTFOLIO_SALES_BY_USER_PERIOD,
 
     // Presets
     lots: [],

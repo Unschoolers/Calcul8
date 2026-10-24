@@ -5,16 +5,18 @@ import {
 } from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
 import { convertAmountToCad, normalizeUsdToCadRate } from "../../domain/currency.ts";
-import { compareLocalizedText, formatLocalizedCompactDate, translateAppMessage } from "../i18n/index.ts";
+import { compareLocalizedText, formatLocalizedCompactDate, formatLocalizedDate, translateAppMessage } from "../i18n/index.ts";
 import type {
   Lot,
   PortfolioSalesByUserDrilldownRow,
+  PortfolioSalesByUserPeriod,
   Sale,
   SaleType,
   WorkspaceMember,
   WorkspaceScopeType
 } from "../../types/app.ts";
 import { getLotType } from "../shared/lot-types.ts";
+import { normalizePortfolioSalesByUserPeriod } from "../shared/portfolio-sales-period.ts";
 
 const PORTFOLIO_SALES_BY_USER_SERIES_COLORS = [
   "#F7B500",
@@ -58,7 +60,13 @@ function parseDateOnly(value: string): Date | null {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime()) ? null : date;
+  return date.getFullYear() === Number(match[1]) && date.getMonth() === Number(match[2]) - 1 && date.getDate() === Number(match[3])
+    ? date
+    : null;
+}
+
+function calendarDayNumber(date: Date): number {
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
 }
 
 function startOfWeek(date: Date): Date {
@@ -68,16 +76,45 @@ function startOfWeek(date: Date): Date {
   return normalized;
 }
 
-function buildWeekBucketsWithLocale(todayDate: string, preferredLanguage: string): PortfolioSalesByUserWeekBucket[] {
+function buildWeekBucketsWithLocale(
+  todayDate: string,
+  preferredLanguage: string,
+  periodValue: unknown,
+  lots: Lot[],
+  salesByLotId: Map<number, Sale[]>,
+  selectedLotIds: Set<number>
+): PortfolioSalesByUserWeekBucket[] {
+  const period = normalizePortfolioSalesByUserPeriod(periodValue);
   const today = parseDateOnly(todayDate) ?? new Date();
   const currentWeekStart = startOfWeek(today);
-
-  return Array.from({ length: 8 }, (_, index) => {
-    const weekStart = new Date(currentWeekStart);
-    weekStart.setDate(currentWeekStart.getDate() - ((7 - index) * 7));
+  let startWeek = new Date(currentWeekStart);
+  if (period === "all") {
+    const currentWeekKey = toDateKey(currentWeekStart);
+    let earliest: Date | null = null;
+    for (const lot of lots) {
+      if (!selectedLotIds.has(lot.id)) continue;
+      for (const sale of salesByLotId.get(lot.id) ?? []) {
+        const saleDate = parseDateOnly(String(sale.date || ""));
+        if (!saleDate || toDateKey(startOfWeek(saleDate)) > currentWeekKey) continue;
+        if (!earliest || saleDate < earliest) earliest = saleDate;
+      }
+    }
+    if (!earliest) return [];
+    startWeek = startOfWeek(earliest);
+  } else {
+    startWeek.setDate(startWeek.getDate() - ((period - 1) * 7));
+  }
+  const weekCount = Math.floor((calendarDayNumber(currentWeekStart) - calendarDayNumber(startWeek)) / 7) + 1;
+  const showYear = startWeek.getFullYear() !== currentWeekStart.getFullYear();
+  return Array.from({ length: weekCount }, (_, index) => {
+    const weekStart = new Date(startWeek);
+    weekStart.setDate(startWeek.getDate() + index * 7);
+    const dateKey = toDateKey(weekStart);
     return {
-      key: toDateKey(weekStart),
-      label: formatLocalizedCompactDate(toDateKey(weekStart), preferredLanguage)
+      key: dateKey,
+      label: showYear
+        ? formatLocalizedDate(dateKey, preferredLanguage, { month: "short", day: "numeric", year: "numeric" })
+        : formatLocalizedCompactDate(dateKey, preferredLanguage)
     };
   });
 }
@@ -182,11 +219,12 @@ export function buildPortfolioSalesByUserChartData(params: {
   scopeType: WorkspaceScopeType;
   workspaceMembers: WorkspaceMember[];
   metric: PortfolioSalesByUserMetric;
+  period?: PortfolioSalesByUserPeriod;
   todayDate: string;
   preferredLanguage?: string;
 }): PortfolioSalesByUserChartData {
   const selectedLotIdSet = new Set(params.selectedLotIds);
-  const weeks = buildWeekBucketsWithLocale(params.todayDate, params.preferredLanguage || "");
+  const weeks = buildWeekBucketsWithLocale(params.todayDate, params.preferredLanguage || "", params.period, params.lots, params.salesByLotId, selectedLotIdSet);
   const weekIndexByKey = new Map(weeks.map((week, index) => [week.key, index] as const));
   const seriesMap = new Map<string, { label: string; values: number[] }>();
 
@@ -269,10 +307,11 @@ export function buildPortfolioSalesByUserDrilldownRows(params: {
   scopeType: WorkspaceScopeType;
   workspaceMembers: WorkspaceMember[];
   todayDate: string;
+  period?: PortfolioSalesByUserPeriod;
   preferredLanguage?: string;
 }): PortfolioSalesByUserDrilldownRow[] {
   const selectedLotIdSet = new Set(params.selectedLotIds);
-  const weeks = buildWeekBucketsWithLocale(params.todayDate, params.preferredLanguage || "");
+  const weeks = buildWeekBucketsWithLocale(params.todayDate, params.preferredLanguage || "", params.period, params.lots, params.salesByLotId, selectedLotIdSet);
   const weekByKey = new Map(weeks.map((week) => [week.key, week] as const));
   const rows: PortfolioSalesByUserDrilldownRow[] = [];
 

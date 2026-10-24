@@ -801,11 +801,21 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
 
   assert.equal(
     portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(revenueVm as never),
-    "Last 8 weeks by seller · CAD"
+    "8 weeks by seller · CAD"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
-    "Portfolio sales by person chart for the last 8 weeks by profit. (CAD)"
+    "Portfolio sales by person chart for 8 weeks by profit. (CAD)"
+  );
+
+  const longPeriodVm = { portfolioSalesByUserMetric: "count", portfolioSalesByUserPeriod: 26 };
+  assert.equal(
+    portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(longPeriodVm as never),
+    "26 weeks by seller"
+  );
+  assert.equal(
+    portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(longPeriodVm as never),
+    "Portfolio sales by person chart for 26 weeks by count."
   );
 });
 
@@ -816,11 +826,11 @@ test("PortfolioWindow exposes the approved French buyer labels and eight-week su
     portfolioSalesByUserMetric: "revenue",
     portfolioCopy: portfolioWindowDefinition.methods.portfolioCopy
   };
-  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(vm as never), "8 dernières semaines · CAD");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(vm as never), "8 semaines · CAD");
   assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(vm as never), "Revenu (CAD)");
   assert.equal(
     portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(vm as never),
-    "Graphique des ventes par utilisateur du portefeuille sur les 8 dernières semaines selon Revenu. (CAD)"
+    "Graphique des ventes par utilisateur du portefeuille pour 8 semaines selon Revenu. (CAD)"
   );
 
   const customerVm = {

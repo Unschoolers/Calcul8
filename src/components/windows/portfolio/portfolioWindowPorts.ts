@@ -27,6 +27,7 @@ export type PortfolioWindowPorts = Pick<
   | "portfolioLotFilterIds"
   | "portfolioLotTypeFilter"
   | "portfolioSalesByUserMetric"
+  | "portfolioSalesByUserPeriod"
   | "salesByLotId"
   | "workspaceMembers"
 > &
@@ -61,6 +62,7 @@ const portfolioWindowPortKeys = [
   "portfolioLotFilterIds",
   "portfolioLotTypeFilter",
   "portfolioSalesByUserMetric",
+  "portfolioSalesByUserPeriod",
   "salesByLotId",
   "workspaceMembers",
   "googleProfilePicture",

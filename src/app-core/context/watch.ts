@@ -108,6 +108,7 @@ export type PortfolioWatchContext = Pick<
   | "portfolioLotFilterIds"
   | "portfolioLotTypeFilter"
   | "portfolioSalesByUserMetric"
+  | "portfolioSalesByUserPeriod"
 > &
   Pick<PortfolioMethodState, "initPortfolioChart"> &
   Pick<AppVueContext, "$nextTick">;
@@ -137,6 +138,7 @@ export interface AppWatchObject {
   chartView(this: SalesChartRefreshContext): void;
   portfolioChartView(this: PortfolioWatchContext): void;
   portfolioSalesByUserMetric(this: PortfolioWatchContext, newValue: PortfolioSalesByUserMetric): void;
+  portfolioSalesByUserPeriod(this: PortfolioWatchContext): void;
   portfolioLotTypeFilter(this: PortfolioWatchContext, newValue: PortfolioLotTypeFilter): void;
   portfolioDashboardPreset(this: PortfolioWatchContext, newValue: PortfolioDashboardPreset): void;
   portfolioLotFilterIds: { handler(this: PortfolioWatchContext): void; deep: true };

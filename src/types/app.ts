@@ -34,6 +34,7 @@ export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "ma
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type PortfolioDashboardPreset = "all" | "active" | "needs_first_sale" | "at_risk" | "profit_winners" | "finished";
 export type PortfolioSalesByUserMetric = "revenue" | "profit" | "count";
+export type PortfolioSalesByUserPeriod = 4 | 8 | 13 | 26 | 52 | "all";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type WorkspaceRealtimeStatus =
   | "idle"
@@ -738,6 +739,7 @@ export interface AppState extends LotSetup {
   portfolioDashboardPreset: PortfolioDashboardPreset;
   portfolioLotFilterIds: number[];
   portfolioSalesByUserMetric: PortfolioSalesByUserMetric;
+  portfolioSalesByUserPeriod: PortfolioSalesByUserPeriod;
   lotSearchQuery: string;
   lots: Lot[];
   singlesPurchases: SinglesPurchaseEntry[];

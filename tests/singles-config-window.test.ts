@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test, vi } from "vitest";
+import { singlesComputed } from "../src/app-core/computed/singles.ts";
 import { translateAppMessage } from "../src/app-core/i18n/index.ts";
 import { singlesConfigWindowDefinition } from "../src/components/windows/singles/SinglesConfigWindow.definition.ts";
 import type { SinglesPurchaseEntry } from "../src/types/app.ts";
+import { createDenseVolumeFixture } from "./helpers/volume-fixtures.ts";
 
 type AnyContext = Record<string, any> & {
   notify: ReturnType<typeof vi.fn>;
@@ -210,6 +212,102 @@ test("mobile pagination renders in batches and can load more rows", () => {
   context.loadMoreMobileRows();
   assert.equal(context.mobileRenderCount, 145);
   assert.equal(getComputed<boolean>("hasMoreMobileSinglesRows").call(context), false);
+});
+
+test("mobile inventory batches traverse every in-stock identity exactly once", () => {
+  const { lot, sales } = createDenseVolumeFixture();
+  const soldById = singlesComputed.singlesSoldCountByPurchaseId.call({ sales } as never);
+  const candidates = lot.singlesPurchases!.filter((entry) => entry.quantity - (soldById[entry.id] ?? 0) > 0);
+  const context = createContext({
+    singlesPurchases: lot.singlesPurchases!,
+    singlesSoldCountByPurchaseId: soldById,
+    showFullySoldSingles: false,
+    visibleSinglesPurchases: candidates,
+    mobileSortedSinglesPurchases: candidates,
+    mobileSortBy: "recent"
+  });
+
+  const seen = new Set<number>();
+  const batchSizes: number[] = [];
+  let completed = false;
+  for (let batchIndex = 0; batchIndex < 17; batchIndex += 1) {
+    const rendered = getComputed<SinglesPurchaseEntry[]>("mobileRenderedSinglesPurchases").call(context);
+    assert.equal(new Set(rendered.map((entry) => entry.id)).size, rendered.length);
+    batchSizes.push(rendered.length - seen.size);
+    for (const entry of rendered) seen.add(entry.id);
+    if (!getComputed<boolean>("hasMoreMobileSinglesRows").call(context)) {
+      completed = true;
+      break;
+    }
+    if (batchIndex === 16) break;
+    context.loadMoreMobileRows();
+  }
+
+  assert.equal(completed, true);
+  assert.equal(getComputed<boolean>("hasMoreMobileSinglesRows").call(context), false);
+  assert.equal(candidates.length, 500);
+  assert.equal(seen.size, 500);
+  assert.deepEqual(batchSizes, [...Array(16).fill(30), 20]);
+  assert.deepEqual([...seen].sort((a, b) => a - b), candidates.map((entry) => entry.id).sort((a, b) => a - b));
+  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 0);
+});
+
+test("sold-stock toggle exposes all 1,000 identities and restores the 500 in-stock candidates", () => {
+  const { lot, sales } = createDenseVolumeFixture();
+  const soldById = singlesComputed.singlesSoldCountByPurchaseId.call({ sales } as never);
+  const context = createContext({
+    singlesPurchases: lot.singlesPurchases!,
+    singlesSoldCountByPurchaseId: soldById,
+    showFullySoldSingles: false
+  });
+  const visible = getComputed<SinglesPurchaseEntry[]>("visibleSinglesPurchases");
+  const inStockIds = lot.singlesPurchases!
+    .filter((entry) => entry.quantity - (soldById[entry.id] ?? 0) > 0)
+    .map((entry) => entry.id);
+
+  const initiallyVisible = visible.call(context);
+  assert.equal(initiallyVisible.length, 500);
+  assert.deepEqual(initiallyVisible.map((entry) => entry.id), inStockIds);
+
+  context.toggleShowFullySoldSingles();
+  const allVisible = visible.call(context);
+  assert.equal(allVisible.length, 1_000);
+  assert.deepEqual(allVisible.map((entry) => entry.id), lot.singlesPurchases!.map((entry) => entry.id));
+
+  context.toggleShowFullySoldSingles();
+  const restoredVisible = visible.call(context);
+  assert.equal(restoredVisible.length, 500);
+  assert.deepEqual(restoredVisible.map((entry) => entry.id), inStockIds);
+});
+
+test("mobile market sorting orders all filtered identities before slicing the first batch", () => {
+  const { lot, sales } = createDenseVolumeFixture();
+  const soldById = singlesComputed.singlesSoldCountByPurchaseId.call({ sales } as never);
+  const candidates = lot.singlesPurchases!.filter((entry) => entry.quantity - (soldById[entry.id] ?? 0) > 0);
+  const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+  const expected = [...candidates].sort((left, right) => {
+    const leftMarketTotal = left.marketValue * left.quantity;
+    const rightMarketTotal = right.marketValue * right.quantity;
+    return rightMarketTotal - leftMarketTotal || collator.compare(left.item, right.item);
+  });
+  const context = createContext({
+    singlesPurchases: lot.singlesPurchases!,
+    singlesSoldCountByPurchaseId: soldById,
+    showFullySoldSingles: false,
+    visibleSinglesPurchases: candidates,
+    mobileSortBy: "marketValue",
+    sellingCurrency: "CAD",
+    exchangeRate: 1,
+    getSinglesEntryMarketValueInSellingCurrency: (entry: SinglesPurchaseEntry) => entry.marketValue
+  });
+  const sorted = getComputed<SinglesPurchaseEntry[]>("mobileSortedSinglesPurchases").call(context);
+  context.mobileSortedSinglesPurchases = sorted;
+  const firstBatch = getComputed<SinglesPurchaseEntry[]>("mobileRenderedSinglesPurchases").call(context);
+
+  assert.equal(sorted.length, 500);
+  assert.deepEqual(sorted.map((entry) => entry.id), expected.map((entry) => entry.id));
+  assert.deepEqual(firstBatch.map((entry) => entry.id), expected.slice(0, 30).map((entry) => entry.id));
+  assert.ok(expected.some((entry, index) => index > 0 && entry.marketValue * entry.quantity === expected[index - 1]!.marketValue * expected[index - 1]!.quantity));
 });
 
 test("mobile sorting cycles through recent, name, and market views", () => {
