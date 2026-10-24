@@ -3,6 +3,7 @@ import { fetchAuthenticatedApiResponse, handleExpiredAuth, isApiNetworkFailure, 
 import { getStoredGoogleIdToken, hasAuthSignal } from "../../../auth/index.ts";
 import { bootstrapServerSessionStatus } from "../auth/auth-session.ts";
 import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
+import { translateAppMessage } from "../../../i18n/index.ts";
 
 export function getGoogleIdToken(): string {
   const token = getStoredGoogleIdToken();
@@ -19,12 +20,12 @@ export async function fetchWorkspaceJson(
 ): Promise<{ ok: true; response: Response; body: unknown } | { ok: false; handled: true }> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
-    app.notify("Workspace features are unavailable until the API base URL is configured.", "warning");
+    app.notify(translateAppMessage(app.preferredLanguage, "workspaceApiUnavailableNotice"), "warning");
     return { ok: false, handled: true };
   }
 
   if (!hasAuthSignal()) {
-    app.notify("Sign in with Google first.", "warning");
+    app.notify(translateAppMessage(app.preferredLanguage, "workspaceSignInRequiredNotice"), "warning");
     return { ok: false, handled: true };
   }
 
@@ -46,7 +47,7 @@ export async function fetchWorkspaceJson(
     if (isApiRequestAborted(error)) return { ok: false, handled: true };
     app.notify(
       isApiNetworkFailure(error)
-        ? "You're offline. Workspace data will refresh when the connection returns."
+        ? translateAppMessage(app.preferredLanguage, "workspaceOfflineNotice")
         : fallbackMessage,
       "warning"
     );
@@ -57,7 +58,7 @@ export async function fetchWorkspaceJson(
     if (init.signal?.aborted) return { ok: false, handled: true };
     if (bootstrapUnavailable) return { ok: false, handled: true };
     handleExpiredAuth(app);
-    app.notify("Your sign-in expired. Please sign in again.", "warning");
+    app.notify(translateAppMessage(app.preferredLanguage, "workspaceSignInExpiredNotice"), "warning");
     return { ok: false, handled: true };
   }
 

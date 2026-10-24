@@ -72,6 +72,33 @@ test("current tier changes do not reprice legacy sale history or imported netRev
   assert.equal(appComputed.totalRevenue.call(context as never), 163);
 });
 
+test("workspace realtime computed copy keeps each status distinct in French and English defaults", () => {
+  const expectedFrench = [
+    ["connected", "Espace partagé connecté en temps réel"],
+    ["connecting", "Connexion en temps réel à l’espace partagé"],
+    ["reconnecting", "Reconnexion en temps réel à l’espace partagé"],
+    ["catching_up", "Rattrapage des données cloud"],
+    ["recovered", "Données de l'espace récupérées"],
+    ["stale", "Les données de l'espace peuvent être en retard"],
+    ["disconnected", "Espace partagé déconnecté du temps réel"],
+    ["idle", "Mises à jour en temps réel inactives"]
+  ] as const;
+  const context = { preferredLanguage: "fr-CA", workspaceRealtimeStatus: "idle" as string };
+
+  const renderedTitles = expectedFrench.map(([status, expectedTitle]) => {
+    context.workspaceRealtimeStatus = status;
+    const title = appComputed.workspaceRealtimeTitle.call(context as never);
+    assert.equal(title, expectedTitle);
+    return title;
+  });
+
+  assert.equal(new Set(renderedTitles).size, expectedFrench.length);
+  context.preferredLanguage = "";
+  context.workspaceRealtimeStatus = "idle";
+  assert.equal(appComputed.workspaceRealtimeTitle.call(context as never), "Workspace realtime idle");
+  assert.equal(appComputed.workspaceRealtimeSubtitle.call(context as never), "Realtime not active for this view");
+});
+
 function withMockedLocalStorage(run: (storage: MockStorage, data: Map<string, string>) => void): void {
   const original = (globalThis as { localStorage?: MockStorage }).localStorage;
   const data = new Map<string, string>();

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { liveWindowDefinition } from "../src/components/windows/live/LiveWindow.definition.ts";
+import { translateAppMessage } from "../src/app-core/i18n/index.ts";
 
 const actionTranslations: Record<string, string> = {
   shellApplyLivePricesAction: "Save live prices",
@@ -102,8 +103,8 @@ test("Live clear action keeps destructive confirmation before clearing selection
   const context = {
     askConfirmation(payload: { title: string; text: string; color?: string }, action: () => void) {
       assert.deepEqual(payload, {
-        title: "Clear live item list?",
-        text: "Remove every item from the live pricing list?",
+        title: "Vider la liste d’items ?",
+        text: "Retirer tous les items de la liste de prix ?",
         color: "error"
       });
       confirmedAction = action;
@@ -111,12 +112,7 @@ test("Live clear action keeps destructive confirmation before clearing selection
     clearLiveSinglesSelection() {
       cleared = true;
     },
-    t(key: string) {
-      return ({
-        shellClearLiveSinglesConfirmBody: "Remove every item from the live pricing list?",
-        shellClearLiveSinglesConfirmTitle: "Clear live item list?"
-      } as Record<string, string>)[key] ?? key;
-    }
+    t(key: string) { return translateAppMessage("fr-CA", key); }
   };
 
   liveWindowDefinition.methods.confirmClearLiveSingles.call(context);

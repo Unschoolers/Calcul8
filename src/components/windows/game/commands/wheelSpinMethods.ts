@@ -1,4 +1,5 @@
 import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { createWheelFairnessProofLink } from "../../../../app-core/methods/wheel-fairness-api.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
@@ -44,6 +45,7 @@ import {
 import { recordWheelSessionSpin } from "../services/wheelSessionState.ts";
 
 type WheelSpinCommandContext = GameSessionStateContext
+  & Partial<Pick<GameCoordinatorContext, "preferredLanguage">>
   & Pick<GameCoordinatorContext,
     | "lots" | "addWheelSaleToLot" | "wheelConfigs" | "activeWheelConfigId"
     | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess" | "whatnotFeeSummary"
@@ -270,7 +272,10 @@ function keepPendingChaseVisible(context: WheelSpinCommandContext): void {
   context.wheelChasePendingTierId = obligation.tierId;
   context.wheelChasePreviewMode = false;
   context.wheelChaseReplacementSinglesId = null;
-  getWheelController(context).wheelInventoryWarning = "This chase is still unresolved because its original wheel source changed during the spin.";
+  getWheelController(context).wheelInventoryWarning = translateAppMessage(
+    context.preferredLanguage,
+    "wheelChaseSourceChangedDuringSpin"
+  );
   context.saveWheelSession();
 }
 
@@ -306,7 +311,7 @@ export const wheelSpinMethods = {
       ctx.font = "16px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("Configure & Apply", cx, cy);
+      ctx.fillText(translateAppMessage(this.preferredLanguage, "wheelCanvasEmptyStateLabel"), cx, cy);
       return;
     }
 
@@ -640,12 +645,12 @@ export const wheelSpinMethods = {
         this.saveWheelSession({ strict: true });
       } catch (error) {
         this.wheelChaseDialog = true;
-        recordController.wheelInventoryWarning = "The chase decision could not be saved. Do not continue until storage is available.";
+        recordController.wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseDecisionSaveFailed");
         throw error;
       }
       if (!isCurrent()) {
         this.wheelChaseDialog = true;
-        recordController.wheelInventoryWarning = "This chase remains unresolved because its original wheel source changed.";
+        recordController.wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseOriginalSourceChanged");
         return;
       }
       return;
@@ -692,7 +697,10 @@ export const wheelSpinMethods = {
                 slotIndex,
                 boundLotId: tier.boundLotId,
                 boundSinglesId: tier.boundSinglesId,
-                warningText: `${slot.name} is no longer available in ${boundLot?.name || "the selected lot"}.`
+                warningText: translateAppMessage(this.preferredLanguage, "wheelItemNoLongerAvailableInLot", {
+                  item: slot.name,
+                  lot: boundLot?.name || translateAppMessage(this.preferredLanguage, "wheelSelectedLotFallback")
+                })
               });
               return;
             }
@@ -704,7 +712,13 @@ export const wheelSpinMethods = {
               slot,
               slotIndex,
               boundLotId: tier.boundLotId,
-              warningText: `${slot.name} needs ${slot.packsCount} item${slot.packsCount === 1 ? "" : "s"}, but only ${remainingPacks} remain in ${boundLot?.name || "the selected lot"}.`
+              warningText: translateAppMessage(this.preferredLanguage, "wheelItemNeedsStock", {
+                item: slot.name,
+                needed: slot.packsCount,
+                neededSuffix: slot.packsCount === 1 ? "" : "s",
+                remaining: remainingPacks,
+                lot: boundLot?.name || translateAppMessage(this.preferredLanguage, "wheelSelectedLotFallback")
+              })
             });
             return;
           }
@@ -718,7 +732,7 @@ export const wheelSpinMethods = {
         }, this, recordController, isCurrent);
         if (!isCurrent()) return;
         if (!sale) {
-          recordController.wheelInventoryWarning = "Sale could not be confirmed. Retry it from pending inventory.";
+          recordController.wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelSaleConfirmationFailed");
           this.saveWheelSession();
           return;
         }

@@ -17,6 +17,8 @@ import { createCapabilityPorts } from "../../../app-core/context/capabilityPorts
  */
 export type PortfolioWindowPorts = Pick<
   AppState,
+  | "activeScopeType"
+  | "activeWorkspaceId"
   | "currentLotId"
   | "googleAvatarLoadFailed"
   | "lots"
@@ -49,6 +51,8 @@ export type PortfolioWindowPorts = Pick<
 export const portfolioWindowPortsKey: InjectionKey<PortfolioWindowPorts> = Symbol("portfolioWindowPorts");
 
 const portfolioWindowPortKeys = [
+  "activeScopeType",
+  "activeWorkspaceId",
   "currentLotId",
   "googleAvatarLoadFailed",
   "lots",

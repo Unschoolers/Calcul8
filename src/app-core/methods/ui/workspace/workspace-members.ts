@@ -3,6 +3,7 @@ import type { WorkspaceMember } from "../../../../types/app.ts";
 import { hasAuthSignal } from "../../../auth/index.ts";
 import { fetchAuthenticatedApiResponse, isApiRequestAborted, resolveApiBaseUrl } from "../common/shared.ts";
 import { parseApiErrorMessage } from "../../../shared/api-error-message.ts";
+import { translateAppMessage } from "../../../i18n/index.ts";
 
 type WorkspaceMembersResponse = {
   memberships?: unknown;
@@ -90,12 +91,12 @@ export async function loadWorkspaceMembers(
   try {
     const baseUrl = resolveApiBaseUrl();
     if (!baseUrl) {
-      app.notify("Workspace features are unavailable until the API base URL is configured.", "warning");
+      app.notify(translateAppMessage(app.preferredLanguage, "workspaceApiUnavailableNotice"), "warning");
       return false;
     }
 
     if (!hasAuthSignal()) {
-      app.notify("Sign in with Google first.", "warning");
+      app.notify(translateAppMessage(app.preferredLanguage, "workspaceSignInRequiredNotice"), "warning");
       return false;
     }
 
@@ -106,13 +107,16 @@ export async function loadWorkspaceMembers(
     });
 
     if (response.status === 401) {
-      app.notify("Your sign-in expired. Please sign in again.", "warning");
+      app.notify(translateAppMessage(app.preferredLanguage, "workspaceSignInExpiredNotice"), "warning");
       return false;
     }
 
     if (!response.ok) {
       try {
-        app.notify(await parseApiErrorMessage(response, "Failed to load workspace members."), "error");
+        app.notify(await parseApiErrorMessage(
+          response,
+          translateAppMessage(app.preferredLanguage, "workspaceMembersLoadFailedNotice")
+        ), "error");
       } catch (error) {
         if (isApiRequestAborted(error)) return false;
         throw error;
@@ -160,27 +164,27 @@ export function getWorkspaceMemberPresenceStateFromApp(
   return "offline";
 }
 
-export function formatRelativeLastSeen(lastSeenAt: string | undefined): string {
+export function formatRelativeLastSeen(lastSeenAt: string | undefined, preferredLanguage = "en"): string {
   const lastSeenAtMs = Date.parse(String(lastSeenAt || ""));
   if (!Number.isFinite(lastSeenAtMs)) {
-    return "Offline";
+    return translateAppMessage(preferredLanguage, "workspacePresenceOffline");
   }
 
   const elapsedMs = Math.max(0, Date.now() - lastSeenAtMs);
   if (elapsedMs < 60_000) {
-    return "Active just now";
+    return translateAppMessage(preferredLanguage, "workspacePresenceJustNow");
   }
 
   const elapsedMinutes = Math.round(elapsedMs / 60_000);
   if (elapsedMinutes < 60) {
-    return `Active ${elapsedMinutes}m ago`;
+    return translateAppMessage(preferredLanguage, "workspacePresenceMinutesAgo", { count: elapsedMinutes });
   }
 
   const elapsedHours = Math.round(elapsedMinutes / 60);
   if (elapsedHours < 24) {
-    return `Active ${elapsedHours}h ago`;
+    return translateAppMessage(preferredLanguage, "workspacePresenceHoursAgo", { count: elapsedHours });
   }
 
   const elapsedDays = Math.round(elapsedHours / 24);
-  return `Active ${elapsedDays}d ago`;
+  return translateAppMessage(preferredLanguage, "workspacePresenceDaysAgo", { count: elapsedDays });
 }

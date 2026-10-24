@@ -11,13 +11,16 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/auth/index.ts", () => ({
+vi.mock("../src/app-core/auth/index.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/app-core/auth/index.ts")>(),
   hasAuthSignal: hasAuthSignalMock
 }));
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
-  resolveApiBaseUrl: resolveApiBaseUrlMock
+  resolveApiBaseUrl: resolveApiBaseUrlMock,
+  isApiNetworkFailure: (error: unknown) => error instanceof TypeError,
+  isApiRequestAborted: (error: unknown) => error instanceof DOMException && error.name === "AbortError"
 }));
 
 import {
@@ -29,6 +32,7 @@ import {
   normalizeWorkspaceMembers,
   upsertWorkspaceMembersState
 } from "../src/app-core/methods/ui/workspace/workspace-members.ts";
+import { uiWorkspaceMembershipMethods } from "../src/app-core/methods/ui/workspace/workspace-membership-methods.ts";
 
 function createApp(overrides: Record<string, unknown> = {}) {
   return {
@@ -136,28 +140,59 @@ test("loadWorkspaceMembers normalizes rows, resets state, and clears loading fla
 });
 
 test("loadWorkspaceMembers surfaces auth and API failures without throwing", async () => {
-  const noApiApp = createApp();
   resolveApiBaseUrlMock.mockReturnValue("");
+  const noApiEnApp = createApp();
+  assert.equal(await loadWorkspaceMembers(noApiEnApp as never), false);
+  assert.deepEqual(noApiEnApp.notify.mock.calls.at(-1), ["Workspace features are unavailable until the API base URL is configured.", "warning"]);
+  const noApiApp = createApp({ preferredLanguage: "fr-CA" });
   assert.equal(await loadWorkspaceMembers(noApiApp as never), false);
-  assert.deepEqual(noApiApp.notify.mock.calls.at(-1), ["Workspace features are unavailable until the API base URL is configured.", "warning"]);
+  assert.deepEqual(noApiApp.notify.mock.calls.at(-1), ["Les fonctions d’espace partagé ne sont pas disponibles tant que l’URL de l’API n’est pas configurée.", "warning"]);
 
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
   hasAuthSignalMock.mockReturnValue(false);
-  const noTokenApp = createApp();
+  const noTokenEnApp = createApp();
+  assert.equal(await loadWorkspaceMembers(noTokenEnApp as never), false);
+  assert.deepEqual(noTokenEnApp.notify.mock.calls.at(-1), ["Sign in with Google first.", "warning"]);
+  const noTokenApp = createApp({ preferredLanguage: "fr-CA" });
   assert.equal(await loadWorkspaceMembers(noTokenApp as never), false);
-  assert.deepEqual(noTokenApp.notify.mock.calls.at(-1), ["Sign in with Google first.", "warning"]);
+  assert.deepEqual(noTokenApp.notify.mock.calls.at(-1), ["Connectez-vous d’abord avec Google.", "warning"]);
 
   hasAuthSignalMock.mockReturnValue(true);
   fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: "nope" }), { status: 401 }));
-  const expiredApp = createApp();
+  const expiredEnApp = createApp();
+  assert.equal(await loadWorkspaceMembers(expiredEnApp as never, { setLoadingState: true }), false);
+  assert.deepEqual(expiredEnApp.notify.mock.calls.at(-1), ["Your sign-in expired. Please sign in again.", "warning"]);
+
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: "nope" }), { status: 401 }));
+  const expiredApp = createApp({ preferredLanguage: "fr-CA" });
   assert.equal(await loadWorkspaceMembers(expiredApp as never, { setLoadingState: true }), false);
   assert.equal(expiredApp.isWorkspaceMembersLoading, false);
-  assert.deepEqual(expiredApp.notify.mock.calls.at(-1), ["Your sign-in expired. Please sign in again.", "warning"]);
+  assert.deepEqual(expiredApp.notify.mock.calls.at(-1), ["Votre session a expiré. Veuillez vous reconnecter.", "warning"]);
 
   fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Members failed" }), { status: 500 }));
   const failedApp = createApp();
   assert.equal(await loadWorkspaceMembers(failedApp as never), false);
   assert.deepEqual(failedApp.notify.mock.calls.at(-1), ["Members failed", "error"]);
+});
+
+test("loadWorkspaceMembers preserves fetch rejection behavior", async () => {
+  fetchAuthenticatedApiResponseMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  await assert.rejects(loadWorkspaceMembers(createApp({ preferredLanguage: "fr-CA" }) as never), TypeError);
+
+  const arbitrary = new Error("unexpected parser failure");
+  fetchAuthenticatedApiResponseMock.mockRejectedValueOnce(arbitrary);
+  await assert.rejects(loadWorkspaceMembers(createApp({ preferredLanguage: "fr-CA" }) as never), (error: unknown) => error === arbitrary);
+});
+
+test("loadWorkspaceMembers silently returns when its response body is aborted", async () => {
+  const response = new Response("{}");
+  Object.defineProperty(response, "json", { value: async () => { throw new DOMException("Aborted", "AbortError"); } });
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(response);
+  const app = createApp({ preferredLanguage: "fr-CA" });
+
+  assert.equal(await loadWorkspaceMembers(app as never, { setLoadingState: true }), false);
+  assert.equal(app.notify.mock.calls.length, 0);
+  assert.equal(app.isWorkspaceMembersLoading, false);
 });
 
 test("getWorkspaceMemberPresenceStateFromApp resolves online, recent, and offline states", () => {
@@ -196,4 +231,25 @@ test("formatRelativeLastSeen renders expected time buckets", () => {
   assert.equal(formatRelativeLastSeen("2026-04-11T11:48:00.000Z"), "Active 12m ago");
   assert.equal(formatRelativeLastSeen("2026-04-11T09:00:00.000Z"), "Active 3h ago");
   assert.equal(formatRelativeLastSeen("2026-04-08T12:00:00.000Z"), "Active 3d ago");
+});
+
+test("workspace presence labels use the preferred language and keep the existing time buckets", () => {
+  const app = createApp({
+    preferredLanguage: "fr-CA",
+    workspaceRealtimeStatus: "connected",
+    workspacePresenceByUserId: {
+      "user-2": { isOnline: false, lastSeenAt: "2026-04-11T11:55:00.000Z" },
+      "user-3": { isOnline: false, lastSeenAt: "2026-04-11T09:00:00.000Z" }
+    }
+  });
+
+  assert.equal(uiWorkspaceMembershipMethods.getWorkspaceMemberPresenceLabel.call(app as never, { userId: "user-1" }), "Hors ligne");
+  assert.equal(uiWorkspaceMembershipMethods.getWorkspaceMemberPresenceLabel.call(app as never, { userId: "user-2" }), "Actif il y a 5 min");
+  assert.equal(uiWorkspaceMembershipMethods.getWorkspaceMemberPresenceLabel.call(app as never, { userId: "user-3" }), "Hors ligne");
+  assert.equal(formatRelativeLastSeen("2026-04-11T09:00:00.000Z", "fr-CA"), "Actif il y a 3 h");
+  assert.equal(formatRelativeLastSeen("2026-04-08T12:00:00.000Z", "fr-CA"), "Actif il y a 3 j");
+
+  const defaultLanguageApp = createApp({ workspaceRealtimeStatus: "connected" });
+  assert.equal(uiWorkspaceMembershipMethods.getWorkspaceMemberPresenceLabel.call(defaultLanguageApp as never, { userId: "user-1" }), "Offline");
+  assert.equal(formatRelativeLastSeen("2026-04-11T11:59:45.000Z", "en"), "Active just now");
 });

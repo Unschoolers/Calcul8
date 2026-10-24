@@ -195,6 +195,87 @@ test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart and 
   assert.equal(config?.data.datasets[0]?.label, "Sold profit margin %");
 });
 
+test("Portfolio chart builders localize labels and tooltip plurals for French while preserving data", () => {
+  const margin = buildPortfolioMarginChartConfig({
+    rows: [makePerformance({ lotName: "Lot vendu" }), makePerformance({ lotId: 2, lotName: "Lot sans vente", salesCount: 0, realizedMarginPercent: null, soldPacks: 0 })],
+    compactMode: false,
+    formatCurrency,
+    preferredLanguage: "fr-CA"
+  });
+  assert.equal(margin?.data.datasets[0]?.label, "Marge sur les ventes (%)");
+  assert.deepEqual(margin?.data.datasets[0]?.data, [33.3333, 0]);
+  const marginTip = margin?.options?.plugins?.tooltip?.callbacks?.label as ((context: { dataIndex?: number }) => string) | undefined;
+  assert.equal(marginTip?.({ dataIndex: 0 }), "Lot vendu: Marge sur les ventes 33.3%");
+  assert.equal(marginTip?.({ dataIndex: 1 }), "Lot sans vente: Marge sur les ventes 0.0% (aucune vente pour le moment)");
+  const marginEnglish = buildPortfolioMarginChartConfig({
+    rows: [makePerformance({ lotName: "Lot without sale", salesCount: 0, realizedMarginPercent: null, soldPacks: 0 })],
+    compactMode: false, formatCurrency, preferredLanguage: "en"
+  })!;
+  assert.equal(marginEnglish.data.datasets[0]?.label, "Sold profit margin %");
+  const marginEnglishTip = marginEnglish.options?.plugins?.tooltip?.callbacks?.label as ((context: { dataIndex?: number }) => string) | undefined;
+  assert.equal(marginEnglishTip?.({ dataIndex: 0 }), "Lot without sale: Sold margin 0.0% (no sales yet)");
+
+  const byUser = (metric: "revenue" | "profit" | "count") => buildPortfolioSalesByUserChartConfig({
+    chartData: { weeks: [{ key: "w", label: "Semaine" }], series: [{ key: "self", label: "Vous", values: [1], total: 1, color: "#fff" }] },
+    metric,
+    compactMode: false,
+    formatCurrency,
+    preferredLanguage: "fr-CA"
+  });
+  for (const metric of ["revenue", "profit", "count"] as const) {
+    const chart = byUser(metric)!;
+    const tooltip = chart.options?.plugins?.tooltip?.callbacks?.label as ((context: { parsed?: { y?: number }; dataset?: { label?: string } }) => string) | undefined;
+    assert.equal(tooltip?.({ parsed: { y: 1 }, dataset: { label: "Vous" } }), metric === "count" ? "Vous: 1 vente" : `Vous: $1.00 CAD`);
+    assert.equal(chart.options?.scales?.y?.title?.text, {
+      revenue: "Revenu net (CAD)",
+      profit: "Profit des ventes réalisées (CAD)",
+      count: "Nombre de ventes"
+    }[metric]);
+  }
+  const count = byUser("count")!;
+  const countTip = count.options?.plugins?.tooltip?.callbacks?.label as ((context: { parsed?: { y?: number }; dataset?: { label?: string } }) => string) | undefined;
+  assert.equal(countTip?.({ parsed: { y: 0 }, dataset: { label: "Vous" } }), "Vous: 0 ventes");
+  assert.equal(countTip?.({ parsed: { y: 2 }, dataset: { label: "Vous" } }), "Vous: 2 ventes");
+  const englishCount = buildPortfolioSalesByUserChartConfig({
+    chartData: { weeks: [{ key: "w", label: "Week" }], series: [{ key: "self", label: "You", values: [2], total: 2, color: "#fff" }] },
+    metric: "count", compactMode: false, formatCurrency
+  })!;
+  assert.equal(englishCount.data.datasets[0]?.label, "You");
+  const englishCountTip = englishCount.options?.plugins?.tooltip?.callbacks?.label as ((context: { parsed?: { y?: number }; dataset?: { label?: string } }) => string) | undefined;
+  assert.equal(englishCountTip?.({ parsed: { y: 0 }, dataset: { label: "You" } }), "You: 0 sales");
+  assert.equal(englishCountTip?.({ parsed: { y: 1 }, dataset: { label: "You" } }), "You: 1 sale");
+  assert.equal(englishCountTip?.({ parsed: { y: 2 }, dataset: { label: "You" } }), "You: 2 sales");
+  const explicitEnglishRevenue = buildPortfolioSalesByUserChartConfig({
+    chartData: { weeks: [{ key: "w", label: "Week" }], series: [{ key: "self", label: "You", values: [1], total: 1, color: "#fff" }] },
+    metric: "revenue", compactMode: false, formatCurrency, preferredLanguage: "en"
+  })!;
+  assert.equal(explicitEnglishRevenue.options?.scales?.y?.title?.text, "Revenue (CAD)");
+
+  const historyParams: Parameters<typeof buildPortfolioHistoryChartConfig>[0] = {
+    portfolioChartView: "trend", filteredLots: [makeLot()], allLotPerformance: [makePerformance()],
+    salesByLotId: new Map([[1700000000000, [makeSale()]]]), formatCurrency, formatDate, todayDate: "2026-02-22"
+  };
+  const history = buildPortfolioHistoryChartConfig({ ...historyParams, preferredLanguage: "fr-CA" })!;
+  assert.equal(history.data.datasets[0]?.label, "Profit/perte cumulé réel");
+  assert.equal(history.data.datasets[1]?.label, "Profit/perte cible");
+  const historyEnglish = buildPortfolioHistoryChartConfig(historyParams)!;
+  const historyExplicitEnglish = buildPortfolioHistoryChartConfig({ ...historyParams, preferredLanguage: "en" })!;
+  assert.equal(historyExplicitEnglish.data.datasets[0]?.label, "Actual cumulative P/L");
+  assert.equal(historyExplicitEnglish.data.datasets[1]?.label, "Target P/L");
+  assert.deepEqual(history.data.datasets.map((dataset) => dataset.data), historyEnglish.data.datasets.map((dataset) => dataset.data));
+  assert.deepEqual(history.data.labels, historyEnglish.data.labels);
+
+  const sellThrough = buildPortfolioHistoryChartConfig({ ...historyParams, portfolioChartView: "sellthrough", preferredLanguage: "fr-CA" })!;
+  assert.equal(sellThrough.data.datasets[0]?.label, "Écoulement (%)");
+  assert.equal(sellThrough.data.datasets[1]?.label, "Tendance");
+  const historyTooltip = sellThrough.options?.plugins?.tooltip?.callbacks?.label as ((context: { parsed?: { y?: number }; dataset?: { label?: string } }) => string) | undefined;
+  assert.equal(historyTooltip?.({ parsed: { y: 12.5 }, dataset: { label: "Tendance" } }), "Tendance: 12.5%");
+  assert.equal(historyTooltip?.({ parsed: { y: 12.5 }, dataset: { label: "Écoulement (%)" } }), "Écoulement: 12.5%");
+  const sellThroughEnglish = buildPortfolioHistoryChartConfig({ ...historyParams, portfolioChartView: "sellthrough" })!;
+  assert.equal(sellThroughEnglish.data.datasets[0]?.label, "Sell-through %");
+  assert.equal(sellThroughEnglish.data.datasets[1]?.label, "Trend");
+});
+
 test("buildPortfolioHistoryChartConfig creates a trend config with target dataset", () => {
   const config = buildPortfolioHistoryChartConfig({
     portfolioChartView: "trend",

@@ -51,7 +51,7 @@
             {{ t('singlesCsvRequiredMappedLabel', { count: requiredCsvMappedCount }) }}
           </v-chip>
           <v-chip size="small" variant="tonal">
-            {{ String(singlesCsvImportMode || '').toUpperCase() }} · {{ singlesCsvImportCurrency }}
+            {{ t(singlesCsvImportMode === 'sync' ? 'singlesCsvImportModeSyncLabel' : singlesCsvImportMode === 'append' ? 'singlesCsvImportModeAppendLabel' : 'singlesCsvImportModeMergeLabel') }} · {{ singlesCsvImportCurrency }}
           </v-chip>
         </div>
       </div>

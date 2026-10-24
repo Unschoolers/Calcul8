@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { parseCloudSnapshot } from "../src/app-core/methods/ui/sync/sync-apply.ts";
 import { createSyncPayload } from "../src/app-core/methods/ui/sync/sync-payload.ts";
+import { normalizeSystemPricingDefaults } from "../src/app-core/shared/system-pricing-defaults.ts";
 import {
   normalizeSyncLivePricingDto,
   parseSyncSnapshotDto,
@@ -103,13 +104,23 @@ test("parseCloudSnapshot does not report malformed entity snapshots as syncable 
 });
 
 test("createSyncPayload emits the same entity contract sent to the API", () => {
+  const systemPricingDefaults = normalizeSystemPricingDefaults({
+    sellingCurrency: "CAD",
+    targetProfitPercent: 20,
+    sellingTaxPercent: 13,
+    sellingShippingPerOrder: 5,
+    feeProfilePreset: "none",
+    spotsPerBox: 10
+  });
+  const personalSale = { id: 101, type: "pack", quantity: 1, packsCount: 1, price: 25, buyerShipping: 0, date: "2026-04-10" };
   const payload = createSyncPayload({
     lots: [{ id: 2, name: "Local lot" }, null],
     currentLotId: "2",
-    sales: [],
-    loadSalesForLotId: () => [],
+    sales: [personalSale],
+    loadSalesForLotId: () => [personalSale],
     wheelConfigs: [{ id: 91, name: "Wheel" }, null],
     activeWheelConfigId: "91",
+    systemPricingDefaults,
     workspaceId: " team-42 "
   } as never, 5);
 
@@ -118,6 +129,7 @@ test("createSyncPayload emits the same entity contract sent to the API", () => {
     salesByLot: {},
     wheelConfigs: [{ id: 91, name: "Wheel" }],
     activeWheelConfigId: 91,
+    systemPricingDefaults,
     clientVersion: 5,
     activeLotId: 2,
     workspaceId: "team-42"

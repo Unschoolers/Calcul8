@@ -182,5 +182,20 @@
   "lotOptionBulkLabel": "Grouped",
   "lotOptionBulkLotsLabel": "Grouped inventory",
   "lotOptionSinglesLabel": "Individual",
-  "lotOptionSinglesLotsLabel": "Individual items"
+  "lotOptionSinglesLotsLabel": "Individual items",
+  "portfolioChartMarginDatasetLabel": "Sold profit margin %",
+  "portfolioChartMarginTooltipLabel": "Sold margin",
+  "portfolioChartMarginNoSalesLabel": "no sales yet",
+  "portfolioSalesByUserChartMetricProfitLabel": "Realized profit",
+  "portfolioSalesByUserChartMetricCountLabel": "Sales count",
+  "portfolioSalesByUserChartMetricRevenueLabel": "Revenue",
+  "portfolioHistorySellThroughDatasetLabel": "Sell-through %",
+  "portfolioHistoryTrendDatasetLabel": "Trend",
+  "portfolioHistoryTrendTooltipLabel": "Trend",
+  "portfolioHistorySellThroughTooltipLabel": "Sell-through",
+  "portfolioHistoryActualCumulativeProfitLabel": "Actual cumulative P/L",
+  "portfolioHistoryTargetProfitLabel": "Target P/L",
+  "portfolioSalesByUserAttributionNote": "Sales are attributed to the last user who modified them.",
+  "portfolioReportTypeBulkLabel": "Bulk",
+  "portfolioReportTypeSinglesLabel": "Singles"
 }

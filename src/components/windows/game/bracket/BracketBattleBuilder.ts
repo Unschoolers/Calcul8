@@ -39,7 +39,10 @@ export const BracketBattleBuilder = {
       return getBracketConfig(this);
     },
     bracketPrizeCatalog(this: BracketBattleBuilderThis): BracketBattlePrizeCatalogItem[] {
-      return buildBracketBattlePrizeCatalog((this.game.view.lots || []) as Lot[]);
+      return buildBracketBattlePrizeCatalog(
+        (this.game.view.lots || []) as Lot[],
+        this.game.view.preferredLanguage ?? ""
+      );
     }
   },
   methods: {

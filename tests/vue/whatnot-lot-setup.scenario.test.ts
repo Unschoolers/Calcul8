@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { defineComponent, h, reactive } from "vue";
 import { expect, test, vi } from "vitest";
 import { createInitialState } from "../../src/app-core/state.ts";
+import { translateAppMessage } from "../../src/app-core/i18n/index.ts";
 import type { WhatnotVertical } from "../../src/types/app.ts";
 import type { WhatnotFeePeriodSummary } from "../../src/app-core/shared/whatnot-fee-summary.ts";
 import { createConfigWindowPorts, configWindowPortsKey } from "../../src/components/windows/config/configWindowPorts.ts";
@@ -87,6 +88,25 @@ test("bulk lot setup keeps live Whatnot fee status while category editing lives 
   await fireEvent.click(details!.querySelector("summary")!);
   expect(details?.open).toBe(true);
   expect(view.container.textContent).toContain("configWhatnotFeeStatusIncomplete");
+});
+
+test("bulk setup renders the qualified French Whatnot estimate from its existing fee fixture", async () => {
+  const state = createState("bulk");
+  state.t = (key: string, params?: Record<string, unknown>) =>
+    translateAppMessage("fr-CA", key as never, params as never);
+  renderWithApp(ConfigWindow, {
+    global: {
+      provide: { [configWindowPortsKey as symbol]: createConfigWindowPorts(state as never) },
+      stubs: { VSelect: SelectStub(), AdminSyncImportCard: true }
+    }
+  });
+
+  const details = document.querySelector(".whatnot-fee-summary__details")!;
+  await fireEvent.click(details.querySelector("summary")!);
+  expect(details.textContent).toContain(
+    "Estimation fondée sur les ventes enregistrées dans WhatFees. Whatnot peut appliquer des ajustements ou inclure des ventes absentes de WhatFees."
+  );
+  expect(document.querySelector(".whatnot-fee-summary")?.textContent).not.toMatch(/\{\{.*?\}\}/);
 });
 
 test("bulk setup explains starter values with no inventory and hides the explanation for a selected lot", async () => {

@@ -249,6 +249,71 @@ test("addWheelSaleToLot uses authoritative persistence for non-current lots too"
   assert.deepEqual(notify.mock.calls.at(-1), ["Wheel sale recorded", "success"]);
 });
 
+test("wheel sale notifications use the preferred French language", async () => {
+  const ctx = createContext({ preferredLanguage: "fr-CA" });
+  saveAuthoritativeSaleMock.mockResolvedValue({
+    id: 77, type: "wheel", quantity: 1, packsCount: 1, price: 10,
+    buyerShipping: 0, date: "2026-03-17", version: 1
+  });
+
+  const saved = await salesMethods.addWheelSaleToLot.call(ctx as never, 1, {
+    id: 77, type: "wheel", quantity: 1, packsCount: 1, price: 10,
+    buyerShipping: 0, date: "2026-03-17"
+  });
+
+  assert.equal(saved, true);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Vente de roue enregistrée", "success"]);
+});
+
+test("wheel cache failure and save failure notices are French", async () => {
+  const cacheFailureContext = createContext({ preferredLanguage: "fr-CA" });
+  saveAuthoritativeSaleMock.mockResolvedValue({
+    id: 77, type: "wheel", quantity: 1, packsCount: 1, price: 10,
+    buyerShipping: 0, date: "2026-03-17", version: 1
+  });
+  cacheAuthoritativeSalesMock.mockImplementation(() => { throw new Error("quota exceeded"); });
+
+  const saved = await salesMethods.addWheelSaleToLot.call(cacheFailureContext as never, 1, {
+    id: 77, type: "wheel", quantity: 1, packsCount: 1, price: 10,
+    buyerShipping: 0, date: "2026-03-17"
+  });
+
+  assert.equal(saved, true);
+  assert.deepEqual(cacheFailureContext.notify.mock.calls, [
+    ["La vente de la roue a été enregistrée dans le cloud, mais le cache local n’a pas pu être mis à jour.", "warning"],
+    ["Vente de roue enregistrée", "success"]
+  ]);
+
+  const failedSaveContext = createContext({ preferredLanguage: "fr-CA" });
+  saveAuthoritativeSaleMock.mockRejectedValue(new Error("network unavailable"));
+  fetchAuthoritativeSalesMock.mockResolvedValue(null);
+
+  const failed = await salesMethods.addWheelSaleToLot.call(failedSaveContext as never, 1, {
+    id: 78, type: "wheel", quantity: 1, packsCount: 1, price: 10,
+    buyerShipping: 0, date: "2026-03-17"
+  });
+
+  assert.equal(failed, false);
+  assert.deepEqual(failedSaveContext.notify.mock.calls, [["Impossible d’enregistrer la vente de roue", "error"]]);
+});
+
+test("Whatnot history-loading notice is localized and prevents saving the draft", async () => {
+  const ctx = createContext({
+    preferredLanguage: "fr-CA",
+    lots: [{ id: 1, feeProfilePreset: "whatnot" }]
+  });
+  fetchAuthoritativeAllSalesMock.mockResolvedValue(null);
+
+  const outcome = await salesMethods.saveSale.call(ctx as never);
+
+  assert.deepEqual(outcome, { kind: "skipped", reason: "not-ready" });
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
+  assert.deepEqual(ctx.notify.mock.calls, [[
+    "L’historique des ventes est en cours de chargement. La vente n’a pas été enregistrée; réessayez lorsque le chargement sera terminé.",
+    "warning"
+  ]]);
+});
+
 test("saveSale ignores duplicate submit clicks while the authoritative save is in flight", async () => {
   let resolveSave: (value: unknown) => void = () => {
     throw new Error("Save resolver was not initialized.");
@@ -388,6 +453,33 @@ test("save conflict does not claim latest sales loaded when recovery fetch is un
   ]);
 });
 
+test("save conflicts keep warning severity and localized save-canceled meaning", async () => {
+  const ctx = createContext({ preferredLanguage: "fr-CA" });
+  saveAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "conflict"));
+  fetchAuthoritativeSalesMock.mockResolvedValue([]);
+
+  await salesMethods.saveSale.call(ctx as never);
+
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "Les ventes ont changé dans le cloud. Les dernières ventes ont été chargées et l’enregistrement a été annulé.",
+    "warning"
+  ]);
+});
+
+test("save conflict with unavailable latest state keeps the French failure warning", async () => {
+  const existing = { id: 11, type: "box", quantity: 1, packsCount: 1, buyerShipping: 0, price: 10, date: "2026-03-08", version: 1 };
+  const ctx = createContext({ preferredLanguage: "fr-CA", editingSale: existing, sales: [existing] });
+  saveAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
+  fetchAuthoritativeSalesMock.mockResolvedValue(null);
+
+  await salesMethods.saveSale.call(ctx as never);
+
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "Les ventes ont changé dans le cloud, mais les dernières ventes n’ont pas pu être chargées. La vente n’a pas été enregistrée.",
+    "warning"
+  ]);
+});
+
 test("save conflict reports cache failure without claiming the cloud mutation succeeded", async () => {
   const existing = { id: 11, type: "box", quantity: 1, packsCount: 1, buyerShipping: 0, price: 10, date: "2026-03-08", version: 1 };
   const ctx = createContext({ editingSale: existing, sales: [existing] });
@@ -404,6 +496,34 @@ test("save conflict reports cache failure without claiming the cloud mutation su
     "Sales changed in the cloud and latest sales were loaded, but the local cache could not be updated. Your save was canceled.",
     "warning"
   ]);
+});
+
+test("cloud-confirmed save with a failed cache reports the confirmed mutation in French", async () => {
+  const ctx = createContext({ preferredLanguage: "fr-CA" });
+  saveAuthoritativeSaleMock.mockResolvedValue({
+    id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0,
+    date: "2026-03-17", version: 1
+  });
+  cacheAuthoritativeSalesMock.mockImplementation(() => { throw new Error("quota exceeded"); });
+
+  const outcome = await salesMethods.saveSale.call(ctx as never);
+
+  assert.equal(outcome.kind, "failure");
+  assert.equal(outcome.kind === "failure" && outcome.cloudConfirmed, true);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "La vente a été enregistrée dans le cloud, mais le cache local n’a pas pu être mis à jour. Actualisez les ventes pour mettre cette vue à jour.",
+    "error"
+  ]);
+});
+
+test("save failure preserves arbitrary external error messages in French mode", async () => {
+  const ctx = createContext({ preferredLanguage: "fr-CA" });
+  saveAuthoritativeSaleMock.mockRejectedValue(new Error("External service says: retry via their portal."));
+
+  const outcome = await salesMethods.saveSale.call(ctx as never);
+
+  assert.equal(outcome.kind, "failure");
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["External service says: retry via their portal.", "error"]);
 });
 
 test("deleteSale reloads latest sales on authoritative conflict", async () => {
@@ -435,14 +555,92 @@ test("deleteSale reloads latest sales on authoritative conflict", async () => {
   deleteAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
   fetchAuthoritativeSalesMock.mockResolvedValue(latestSales);
 
-  await salesMethods.deleteSale.call(ctx as never, 1);
+  const outcome = await salesMethods.deleteSale.call(ctx as never, 1);
 
+  assert.equal(outcome.kind, "conflict");
   assert.equal(deleteAuthoritativeSaleMock.mock.calls.length, 1);
   assert.deepEqual(ctx.sales, latestSales);
   assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
     "Sales changed in the cloud. Latest sales were loaded instead of deleting.",
     "warning"
   ]);
+});
+
+test("delete conflict remains a French warning that the sale was not removed", async () => {
+  const ctx = createContext({
+    preferredLanguage: "fr-CA",
+    sales: [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17", version: 1 }],
+    askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm())
+  });
+  deleteAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
+  fetchAuthoritativeSalesMock.mockResolvedValue([]);
+
+  const outcome = await salesMethods.deleteSale.call(ctx as never, 1);
+
+  assert.equal(outcome.kind, "conflict");
+  assert.equal(deleteAuthoritativeSaleMock.mock.calls.length, 1);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "Les ventes ont changé dans le cloud. Les dernières ventes ont été chargées au lieu de supprimer la vente.",
+    "warning"
+  ]);
+});
+
+test("confirmed delete removes the sale and emits the exact French info notice", async () => {
+  const ctx = createContext({
+    preferredLanguage: "fr-CA",
+    sales: [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17", version: 1 }],
+    askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm())
+  });
+  deleteAuthoritativeSaleMock.mockResolvedValue(undefined);
+
+  const outcome = await salesMethods.deleteSale.call(ctx as never, 1);
+
+  assert.equal(outcome.kind, "confirmed");
+  assert.deepEqual(ctx.sales, []);
+  assert.deepEqual(ctx.notify.mock.calls, [["Vente supprimée.", "info"]]);
+});
+
+test("cloud-confirmed delete with a failed cache preserves the French confirmation and cache error", async () => {
+  const ctx = createContext({
+    preferredLanguage: "fr-CA",
+    sales: [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17", version: 1 }],
+    askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm())
+  });
+  deleteAuthoritativeSaleMock.mockResolvedValue(undefined);
+  cacheAuthoritativeSalesMock.mockImplementation(() => { throw new Error("quota exceeded"); });
+
+  const outcome = await salesMethods.deleteSale.call(ctx as never, 1);
+
+  assert.equal(outcome.kind, "failure");
+  assert.equal(outcome.kind === "failure" && outcome.cloudConfirmed, true);
+  assert.deepEqual(ctx.notify.mock.calls, [[
+    "La vente a été supprimée dans le cloud, mais le cache local n’a pas pu être mis à jour. Actualisez les ventes pour mettre cette vue à jour.",
+    "error"
+  ]]);
+});
+
+test("French delete conflict with a failed cache keeps the sale and reports the cache failure", async () => {
+  const existing = { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17", version: 1 };
+  const latest = [{ ...existing, price: 12, version: 2 }];
+  const ctx = createContext({
+    preferredLanguage: "fr-CA",
+    sales: [existing],
+    askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm())
+  });
+  deleteAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
+  fetchAuthoritativeSalesMock.mockResolvedValue(latest);
+  cacheAuthoritativeSalesMock.mockImplementation(() => { throw new Error("quota exceeded"); });
+
+  const outcome = await salesMethods.deleteSale.call(ctx as never, 1);
+
+  assert.equal(outcome.kind, "conflict");
+  assert.equal(outcome.kind === "conflict" && outcome.latestState, "loaded");
+  assert.equal(outcome.kind === "conflict" && outcome.cacheFailure instanceof Error, true);
+  assert.deepEqual(ctx.sales, latest);
+  assert.deepEqual(ctx.notify.mock.calls, [[
+    "Les ventes ont changé dans le cloud et les dernières ventes ont été chargées, mais le cache local n’a pas pu être mis à jour. La vente n’a pas été supprimée.",
+    "warning"
+  ]]);
 });
 
 test("deleteSale stays stable if realtime already removed the sale before delete resolves", async () => {

@@ -283,15 +283,15 @@ export const singlesRowEditorMethods = {
     );
 
     if (!nextItem) {
-      this.notify("Item is required.", "warning");
+      this.notify(translate(this, "singlesEditorNameRequired", "Item is required."), "warning");
       return;
     }
     if (!Number.isFinite(parsedCost) || parsedCost < 0) {
-      this.notify("Cost is required.", "warning");
+      this.notify(translate(this, "singlesEditorCostInvalid", "Cost is required."), "warning");
       return;
     }
     if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
-      this.notify("Quantity must be 0 or greater.", "warning");
+      this.notify(translate(this, "singlesEditorQuantityInvalid", "Quantity must be 0 or greater."), "warning");
       return;
     }
 
@@ -366,8 +366,8 @@ export const singlesRowEditorMethods = {
   confirmRemoveSinglesPurchaseRow(this: SinglesRowEditorContext, rowId: number, closeEditor = false): void {
     this.askConfirmation(
       {
-        title: "Delete Row?",
-        text: "Remove this singles purchase row?",
+        title: translate(this, "singlesEditorDeleteRowTitle", "Delete Row?"),
+        text: translate(this, "singlesEditorDeleteRowBody", "Remove this singles purchase row?"),
         color: "error"
       },
       () => {

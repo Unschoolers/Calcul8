@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-const { fetchAuthenticatedApiResponseMock, resolveApiBaseUrlMock } = vi.hoisted(() => ({
+const { fetchAuthenticatedApiResponseMock, resolveApiBaseUrlMock, hasAuthSignalMock } = vi.hoisted(() => ({
   fetchAuthenticatedApiResponseMock: vi.fn(),
-  resolveApiBaseUrlMock: vi.fn(() => "https://api.example.test")
+  resolveApiBaseUrlMock: vi.fn(() => "https://api.example.test"),
+  hasAuthSignalMock: vi.fn(() => true)
 }));
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
@@ -17,12 +18,16 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
 vi.mock("../src/app-core/auth/index.ts", async importOriginal => ({
   ...await importOriginal<typeof import("../src/app-core/auth/index.ts")>(),
   getStoredGoogleIdToken: () => "",
-  hasAuthSignal: () => true
+  hasAuthSignal: hasAuthSignalMock
 }));
 
 import { fetchWorkspaceJson } from "../src/app-core/methods/ui/workspace/workspace-api.ts";
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  hasAuthSignalMock.mockReturnValue(true);
+  resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
+});
 
 test("workspace requests use the shared authenticated transport and preserve caller cancellation", async () => {
   const controller = new AbortController();
@@ -69,4 +74,43 @@ test("workspace body cancellation is handled without returning stale success or 
 
   assert.deepEqual(result, { ok: false, handled: true });
   assert.equal(app.notify.mock.calls.length, 0);
+});
+
+test("workspace HTTP boundaries localize controlled fallbacks and preserve arbitrary API errors", async () => {
+  const app = { preferredLanguage: "fr-CA", notify: vi.fn() };
+  resolveApiBaseUrlMock.mockReturnValueOnce("");
+
+  await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Impossible de charger les espaces partagés.");
+  assert.deepEqual(app.notify.mock.calls.at(-1), ["Les fonctions d’espace partagé ne sont pas disponibles tant que l’URL de l’API n’est pas configurée.", "warning"]);
+
+  hasAuthSignalMock.mockReturnValueOnce(false);
+  await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Impossible de charger les espaces partagés.");
+  assert.deepEqual(app.notify.mock.calls.at(-1), ["Connectez-vous d’abord avec Google.", "warning"]);
+
+  fetchAuthenticatedApiResponseMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Impossible de charger les espaces partagés.");
+  assert.deepEqual(app.notify.mock.calls.at(-1), ["Vous êtes hors ligne. Les données de l’espace seront actualisées au retour de la connexion.", "warning"]);
+
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Détail technique du serveur" }), { status: 503 }));
+  await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Impossible de charger les espaces partagés.");
+  assert.deepEqual(app.notify.mock.calls.at(-1), ["Détail technique du serveur", "error"]);
+});
+
+test("workspace HTTP boundaries use the existing English fallback when no language is configured", async () => {
+  const app = { notify: vi.fn() };
+  fetchAuthenticatedApiResponseMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+  await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Failed to load workspaces.");
+
+  assert.deepEqual(app.notify.mock.calls.at(-1), ["You're offline. Workspace data will refresh when the connection returns.", "warning"]);
+});
+
+test("workspace HTTP boundaries localize the controlled expired-session response", async () => {
+  const app = { preferredLanguage: "fr-CA", notify: vi.fn() };
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response("{}", { status: 401 }));
+
+  const result = await fetchWorkspaceJson(app as never, "/workspaces/me", { method: "GET" }, "Impossible de charger les espaces partagés.");
+
+  assert.deepEqual(result, { ok: false, handled: true });
+  assert.deepEqual(app.notify.mock.calls.at(-1), ["Votre session a expiré. Veuillez vous reconnecter.", "warning"]);
 });

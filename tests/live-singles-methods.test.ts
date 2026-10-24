@@ -3,6 +3,7 @@ import { test, vi } from "vitest";
 import { liveSinglesMethods } from "../src/app-core/methods/live-singles.ts";
 
 type LiveSinglesMethodsContext = {
+  preferredLanguage?: string;
   liveSinglesManualIds: number[];
   liveSinglesExternalIds: number[];
   currentLotType: "bulk" | "singles";
@@ -115,4 +116,29 @@ test("resetLiveSinglesPricing handles current tab state and fallback notificatio
   assert.equal(resetSinglesPricing.mock.calls.length, 1);
   assert.equal(resetSinglesPricing.mock.contexts[0], liveWindowVm);
   assert.deepEqual(context.notify.mock.calls[0], ["Live singles prices reset to suggested values", "info"]);
+});
+
+test("live singles notifications use the selected language and default to English", () => {
+  const context = createContext({ preferredLanguage: "fr-CA", effectiveLiveSinglesIds: [1] });
+  context.notify = vi.fn((message: string, tone: string) => { void message; void tone; });
+
+  liveSinglesMethods.applyLiveSinglesSuggestedPricing.call(context as never);
+  assert.deepEqual(context.notify.mock.calls[0], ["Ouvrez la vue de vente en direct pour calculer automatiquement les prix des items", "info"]);
+
+  const applySinglesAutoPricing = vi.fn();
+  context.$refs = { liveWindow: { applySinglesAutoPricing } };
+  context.notify.mockClear();
+  liveSinglesMethods.applyLiveSinglesSuggestedPricing.call(context as never);
+  assert.deepEqual(context.notify.mock.calls[0], ["Prix des items calculés automatiquement selon l’objectif de profit", "success"]);
+
+  context.$refs = {};
+  context.notify.mockClear();
+  liveSinglesMethods.resetLiveSinglesPricing.call(context as never);
+  assert.deepEqual(context.notify.mock.calls[0], ["Ouvrez la vue de vente en direct pour réinitialiser les prix des items", "info"]);
+
+  const resetSinglesPricing = vi.fn();
+  context.$refs = { liveWindow: { resetSinglesPricing } };
+  context.notify.mockClear();
+  liveSinglesMethods.resetLiveSinglesPricing.call(context as never);
+  assert.deepEqual(context.notify.mock.calls[0], ["Prix des items réinitialisés aux valeurs suggérées", "info"]);
 });

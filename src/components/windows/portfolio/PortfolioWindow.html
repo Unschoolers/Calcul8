@@ -342,6 +342,12 @@
                           </div>
                         </template>
                         <div
+                          v-if="activeScopeType === 'workspace' && activeWorkspaceId && hasPortfolioSalesByUserData"
+                          class="portfolio-sales-by-user-attribution-note text-caption mt-2"
+                        >
+                          {{ portfolioCopy('portfolioSalesByUserAttributionNote', 'Sales are attributed to the last user who modified them.') }}
+                        </div>
+                        <div
                           v-if="hasPortfolioSalesByUserData && portfolioSalesByUserWeekTotals().length > 0"
                           class="portfolio-sales-by-user-week-strip"
                         >

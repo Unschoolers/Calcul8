@@ -715,6 +715,29 @@ test("applyLivePricesToDefaults updates saved config when lot is selected", asyn
   assert.equal((noLotCtx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Select a lot first");
 });
 
+test("local live pricing notifications are translated with an optional language preference", async () => {
+  const french = createContext({ preferredLanguage: "fr-CA", currentLotType: "bulk", currentLotId: 101 });
+  configLotMethods.applyLivePricesToDefaults.call(french as never);
+  await Promise.resolve();
+  assert.equal((french.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Prix en direct enregistrés dans la configuration");
+
+  const noLot = createContext({ preferredLanguage: "fr-CA", currentLotType: "bulk", currentLotId: null });
+  configLotMethods.applyLivePricesToDefaults.call(noLot as never);
+  assert.equal((noLot.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Sélectionnez d’abord un lot");
+
+  const english = createContext({ currentLotType: "bulk", currentLotId: 101 });
+  configLotMethods.applyLivePricesToDefaults.call(english as never);
+  await Promise.resolve();
+  assert.equal((english.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Live prices saved to config");
+
+  const reset = createContext({ preferredLanguage: "fr-CA", currentLotType: "bulk", liveSpotPrice: 90 });
+  reset.spotPrice = 8;
+  reset.syncLivePricesFromDefaults = () => configLotMethods.syncLivePricesFromDefaults.call(reset as never);
+  configLotMethods.resetLivePrices.call(reset as never);
+  assert.equal(reset.liveSpotPrice, 8);
+  assert.equal((reset.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Prix en direct réinitialisés aux valeurs par défaut de la configuration");
+});
+
 test("createNewLot uses selected catalog source for new singles lots", () => {
   const ctx = createContext({
     lots: [makeLot({ id: 1, lotType: "bulk" })],

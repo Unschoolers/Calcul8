@@ -4,6 +4,7 @@ import type { WheelControllerState } from "./services/gameSessionState.ts";
 /** Narrow view and commands exposed to focused game components. */
 export type FocusedGameView = {
   t(key: string, params?: Record<string, string | number | null | undefined>): string;
+  preferredLanguage?: string;
   activeWheelConfig: WheelConfig | null;
   activeWheelConfigId: number | null;
   canApplyWheelConfig: boolean;

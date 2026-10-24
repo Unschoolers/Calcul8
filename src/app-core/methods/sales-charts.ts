@@ -206,7 +206,8 @@ export function initPortfolioCharts(context: PortfolioChartContext): void {
     primaryChartConfig = buildPortfolioMarginChartConfig({
       rows: context.allLotPerformance,
       compactMode: isSmallDisplay(context),
-      formatCurrency: (value, decimals) => context.formatCurrency(value, decimals)
+      formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
+      preferredLanguage: context.preferredLanguage
     });
   } else {
     const selectedLotIdSet = new Set(context.portfolioSelectedLotIds);
@@ -221,7 +222,8 @@ export function initPortfolioCharts(context: PortfolioChartContext): void {
       formatDate: (value) => context.formatDate(value),
       formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage),
       compactMode: isSmallDisplay(context),
-      todayDate: getTodayDate()
+      todayDate: getTodayDate(),
+      preferredLanguage: context.preferredLanguage
     });
   }
 
@@ -243,7 +245,8 @@ export function initPortfolioCharts(context: PortfolioChartContext): void {
     chartData: context.portfolioSalesByUserChartData,
     metric: context.portfolioSalesByUserMetric,
     compactMode: isSmallDisplay(context),
-    formatCurrency: (value, decimals) => context.formatCurrency(value, decimals)
+    formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
+    preferredLanguage: context.preferredLanguage
   });
   if (!salesByUserConfig) return;
   context.portfolioSalesByUserChart = new Chart(salesByUserCtx, salesByUserConfig);

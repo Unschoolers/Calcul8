@@ -210,7 +210,7 @@
       ></app-empty-state>
       <div v-if="isDesktopSelectMode" class="singles-bulk-bar singles-desktop-grid">
         <div class="text-caption text-medium-emphasis">
-          {{ selectedDesktopRowIds.length }} selected
+          {{ t(selectedDesktopRowIds.length === 1 ? 'singlesSelectedCountOne' : 'singlesSelectedCountOther', { count: selectedDesktopRowIds.length }) }}
         </div>
         <app-action-button
           action="delete"

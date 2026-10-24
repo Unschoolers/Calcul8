@@ -6,11 +6,12 @@ import {
   type WorkspaceJoinLinkResponse
 } from "./workspace-ui-helpers.ts";
 import { fetchWorkspaceJson } from "./workspace-api.ts";
+import { translateAppMessage } from "../../../i18n/index.ts";
 
 export const uiWorkspaceInviteMethods = {
   async createWorkspaceJoinLink(): Promise<void> {
     if (!this.activeWorkspaceId) {
-      this.notify("Switch to a shared workspace first.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceInviteRequiresSharedNotice"), "warning");
       return;
     }
 
@@ -22,14 +23,14 @@ export const uiWorkspaceInviteMethods = {
         {
           method: "POST"
         },
-        "Failed to create workspace invite link."
+        translateAppMessage(this.preferredLanguage, "workspaceInviteCreateFailedNotice")
       );
       if (!result.ok) return;
 
       const body = result.body as WorkspaceJoinLinkResponse;
       const invitePath = String(body.inviteUrl ?? "").trim();
       if (!invitePath) {
-        this.notify("Invite link was created, but the URL was missing.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceInviteLinkMissingUrlNotice"), "warning");
         return;
       }
 
@@ -39,12 +40,12 @@ export const uiWorkspaceInviteMethods = {
 
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(absoluteInviteUrl);
-        this.notify("Invite link copied", "success");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceInviteCopiedNotice"), "success");
         return;
       }
 
-      window.prompt("Copy workspace invite link", absoluteInviteUrl);
-      this.notify("Invite link ready to share", "success");
+      window.prompt(translateAppMessage(this.preferredLanguage, "workspaceInvitePromptTitle"), absoluteInviteUrl);
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceInviteReadyNotice"), "success");
     } finally {
       this.isCreatingWorkspaceJoinLink = false;
     }
@@ -70,7 +71,7 @@ export const uiWorkspaceInviteMethods = {
             preview: true
           })
         },
-        "Failed to preview the workspace invite."
+        translateAppMessage(this.preferredLanguage, "workspaceInvitePreviewFailedNotice")
       );
       if (!result.ok) {
         resetPendingWorkspaceInviteState(this);
@@ -104,7 +105,7 @@ export const uiWorkspaceInviteMethods = {
             inviteToken: this.pendingWorkspaceInviteToken
           })
         },
-        "Failed to join the workspace."
+        translateAppMessage(this.preferredLanguage, "workspaceJoinFailedNotice")
       );
       if (!result.ok) return;
 
@@ -120,7 +121,9 @@ export const uiWorkspaceInviteMethods = {
         await this.switchToWorkspace(workspaceId);
       }
       this.notify(
-        workspaceName ? `Joined ${workspaceName}` : "Workspace joined",
+        workspaceName
+          ? translateAppMessage(this.preferredLanguage, "workspaceJoinedNotice", { name: workspaceName })
+          : translateAppMessage(this.preferredLanguage, "workspaceJoinCompleteNotice"),
         "success"
       );
     } finally {

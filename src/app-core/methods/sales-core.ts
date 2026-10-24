@@ -7,10 +7,12 @@ import type {
     SinglesSaleLine,
     UiColor
 } from "../../types/app.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 import { toPositiveIntOrNull as normalizeSinglesPurchaseEntryId } from "../shared/singles-normalizers.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
 
 export interface SaleSaveParams {
+  preferredLanguage?: string;
   canUsePaidActions: boolean;
   currentLotType: LotType;
   sales: Sale[];
@@ -165,29 +167,34 @@ export function getSinglesSoldQuantityForEntry(params: {
   }, 0);
 }
 
-function fail(message: string, color: UiColor = "warning"): SaleSaveResult {
+function fail(
+  preferredLanguage: string | undefined,
+  key: Parameters<typeof translateAppMessage>[1],
+  params?: Parameters<typeof translateAppMessage>[2],
+  color: UiColor = "warning"
+): SaleSaveResult {
   return {
     ok: false,
     color,
-    message
+    message: translateAppMessage(preferredLanguage, key, params)
   };
 }
 
 export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
   if (!params.canUsePaidActions) {
-    return fail("Pro access required to add or update sales");
+    return fail(params.preferredLanguage, "saleValidationPaidActions");
   }
 
   const buyerShipping = Number(params.newSale.buyerShipping);
   if (!Number.isFinite(buyerShipping) || buyerShipping < 0) {
-    return fail("Please enter a valid buyer shipping amount (0 or greater)");
+    return fail(params.preferredLanguage, "saleValidationBuyerShipping");
   }
 
   let editingIndex = -1;
   if (params.editingSale) {
     editingIndex = params.sales.findIndex((sale) => sale.id === params.editingSale?.id);
     if (editingIndex === -1) {
-      return fail("Could not find the sale to update. Please try again.", "error");
+      return fail(params.preferredLanguage, "saleValidationEditMissing", undefined, "error");
     }
   }
 
@@ -195,7 +202,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
   const isManualRtyhSale = !isSinglesLot && params.newSale.type === "rtyh";
   const rtyhPacks = Number(params.newSale.packsCount);
   if (isManualRtyhSale && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
-    return fail("Please enter the number of items won for RTYH");
+    return fail(params.preferredLanguage, "saleValidationRtyhItems");
   }
 
   let quantity = Number(params.newSale.quantity);
@@ -206,19 +213,19 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
   if (isSinglesLot) {
     singlesItems = normalizeDraftSinglesSaleLines(params.newSale);
     if (singlesItems.length === 0) {
-      return fail("Please add at least one item sale line.");
+      return fail(params.preferredLanguage, "saleValidationSinglesLineRequired");
     }
 
     for (const line of singlesItems) {
       if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
-        return fail("Items sold must be a whole number.");
+        return fail(params.preferredLanguage, "saleValidationQuantityWholeNumber");
       }
       if (!Number.isFinite(line.price) || line.price < 0) {
-        return fail("Please enter a valid price (0 or greater)");
+        return fail(params.preferredLanguage, "saleValidationPriceNonNegative");
       }
       const lineEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
       if (!lineEntryId && line.price <= 0) {
-        return fail("Please enter a total price when no item is linked.");
+        return fail(params.preferredLanguage, "saleValidationUnlinkedTotalPrice");
       }
     }
 
@@ -227,7 +234,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     for (const [entryId, requestedQuantity] of requestedQuantities.entries()) {
       const selectedEntry = getSinglesPurchaseEntryById(params.singlesPurchases, entryId);
       if (!selectedEntry) {
-        return fail("Selected item is no longer available.");
+        return fail(params.preferredLanguage, "saleValidationItemUnavailable");
       }
       const totalQuantity = normalizeWholeQuantity(selectedEntry.quantity) ?? 0;
       const soldQuantity = getSinglesSoldQuantityForEntry({
@@ -238,7 +245,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
       const releasedQuantity = previousLinkedQuantities.get(entryId) || 0;
       const maxAllowed = Math.max(0, totalQuantity - soldQuantity + releasedQuantity);
       if (requestedQuantity > maxAllowed) {
-        return fail(`Quantity exceeds selected item stock (${maxAllowed} available).`);
+        return fail(params.preferredLanguage, "saleValidationStockExceeded", { count: maxAllowed });
       }
     }
 
@@ -257,10 +264,10 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
       quantity = 1;
     }
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      return fail("Please enter a valid quantity greater than 0");
+      return fail(params.preferredLanguage, "saleValidationQuantityPositive");
     }
     if (!Number.isFinite(price) || price < 0) {
-      return fail("Please enter a valid price (0 or greater)");
+      return fail(params.preferredLanguage, "saleValidationPriceNonNegative");
     }
   }
 

@@ -53,7 +53,7 @@
           <tbody>
             <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
               <td>{{ row.lotName }}</td>
-              <td>{{ row.lotType }}</td>
+              <td>{{ t(row.lotType === 'Singles' ? 'portfolioReportTypeSinglesLabel' : 'portfolioReportTypeBulkLabel') }}</td>
               <td>{{ row.salesCount > 0 ? t('portfolioReportStatusRealizedSales') : t('portfolioLotNoSalesLabel') }}</td>
               <td>{{ row.salesCount }}</td>
               <td>{{ row.soldPacks }}</td>

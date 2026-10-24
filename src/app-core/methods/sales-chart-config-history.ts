@@ -14,6 +14,7 @@ import type {
   Lot,
   Sale
 } from "../../types/app.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
 import {
   buildAdaptiveCurrencyTickCallback,
@@ -99,7 +100,9 @@ export function buildPortfolioHistoryChartConfig(params: {
   formatCompactDate?: FormatDate;
   compactMode?: boolean;
   todayDate?: string;
+  preferredLanguage?: string;
 }): ChartConfiguration<"line", number[], string> | ChartConfiguration<"bar", number[], string> | null {
+  const t = (key: string) => translateAppMessage(params.preferredLanguage || "", key);
   const lotById = new Map(params.filteredLots.map((lot) => [lot.id, lot]));
   const performanceByLotId = new Map(params.allLotPerformance.map((row) => [row.lotId, row]));
   const labels: string[] = [];
@@ -181,7 +184,7 @@ export function buildPortfolioHistoryChartConfig(params: {
         datasets: [
           {
             type: "bar",
-            label: "Sell-through %",
+            label: t("portfolioHistorySellThroughDatasetLabel"),
             data: values,
             backgroundColor: "rgba(247, 181, 0, 0.35)",
             borderColor: "#F7B500",
@@ -194,7 +197,7 @@ export function buildPortfolioHistoryChartConfig(params: {
           },
           {
             type: "line",
-            label: "Trend",
+            label: t("portfolioHistoryTrendDatasetLabel"),
             data: trendValues,
             borderColor: "rgba(247, 181, 0, 0.9)",
             backgroundColor: "transparent",
@@ -223,10 +226,10 @@ export function buildPortfolioHistoryChartConfig(params: {
             callbacks: {
               label: (context: TooltipItem<"bar">) => {
                 const value = Number(context.parsed?.y || 0);
-                if (context.dataset?.label === "Trend") {
-                  return `Trend: ${params.formatCurrency(value, 1)}%`;
+                if (context.dataset?.label === t("portfolioHistoryTrendDatasetLabel")) {
+                  return `${t("portfolioHistoryTrendTooltipLabel")}: ${params.formatCurrency(value, 1)}%`;
                 }
-                return `Sell-through: ${params.formatCurrency(value, 1)}%`;
+                return `${t("portfolioHistorySellThroughTooltipLabel")}: ${params.formatCurrency(value, 1)}%`;
               }
             }
           }
@@ -276,7 +279,7 @@ export function buildPortfolioHistoryChartConfig(params: {
       labels,
       datasets: [
         {
-          label: "Actual cumulative P/L",
+          label: t("portfolioHistoryActualCumulativeProfitLabel"),
           data: values,
           borderColor: pointColors[pointColors.length - 1] ?? interpolatePortfolioTrendColor(0, minValue),
           segment: {
@@ -297,7 +300,7 @@ export function buildPortfolioHistoryChartConfig(params: {
           fill: true
         },
         {
-          label: "Target P/L",
+          label: t("portfolioHistoryTargetProfitLabel"),
           data: targetValues,
           borderColor: "#F7B500",
           backgroundColor: "transparent",

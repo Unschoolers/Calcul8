@@ -1,4 +1,5 @@
 import { nextTick } from "vue";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
@@ -212,9 +213,12 @@ function reopenPendingChaseDecision(context: WheelSessionCommandContext): void {
   context.wheelChaseDialog = true;
   context.wheelChasePreviewMode = false;
   context.wheelChasePendingTierId = obligation.tierId;
-  getWheelController(context).wheelInventoryWarning = isPendingChaseSourceCurrent(context, obligation)
-    ? "Resolve this chase with Keep or Replace before recording it as a batch sale."
-    : "This chase is still unresolved because its original wheel or prize source changed. Restore that source to continue.";
+  getWheelController(context).wheelInventoryWarning = translateAppMessage(
+    context.preferredLanguage,
+    isPendingChaseSourceCurrent(context, obligation)
+      ? "wheelChaseResolveBeforeBatchSale"
+      : "wheelChaseSourceChangedCannotContinue"
+  );
 }
 
 const wheelConfigSessionCodec: GameSessionCodec<StoredWheelConfigSession> = {
@@ -317,7 +321,9 @@ export const wheelSessionMethods = {
         value: e.id,
         image: e.image,
         cardNumber: e.cardNumber,
-        stockLabel: `${getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, e.id)} left`
+        stockLabel: translateAppMessage(this.preferredLanguage, "wheelReplacementStockLabel", {
+          count: getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, e.id)
+        })
       }));
   },
 
@@ -329,7 +335,7 @@ export const wheelSessionMethods = {
     if (selectedId == null || !tierId) {
       if (!isPreview && this.wheelPendingChase) {
         this.wheelChaseDialog = true;
-        getWheelController(this).wheelInventoryWarning = "This chase still needs a keep or replacement decision.";
+        getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseStillNeedsDecision");
         this.saveWheelSession?.();
         return;
       }
@@ -338,7 +344,7 @@ export const wheelSessionMethods = {
     }
     const obligation = this.wheelPendingChase as PendingWheelChaseObligation | null;
     if (!isPreview && obligation && !isPendingChaseSourceCurrent(this, obligation)) {
-      getWheelController(this).wheelInventoryWarning = "This chase is still unresolved because its original wheel source changed. Restore that source to continue.";
+      getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseWheelSourceChangedCannotContinue");
       this.saveWheelSession?.();
       return;
     }
@@ -350,7 +356,7 @@ export const wheelSessionMethods = {
     if (!newLabel) {
       if (!isPreview && obligation) {
         this.wheelChaseDialog = true;
-        getWheelController(this).wheelInventoryWarning = "The selected replacement is no longer available. This chase remains unresolved.";
+        getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseReplacementUnavailable");
         this.saveWheelSession?.();
         return;
       }
@@ -383,7 +389,9 @@ export const wheelSessionMethods = {
       previewController.wheelPreviewSlots = rebuilt.slots;
       previewController.wheelPreviewSpinCounts = rebuilt.counts;
       clearWheelChaseDialogState(this);
-      setWheelResultState(this, previewController, "⭐ Preview chase replaced — " + newLabel, "#f0a500");
+      setWheelResultState(this, previewController, translateAppMessage(this.preferredLanguage, "wheelPreviewChaseReplacedResult", {
+        item: newLabel
+      }), "#f0a500");
       this.saveWheelSession?.();
       nextTick(() => this.drawWheel(
         this.wheelCurrentAngle as number || 0
@@ -396,7 +404,7 @@ export const wheelSessionMethods = {
     if (!config) {
       if (obligation) {
         this.wheelChaseDialog = true;
-        getWheelController(this).wheelInventoryWarning = "This chase is still unresolved because its original wheel source is unavailable.";
+        getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseOriginalSourceUnavailable");
         this.saveWheelSession?.();
         return;
       }
@@ -457,7 +465,9 @@ export const wheelSessionMethods = {
 
     clearWheelChaseDialogState(this);
     this.wheelPendingChase = null;
-    setWheelResultState(this, liveController, "⭐ Chase replaced — " + newLabel, "#f0a500");
+    setWheelResultState(this, liveController, translateAppMessage(this.preferredLanguage, "wheelChaseReplacedResult", {
+      item: newLabel
+    }), "#f0a500");
     this.wheelSessionUpdatedAt = Date.now();
     this.saveWheelSession();
     void broadcastWheelSession(this);
@@ -471,14 +481,14 @@ export const wheelSessionMethods = {
     const tierId = this.wheelChasePendingTierId as string;
     if (!tierId && this.wheelPendingChase) {
       this.wheelChaseDialog = true;
-      getWheelController(this).wheelInventoryWarning = "This chase still needs a keep or replacement decision.";
+      getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseStillNeedsDecision");
       this.saveWheelSession?.();
       return;
     }
     if ((this.wheelChasePreviewMode as boolean) === true) {
       const controller = getWheelController(this);
       clearWheelChaseDialogState(this);
-      setWheelResultState(this, controller, "⭐ Preview keeps chase item", "#f0a500");
+      setWheelResultState(this, controller, translateAppMessage(this.preferredLanguage, "wheelPreviewKeepsChaseResult"), "#f0a500");
       this.saveWheelSession?.();
       return;
     }
@@ -496,7 +506,7 @@ export const wheelSessionMethods = {
     const isCurrent = captureGameOutcomeGuard(this);
     const obligation = this.wheelPendingChase as PendingWheelChaseObligation | null;
     if (obligation && (obligation.tierId !== tierId || !isPendingChaseSourceCurrent(this, obligation))) {
-      getWheelController(this).wheelInventoryWarning = "This chase is still unresolved because its original wheel source changed. Restore that source to continue.";
+      getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseWheelSourceChangedCannotContinue");
       return false;
     }
     const configs = (this.wheelConfigs || []) as WheelConfig[];
@@ -823,7 +833,7 @@ export const wheelSessionMethods = {
         this.wheelChaseReplacementSinglesId = null;
         this.wheelChaseDialog = true;
         if (!isPendingChaseSourceCurrent(this, restoredPendingChase)) {
-          getWheelController(this).wheelInventoryWarning = "This chase is still unresolved because its original wheel source changed. Restore that source to continue.";
+          getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseWheelSourceChangedCannotContinue");
         }
       }
       const controller = getWheelController(this);

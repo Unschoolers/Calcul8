@@ -1,4 +1,5 @@
 import type { LotSetup, SinglesCatalogSource, WhatnotVertical } from "../../types/app.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import type {
   ConfigLotMethodImplementation,
@@ -127,12 +128,12 @@ export const configLotMethods = {
       return;
     }
     this.syncLivePricesFromDefaults();
-    this.notify("Live prices reset to config defaults", "info");
+    this.notify(translateAppMessage(this.preferredLanguage, "liveNoticePricesResetToDefaults"), "info");
   },
 
   applyLivePricesToDefaults(): void {
     if (!this.currentLotId) {
-      this.notify("Select a lot first", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "liveNoticeSelectLotFirst"), "warning");
       return;
     }
 
@@ -145,7 +146,7 @@ export const configLotMethods = {
       this.livePricingHydratedLotId = null;
       this.autoSaveSetup();
       voidBackgroundPersistence(this.pushCloudSync(), "Lot configuration sync");
-      this.notify("Live prices saved to config", "success");
+      this.notify(translateAppMessage(this.preferredLanguage, "liveNoticePricesSavedToConfig"), "success");
       return;
     }
 

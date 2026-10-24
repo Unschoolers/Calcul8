@@ -64,6 +64,10 @@
   margin-bottom: 0.85rem;
 }
 
+.config-system-section .config-system-profit-help {
+  margin-bottom: 0.35rem;
+}
+
 .config-system-dialog .pill-toggle {
   gap: 0.35rem;
   overflow: visible !important;

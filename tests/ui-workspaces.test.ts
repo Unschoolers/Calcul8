@@ -246,6 +246,19 @@ test("refreshWorkspaces handles offline fetch failures without throwing", async 
   );
 });
 
+test("refreshWorkspaces uses the translated controlled offline fallback in French", async () => {
+  const ctx = createContext();
+  ctx.preferredLanguage = "fr-CA";
+  fetchWithRetryMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+  await uiWorkspaceMethods.refreshWorkspaces.call(ctx);
+
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "Vous êtes hors ligne. Les données de l’espace seront actualisées au retour de la connexion.",
+    "warning"
+  ]);
+});
+
 test("switchToWorkspace refreshes once and warns if workspace remains unavailable", async () => {
   const ctx = createContext();
   ctx.availableWorkspaces = [];
@@ -391,6 +404,18 @@ test("createWorkspace warns when called outside personal scope", async () => {
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Create shared workspaces from Personal mode for now.", "warning"]);
 });
 
+test("createWorkspace keeps its personal-scope guard and localizes its warning", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.preferredLanguage = "fr-CA";
+  ctx.newWorkspaceName = "Équipe";
+
+  await uiWorkspaceMethods.createWorkspace.call(ctx);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Créez les espaces partagés depuis le mode Personnel pour le moment.", "warning"]);
+});
+
 test("openWorkspaceMembersModal loads normalized members and opens the modal", async () => {
   const ctx = createContext();
   ctx.activeWorkspaceId = "ws_team";
@@ -492,7 +517,24 @@ test("createWorkspaceJoinLink falls back to prompt when clipboard support is una
   await uiWorkspaceMethods.createWorkspaceJoinLink.call(ctx);
 
   assert.equal((window.prompt as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.deepEqual((window.prompt as ReturnType<typeof vi.fn>).mock.calls[0], ["Copy workspace invite link", "https://app.example.test/?invite=share-token"]);
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Invite link ready to share", "success"]);
+});
+
+test("createWorkspaceJoinLink localizes its clipboard prompt and notification", async () => {
+  const ctx = createContext();
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.preferredLanguage = "fr-CA";
+  vi.stubGlobal("navigator", {});
+  fetchWithRetryMock.mockResolvedValue(createResponse({ inviteUrl: "/?invite=share-token" }));
+
+  await uiWorkspaceMethods.createWorkspaceJoinLink.call(ctx);
+
+  assert.deepEqual((window.prompt as ReturnType<typeof vi.fn>).mock.calls[0], [
+    "Copier le lien d’invitation de l’espace partagé",
+    "https://app.example.test/?invite=share-token"
+  ]);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Lien d’invitation prêt à partager", "success"]);
 });
 
 test("previewPendingWorkspaceInvite opens the join dialog on successful preview", async () => {
@@ -558,6 +600,23 @@ test("acceptPendingWorkspaceInvite refreshes and switches to the joined workspac
   assert.equal(ctx.pendingWorkspaceInviteToken, "");
 });
 
+test("acceptPendingWorkspaceInvite translates the controlled notice and preserves the workspace name", async () => {
+  const ctx = createContext();
+  ctx.preferredLanguage = "fr-CA";
+  ctx.pendingWorkspaceInviteToken = "invite-token";
+  ctx.refreshWorkspaces = vi.fn(async () => undefined);
+  ctx.switchToWorkspace = vi.fn(async () => undefined);
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    workspaceId: "ws_joined",
+    workspaceName: "Équipe de Zoé"
+  }));
+
+  await uiWorkspaceMethods.acceptPendingWorkspaceInvite.call(ctx);
+
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Vous avez rejoint « Équipe de Zoé ».", "success"]);
+  assert.equal(ctx.switchToWorkspace.mock.calls[0]?.[0], "ws_joined");
+});
+
 test("openLeaveWorkspaceModal preloads members for owners and resets confirmation state", async () => {
   const ctx = createContext();
   ctx.activeWorkspaceId = "ws_team";
@@ -591,6 +650,59 @@ test("leaveCurrentWorkspace requires transfer selection for owner with remaining
 
   assert.equal(fetchWithRetryMock.mock.calls.length, 0);
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Choose a new owner before leaving.", "warning"]);
+});
+
+test("leaveCurrentWorkspace localizes the transfer guard without changing it", async () => {
+  const ctx = createContext();
+  ctx.preferredLanguage = "fr-CA";
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.activeScopeType = "workspace";
+  ctx.isCurrentWorkspaceOwner = true;
+  ctx.workspaceMembers = [
+    { userId: "member-1", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-17T00:00:00Z" }
+  ];
+
+  await uiWorkspaceMethods.leaveCurrentWorkspace.call(ctx);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Choisissez un nouveau propriétaire avant de quitter.", "warning"]);
+});
+
+test("leaveCurrentWorkspace keeps the last-member deletion guard in French", async () => {
+  const ctx = createContext();
+  ctx.preferredLanguage = "fr-CA";
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.activeScopeType = "workspace";
+  ctx.isCurrentWorkspaceOwner = true;
+  ctx.workspaceMembers = [
+    { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-17T00:00:00Z" }
+  ];
+
+  await uiWorkspaceMethods.leaveCurrentWorkspace.call(ctx);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "Confirmez la suppression de l’espace partagé avant de quitter en tant que dernier membre.",
+    "warning"
+  ]);
+});
+
+test("a member leaves the shared workspace and returns to Personal in French", async () => {
+  const ctx = createContext();
+  ctx.preferredLanguage = "fr-CA";
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.activeScopeType = "workspace";
+  ctx.isCurrentWorkspaceOwner = false;
+  ctx.refreshWorkspaces = vi.fn(async () => undefined);
+  fetchWithRetryMock.mockResolvedValue(createResponse({}));
+
+  await uiWorkspaceMethods.leaveCurrentWorkspace.call(ctx);
+
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  assert.deepEqual(JSON.parse(String(requestInit.body)), {});
+  assert.equal(ctx.activeScopeType, "personal");
+  assert.equal(ctx.activeWorkspaceId, null);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Espace partagé quitté", "success"]);
 });
 
 test("leaveCurrentWorkspace transfers ownership, refreshes, and returns to personal scope", async () => {

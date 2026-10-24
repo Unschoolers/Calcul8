@@ -24,7 +24,7 @@ import {
   queueAuthoritativeLivePricingSave
 } from "../src/app-core/methods/config-live-pricing.ts";
 
-function createContext() {
+function createContext(preferredLanguage?: string) {
   return {
     activeScopeType: "personal" as "personal" | "workspace",
     activeWorkspaceId: null as string | null,
@@ -37,6 +37,7 @@ function createContext() {
     currentLivePricingVersion: 4,
     livePricingHydrationStatus: "hydrated" as "hydrated" | "idle" | "loading" | "missing" | "error",
     livePricingHydratedLotId: 7 as number | null,
+    preferredLanguage,
     notify: vi.fn()
   };
 }
@@ -227,7 +228,7 @@ test("a conflict retries the original prices once and leaves a newer queued edit
 });
 
 test("an unresolved retry conflict notifies once and keeps the newer edit queued", async () => {
-  const context = createContext();
+  const context = createContext("fr-CA");
   const { SalesLiveApiError } = await import("../src/app-core/methods/entity-api-shared.ts");
   let rejectFirst: (error: unknown) => void = () => { throw new Error("save was not started"); };
   savePricing
@@ -245,7 +246,47 @@ test("an unresolved retry conflict notifies once and keeps the newer edit queued
 
   assert.equal(savePricing.mock.calls.length, 2);
   assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
-    "Live pricing changed in the cloud. Please review and save again.",
+    "Les prix en direct ont changé dans le cloud. Vérifiez-les et enregistrez-les de nouveau.",
     "warning"
   ]);
+});
+
+test("French live pricing retry, recovery failure, generic failure and success notices retain behavior", async () => {
+  const { SalesLiveApiError } = await import("../src/app-core/methods/entity-api-shared.ts");
+  const retryContext = createContext("fr-CA");
+  savePricing
+    .mockRejectedValueOnce(new SalesLiveApiError(409, "conflict"))
+    .mockResolvedValueOnce({ liveSpotPrice: 11, liveBoxPriceSell: 22, livePackPrice: 33, version: 5 });
+  fetchPricing.mockResolvedValue({ liveSpotPrice: 1, liveBoxPriceSell: 2, livePackPrice: 3, version: 5 });
+  queueAuthoritativeLivePricingSave(retryContext, 7);
+  await vi.runAllTimersAsync();
+  assert.deepEqual((retryContext.notify as ReturnType<typeof vi.fn>).mock.calls, [
+    ["Les prix en direct ont changé. Nouvelle tentative d’enregistrement avec la version la plus récente…", "info"],
+    ["Prix en direct enregistrés", "success"]
+  ]);
+
+  const unavailableContext = createContext("fr-CA");
+  savePricing.mockRejectedValueOnce(new SalesLiveApiError(409, "conflict"));
+  fetchPricing.mockRejectedValueOnce(new Error("network details"));
+  queueAuthoritativeLivePricingSave(unavailableContext, 7);
+  await vi.runAllTimersAsync();
+  assert.deepEqual((unavailableContext.notify as ReturnType<typeof vi.fn>).mock.calls, [[
+    "Les prix en direct ont changé dans le cloud. Réessayez l’enregistrement.", "warning"
+  ]]);
+
+  const genericContext = createContext("fr-CA");
+  savePricing.mockRejectedValueOnce(new Error("   "));
+  queueAuthoritativeLivePricingSave(genericContext, 7);
+  await vi.runAllTimersAsync();
+  assert.deepEqual((genericContext.notify as ReturnType<typeof vi.fn>).mock.calls, [[
+    "Impossible d’enregistrer les prix en direct.", "error"
+  ]]);
+
+  const externalContext = createContext("fr-CA");
+  savePricing.mockRejectedValueOnce(new Error("API detail remains external"));
+  queueAuthoritativeLivePricingSave(externalContext, 7);
+  await vi.runAllTimersAsync();
+  assert.deepEqual((externalContext.notify as ReturnType<typeof vi.fn>).mock.calls, [[
+    "API detail remains external", "error"
+  ]]);
 });

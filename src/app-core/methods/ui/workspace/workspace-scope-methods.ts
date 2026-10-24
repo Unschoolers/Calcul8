@@ -28,7 +28,12 @@ export const uiWorkspaceScopeMethods = {
 
     this.isWorkspaceLoading = true;
     try {
-      const result = await fetchWorkspaceJson(this, "/workspaces/me", { method: "GET" }, "Failed to load workspaces.");
+      const result = await fetchWorkspaceJson(
+        this,
+        "/workspaces/me",
+        { method: "GET" },
+        translateAppMessage(this.preferredLanguage, "workspaceLoadWorkspacesFailedNotice")
+      );
       if (!result.ok) return false;
 
       const body = result.body as WorkspaceListResponse;
@@ -71,7 +76,7 @@ export const uiWorkspaceScopeMethods = {
     if (!this.availableWorkspaces.some((workspace) => workspace.workspaceId === normalizedWorkspaceId)) {
       await this.refreshWorkspaces();
       if (!this.availableWorkspaces.some((workspace) => workspace.workspaceId === normalizedWorkspaceId)) {
-        this.notify("That workspace is no longer available.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceSwitchUnavailableNotice"), "warning");
         return;
       }
     }
@@ -91,24 +96,24 @@ export const uiWorkspaceScopeMethods = {
   async createWorkspace(): Promise<void> {
     if (this.isCreatingWorkspace) return;
     if (this.activeScopeType !== "personal") {
-      this.notify("Create shared workspaces from Personal mode for now.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceCreateFromPersonalNotice"), "warning");
       return;
     }
 
     const name = String(this.newWorkspaceName || "").trim();
     if (!name) {
-      this.notify("Enter a workspace name.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceCreateNameRequiredNotice"), "warning");
       return;
     }
 
     const baseUrl = resolveApiBaseUrl();
     const googleIdToken = getGoogleIdToken();
     if (!baseUrl) {
-      this.notify("Workspace features are unavailable until the API base URL is configured.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceApiUnavailableNotice"), "warning");
       return;
     }
     if (!googleIdToken) {
-      this.notify("Sign in with Google first.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceSignInRequiredNotice"), "warning");
       return;
     }
 
@@ -148,7 +153,7 @@ export const uiWorkspaceScopeMethods = {
       const createBody = createResult.body as WorkspaceCreateResponse;
       const createdWorkspaceId = String(createBody.workspace?.workspaceId ?? "").trim();
       if (!createdWorkspaceId) {
-        this.notify("Workspace created, but no workspace ID was returned.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceCreateNoIdNotice"), "warning");
         return;
       }
       const seedPayload = createSyncPayload({
@@ -178,15 +183,15 @@ export const uiWorkspaceScopeMethods = {
       );
 
       if (seedOutcome.kind === "failure" && !seedOutcome.cloudConfirmed) {
-        this.notify("Workspace was created, but its data could not be synchronized. Retry the workspace setup before continuing.", "error");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceSeedFailedNotice"), "error");
         return;
       }
       if (seedOutcome.kind === "skipped") {
-        this.notify("Workspace was created, but its data sync was skipped. Check your connection and retry.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceSeedSkippedNotice"), "warning");
         return;
       }
       if (seedOutcome.kind === "failure" && seedOutcome.cloudConfirmed) {
-        this.notify("Workspace data reached the cloud, but local sync metadata could not be saved.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceSeedMetadataNotSavedNotice"), "warning");
       }
 
       this.newWorkspaceName = "";
@@ -196,7 +201,7 @@ export const uiWorkspaceScopeMethods = {
 
       await this.refreshWorkspaces();
       await this.switchToWorkspace(createdWorkspaceId);
-      this.notify("Workspace created", "success");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceCreatedNotice"), "success");
     } finally {
       this.isCreatingWorkspace = false;
     }
@@ -217,6 +222,6 @@ export const uiWorkspaceScopeMethods = {
       await applyWorkspaceScope(this, "personal", null, { getGoogleIdToken });
     }
 
-    this.notify("You no longer have access to that workspace. Switched back to Personal.", "warning");
+    this.notify(translateAppMessage(this.preferredLanguage, "workspaceAccessLostNotice"), "warning");
   }
 } satisfies WorkspaceScopeMethodImplementation;

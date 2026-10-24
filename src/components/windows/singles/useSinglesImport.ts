@@ -8,11 +8,21 @@ type SinglesCsvPreviewColumn = {
   label: string;
 };
 
+function translatedImportLabel(
+  context: { t?: (key: string, params?: Record<string, string | number | null | undefined>) => string },
+  key: string,
+  fallback: string,
+  params?: Record<string, string | number | null | undefined>
+): string {
+  const value = typeof context.t === "function" ? context.t(key, params) : "";
+  return value && value !== key ? value : fallback;
+}
+
 export const singlesImportComputed = {
   csvColumnOptions(this: any): Array<{ title: string; value: number }> {
     const headers = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders : [];
     return headers.map((header: string, index: number) => ({
-      title: String(header || `Column ${index + 1}`),
+      title: String(header || translatedImportLabel(this, "singlesCsvColumnLabel", `Column ${index + 1}`, { count: index + 1 })),
       value: index
     }));
   },
@@ -51,13 +61,13 @@ export const singlesImportComputed = {
       labelsByColumn[columnIndex].push(label);
     };
 
-    addLabel(this.singlesCsvMapItem, "Item");
-    addLabel(this.singlesCsvMapQuantity, "Qty");
-    addLabel(this.singlesCsvMapCost, "Cost");
-    addLabel(this.singlesCsvMapCardNumber, "Number");
-    addLabel(this.singlesCsvMapCondition, "Condition");
-    addLabel(this.singlesCsvMapLanguage, "Language");
-    addLabel(this.singlesCsvMapMarketValue, "Market");
+    addLabel(this.singlesCsvMapItem, translatedImportLabel(this, "singlesTableItemLabel", "Item"));
+    addLabel(this.singlesCsvMapQuantity, translatedImportLabel(this, "singlesEditorQuantityLabel", "Qty"));
+    addLabel(this.singlesCsvMapCost, translatedImportLabel(this, "singlesEditorCostLabel", "Cost"));
+    addLabel(this.singlesCsvMapCardNumber, translatedImportLabel(this, "singlesTableNumberLabel", "Number"));
+    addLabel(this.singlesCsvMapCondition, translatedImportLabel(this, "singlesTableConditionLabel", "Condition"));
+    addLabel(this.singlesCsvMapLanguage, translatedImportLabel(this, "singlesTableLanguageLabel", "Language"));
+    addLabel(this.singlesCsvMapMarketValue, translatedImportLabel(this, "singlesCsvMarketValueLabel", "Market"));
 
     return Object.fromEntries(
       Object.entries(labelsByColumn).map(([columnIndex, labels]) => [Number(columnIndex), labels.join(" + ")])
@@ -70,7 +80,7 @@ export const singlesImportComputed = {
     const mappedColumns: SinglesCsvPreviewColumn[] = headers
       .map((header: string, index: number) => ({
         index,
-        header: String(header || `Column ${index + 1}`),
+        header: String(header || translatedImportLabel(this, "singlesCsvColumnLabel", `Column ${index + 1}`, { count: index + 1 })),
         label: String(labelsByColumn?.[index] || "")
       }))
       .filter((column: SinglesCsvPreviewColumn) => column.label.length > 0);
@@ -81,7 +91,7 @@ export const singlesImportComputed = {
 
     return headers.slice(0, 6).map((header: string, index: number) => ({
       index,
-      header: String(header || `Column ${index + 1}`),
+      header: String(header || translatedImportLabel(this, "singlesCsvColumnLabel", `Column ${index + 1}`, { count: index + 1 })),
       label: "CSV"
     }));
   }
