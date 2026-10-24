@@ -68,13 +68,24 @@ function mountInventory(width: number, language: "en" | "fr-CA") {
   return { ...view, card, source, targets, lot, sales, secondLot, emptyLot };
 }
 
+function mobileRows(card: HTMLElement): NodeListOf<Element> {
+  return card.querySelectorAll(".singles-mobile-list .singles-mobile-item[role='listitem']");
+}
+
+function mobileLoadMoreButton(card: HTMLElement): HTMLButtonElement {
+  const button = card.querySelector<HTMLButtonElement>(".singles-mobile-load-more button");
+  if (!button) throw new Error("Expected the rendered mobile load-more button");
+  return button;
+}
+
 test("mobile inventory restarts at 30 rows when returning from a smaller or empty lot", async () => {
   vuetify.theme.change("unionArenaDark");
   const { card, source, lot, sales, secondLot, emptyLot } = mountInventory(390, "fr-CA");
-  const scope = within(card);
-  await fireEvent.click(scope.getByRole("button", { name: /Charger 30 de plus/ }));
-  await fireEvent.click(scope.getByRole("button", { name: /Charger 30 de plus/ }));
-  expect(scope.getAllByRole("listitem")).toHaveLength(90);
+  const initialLoadMore = mobileLoadMoreButton(card);
+  expect(initialLoadMore).toHaveAccessibleName(/Charger 30 de plus/);
+  await fireEvent.click(initialLoadMore);
+  await fireEvent.click(mobileLoadMoreButton(card));
+  expect(mobileRows(card)).toHaveLength(90);
 
   source.currentLotId = secondLot.id;
   source.singlesPurchases = secondLot.singlesPurchases!;
@@ -84,23 +95,23 @@ test("mobile inventory restarts at 30 rows when returning from a smaller or empt
   source.singlesPurchases = lot.singlesPurchases!;
   source.sales = sales;
   await nextTick();
-  expect(scope.getAllByRole("listitem")).toHaveLength(30);
+  expect(mobileRows(card)).toHaveLength(30);
   expect(card.querySelector(".singles-mobile-list .singles-mobile-number")).toHaveTextContent("V-0501");
   expect(card.querySelector(".singles-mobile-toolbar-count")).toHaveTextContent("500 items");
 
-  await fireEvent.click(scope.getByRole("button", { name: /Charger 30 de plus/ }));
-  await fireEvent.click(scope.getByRole("button", { name: /Charger 30 de plus/ }));
-  expect(scope.getAllByRole("listitem")).toHaveLength(90);
+  await fireEvent.click(mobileLoadMoreButton(card));
+  await fireEvent.click(mobileLoadMoreButton(card));
+  expect(mobileRows(card)).toHaveLength(90);
   source.currentLotId = emptyLot.id;
   source.singlesPurchases = [];
   source.sales = [];
   await nextTick();
-  expect(scope.queryAllByRole("listitem")).toHaveLength(0);
+  expect(mobileRows(card)).toHaveLength(0);
   source.currentLotId = lot.id;
   source.singlesPurchases = lot.singlesPurchases!;
   source.sales = sales;
   await nextTick();
-  expect(scope.getAllByRole("listitem")).toHaveLength(30);
+  expect(mobileRows(card)).toHaveLength(30);
   expect(card.querySelector(".singles-mobile-list .singles-mobile-number")).toHaveTextContent("V-0501");
   expect(source.singlesPurchases).toHaveLength(1_000);
 });
