@@ -170,7 +170,8 @@
 
                       <sales-history-ledger
                         v-else
-                        :sales="salesHistoryOverviewSales || []"
+                        :sales="sortedSales || []"
+                        :render-limit="salesHistoryExpanded ? salesHistoryRenderCount : 5"
                         :has-more="hasMoreSalesHistory"
                         :next-batch-count="nextSalesHistoryBatchCount"
                         :remaining-count="remainingSalesHistoryCount"

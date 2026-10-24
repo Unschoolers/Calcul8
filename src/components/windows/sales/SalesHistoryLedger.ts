@@ -52,6 +52,10 @@ export const SalesHistoryLedgerDefinition = defineComponent({
       type: Array as PropType<Sale[]>,
       required: true
     },
+    renderLimit: {
+      type: Number as PropType<number | undefined>,
+      default: undefined
+    },
     hasMore: {
       type: Boolean,
       default: false
@@ -132,6 +136,11 @@ export const SalesHistoryLedgerDefinition = defineComponent({
         }
         return ((Number(leftValue) || 0) - (Number(rightValue) || 0)) * direction;
       });
+    },
+    renderedLedgerSales(this: { sortedLedgerSales: Sale[]; renderLimit?: number }): Sale[] {
+      if (this.renderLimit === undefined) return this.sortedLedgerSales;
+      const limit = Number.isFinite(this.renderLimit) ? Math.max(0, Math.floor(this.renderLimit)) : 0;
+      return this.sortedLedgerSales.slice(0, limit);
     },
     sortOptions(this: { t: (key: string) => string }): Array<{ key: SortKey; label: string }> {
       return [

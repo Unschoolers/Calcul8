@@ -258,6 +258,21 @@ test("SalesHistoryLedger sorts through one stateful ledger model", () => {
   assert.deepEqual(byCustomer.map((sale) => sale.id), [3, 2, 1]);
 });
 
+test("SalesHistoryLedger render limit is optional and preserves an explicit zero", () => {
+  const sortedLedgerSales = [makeSale({ id: 2 }), makeSale({ id: 1 })];
+  const vm = { sortedLedgerSales };
+
+  assert.deepEqual(SalesHistoryLedgerDefinition.computed!.renderedLedgerSales.call(vm as never), sortedLedgerSales);
+  assert.deepEqual(SalesHistoryLedgerDefinition.computed!.renderedLedgerSales.call({
+    ...vm,
+    renderLimit: 0
+  } as never), []);
+  assert.deepEqual(SalesHistoryLedgerDefinition.computed!.renderedLedgerSales.call({
+    ...vm,
+    renderLimit: 1.9
+  } as never), [sortedLedgerSales[0]]);
+});
+
 test("SalesHistoryLedger presents compact unit type and price columns", () => {
   const t = (key: string) => ({
     salesHistoryTypeSinglesLabel: "Items",

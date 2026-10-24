@@ -182,7 +182,7 @@ test("Portfolio copy uses approved buyer and realized-sales terms with bilingual
     portfolioCustomerSearchLabel: "Rechercher des acheteurs",
     portfolioCustomerColumnLastLabel: "Dernier achat",
     portfolioSalesByUserTitle: "Ventes par utilisateur",
-    portfolioSalesByUserSubtitle: "8 dernières semaines",
+    portfolioSalesByUserSubtitle: "{{period}}",
     portfolioSalesByUserDrilldownSellerLabel: "Dernière modification par",
     portfolioSalesByUserDrilldownQuantityLabel: "Quantité",
     portfolioSalesByUserMetricCountLabel: "Nombre de ventes",

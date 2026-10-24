@@ -98,6 +98,16 @@ test("watch.currentTab triggers a sales freshness check when entering the portfo
   vi.useRealTimers();
 });
 
+test("watch.portfolioSalesByUserPeriod refreshes only while the portfolio tab is active", () => {
+  const active = createContext({ currentTab: "portfolio" });
+  appWatch.portfolioSalesByUserPeriod.call(active as never);
+  assert.equal((active.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  const inactive = createContext({ currentTab: "sales" });
+  appWatch.portfolioSalesByUserPeriod.call(inactive as never);
+  assert.equal((inactive.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+});
+
 test("watch.currentTab cancels a deferred sales freshness check when leaving the tab before it settles", () => {
   const context = createContext();
   vi.useFakeTimers();

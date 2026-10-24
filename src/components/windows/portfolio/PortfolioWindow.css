@@ -289,6 +289,12 @@
   gap: 0.6rem;
 }
 
+.portfolio-sales-by-user-period-select {
+  flex: 0 1 200px;
+  min-width: 170px;
+  max-width: 220px;
+}
+
 .portfolio-sales-by-user-summary {
   display: inline-flex;
   align-items: center;
@@ -607,6 +613,12 @@
     justify-content: flex-start;
     width: 100%;
     margin-top: 0.15rem;
+  }
+
+  .portfolio-sales-by-user-period-select {
+    flex: 1 1 140px;
+    min-width: min(100%, 140px);
+    max-width: 100%;
   }
 
   .portfolio-sales-by-user-toggle {

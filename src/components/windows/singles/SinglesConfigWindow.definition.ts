@@ -136,6 +136,7 @@ export type SinglesWindowThis = {
 
   // ===== Root window context bridge =====
   singlesPurchases: SinglesPurchaseEntry[];
+  currentLotId: number | null;
   singlesSoldCountByPurchaseId: Record<number, number>;
   sellingCurrency: CurrencyCode;
   currency: CurrencyCode;
@@ -831,6 +832,10 @@ export const singlesConfigWindowDefinition = {
     ...singlesRowEditorMethods
   },
   watch: {
+    currentLotId(this: SinglesWindowThis): void {
+      this.resetMobileRowsPagination();
+      this.resetDesktopRowsScroll();
+    },
     visibleSinglesPurchases(this: SinglesWindowThis): void {
       const maxCount = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases.length

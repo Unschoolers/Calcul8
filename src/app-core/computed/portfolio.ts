@@ -6,6 +6,7 @@ import {
   calculateSaleProfit
 } from "../../domain/calculations.ts";
 import type { Lot, LotPerformanceSummary, PortfolioDashboardPreset, Sale } from "../../types/app.ts";
+import { getTodayDate } from "../../shared/lot-dates.ts";
 import type { PortfolioComputedObject } from "../context/portfolio.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType } from "../shared/lot-types.ts";
@@ -285,7 +286,8 @@ export const portfolioComputed: PortfolioComputedObject = {
       scopeType: this.activeScopeType,
       workspaceMembers: this.workspaceMembers,
       metric: this.portfolioSalesByUserMetric,
-      todayDate: new Date().toISOString().slice(0, 10),
+      period: this.portfolioSalesByUserPeriod,
+      todayDate: getTodayDate(),
       preferredLanguage: this.preferredLanguage
     });
   },
@@ -303,7 +305,8 @@ export const portfolioComputed: PortfolioComputedObject = {
       selectedLotIds,
       scopeType: this.activeScopeType,
       workspaceMembers: this.workspaceMembers,
-      todayDate: new Date().toISOString().slice(0, 10),
+      todayDate: getTodayDate(),
+      period: this.portfolioSalesByUserPeriod,
       preferredLanguage: this.preferredLanguage
     });
   },

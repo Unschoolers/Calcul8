@@ -46,6 +46,7 @@ import {
   getPortfolioSalesByUserBestWeek,
   getPortfolioSalesByUserLeader,
   getPortfolioSalesByUserMetricLabel,
+  getPortfolioSalesByUserPeriodLabel,
   getPortfolioSalesByUserSubtitle,
   getPortfolioSalesByUserTotalValue,
   getPortfolioSalesByUserWeekTotals,
@@ -60,6 +61,8 @@ import type {
   PortfolioPulseTone
 } from "./PortfolioPulsePanel.ts";
 import type { Lot, PortfolioSalesByUserDrilldownRow, Sale } from "../../../types/app.ts";
+import { PORTFOLIO_SALES_BY_USER_PERIODS } from "../../../app-core/shared/portfolio-sales-period.ts";
+import type { PortfolioSalesByUserPeriod } from "../../../types/app.ts";
 
 type PortfolioPerformanceView = "lots" | "customers";
 
@@ -116,6 +119,12 @@ function resolvePortfolioDashboardPresetDisplayItem(item: unknown): PortfolioDas
 
 export const PortfolioWindowDefinition = {
   name: "PortfolioWindow",
+  watch: {
+    portfolioSalesByUserPeriod(this: Record<string, unknown>): void {
+      const close = this.closePortfolioSalesByUserWeekDrilldown as (() => void) | undefined;
+      close?.call(this);
+    }
+  },
   data() {
     return {
       portfolioLotFilterSearchQuery: "",
@@ -904,6 +913,15 @@ export const PortfolioWindowDefinition = {
       return this.portfolioSalesByUserMetric === "count" ? label : `${label} (CAD)`;
     },
 
+    portfolioSalesByUserPeriodItems(this: Record<string, unknown>): Array<{ title: string; value: PortfolioSalesByUserPeriod }> {
+      const translate = getPortfolioCopy(this);
+      return PORTFOLIO_SALES_BY_USER_PERIODS.map((value) => ({ title: getPortfolioSalesByUserPeriodLabel(value, translate), value }));
+    },
+
+    portfolioSalesByUserTotalLabel(this: Record<string, unknown>): string {
+      return getPortfolioCopy(this)("portfolioSalesByUserTotalLabel", "Period total");
+    },
+
     portfolioSalesByUserTotalValue(this: Record<string, unknown>): number {
       const series = getPortfolioSalesByUserChartSeries<{ total?: number }>(this.portfolioSalesByUserChartData);
       return getPortfolioSalesByUserTotalValue(series);
@@ -1027,14 +1045,15 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioSalesByUserSubtitle(this: Record<string, unknown>): string {
-      const subtitle = getPortfolioSalesByUserSubtitle(getPortfolioCopy(this));
+      const subtitle = getPortfolioSalesByUserSubtitle(getPortfolioCopy(this), this.portfolioSalesByUserPeriod as PortfolioSalesByUserPeriod);
       return this.portfolioSalesByUserMetric === "count" ? subtitle : `${subtitle} · CAD`;
     },
 
     portfolioSalesByUserAriaLabel(this: Record<string, unknown>): string {
       const label = getPortfolioSalesByUserAriaLabel(
         this.portfolioSalesByUserMetric,
-        getPortfolioCopy(this)
+        getPortfolioCopy(this),
+        this.portfolioSalesByUserPeriod as PortfolioSalesByUserPeriod
       );
       return this.portfolioSalesByUserMetric === "count" ? label : `${label} (CAD)`;
     },
