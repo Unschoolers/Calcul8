@@ -226,6 +226,22 @@ test("saveSalesToStorage reports storage errors to the user", () => {
   consoleSpy.mockRestore();
 });
 
+test("saveSalesToStorage localizes app-controlled storage errors", () => {
+  vi.stubGlobal("localStorage", {
+    setItem: vi.fn(() => { throw new Error("quota"); })
+  });
+  const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const ctx = createContext({ preferredLanguage: "fr-CA" });
+
+  salesMethods.saveSalesToStorage.call(ctx as never);
+
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Impossible d’enregistrer les ventes. L’espace de stockage est peut-être plein.",
+    "error"
+  ]);
+  consoleSpy.mockRestore();
+});
+
 test("loadSalesFromStorage handles loader errors and resets sales", () => {
   const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const ctx = createContext({
@@ -330,6 +346,19 @@ test("saveSale shows error when editing sale is missing from list", () => {
 
   salesMethods.saveSale.call(ctx as never);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], "Could not find the sale to update. Please try again.");
+});
+
+test("saveSale shows the French validation message without changing the invalid draft", () => {
+  const price = -1;
+  const ctx = createContext({
+    preferredLanguage: "fr-CA",
+    newSale: { type: "pack", quantity: 1, packsCount: null, price, buyerShipping: 0, date: "2026-02-21" }
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], "Entrez un prix égal ou supérieur à 0.");
+  assert.equal((ctx.newSale as { price: number }).price, price);
 });
 
 test("saveSale persists customer data with the sale", () => {

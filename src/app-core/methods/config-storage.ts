@@ -16,6 +16,7 @@ import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from 
 import { getRootLotSales, replaceRootLotSales, resetRootSalesState } from "../shared/sales-root-state.ts";
 import { clearStorageReadFailure, markStorageReadFailure } from "../storage-health.ts";
 import { resolveEffectiveWhatnotFeeInput } from "../shared/whatnot-fee-summary.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -217,7 +218,7 @@ export const configStorageMethods = {
       );
     } catch (error) {
       console.error("Failed to save lots:", error);
-      this.notify("Could not save lots. Storage may be full.", "error");
+      this.notify(translateAppMessage(this.preferredLanguage, "configSaveLotsFailedNotice"), "error");
     }
   },
 
@@ -250,7 +251,7 @@ export const configStorageMethods = {
       );
     } catch (error) {
       console.error("Failed to save system pricing defaults:", error);
-      this.notify("Could not save system configuration. Storage may be full.", "error");
+      this.notify(translateAppMessage(this.preferredLanguage, "configSaveSystemDefaultsFailedNotice"), "error");
     }
   }
 } satisfies ConfigStorageMethodImplementation;

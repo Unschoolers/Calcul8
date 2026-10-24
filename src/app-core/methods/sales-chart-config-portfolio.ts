@@ -1,4 +1,5 @@
 import type { ChartConfiguration } from "chart.js";
+import { translateAppMessage } from "../i18n/index.ts";
 import type {
   PortfolioSalesByUserChartData,
   PortfolioSalesByUserMetric
@@ -67,7 +68,9 @@ export function buildPortfolioMarginChartConfig(params: {
   rows: PortfolioPerformanceRow[];
   compactMode: boolean;
   formatCurrency: FormatCurrency;
+  preferredLanguage?: string;
 }): ChartConfiguration<"bar", number[], string> | null {
+  const t = (key: string) => translateAppMessage(params.preferredLanguage || "", key);
   const rows = params.rows
     .filter((row) => row.salesCount > 0 || row.totalPacks > 0)
     .map((row) => ({
@@ -85,7 +88,7 @@ export function buildPortfolioMarginChartConfig(params: {
       labels: rows.map((row) => row.lotName),
       datasets: [
         {
-          label: "Sold profit margin %",
+          label: t("portfolioChartMarginDatasetLabel"),
           data: rows.map((row) => row.realizedMarginPercent),
           backgroundColor: "rgba(247, 181, 0, 0.35)",
           borderColor: "#F7B500",
@@ -109,9 +112,9 @@ export function buildPortfolioMarginChartConfig(params: {
               if (!row) return String(context.formattedValue ?? "");
               const marginValue = `${params.formatCurrency(row.realizedMarginPercent, 1)}%`;
               if (row.salesCount <= 0) {
-                return `${row.lotName}: Sold margin ${marginValue} (no sales yet)`;
+                return `${row.lotName}: ${t("portfolioChartMarginTooltipLabel")} ${marginValue} (${t("portfolioChartMarginNoSalesLabel")})`;
               }
-              return `${row.lotName}: Sold margin ${marginValue}`;
+              return `${row.lotName}: ${t("portfolioChartMarginTooltipLabel")} ${marginValue}`;
             }
           }
         }
@@ -144,14 +147,16 @@ export function buildPortfolioSalesByUserChartConfig(params: {
   metric: PortfolioSalesByUserMetric;
   compactMode: boolean;
   formatCurrency: FormatCurrency;
+  preferredLanguage?: string;
 }): ChartConfiguration<"line", number[], string> | null {
   if (!Array.isArray(params.chartData?.series) || params.chartData.series.length === 0) return null;
 
+  const t = (key: string) => translateAppMessage(params.preferredLanguage || "", key);
   const metricLabel = params.metric === "profit"
-    ? "Realized profit"
+    ? t("portfolioSalesByUserChartMetricProfitLabel")
     : params.metric === "count"
-      ? "Sales count"
-      : "Revenue";
+      ? t("portfolioSalesByUserChartMetricCountLabel")
+      : t("portfolioSalesByUserChartMetricRevenueLabel");
 
   return {
     type: "line",
@@ -192,7 +197,8 @@ export function buildPortfolioSalesByUserChartConfig(params: {
             label: (context) => {
               const value = Number(context.parsed?.y || 0);
               if (params.metric === "count") {
-                return `${context.dataset.label}: ${params.formatCurrency(value, 0)} sale${value === 1 ? "" : "s"}`;
+                const countLabel = value === 1 ? t("portfolioSalesCountLabel") : t("portfolioSalesPluralCountLabel");
+                return `${context.dataset.label}: ${params.formatCurrency(value, 0)} ${countLabel}`;
               }
               return `${context.dataset.label}: $${params.formatCurrency(value)} CAD`;
             }

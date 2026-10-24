@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
+import { calculateDefaultSellingPrices } from "../src/domain/calculations-fees.ts";
+import { calculateSinglesTargetLinePrice } from "../src/app-core/methods/sales-draft.ts";
 
 test("ConfigWindow keeps the main setup focused on cost basis and purchasing only", () => {
   const template = readFileSync("src/components/windows/config/ConfigWindow.html", "utf8");
@@ -110,7 +112,19 @@ test("ConfigWindow provides system defaults and lot override copy in both locale
     "configSystemDefaultsTitle",
     "configLotOverridesTitle",
     "configUseSystemPricingDefaultsLabel",
-    "configSystemConfigurationHelp"
+    "configSystemConfigurationHelp",
+    "configSystemDefaultsHelp",
+    "configSystemDefaultsAutosaveHelp",
+    "configLotOverridesHelp",
+    "configLotUsingSystemDefaultsHelp",
+    "configAverageBuyerShippingLabel",
+    "configSellingTaxesLabel",
+    "configRtyhSpotsPerBoxLabel",
+    "configFeeProfileWhatnot",
+    "configTargetProfitBoxesHelp",
+    "configTargetProfitItemsHelp",
+    "configSaveLotsFailedNotice",
+    "configSaveSystemDefaultsFailedNotice"
   ]) {
     assert.equal(typeof en[key], "string", `missing English config copy for ${key}`);
     assert.ok(en[key]?.trim(), `empty English config copy for ${key}`);
@@ -118,7 +132,70 @@ test("ConfigWindow provides system defaults and lot override copy in both locale
     assert.ok(fr[key]?.trim(), `empty French config copy for ${key}`);
   }
 
-  assert.match(fr.configSystemConfigurationTitle, /Configuration système/);
+  assert.equal(fr.configSystemConfigurationAction, "Paramètres de vente");
+  assert.equal(fr.configSystemConfigurationTitle, "Paramètres de vente");
+  assert.equal(fr.configSystemConfigurationHelp, "Les nouveaux lots utilisent ces paramètres par défaut. Pour un lot actuel, vous pouvez conserver les paramètres par défaut ou définir des paramètres propres à ce lot.");
+  assert.equal(fr.configSystemDefaultsTitle, "Paramètres par défaut");
+  assert.equal(fr.configSystemDefaultsHelp, "Ces paramètres s’appliquent aux nouveaux lots et aux lots actuels qui utilisent les paramètres par défaut.");
+  assert.equal(fr.configSystemDefaultsAutosaveHelp, "Les modifications sont enregistrées automatiquement pendant la saisie. Elles s’appliquent immédiatement aux nouveaux lots et aux lots actuels qui utilisent les paramètres par défaut.");
+  assert.equal(fr.configLotOverridesTitle, "Paramètres du lot");
+  assert.equal(fr.configLotOverridesHelp, "Le lot sélectionné utilise les paramètres par défaut ou ses propres paramètres.");
+  assert.equal(fr.configUseSystemPricingDefaultsLabel, "Utiliser les paramètres par défaut");
+  assert.equal(fr.configLotUsingSystemDefaultsHelp, "Ce lot utilise les paramètres par défaut. Modifiez ces paramètres pour tous les lots qui les utilisent, ou désactivez cette option pour personnaliser ce lot.");
+  assert.equal(fr.configAverageBuyerShippingLabel, "Livraison moyenne payée par l’acheteur, par commande");
+  assert.equal(fr.configSellingTaxesLabel, "Taux de taxe de vente (%)");
+  assert.equal(fr.configRtyhSpotsPerBoxLabel, "Nombre de spots par boîte (Random hit, RTYH)");
+  assert.equal(fr.configFeeProfileWhatnot, "Profil de frais Whatnot");
+  assert.equal(fr.configTargetProfitBoxesHelp, "Pour les boîtes, le pourcentage est calculé sur le coût total du lot.");
+  assert.equal(fr.configTargetProfitItemsHelp, "Pour les items individuels, le pourcentage s’ajoute à la valeur de marché lorsqu’elle est positive, sinon au coût d’achat.");
+  assert.equal(en.configTargetProfitBoxesHelp, "For boxes, the percentage is calculated on the total lot cost.");
+  assert.equal(en.configTargetProfitItemsHelp, "For individual items, the percentage is added to a positive market value, or to the purchase cost otherwise.");
+  assert.equal(fr.configSaveLotsFailedNotice, "Impossible d’enregistrer les lots. L’espace de stockage est peut-être plein.");
+  assert.equal(fr.configSaveSystemDefaultsFailedNotice, "Impossible d’enregistrer les paramètres de vente. L’espace de stockage est peut-être plein.");
+
+  const shellFr = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/shell.json", "utf8")) as Record<string, string>;
+  assert.equal(shellFr.shellSystemConfigurationSubtitle, "Paramètres de vente par défaut et paramètres propres à chaque lot");
+
+  const template = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
+  assert.match(template, /configTargetProfitBoxesHelp/);
+  assert.match(template, /configTargetProfitItemsHelp/);
+  assert.match(template, /<p class="config-system-profit-help">\{\{ t\('configTargetProfitBoxesHelp'\) \}\}<\/p>/);
+  assert.match(template, /<p class="config-system-profit-help">\{\{ t\('configTargetProfitItemsHelp'\) \}\}<\/p>/);
+  assert.match(template, /currentLotType === 'singles'[\s\S]*?configTargetProfitItemsHelp/);
+  assert.match(template, /currentLotType !== 'singles'[\s\S]*?configTargetProfitBoxesHelp/);
+});
+
+test("target-profit help matches the existing box and individual-item calculations", () => {
+  const box = calculateDefaultSellingPrices({
+    totalCaseCost: 100,
+    targetProfitPercent: 20,
+    boxesPurchased: 1,
+    totalSpots: 1,
+    totalPacks: 1,
+    sellingTaxPercent: 0,
+    sellingShippingPerOrder: 0,
+    feeProfileInput: { platformFeePercent: 0, additionalFeePercent: 0, fixedFeePerOrder: 0 }
+  });
+  assert.equal(box.boxPriceSell, 120);
+
+  const createSinglesContext = () => ({
+    currentLotType: "singles" as const,
+    hasProAccess: true,
+    targetProfitPercent: 20,
+    currency: "CAD" as const,
+    sellingCurrency: "CAD" as const,
+    exchangeRate: 1,
+    sellingShippingPerOrder: 0,
+    editingSale: null,
+    singlesPurchases: [],
+    sales: [],
+    newSale: { type: "singles" as const, buyerShipping: 0, date: "2026-10-22" },
+    showAddSaleModal: false,
+    calculatePriceForUnits: (_units: number, targetNetRevenue: number) => targetNetRevenue
+  });
+  const selectedEntry = { id: 1, item: "Test item", cost: 10, currency: "CAD" as const, quantity: 1, marketValue: 30, marketValueCurrency: "CAD" as const };
+  assert.equal(calculateSinglesTargetLinePrice(createSinglesContext() as never, selectedEntry, 1), 36);
+  assert.equal(calculateSinglesTargetLinePrice(createSinglesContext() as never, { ...selectedEntry, marketValue: 0 }, 1), 12);
 });
 
 test("Shopify linking and marketplace SKU are edited with the lot, not system assumptions", () => {

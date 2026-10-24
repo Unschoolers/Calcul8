@@ -1,4 +1,5 @@
 import type { GamePublicSessionContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import {
     createGameSpectatorSession,
     fetchGameSpectatorCount,
@@ -23,6 +24,8 @@ type GameSpectatorVm = GamePublicSessionContext
   _gameSpectatorPublishQueued?: boolean;
   _gameSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
   notify?: (message: string, color?: string) => void;
+  preferredLanguage?: string | null;
+  t?: (key: string) => string;
   publishGameSpectatorSessionSnapshot(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
   refreshGameSpectatorCount(): Promise<void>;
   handleWheelModeChange?(nextMode: "config" | "live"): void;
@@ -34,6 +37,13 @@ function notifyGameSpectator(vm: GameSpectatorVm, message: string, color: string
   if (typeof vm.notify === "function") {
     vm.notify(message, color);
   }
+}
+
+function notifyLocalizedGameSpectator(vm: GameSpectatorVm, key: string, color: string = "info"): void {
+  const message = typeof vm.t === "function"
+    ? vm.t(key)
+    : translateAppMessage(vm.preferredLanguage, key);
+  notifyGameSpectator(vm, message, color);
 }
 
 function isGameSpectatorConfigMode(vm: GameSpectatorVm): boolean {
@@ -57,7 +67,7 @@ function disableStaleGameSpectatorSession(vm: GameSpectatorVm): void {
   vm.gameSpectatorSessionQrUrl = "";
   vm.gameSpectatorConnectedCount = 0;
   vm.saveWheelSession?.();
-  notifyGameSpectator(vm, "Spectator session expired. Start spectator mode again to create a new link.", "warning");
+  notifyLocalizedGameSpectator(vm, "gameSpectatorNotifySessionExpired", "warning");
 }
 
 function mergeQueuedSpectatorStatusOverride(
@@ -109,7 +119,7 @@ export const gameSpectatorMethods = {
   async copyGameSpectatorLink(this: GameSpectatorVm): Promise<void> {
     const publicUrl = String(this.gameSpectatorSessionUrl || "").trim();
     if (!publicUrl) {
-      notifyGameSpectator(this, "Start spectator mode first.", "warning");
+      notifyLocalizedGameSpectator(this, "gameSpectatorNotifyStartRequired", "warning");
       return;
     }
 
@@ -119,9 +129,9 @@ export const gameSpectatorMethods = {
       } else if (!fallbackCopyText(publicUrl)) {
         throw new Error("Clipboard copy fallback failed.");
       }
-      notifyGameSpectator(this, "Spectator link copied.", "success");
+      notifyLocalizedGameSpectator(this, "gameSpectatorNotifyLinkCopied", "success");
     } catch {
-      notifyGameSpectator(this, "Could not copy the spectator link.", "error");
+      notifyLocalizedGameSpectator(this, "gameSpectatorNotifyLinkCopyFailed", "error");
     }
   },
 
@@ -156,10 +166,10 @@ export const gameSpectatorMethods = {
       this.gameSpectatorSessionUrl = publicUrl;
       this.gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
       this.gameSpectatorConnectedCount = 0;
-      notifyGameSpectator(this, "Spectator mode is live.", "success");
+      notifyLocalizedGameSpectator(this, "gameSpectatorNotifyModeStarted", "success");
     } catch (error) {
       console.warn("Failed to start spectator mode:", error);
-      notifyGameSpectator(this, "Could not start spectator mode right now.", "error");
+      notifyLocalizedGameSpectator(this, "gameSpectatorNotifyModeStartFailed", "error");
     } finally {
       this.gameSpectatorPublishPending = false;
     }
@@ -226,14 +236,14 @@ export const gameSpectatorMethods = {
       this.gameSpectatorConnectedCount = 0;
       await this.publishGameSpectatorSessionSnapshot?.("ended");
       if (options.notifyOnSuccess !== false) {
-        notifyGameSpectator(this, "Spectator mode ended. The public page is now a recap.", "success");
+        notifyLocalizedGameSpectator(this, "gameSpectatorNotifyModeEnded", "success");
       }
       if (options.closeDialog !== false) {
         this.gameSpectatorDialog = false;
       }
     } catch (error) {
       console.warn("Failed to end spectator mode:", error);
-      notifyGameSpectator(this, "Could not end spectator mode cleanly.", "error");
+      notifyLocalizedGameSpectator(this, "gameSpectatorNotifyModeEndFailed", "error");
     }
   },
 

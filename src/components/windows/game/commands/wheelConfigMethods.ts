@@ -1,4 +1,5 @@
 import { nextTick } from "vue";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
 import {
     queueCloudConfigSyncPush,
@@ -232,7 +233,7 @@ export const wheelConfigMethods = {
     const activeId = this.activeWheelConfigId as number | null;
     const pendingChase = this.wheelPendingChase;
     if (pendingChase && pendingChase.configId === activeId) {
-      getWheelController(this).wheelInventoryWarning = "This wheel still has an unresolved chase. Restore and settle it before deleting the wheel.";
+      getWheelController(this).wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseRestoreBeforeDelete");
       this.wheelChaseDialog = true;
       this.wheelChasePreviewMode = false;
       this.wheelChasePendingTierId = pendingChase.tierId;
@@ -255,7 +256,7 @@ export const wheelConfigMethods = {
     const pendingChase = this.wheelPendingChase;
     if (pendingChase) {
       const controller = getWheelController(this as Record<string, unknown>);
-      controller.wheelInventoryWarning = "Settle the unresolved chase before applying a wheel change.";
+      controller.wheelInventoryWarning = translateAppMessage(this.preferredLanguage, "wheelChaseSettleBeforeWheelChange");
       this.wheelChaseDialog = true;
       this.wheelChasePreviewMode = false;
       this.wheelChasePendingTierId = pendingChase.tierId;
@@ -520,7 +521,7 @@ export const wheelConfigMethods = {
         value: entry.id,
         image: entry.image,
         cardNumber: entry.cardNumber,
-        stockLabel: `${remaining} left`
+        stockLabel: translateAppMessage(this.preferredLanguage, "wheelReplacementStockLabel", { count: remaining })
       });
     }
     return items;

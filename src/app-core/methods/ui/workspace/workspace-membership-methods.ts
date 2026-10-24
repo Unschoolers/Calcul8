@@ -11,11 +11,12 @@ import {
   type LeaveWorkspaceResponse
 } from "./workspace-ui-helpers.ts";
 import { fetchWorkspaceJson, getGoogleIdToken } from "./workspace-api.ts";
+import { translateAppMessage } from "../../../i18n/index.ts";
 
 export const uiWorkspaceMembershipMethods = {
   async openWorkspaceMembersModal(): Promise<void> {
     if (!this.activeWorkspaceId) {
-      this.notify("Switch to a shared workspace first.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceLeaveRequiresSharedNotice"), "warning");
       return;
     }
 
@@ -29,7 +30,7 @@ export const uiWorkspaceMembershipMethods = {
 
   async openLeaveWorkspaceModal(): Promise<void> {
     if (!this.activeWorkspaceId) {
-      this.notify("Switch to a shared workspace first.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "workspaceLeaveRequiresSharedNotice"), "warning");
       return;
     }
 
@@ -52,12 +53,12 @@ export const uiWorkspaceMembershipMethods = {
     if (this.isCurrentWorkspaceOwner) {
       if (transferCandidates.length > 0) {
         if (!this.leaveWorkspaceTransferMemberUserId) {
-          this.notify("Choose a new owner before leaving.", "warning");
+          this.notify(translateAppMessage(this.preferredLanguage, "workspaceChooseNewOwnerNotice"), "warning");
           return;
         }
         body.newOwnerUserId = this.leaveWorkspaceTransferMemberUserId;
       } else if (!this.leaveWorkspaceDeleteConfirmation) {
-        this.notify("Confirm workspace deletion before leaving as the last owner.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceConfirmDeleteNotice"), "warning");
         return;
       } else {
         body.deleteWorkspace = true;
@@ -76,7 +77,7 @@ export const uiWorkspaceMembershipMethods = {
           },
           body: JSON.stringify(body)
         },
-        "Failed to leave the workspace."
+        translateAppMessage(this.preferredLanguage, "workspaceLeaveFailedNotice")
       );
       if (!result.ok) return;
 
@@ -91,11 +92,11 @@ export const uiWorkspaceMembershipMethods = {
       this.leaveWorkspaceDeleteConfirmation = false;
 
       if (leaveBody.deletedWorkspace === true) {
-        this.notify("Workspace deleted", "success");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceDeletedNotice"), "success");
       } else if (typeof leaveBody.newOwnerUserId === "string" && leaveBody.newOwnerUserId.trim()) {
-        this.notify("Ownership transferred and workspace left", "success");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceOwnershipTransferredAndLeftNotice"), "success");
       } else {
-        this.notify("Workspace left", "success");
+        this.notify(translateAppMessage(this.preferredLanguage, "workspaceLeftNotice"), "success");
       }
     } finally {
       this.isLeavingWorkspace = false;
@@ -113,13 +114,13 @@ export const uiWorkspaceMembershipMethods = {
       {
         method: "DELETE"
       },
-      "Failed to remove workspace member."
+      translateAppMessage(this.preferredLanguage, "workspaceRemoveMemberFailedNotice")
     );
     if (!result.ok) return;
 
     this.workspaceMembers = this.workspaceMembers.filter((member) => member.userId !== normalizedUserId);
     this.leaveWorkspaceTransferMemberUserId = getTransferCandidates(this)[0]?.userId ?? "";
-    this.notify("Member removed", "success");
+    this.notify(translateAppMessage(this.preferredLanguage, "workspaceMemberRemovedNotice"), "success");
   },
 
   getWorkspaceMemberPresenceState(member: Pick<WorkspaceMember, "userId">): "online" | "recent" | "offline" {
@@ -128,13 +129,13 @@ export const uiWorkspaceMembershipMethods = {
 
   getWorkspaceMemberPresenceLabel(member: Pick<WorkspaceMember, "userId">): string {
     const state = getWorkspaceMemberPresenceStateFromApp(this, member);
-    if (state === "online") return "Online now";
+    if (state === "online") return translateAppMessage(this.preferredLanguage, "workspacePresenceOnline");
 
     const presence = this.workspacePresenceByUserId[String(member.userId || "").trim()];
     if (state === "recent") {
-      return formatRelativeLastSeen(presence?.lastSeenAt);
+      return formatRelativeLastSeen(presence?.lastSeenAt, this.preferredLanguage);
     }
 
-    return "Offline";
+    return translateAppMessage(this.preferredLanguage, "workspacePresenceOffline");
   }
 } satisfies WorkspaceMembershipMethodImplementation;

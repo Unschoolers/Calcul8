@@ -1,4 +1,5 @@
-import type { GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import type { WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelDisplaySlots, isWheelPreviewMode } from "../coordinator/gameComputedShared.ts";
 import { getWheelController } from "./gameSessionState.ts";
@@ -14,7 +15,9 @@ export type WheelFairnessResult = {
   algorithm?: string;
 };
 
-type WheelSpinContextLike = GameSessionStateContext & { wheelDisplaySlots?: WheelSlot[]; wheelMode?: "config" | "live" };
+type WheelSpinContextLike = GameSessionStateContext
+  & Partial<Pick<GameCoordinatorContext, "preferredLanguage">>
+  & { wheelDisplaySlots?: WheelSlot[]; wheelMode?: "config" | "live" };
 
 export function getWheelSpinSlots(context: WheelSpinContextLike): WheelSlot[] {
   if (Array.isArray(context.wheelDisplaySlots)) {
@@ -49,7 +52,7 @@ export function beginWheelSpin(
   controller.wheelHighlightedSlotIndex = -1;
   controller.wheelLastResultColor = "rgb(var(--v-theme-primary))";
   context.wheelSpinning = true;
-  context.wheelLastResult = "Spinning\u2026";
+  context.wheelLastResult = translateAppMessage(context.preferredLanguage, "wheelSpinInProgress");
 }
 
 export function finalizeWheelSpinProof(
@@ -108,7 +111,7 @@ export function buildWheelSpinFairnessEntry(
     spinNumber: Number(params.shouldRecordLiveSession
       ? (context.wheelTotalSpins || 0)
       : (controller.wheelPreviewTotalSpins || 0)),
-    label: params.slots[params.targetIndex]?.name || "Unknown result",
+    label: params.slots[params.targetIndex]?.name || translateAppMessage(context.preferredLanguage, "wheelNoResultLabel"),
     color: params.slots[params.targetIndex]?.color || "rgb(var(--v-theme-primary))",
     hash: params.fairnessResult.hash,
     seed: params.fairnessResult.seed,

@@ -90,6 +90,89 @@ test("buildSaleSaveResult builds a bulk RTYH sale and normalizes invalid date", 
   assert.equal(result.sale.date, "2026-02-22");
 });
 
+test("buildSaleSaveResult localizes controlled validation and keeps English as the default", () => {
+  const base = {
+    canUsePaidActions: true,
+    currentLotType: "bulk" as const,
+    sales: [] as Sale[],
+    editingSale: null,
+    packsPerBox: 16,
+    singlesPurchases: [] as SinglesPurchaseEntry[]
+  };
+  const french = buildSaleSaveResult({
+    ...base,
+    preferredLanguage: "fr-CA",
+    newSale: makeDraft({ price: -1 })
+  });
+  const english = buildSaleSaveResult({ ...base, newSale: makeDraft({ price: -1 }) });
+
+  assert.deepEqual(french, { ok: false, color: "warning", message: "Entrez un prix égal ou supérieur à 0." });
+  assert.deepEqual(english, { ok: false, color: "warning", message: "Please enter a valid price (0 or greater)" });
+  const zero = buildSaleSaveResult({ ...base, preferredLanguage: "fr", newSale: makeDraft({ price: 0 }) });
+  assert.equal(zero.ok, true);
+});
+
+test("buildSaleSaveResult localizes stock validation without changing available quantity", () => {
+  const result = buildSaleSaveResult({
+    canUsePaidActions: true,
+    preferredLanguage: "fr-CA",
+    currentLotType: "singles",
+    sales: [],
+    editingSale: null,
+    newSale: makeDraft({ singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 101, quantity: 4, price: 12 }] }),
+    packsPerBox: 16,
+    singlesPurchases: [makeSinglesEntry({ quantity: 2 })]
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    color: "warning",
+    message: "La quantité dépasse le stock de l’item sélectionné. Stock disponible : 2."
+  });
+});
+
+test("buildSaleSaveResult keeps zero-price linked items valid and requires a positive unlinked total without mutation", () => {
+  const linkedDraft = makeDraft({
+    price: 0,
+    singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 101, quantity: 1, price: 0 }]
+  });
+  const linkedBefore = structuredClone(linkedDraft);
+  const linked = buildSaleSaveResult({
+    canUsePaidActions: true,
+    preferredLanguage: "fr-CA",
+    currentLotType: "singles",
+    sales: [],
+    editingSale: null,
+    newSale: linkedDraft,
+    packsPerBox: 16,
+    singlesPurchases: [makeSinglesEntry({ quantity: 1 })]
+  });
+  assert.equal(linked.ok, true);
+  assert.deepEqual(linkedDraft, linkedBefore);
+
+  const unlinkedDraft = makeDraft({
+    price: 0,
+    singlesItems: [{ lineId: 2, singlesPurchaseEntryId: null, quantity: 1, price: 0 }]
+  });
+  const unlinkedBefore = structuredClone(unlinkedDraft);
+  const unlinked = buildSaleSaveResult({
+    canUsePaidActions: true,
+    preferredLanguage: "fr-CA",
+    currentLotType: "singles",
+    sales: [],
+    editingSale: null,
+    newSale: unlinkedDraft,
+    packsPerBox: 16,
+    singlesPurchases: []
+  });
+  assert.deepEqual(unlinked, {
+    ok: false,
+    color: "warning",
+    message: "Entrez un prix total supérieur à 0 lorsqu’aucun item n’est lié."
+  });
+  assert.deepEqual(unlinkedDraft, unlinkedBefore);
+});
+
 test("new manual Whatnot sales record provenance and edits preserve it", () => {
   const created = buildSaleSaveResult({
     canUsePaidActions: true, currentLotType: "bulk", sales: [], editingSale: null,

@@ -235,6 +235,19 @@ test("loadWheelFromStorage marks corrupt wheel data for recovery", async () => {
   });
 });
 
+test("loadWheelFromStorage reports corrupt wheel configuration in French", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(getScopedWheelConfigsStorageKey({ scopeType: "personal" }), "not-json");
+    const context = createContext({ preferredLanguage: "fr-CA" });
+
+    salesMethods.loadWheelFromStorage.call(context as never);
+
+    assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, [
+      ["La configuration locale de la roue est endommagée. Une récupération depuis le cloud sera tentée.", "warning"]
+    ]);
+  });
+});
+
 test("loadWheelFromStorage rejects structurally invalid wheel data", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(getScopedWheelConfigsStorageKey({ scopeType: "personal" }), "{}");
@@ -291,6 +304,25 @@ test("saveWheelConfigsToStorage reports storage failures", () => {
 
   assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
     "Could not save wheel configuration. Storage may be full.",
+    "error"
+  ]);
+});
+
+test("saveWheelConfigsToStorage reports storage failures in French", () => {
+  vi.stubGlobal("localStorage", {
+    setItem: vi.fn(() => {
+      throw new Error("quota exceeded");
+    })
+  });
+  const context = createContext({
+    preferredLanguage: "fr-CA",
+    wheelConfigs: [{ id: 1, name: "Wheel", tiers: [] }]
+  });
+
+  salesMethods.saveWheelConfigsToStorage.call(context as never);
+
+  assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Impossible d’enregistrer la configuration de la roue. L’espace de stockage est peut-être plein.",
     "error"
   ]);
 });

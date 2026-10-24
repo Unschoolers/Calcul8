@@ -1,4 +1,5 @@
 import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import type { Lot, MysteryGridReveal, PendingWheelChaseObligation, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import type { GameHostState } from "./gameHostState.ts";
@@ -14,6 +15,7 @@ import { writeGameSpectatorSessionStorageState } from "./gameSpectatorSessionSto
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "./wheelSlots.ts";
 
 export type WheelSessionContext = GameSessionStateContext
+  & Partial<Pick<GameCoordinatorContext, "preferredLanguage">>
   & Pick<GameCoordinatorContext, "wheelConfigs" | "activeWheelConfigId" | "lots">
   & Pick<GameHostState,
     | "editingWheelConfig" | "wheelChaseDialog" | "wheelChasePreviewMode" | "wheelChaseReplacementSinglesId"
@@ -267,7 +269,7 @@ function resetWheelLive(state: WheelResetState): WheelResetState {
     context.wheelChasePreviewMode = false;
     context.wheelChasePendingTierId = pendingChase.tierId;
     context.wheelChaseReplacementSinglesId = null;
-    controller.wheelInventoryWarning = "A chase decision is still unresolved. Restore its original wheel source before settling it.";
+    controller.wheelInventoryWarning = translateAppMessage(context.preferredLanguage, "wheelChaseUnresolvedRestoreSource");
   }
   return { ...state, slots };
 }

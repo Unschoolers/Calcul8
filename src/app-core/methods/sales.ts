@@ -10,6 +10,7 @@ import type { PersistenceOutcome } from "../shared/persistence-outcomes.ts";
 import { getScopedWheelConfigsStorageKey } from "../storageKeys.ts";
 import { captureWorkspaceScopeGuard, getActiveStorageScope } from "../workspace-scope.ts";
 import { getTodayDate } from "./config-shared.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 import { calculateNetFromGross, getGrossRevenueForSale } from "../../domain/calculations.ts";
 import { resolveEffectiveWhatnotFeeInput, summarizeWhatnotFeePeriod } from "../shared/whatnot-fee-summary.ts";
 import { hydrateMissingWhatnotScopeSales } from "./whatnot-fee-hydration.ts";
@@ -56,33 +57,33 @@ import {
 } from "../storage-health.ts";
 
 function notifySalesPersistenceOutcome(
-  context: { notify(message: string, color?: string): void },
+  context: { preferredLanguage?: string; notify(message: string, color?: string): void },
   outcome: PersistenceOutcome,
   action: "save" | "delete"
 ): void {
   if (outcome.kind === "conflict") {
-    context.notify(
-      action === "save"
-        ? outcome.cacheFailure !== undefined
-          ? "Sales changed in the cloud and latest sales were loaded, but the local cache could not be updated. Your save was canceled."
-          : outcome.latestState === "loaded"
-          ? "Sales changed in the cloud. Latest sales were loaded and your save was canceled."
-          : "Sales changed in the cloud, but latest sales could not be loaded. Your save was not applied."
-        : outcome.cacheFailure !== undefined
-          ? "Sales changed in the cloud and latest sales were loaded, but the local cache could not be updated. The sale was not deleted."
-          : outcome.latestState === "loaded"
-          ? "Sales changed in the cloud. Latest sales were loaded instead of deleting."
-          : "Sales changed in the cloud, but latest sales could not be loaded. The sale was not deleted.",
-      "warning"
-    );
+    const key = action === "save"
+      ? outcome.cacheFailure !== undefined
+        ? "salesNoticeSaveConflictCacheFailed"
+        : outcome.latestState === "loaded"
+          ? "salesNoticeSaveConflictLoaded"
+          : "salesNoticeSaveConflictLoadFailed"
+      : outcome.cacheFailure !== undefined
+        ? "salesNoticeDeleteConflictCacheFailed"
+        : outcome.latestState === "loaded"
+          ? "salesNoticeDeleteConflictLoaded"
+          : "salesNoticeDeleteConflictLoadFailed";
+    context.notify(translateAppMessage(context.preferredLanguage, key), "warning");
     return;
   }
   if (outcome.kind !== "failure") return;
   const message = outcome.cloudConfirmed
-    ? `The sale was ${action === "save" ? "saved" : "deleted"} in the cloud, but the local cache could not be updated. Refresh sales to update this view.`
+    ? translateAppMessage(context.preferredLanguage, action === "save"
+      ? "salesNoticeSaveCloudConfirmedCacheFailed"
+      : "salesNoticeDeleteCloudConfirmedCacheFailed")
     : outcome.error instanceof Error && outcome.error.message.trim()
       ? outcome.error.message
-      : `Failed to ${action} sale.`;
+      : translateAppMessage(context.preferredLanguage, action === "save" ? "salesNoticeSaveFailed" : "salesNoticeDeleteFailed");
   context.notify(message, "error");
 }
 
@@ -132,7 +133,7 @@ export const salesMethods = {
     } catch (error) {
       console.error("Failed to save sales:", error);
       if (markStorageWriteFailure(this, scope, storageKey)) {
-        this.notify("Could not save sales. Storage may be full.", "error");
+        this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeStorageWriteFailed"), "error");
       }
       return Promise.resolve({ kind: "failure", error, stage: "local" });
     }
@@ -217,6 +218,7 @@ export const salesMethods = {
       packsPerBox: this.packsPerBox,
       singlesPurchases: this.singlesPurchases,
       singlesSoldCountByPurchaseId: this.singlesSoldCountByPurchaseId,
+      preferredLanguage: this.preferredLanguage,
       todayDate: getTodayDate()
     });
     if (saveResult.ok === false) {
@@ -247,7 +249,7 @@ export const salesMethods = {
         : [];
       if (missingLotIds.length > 0 && !this.isOffline && canUseAuthoritativeSalesLiveApi()) {
         hydrateMissingWhatnotScopeSales(this);
-        this.notify("Sales history is still loading. Your sale was not saved; try again when history finishes loading.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeHistoryLoading"), "warning");
         return { kind: "skipped", reason: "not-ready" };
       }
       let salesByLotId = new Map<number, Sale[]>();
@@ -306,7 +308,7 @@ export const salesMethods = {
     });
     notifySalesPersistenceOutcome(this, outcome, "save");
     if (provisionalSnapshotDeferred && (outcome.kind === "confirmed" || (outcome.kind === "failure" && outcome.cloudConfirmed === true))) {
-      this.notify("Sale saved, but Whatnot history is incomplete. Change the sale price or date after history loads to refresh its net revenue estimate.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeWhatnotHistoryIncomplete"), "warning");
     }
     return outcome;
   },
@@ -317,7 +319,7 @@ export const salesMethods = {
 
   async deleteSale(id: number): Promise<PersistenceOutcome> {
     const outcome = await deleteSaleWithPersistence(this, id);
-    if (outcome.kind === "confirmed") this.notify("Sale deleted", "info");
+    if (outcome.kind === "confirmed") this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeSaleDeleted"), "info");
     else notifySalesPersistenceOutcome(this, outcome, "delete");
     return outcome;
   },
@@ -359,7 +361,7 @@ export const salesMethods = {
           cacheAuthoritativeSales(this, lotId, sales);
         } catch {
           // The authoritative write succeeded; a cache failure must not cause another sale.
-          this.notify("Wheel sale saved in the cloud, but its local cache could not be updated.", "warning");
+          this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeWheelCloudCacheFailed"), "warning");
         }
       } else {
         const sales = upsertById(
@@ -369,10 +371,10 @@ export const salesMethods = {
         replaceRootLotSales(this, lotId, sales);
       }
       if (this.currentLotId === lotId) refreshChartsForCurrentTab(this);
-      this.notify("Wheel sale recorded", "success");
+      this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeWheelSaleRecorded"), "success");
       return true;
     } catch (error) {
-      if (isCurrentScope()) this.notify("Failed to save wheel sale", "error");
+      if (isCurrentScope()) this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeWheelSaleFailed"), "error");
       return false;
     }
   },
@@ -398,7 +400,7 @@ export const salesMethods = {
       clearStorageReadFailure(this, storageScope, configsStorageKey);
     } catch {
       if (markStorageReadFailure(this, storageScope, configsStorageKey)) {
-        this.notify("Local wheel configuration is damaged. Cloud recovery will be attempted.", "warning");
+        this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeWheelConfigDamaged"), "warning");
       }
     }
 
@@ -415,7 +417,7 @@ export const salesMethods = {
       clearStorageWriteFailure(this, storageScope, storageKey);
     } catch {
       if (markStorageWriteFailure(this, storageScope, storageKey)) {
-        this.notify("Could not save wheel configuration. Storage may be full.", "error");
+        this.notify(translateAppMessage(this.preferredLanguage, "salesNoticeWheelStorageWriteFailed"), "error");
       }
     }
   }

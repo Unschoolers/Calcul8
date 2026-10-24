@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { portfolioWindowDefinition } from "../src/components/windows/portfolio/PortfolioWindow.definition.ts";
 import * as portfolioWindowHelpers from "../src/components/windows/portfolio/portfolio-window-helpers.ts";
+import { translateAppMessage } from "../src/app-core/i18n/index.ts";
 
 test("PortfolioWindow formatting helpers use fallback and formatter", () => {
   const withFormatter = {
@@ -806,6 +807,60 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
     portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
     "Portfolio sales by person chart for the last 8 weeks by profit. (CAD)"
   );
+});
+
+test("PortfolioWindow exposes the approved French buyer labels and eight-week subtitle through its real translator", () => {
+  const vm = {
+    t: (key: string) => translateAppMessage("fr-CA", key),
+    preferredLanguage: "fr-CA",
+    portfolioSalesByUserMetric: "revenue",
+    portfolioCopy: portfolioWindowDefinition.methods.portfolioCopy
+  };
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(vm as never), "8 dernières semaines · CAD");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(vm as never), "Revenu (CAD)");
+  assert.equal(
+    portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(vm as never),
+    "Graphique des ventes par utilisateur du portefeuille sur les 8 dernières semaines selon Revenu. (CAD)"
+  );
+
+  const customerVm = {
+    t: (key: string) => translateAppMessage("fr-CA", key),
+    portfolioCopy: portfolioWindowDefinition.methods.portfolioCopy,
+    portfolioLotPerformanceSortKey: "source",
+    portfolioLotPerformanceSortDirection: "asc",
+    portfolioCustomerPerformanceSortKey: "spent",
+    portfolioCustomerPerformanceSortDirection: "desc",
+    portfolioPerformanceView: "customers",
+    hasPortfolioData: false,
+    portfolioPerformanceLots: () => [],
+    portfolioPerformanceSalesByLotId: () => new Map(),
+    customerPerformanceRows: portfolioWindowDefinition.methods.customerPerformanceRows,
+    customerPerformanceSummary: portfolioWindowDefinition.methods.customerPerformanceSummary,
+    sortedCustomerPerformanceRows: portfolioWindowDefinition.methods.sortedCustomerPerformanceRows,
+    portfolioLotPerformanceGridColumns: portfolioWindowDefinition.methods.portfolioLotPerformanceGridColumns,
+    portfolioLotPerformanceSortOptions: portfolioWindowDefinition.methods.portfolioLotPerformanceSortOptions,
+    portfolioCustomerPerformanceGridColumns: portfolioWindowDefinition.methods.portfolioCustomerPerformanceGridColumns,
+    portfolioCustomerPerformanceSortOptions: portfolioWindowDefinition.methods.portfolioCustomerPerformanceSortOptions,
+    portfolioLotPerformanceUnderAmount: () => "0",
+    portfolioLotPerformanceOverAmount: () => "0"
+  };
+  const model = portfolioWindowDefinition.methods.portfolioPerformanceSheetModel.call(customerVm as never);
+  assert.equal(model.customersViewLabel, "Performance des acheteurs");
+  assert.equal(model.customerTitle, "Performance des acheteurs");
+  assert.equal(model.customerCountLabel, "Acheteurs");
+  assert.equal(model.customerEmptyTitle, "Aucune donnée sur les acheteurs");
+  assert.equal(model.customerEmptyBody, "Ajoutez le nom de l’acheteur à vos ventes pour consulter les données par acheteur ici.");
+  assert.equal(model.customerColumns.find((column) => column.key === "customer")?.label, "Acheteur");
+  assert.equal(model.customerColumns.find((column) => column.key === "last")?.label, "Dernier achat");
+
+  const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+  assert.match(template, /activeScopeType === 'workspace' && activeWorkspaceId && hasPortfolioSalesByUserData/);
+  assert.match(template, /portfolioSalesByUserAttributionNote/);
+  const report = readFileSync("src/components/shell/PortfolioReportModal.html", "utf8");
+  assert.match(report, /t\(row\.lotType === 'Singles' \? 'portfolioReportTypeSinglesLabel' : 'portfolioReportTypeBulkLabel'\)/);
+  assert.match(report, /row\.realizedCost \?\? 0/);
+  assert.match(report, /row\.realizedProfit \?\? 0/);
+  assert.match(report, /row\.totalProfit/);
 });
 
 test("PortfolioWindow keeps sales per user week pills visible on mobile", () => {

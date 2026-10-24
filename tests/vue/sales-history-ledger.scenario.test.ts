@@ -5,6 +5,7 @@ import { vuetify } from "../../src/vuetify.ts";
 import en from "../../src/app-core/i18n/locales/en/sales.json";
 import fr from "../../src/app-core/i18n/locales/fr/sales.json";
 import { renderWithApp } from "./render.ts";
+import { translateAppMessage } from "../../src/app-core/i18n/index.ts";
 
 for (const theme of ["unionArenaLight", "unionArenaDark"]) {
   for (const locale of [en, fr]) {
@@ -47,3 +48,26 @@ for (const theme of ["unionArenaLight", "unionArenaDark"]) {
     });
   }
 }
+
+test("French sales ledger shows Items, sorts by Acheteur, and opens the selected buyer", async () => {
+  const buyer = vi.fn();
+  const { container } = renderWithApp(Ledger, { props: {
+    sales: [
+      { id: 1, type: "pack", quantity: 5, price: 9, date: "2026-04-01", customer: "Julien" },
+      { id: 2, type: "pack", quantity: 1, price: 6, date: "2026-04-02", customer: "" }
+    ],
+    t: (key: string) => translateAppMessage("fr-CA", key),
+    formatDate: (date: string) => date, fmtCurrency: (n: number) => n.toFixed(2), fmtUnits: String,
+    getSaleIcon: () => "mdi-tag", getSaleColor: () => "primary", calculateSaleProfit: () => 5,
+    getSaleProfitPreview: () => null, isUnlinkedSinglesSale: () => false,
+    onEdit: vi.fn(), onDelete: vi.fn(), "onOpen-buyer": buyer
+  } });
+
+  expect(screen.getByText("Items", { exact: true })).toBeVisible();
+  expect(screen.getByText("Item", { exact: true })).toBeVisible();
+  expect(screen.getByRole("combobox")).toHaveTextContent("Acheteur");
+  const buyerButton = container.querySelector(".sales-history-ledger__customer-button")!;
+  expect(buyerButton).toHaveTextContent("Julien");
+  await fireEvent.click(buyerButton);
+  expect(buyer).toHaveBeenCalledWith("Julien");
+});

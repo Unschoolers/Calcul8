@@ -134,7 +134,7 @@ test("long English and French form copy stays bound to shared wrapping contracts
   assert.match(formLayoutScript, /app-form-fields label[\s\S]*classList\.add\("app-text-wrap"\)/);
 
   assert.equal(enSingles.singlesDefaultPurchaseCurrencyLabel, "Default purchase currency");
-  assert.equal(frSingles.singlesDefaultPurchaseCurrencyLabel, "Devise d'achat par defaut");
+  assert.equal(frSingles.singlesDefaultPurchaseCurrencyLabel, "Devise d’achat par défaut");
   assert.equal(enSingles.singlesUsdToCadRateLabel, "USD to CAD rate");
   assert.equal(frSingles.singlesUsdToCadRateLabel, "Taux USD vers CAD");
   assert.match(singlesPurchasing, /app-text-wrap[\s\S]*t\('singlesDefaultPurchaseCurrencyLabel'\)/);

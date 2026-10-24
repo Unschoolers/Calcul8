@@ -1,6 +1,7 @@
 import { fireEvent, screen } from "@testing-library/vue";
 import { describe, expect, test, vi } from "vitest";
 import LivePriceCard from "../../src/components/live-price/LivePriceCard.vue";
+import { translateAppMessage } from "../../src/app-core/i18n/index.ts";
 import { renderWithApp } from "./render.ts";
 
 function renderLivePriceCard(overrides: Record<string, unknown> = {}) {
@@ -77,6 +78,33 @@ describe("live price card scenarios", () => {
     expect(screen.getByText("Projected net profit after selling costs")).toBeVisible();
     expect(document.querySelector(".live-pricing-card__projection strong")).toHaveClass("text-error");
     expect(screen.queryByText("On target")).toBeNull();
+  });
+
+  test("uses a neutral French status when no units remain even though the needed price differs", () => {
+    renderLivePriceCard({
+      modelValue: 10,
+      avgPriceNeeded: 14,
+      remainingUnits: 0,
+      calculateProfit: () => 0,
+      translateText: (key: string) => translateAppMessage("fr-CA", key)
+    });
+
+    expect(screen.getByText("Aucun ajustement proposé")).toBeVisible();
+    expect(screen.getByText("$10.00")).toBeVisible();
+    expect(screen.queryByText("Vous êtes sur la cible. Rien à ajuster ici.")).toBeNull();
+  });
+
+  test("keeps the same French status when the current price equals the needed price and stock remains", () => {
+    renderLivePriceCard({
+      modelValue: 10,
+      avgPriceNeeded: 10,
+      remainingUnits: 2,
+      calculateProfit: () => 0,
+      translateText: (key: string) => translateAppMessage("fr-CA", key)
+    });
+
+    expect(screen.getByText("Aucun ajustement proposé")).toBeVisible();
+    expect(screen.getByText("$10.00")).toBeVisible();
   });
 
   test("does not offer a negative-price scenario from zero", () => {

@@ -110,5 +110,12 @@
   "singlesCsvPreviewTitle": "CSV preview (first 5 rows)",
   "singlesCsvRequiredFieldsLabel": "Required fields",
   "singlesCsvRequiredMappedLabel": "{{count}}/2 required mapped",
-  "singlesCsvSelectColumnLabel": "Select column"
+  "singlesCsvSelectColumnLabel": "Select column",
+  "singlesEditorNameRequired": "Item is required.",
+  "singlesEditorCostInvalid": "Cost is required.",
+  "singlesEditorQuantityInvalid": "Quantity must be 0 or greater.",
+  "singlesEditorDeleteRowTitle": "Delete Row?",
+  "singlesEditorDeleteRowBody": "Remove this singles purchase row?",
+  "singlesSelectedCountOne": "{{count}} item selected",
+  "singlesSelectedCountOther": "{{count}} items selected"
 }

@@ -82,9 +82,9 @@ export const gameStageComputeds = {
     if (this.gameSpectatorSessionStatus === "ended") {
       return translate(this, "gameSpectatorActionEnded");
     }
-    const label = translate(this, "gameSpectatorAction");
     const count = Math.max(0, Math.floor(Number(this.gameSpectatorConnectedCount) || 0));
-    return count > 0 ? `${count} ${label}` : label;
+    if (count === 0) return translate(this, "gameSpectatorAction");
+    return translate(this, "gameSpectatorActionCount", { count, suffix: count === 1 ? "" : "s" });
   },
 
   gameSpectatorDialogHint(this: SpectatorStageContext): string {

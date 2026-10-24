@@ -75,6 +75,7 @@ export interface WorkspaceMethodState {
 /** Capabilities used by authenticated workspace HTTP requests. */
 export type WorkspaceApiContext = AuthSessionBootstrapContext &
   Pick<AppState, "hasProAccess"> &
+  Partial<Pick<AppState, "preferredLanguage">> &
   Pick<RuntimeMethodState, "notify">;
 
 export type WorkspaceMembershipContext = WorkspaceApiContext &

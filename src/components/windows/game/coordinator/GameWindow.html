@@ -159,8 +159,11 @@
                 <v-icon start size="small" color="amber">mdi-star</v-icon>
                 {{ t('wheelChaseReplacePrompt') }}
             </div>
+            <div class="text-body-2 mb-2">
+                {{ t('wheelChaseReplaceHelpText') }}
+            </div>
             <v-alert v-if="wheelPendingChase && !isPendingChaseSourceCurrent()" type="warning" variant="tonal" density="compact" class="mb-2">
-                This chase remains unresolved because its original wheel source changed. Restore that source before keeping or replacing it.
+                {{ t('wheelChaseSourceChangedBeforeKeepOrReplace') }}
             </v-alert>
             <v-select v-model="wheelChaseReplacementSinglesId" :items="getChaseReplacementItems()" item-title="title"
                 item-value="value" :label="t('wheelPickReplacementItemLabel')" variant="outlined" density="compact"

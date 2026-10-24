@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test, vi } from "vitest";
+import { translateAppMessage } from "../src/app-core/i18n/index.ts";
 import { singlesConfigWindowDefinition } from "../src/components/windows/singles/SinglesConfigWindow.definition.ts";
 import type { SinglesPurchaseEntry } from "../src/types/app.ts";
 
@@ -335,6 +336,33 @@ test("saveSinglesRowEditor validates and creates row with non-colliding id", () 
     assert.equal(context.showSinglesRowEditor, false);
   } finally {
     dateNowSpy.mockRestore();
+  }
+});
+
+test("editor validation keeps exact English messages with and without the translator", () => {
+  const translated = createContext({
+    t: (key: string) => translateAppMessage("en", key as never),
+    editingSinglesRow: { item: "", cardNumber: "", condition: "", language: "", cost: 1, currency: "CAD", quantity: 1, marketValue: 0 }
+  });
+  const fallback = createContext({
+    editingSinglesRow: { item: "", cardNumber: "", condition: "", language: "", cost: 1, currency: "CAD", quantity: 1, marketValue: 0 }
+  });
+
+  for (const context of [translated, fallback]) {
+    context.saveSinglesRowEditor();
+    assert.equal(context.notify.mock.calls.at(-1)?.[0], "Item is required.");
+    context.editingSinglesRow.item = "Pikachu";
+    context.editingSinglesRow.cost = Number.NaN;
+    context.saveSinglesRowEditor();
+    assert.equal(context.notify.mock.calls.at(-1)?.[0], "Cost is required.");
+    context.editingSinglesRow.cost = 0;
+    context.editingSinglesRow.quantity = -1;
+    context.saveSinglesRowEditor();
+    assert.equal(context.notify.mock.calls.at(-1)?.[0], "Quantity must be 0 or greater.");
+    context.editingSinglesRow.quantity = 0;
+    context.saveSinglesRowEditor();
+    assert.equal((context.singlesPurchases as SinglesPurchaseEntry[])[0]?.quantity, 0);
+    assert.equal((context.singlesPurchases as SinglesPurchaseEntry[])[0]?.cost, 0);
   }
 });
 

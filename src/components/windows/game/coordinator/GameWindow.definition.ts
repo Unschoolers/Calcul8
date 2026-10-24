@@ -1,4 +1,5 @@
 import { nextTick } from "vue";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import {
     resolveVuetifySlotString
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
@@ -98,7 +99,7 @@ export const gameWindowDefinition = {
       return resolveWheelLayoutMode(this.wheelViewportWidth as number) === "compact";
     },
     wheelCompactStageSummaryLabel(this: GameWindowThis): string {
-      return "Margin";
+      return translateAppMessage(String(this.preferredLanguage ?? ""), "wheelCompactProfitCostLabel");
     },
     wheelCompactStageSummaryValue(this: GameWindowThis): string {
       return this.wheelMode === "live"

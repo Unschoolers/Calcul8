@@ -45,6 +45,7 @@
   "liveSinglesIncreasePriceAction": "Increase price",
   "liveSinglesIncreaseQuantityAction": "Increase quantity",
   "liveSinglesItemsLabel": "items",
+  "liveSinglesItemLabel": "item",
   "liveSinglesLineTotalLabel": "Line total",
   "liveSinglesMarketLabel": "Market",
   "liveSinglesPanelIntro": "Add items, then choose whether to price them one by one or as a bundle.",
@@ -66,5 +67,17 @@
   "livePriceCardCompactTargetLabel": "Target",
   "livePriceCardApplyLabel": "Apply",
   "livePriceCardCompareLabel": "Compare prices",
-  "liveTargetMarginLabel": "Target margin"
+  "liveTargetMarginLabel": "Target margin",
+  "liveNoticeSinglesAutoPriced": "Live singles prices auto-calculated from target profit",
+  "liveNoticeOpenToAutoPriceSingles": "Open the Live tab to auto-calculate singles prices",
+  "liveNoticeSinglesPricesReset": "Live singles prices reset to suggested values",
+  "liveNoticeOpenToResetSingles": "Open the Live tab to reset singles prices",
+  "liveNoticePricesResetToDefaults": "Live prices reset to config defaults",
+  "liveNoticeSelectLotFirst": "Select a lot first",
+  "liveNoticePricesSavedToConfig": "Live prices saved to config",
+  "liveNoticeConflictReview": "Live pricing changed in the cloud. Please review and save again.",
+  "liveNoticeConflictRetryUnavailable": "Live pricing changed in the cloud. Please try saving again.",
+  "liveNoticeConflictRetrying": "Live pricing changed. Retrying save with latest version...",
+  "liveNoticeSaveFailed": "Failed to save live pricing.",
+  "liveNoticePricesSaved": "Live prices saved"
 }

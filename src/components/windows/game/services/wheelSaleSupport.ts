@@ -88,7 +88,13 @@ export function getWheelTierInventoryMeta(
     const remainingPacks = bulkIds.reduce((sum, id) => sum + getRemainingPacksForWheelLot(context, id), 0);
     const perHit = Math.max(1, Number(tier.packsCount) || 0);
     return {
-      text: `${remainingPacks} items left across ${bulkIds.length} lot${bulkIds.length === 1 ? "" : "s"} • ${perHit} per hit`,
+      text: translateAppMessage(String(context.preferredLanguage ?? ""), "wheelMultiLotInventoryMeta", {
+        count: remainingPacks,
+        itemSuffix: remainingPacks === 1 ? "" : "s",
+        lotCount: bulkIds.length,
+        lotSuffix: bulkIds.length === 1 ? "" : "s",
+        perHit
+      }),
       warning: !bulkIds.some((id) => getRemainingPacksForWheelLot(context, id) >= perHit)
     };
   }
@@ -109,7 +115,9 @@ export function getWheelTierInventoryMeta(
         text: `${translateAppMessage(preferredLanguage, "wheelSourceItemsLeft", {
           count: remaining,
           suffix: remaining === 1 ? "" : "s"
-        })} • ${Math.max(1, Number(tier.packsCount) || 1)} per hit`,
+        })} • ${translateAppMessage(preferredLanguage, "wheelTierPerWinMeta", {
+          count: Math.max(1, Number(tier.packsCount) || 1)
+        })}`,
         warning: remaining <= Math.max(1, Number(tier.packsCount) || 1)
       };
     }
@@ -129,7 +137,9 @@ export function getWheelTierInventoryMeta(
     text: `${translateAppMessage(preferredLanguage, "wheelSourceItemsLeft", {
       count: remainingPacks,
       suffix: remainingPacks === 1 ? "" : "s"
-    })} • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
+    })} • ${translateAppMessage(preferredLanguage, "wheelTierPerWinMeta", {
+      count: Math.max(1, Number(tier.packsCount) || 0)
+    })}`,
     warning: remainingPacks <= Math.max(1, Number(tier.packsCount) || 1)
   };
 }

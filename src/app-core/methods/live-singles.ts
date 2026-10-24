@@ -4,6 +4,7 @@ import type {
   LiveSinglesMethodImplementation
 } from "../context/commerce.ts";
 import { normalizeUniquePositiveIntIds } from "../shared/singles-normalizers.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 
 function mergeLiveSinglesIds(baseIds: number[], incomingIds: number[]): number[] {
   if (incomingIds.length === 0) return [...baseIds];
@@ -88,10 +89,10 @@ export const liveSinglesMethods = {
     const action = liveWindow?.applySinglesAutoPricing;
     if (typeof action === "function") {
       action.call(liveWindow);
-      this.notify("Live singles prices auto-calculated from target profit", "success");
+      this.notify(translateAppMessage(this.preferredLanguage, "liveNoticeSinglesAutoPriced"), "success");
       return;
     }
-    this.notify("Open the Live tab to auto-calculate singles prices", "info");
+    this.notify(translateAppMessage(this.preferredLanguage, "liveNoticeOpenToAutoPriceSingles"), "info");
   },
 
   resetLiveSinglesPricing(): void {
@@ -100,9 +101,9 @@ export const liveSinglesMethods = {
     const action = liveWindow?.resetSinglesPricing;
     if (typeof action === "function") {
       action.call(liveWindow);
-      this.notify("Live singles prices reset to suggested values", "info");
+      this.notify(translateAppMessage(this.preferredLanguage, "liveNoticeSinglesPricesReset"), "info");
       return;
     }
-    this.notify("Open the Live tab to reset singles prices", "info");
+    this.notify(translateAppMessage(this.preferredLanguage, "liveNoticeOpenToResetSingles"), "info");
   }
 } satisfies LiveSinglesMethodImplementation;

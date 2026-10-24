@@ -1,4 +1,5 @@
 import { defineComponent, nextTick } from "vue";
+import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import type { BracketBattleConfig, WheelConfig } from "../../../../types/app.ts";
 import AppConfirmDialog from "../../../ui/AppConfirmDialog.vue";
@@ -64,6 +65,7 @@ type BracketBattleLifecycleHost = {
 
 type BracketBattleParentContext = BracketBattleHostFlowContext
   & Pick<GameHostState, "wheelPresentationMode" | "wheelViewportWidth">
+  & Pick<GameCoordinatorContext, "preferredLanguage">
   & {
   wheelDisplayConfig: WheelConfig | null;
   t(key: string, params?: Record<string, string | number | null | undefined>): string;
@@ -144,10 +146,10 @@ export const BracketBattlePanel = defineComponent({
       return createBracketBattleDraftFromConfig(config, (this.wheelDisplayConfig as WheelConfig | null)?.name || "Bracket Battle");
     },
     bracketDraftValidation() {
-      return getBracketBattleDraftValidation(this.bracketDraft);
+      return getBracketBattleDraftValidation(this.bracketDraft, this.preferredLanguage);
     },
     canStartBracketBattle(): boolean {
-      return getBracketBattleDraftValidation(this.bracketDraft).valid;
+      return getBracketBattleDraftValidation(this.bracketDraft, this.preferredLanguage).valid;
     },
     activeBracketMatch(): BracketBattleMatch | null {
       return resolveBracketBattleActiveMatch(this.bracketSession, this.bracketShowcaseMatchId);

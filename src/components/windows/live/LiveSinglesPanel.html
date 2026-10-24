@@ -340,7 +340,7 @@
           </div>
           <div v-if="liveSinglesPricingMode === 'individual'" class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
-              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel') }}</span>
+              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t(liveSinglesSelectedCount === 1 ? 'liveSinglesItemLabel' : 'liveSinglesItemsLabel') }}</span>
               <app-metric-value
                 class="live-singles-summary-pill"
                 kind="money"
@@ -364,7 +364,7 @@
           </div>
           <div v-else class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
-              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel') }}</span>
+              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t(liveSinglesSelectedCount === 1 ? 'liveSinglesItemLabel' : 'liveSinglesItemsLabel') }}</span>
               <app-metric-value
                 class="live-singles-summary-pill"
                 kind="money"

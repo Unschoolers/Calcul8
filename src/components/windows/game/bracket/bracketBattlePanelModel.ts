@@ -1,4 +1,5 @@
 import type { Lot } from "../../../../types/app.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import {
   createBracketBattleSession,
@@ -119,15 +120,19 @@ function getLotValue(lot: Lot): number | null {
   return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-export function buildBracketBattlePrizeCatalog(lots: Lot[]): BracketBattlePrizeCatalogItem[] {
+export function buildBracketBattlePrizeCatalog(
+  lots: Lot[],
+  preferredLanguage: string = ""
+): BracketBattlePrizeCatalogItem[] {
   const items: BracketBattlePrizeCatalogItem[] = [];
+  const singlesItemFallback = translateAppMessage(preferredLanguage, "bracketBattleSinglesItemFallback");
   for (const lot of lots || []) {
     if (!lot || !Number.isFinite(Number(lot.id))) continue;
     if (isSinglesLot(lot)) {
       for (const entry of lot.singlesPurchases || []) {
         if (!entry || !Number.isFinite(Number(entry.id))) continue;
         const cardNumber = normalizeText(entry.cardNumber);
-        const title = `${normalizeText(entry.item) || "Singles item"}${cardNumber ? ` #${cardNumber}` : ""}`;
+        const title = `${normalizeText(entry.item) || singlesItemFallback}${cardNumber ? ` #${cardNumber}` : ""}`;
         items.push({
           value: `singles:${lot.id}:${entry.id}`,
           title,
@@ -147,7 +152,7 @@ export function buildBracketBattlePrizeCatalog(lots: Lot[]): BracketBattlePrizeC
     items.push({
       value: `lot:${lot.id}`,
       title: normalizeText(lot.name) || `Lot ${lot.id}`,
-      subtitle: "Bulk lot",
+      subtitle: translateAppMessage(preferredLanguage, "bracketBattleBulkLotSubtitle"),
       sourceType: "lot",
       label: normalizeText(lot.name) || `Lot ${lot.id}`,
       lotId: lot.id,
@@ -184,17 +189,26 @@ export function applyBracketBattlePrizeCatalogSelection(
   prize.value = selected.valueEstimate;
 }
 
-export function getBracketBattleDraftValidation(draft: BracketBattleDraft): BracketBattleDraftValidation {
+export function getBracketBattleDraftValidation(
+  draft: BracketBattleDraft,
+  preferredLanguage: string = ""
+): BracketBattleDraftValidation {
   const participantCount = normalizeParticipantCount(draft.participantCount);
   const participants = (draft.participants || []).map(normalizeText).filter(Boolean);
   if (participants.length !== participantCount) {
-    return { valid: false, message: `Add exactly ${participantCount} buyers.` };
+    return {
+      valid: false,
+      message: translateAppMessage(preferredLanguage, "bracketBattleBuyersRequired", { count: participantCount })
+    };
   }
 
   const matchCount = getBracketBattleMatchCount(participantCount);
   const prizes = (draft.prizes || []).map((prize) => normalizeText(prize?.label)).filter(Boolean);
   if (prizes.length !== matchCount) {
-    return { valid: false, message: `Assign exactly ${matchCount} match prizes.` };
+    return {
+      valid: false,
+      message: translateAppMessage(preferredLanguage, "bracketBattleMatchPrizesRequired", { count: matchCount })
+    };
   }
 
   return { valid: true, message: "" };

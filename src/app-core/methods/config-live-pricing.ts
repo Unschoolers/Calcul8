@@ -2,6 +2,7 @@ import type {
   LivePricingHydrationContext,
   QueuedLivePricingContext
 } from "../context/commerce.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
 import { captureWorkspaceScopeGuard } from "../workspace-scope.ts";
 import { getWorkspaceRealtimeApplyRevision } from "./ui/workspace/workspace-realtime-state.ts";
@@ -183,7 +184,7 @@ async function flushQueuedLivePricingSave(context: QueuedLivePricingContext, not
         if (error instanceof SalesLiveApiError && error.status === 409) {
           if (conflictRetried) {
             drainQueuedSnapshot = false;
-            context.notify("Live pricing changed in the cloud. Please review and save again.", "warning");
+            context.notify(translateAppMessage(context.preferredLanguage, "liveNoticeConflictReview"), "warning");
             return;
           }
           // Check ownership before dispatching recovery GET. The API also checks before each network/auth action.
@@ -191,7 +192,7 @@ async function flushQueuedLivePricingSave(context: QueuedLivePricingContext, not
           const latest = await fetchAuthoritativeLivePricing(context, currentSnapshot.lotId, requestOptions(context, currentSnapshot)).catch(() => null);
           if (!isSnapshotCurrent(context, currentSnapshot)) return;
           if (!latest) {
-            context.notify("Live pricing changed in the cloud. Please try saving again.", "warning");
+            context.notify(translateAppMessage(context.preferredLanguage, "liveNoticeConflictRetryUnavailable"), "warning");
             return;
           }
           context.currentLivePricingVersion = latest.version;
@@ -203,12 +204,12 @@ async function flushQueuedLivePricingSave(context: QueuedLivePricingContext, not
           }
           currentSnapshot = { ...snapshot, baseVersion: latest.version ?? 0 };
           conflictRetried = true;
-          context.notify("Live pricing changed. Retrying save with latest version...", "info");
+          context.notify(translateAppMessage(context.preferredLanguage, "liveNoticeConflictRetrying"), "info");
           continue;
         }
         const message = error instanceof Error && error.message.trim()
           ? error.message
-          : "Failed to save live pricing.";
+          : translateAppMessage(context.preferredLanguage, "liveNoticeSaveFailed");
         context.notify(message, "error");
         return;
       }
@@ -234,7 +235,7 @@ async function flushQueuedLivePricingSave(context: QueuedLivePricingContext, not
         livePackPrice: saved.livePackPrice,
         currentLivePricingVersion: saved.version
       });
-      if (notifySuccess) context.notify("Live prices saved", "success");
+      if (notifySuccess) context.notify(translateAppMessage(context.preferredLanguage, "liveNoticePricesSaved"), "success");
       return;
     }
   } finally {

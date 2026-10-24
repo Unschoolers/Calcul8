@@ -328,6 +328,7 @@ export type LivePricingPayload = Pick<
 
 export type LivePricingHydrationContext = ScopedApiContext &
   LivePricingPayload &
+  Partial<Pick<AppState, "preferredLanguage">> &
   Pick<
     AppState,
     "currentLotId" | "lotHydrationRevision" | "livePricingHydrationStatus" | "livePricingHydratedLotId"
@@ -377,6 +378,7 @@ export type LotStorageContext = Pick<
   | "systemPricingDefaults"
 > &
   Pick<CommerceComputedState, "whatnotFeeSummary"> &
+  Partial<Pick<AppState, "preferredLanguage">> &
   Pick<RuntimeMethodState, "notify"> &
   Pick<CommerceMethodState,
     | "getSalesStorageKey"
@@ -438,7 +440,7 @@ export type PricingWorkflowContext = Pick<
 export type LiveSinglesContext = Pick<
   AppState,
   "liveSinglesExternalIds" | "liveSinglesManualIds"
-> &
+> & Partial<Pick<AppState, "preferredLanguage">> &
   Pick<CommerceComputedState, "currentLotType" | "effectiveLiveSinglesIds"> &
   Pick<CommerceMethodState, "setLiveSinglesSelection"> &
   Pick<RuntimeMethodState, "notify"> & {
@@ -552,7 +554,7 @@ export type LotConfigurationContext = Pick<
   | "whatnotVertical"
   | "systemPricingDefaults"
   | "targetProfitPercent"
-  > &
+  > & Partial<Pick<AppState, "preferredLanguage">> &
   Pick<WorkspaceComputedState, "isCurrentWorkspaceOwner"> &
   Pick<CommerceComputedState, "currentLotType"> &
   Pick<CommerceMethodState,

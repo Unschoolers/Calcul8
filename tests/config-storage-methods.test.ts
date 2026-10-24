@@ -19,7 +19,7 @@ vi.mock("../src/app-core/storageKeys.ts", async () => {
 });
 
 import { configStorageMethods } from "../src/app-core/methods/config-storage.ts";
-import { getScopedPresetsStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
+import { getScopedPresetsStorageKey, getScopedSystemPricingDefaultsStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 import { calculateNetFromGross } from "../src/domain/calculations.ts";
 
 type MockStorage = {
@@ -529,6 +529,49 @@ test("saveLotsToStorage writes JSON and notifies on storage failure", async () =
     } finally {
       errorSpy.mockRestore();
     }
+  });
+});
+
+test.each([
+  ["lots", "fr-CA", "Impossible d’enregistrer les lots. L’espace de stockage est peut-être plein."],
+  ["lots", "en", "Could not save lots. Storage may be full."],
+  ["lots", undefined, "Could not save lots. Storage may be full."],
+  ["defaults", "fr-CA", "Impossible d’enregistrer les paramètres de vente. L’espace de stockage est peut-être plein."],
+  ["defaults", "en", "Could not save system configuration. Storage may be full."],
+  ["defaults", undefined, "Could not save system configuration. Storage may be full."]
+] as const)("storage save failures translate only the established %s notice (%s)", async (kind, preferredLanguage, expected) => {
+  await withMockedLocalStorage((_data, controls) => {
+    controls.throwOnSet = true;
+    const context = createContext({
+      preferredLanguage,
+      systemPricingDefaults: { sellingCurrency: "CAD" },
+      notify: vi.fn()
+    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      if (kind === "lots") configStorageMethods.saveLotsToStorage.call(context as never);
+      else configStorageMethods.saveSystemPricingDefaultsToStorage.call(context as never);
+      assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [expected, "error"]);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+});
+
+test.each([
+  ["personal", null],
+  ["workspace", "team-42"]
+] as const)("system pricing defaults keep their existing %s storage scope", async (activeScopeType, activeWorkspaceId) => {
+  await withMockedLocalStorage((data) => {
+    const context = createContext({
+      activeScopeType,
+      activeWorkspaceId,
+      systemPricingDefaults: { sellingCurrency: "CAD", targetProfitPercent: 17 }
+    });
+    configStorageMethods.saveSystemPricingDefaultsToStorage.call(context as never);
+    const expectedKey = getScopedSystemPricingDefaultsStorageKey({ scopeType: activeScopeType, workspaceId: activeWorkspaceId });
+    assert.equal(typeof data.get(expectedKey), "string");
+    assert.equal((JSON.parse(data.get(expectedKey)!) as { targetProfitPercent: number }).targetProfitPercent, 17);
   });
 });
 

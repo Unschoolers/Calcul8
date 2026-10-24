@@ -48,6 +48,8 @@
               :disabled="!hasProAccess"
               @input="onSystemPricingDefaultsChange"
             ></v-text-field>
+            <p class="config-system-profit-help">{{ t('configTargetProfitBoxesHelp') }}</p>
+            <p class="config-system-profit-help">{{ t('configTargetProfitItemsHelp') }}</p>
 
             <v-text-field
               v-model.number="systemPricingDefaults.sellingTaxPercent"
@@ -175,6 +177,8 @@
                   ></v-btn>
                 </v-col>
               </v-row>
+              <p v-if="currentLotType === 'singles'" class="config-system-profit-help">{{ t('configTargetProfitItemsHelp') }}</p>
+              <p v-else class="config-system-profit-help">{{ t('configTargetProfitBoxesHelp') }}</p>
 
               <v-text-field
                 v-model.number="sellingTaxPercent"
