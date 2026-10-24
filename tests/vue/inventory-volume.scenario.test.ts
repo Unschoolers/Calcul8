@@ -78,9 +78,9 @@ function mobileLoadMoreButton(card: HTMLElement): HTMLButtonElement {
   return button;
 }
 
-test("mobile inventory restarts at 30 rows when returning from a smaller or empty lot", async () => {
+test("mobile inventory restarts at 30 rows after returning from a smaller lot", async () => {
   vuetify.theme.change("unionArenaDark");
-  const { card, source, lot, sales, secondLot, emptyLot } = mountInventory(390, "fr-CA");
+  const { card, source, lot, sales, secondLot } = mountInventory(390, "fr-CA");
   const initialLoadMore = mobileLoadMoreButton(card);
   expect(initialLoadMore).toHaveAccessibleName(/Charger 30 de plus/);
   await fireEvent.click(initialLoadMore);
@@ -98,10 +98,15 @@ test("mobile inventory restarts at 30 rows when returning from a smaller or empt
   expect(mobileRows(card)).toHaveLength(30);
   expect(card.querySelector(".singles-mobile-list .singles-mobile-number")).toHaveTextContent("V-0501");
   expect(card.querySelector(".singles-mobile-toolbar-count")).toHaveTextContent("500 items");
+});
 
+test("mobile inventory restarts at 30 rows after returning from an empty lot", async () => {
+  vuetify.theme.change("unionArenaDark");
+  const { card, source, lot, sales, emptyLot } = mountInventory(390, "fr-CA");
   await fireEvent.click(mobileLoadMoreButton(card));
   await fireEvent.click(mobileLoadMoreButton(card));
   expect(mobileRows(card)).toHaveLength(90);
+
   source.currentLotId = emptyLot.id;
   source.singlesPurchases = [];
   source.sales = [];
@@ -121,7 +126,7 @@ function rowWith(container: ParentNode, itemNumber: number): Element | undefined
     .find((row) => row.textContent?.includes(`V-${String(itemNumber).padStart(4, "0")}`));
 }
 
-test("mobile inventory searches the full filtered collection, toggles sold stock, and paginates without identity loss", async () => {
+test("mobile inventory searches all 1,000 rows and toggles sold matching rows", async () => {
   vuetify.theme.change("unionArenaDark");
   const { card, source, targets, lot } = mountInventory(390, "fr-CA");
   const scope = within(card);
@@ -145,7 +150,16 @@ test("mobile inventory searches the full filtered collection, toggles sold stock
   expect(card.querySelector(".singles-mobile-list .singles-mobile-chip--stock")).toHaveTextContent("0/1");
   await fireEvent.click(soldToggle);
   expect(scope.getByText("Aucune ligne ne correspond à cette recherche. Essayez un autre nom ou numéro d’item.")).toBeVisible();
+  expect(source.singlesPurchases).toHaveLength(1_000);
+  expect(lot.singlesPurchases).toHaveLength(1_000);
+  expect(targets.finalItemId).toBe(20_999);
+});
 
+test("mobile inventory pagination and search reset preserve the first page", async () => {
+  vuetify.theme.change("unionArenaDark");
+  const { card } = mountInventory(390, "fr-CA");
+  const scope = within(card);
+  const search = scope.getByPlaceholderText("Rechercher par nom ou numéro d’item") as HTMLInputElement;
   await fireEvent.update(search, "");
   expect(scope.getAllByRole("listitem")).toHaveLength(30);
   const more = scope.getByRole("button", { name: /Charger 30 de plus/ });
@@ -157,6 +171,14 @@ test("mobile inventory searches the full filtered collection, toggles sold stock
   expect(scope.getAllByRole("listitem")).toHaveLength(1);
   await fireEvent.update(search, "");
   expect(scope.getAllByRole("listitem")).toHaveLength(30);
+});
+
+test("mobile inventory toggles sold stock without changing the 1,000-row fixture", async () => {
+  vuetify.theme.change("unionArenaDark");
+  const { card, source, targets, lot } = mountInventory(390, "fr-CA");
+  const scope = within(card);
+  const search = scope.getByPlaceholderText("Rechercher par nom ou numéro d’item") as HTMLInputElement;
+  await fireEvent.update(search, "");
   expect(card.querySelector(".singles-mobile-toolbar-count")).toHaveTextContent("500 items");
   await fireEvent.click(scope.getByRole("button", { name: "Basculer l’affichage des items épuisés" }));
   expect(scope.getAllByRole("listitem")).toHaveLength(30);
