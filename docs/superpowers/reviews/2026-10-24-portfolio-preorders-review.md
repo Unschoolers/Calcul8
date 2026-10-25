@@ -65,4 +65,4 @@ Final actual-built-app Playwright matrix: 20/20 PASS across five required dimens
 
 The initial native HTTP/browser-download path was unavailable; the real bundle was served to Chromium through local route fulfillment. The host login-shell timezone and generated-template residue were corrected at the QA environment boundary; no date assertion or production logic was weakened. The existing Vite chunk-size warning is unchanged.
 
-Product acceptance and local commits are complete. External publication remains blocked by automatic approval review until the user explicitly authorizes uploading the code and opening a PR in Unschoolers/Calcul8. No remote write succeeded.
+Product acceptance is complete. Julien subsequently authorized publication, and [PR #41](https://github.com/Unschoolers/Calcul8/pull/41) is open in Unschoolers/Calcul8. The uploaded implementation tree exactly matches the validated local tree. Main remains unchanged; GitHub Actions results are visible in the PR.

@@ -33,7 +33,7 @@
 - [x] Review each diff for spec and quality; fix meaningful findings — original task reviews plus final recovered-delta senior review PASS at 155b5e6.
 - [x] Integrate, run required verification and visual geometry checks — evidence below.
 - [x] Verify every approved product outcome locally; preserve the main branch.
-- [ ] Blocked: publish feature branch and PR — automatic approval review requires explicit authorization to upload code to Unschoolers/Calcul8. No remote mutation succeeded.
+- [x] Publish feature branch and PR — explicitly authorized by Julien; [PR #41](https://github.com/Unschoolers/Calcul8/pull/41).
 
 ## Review Focus
 
@@ -144,11 +144,11 @@ Worker 3 produces:
 - [x] Attempt native visual smoke; environment HTTP/browser-download interception prevented that path. Verify the actual compiled app through local Playwright route fulfillment instead: all three sections, report, keyboard, canvas dimensions, money/text fit, scope, no runtime errors or horizontal overflow at the full required matrix. Component tests remain primary.
 - [x] Broad final review of the whole feature branch by a senior reviewer. Resolve meaningful findings; inspect diff and approved requirement checklist.
 - [x] Commit integration fixes and prepare the complete patch against main 29e76f1.
-- [ ] Blocked: publish feature branch and open reviewable PR after explicit upload authorization. Main remains unchanged.
+- [x] Publish feature branch and open reviewable PR after explicit upload authorization — [PR #41](https://github.com/Unschoolers/Calcul8/pull/41). Main remains unchanged.
 
 ## Final integration evidence
 
-The feature is complete and committed locally on `feat/portfolio-preorders`. Publication is the sole authorization gate. Four isolated Luna implementation tracks were validated by independent senior reviews. A broad Astra review found five integration gaps; their cohesive correction and the final sales recovery were independently reviewed by Sol after Astra became unavailable due to its usage limit. Final recovered spec and quality verdicts are PASS, including the two label expectations and the shorter mobile no-sales copy. No Critical or Important finding remains open.
+The feature is published on `feat/portfolio-preorders` in [PR #41](https://github.com/Unschoolers/Calcul8/pull/41). Julien explicitly authorized publication; main remains unchanged. Four isolated Luna implementation tracks were validated by independent senior reviews. A broad Astra review found five integration gaps; their cohesive correction and the final sales recovery were independently reviewed by Sol after Astra became unavailable due to its usage limit. Final recovered spec and quality verdicts are PASS, including the two label expectations and the shorter mobile no-sales copy. No Critical or Important finding remains open.
 
 | Requirement | Implementation and regression evidence |
 | --- | --- |
@@ -172,3 +172,7 @@ The canonical verification commands ran with `VITEST_MAX_WORKERS=2` in UTC, matc
 Responsive coverage: 360×740, 390×844, 768×1024, 1280×800 and 1440×900, each EN/FR and light/dark. Checks include paired primary KPIs, full money text, receipt separation, actual chart dimensions/lifecycle, internal Enter/Space navigation, Details/customer scope, collapsed report receipt and label/value fit, bottom navigation clearance after a real user scroll, no page errors and no horizontal overflow. Native HTTP smoke was replaced only at the environment transport boundary by serving the real built resources through Playwright routes.
 
 Independent review and controller closure: [final review](../reviews/2026-10-24-portfolio-preorders-review.md).
+
+## Publication
+
+Julien authorized uploading the completed feature and opening its PR. [PR #41](https://github.com/Unschoolers/Calcul8/pull/41) targets main at `29e76f1`. The uploaded implementation tree `3d42d338d823140ede625ee6b798ce7e6ca74e69` exactly matches the validated local tree. The follow-up publication commit changes documentation only. GitHub Actions status is recorded in the PR.
