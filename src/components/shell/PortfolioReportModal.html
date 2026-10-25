@@ -37,6 +37,7 @@
             <tr>
               <th>{{ t('portfolioReportColumnLot') }}</th>
               <th>{{ t('portfolioReportColumnType') }}</th>
+              <th>{{ t('portfolioReportColumnReceipt') }}</th>
               <th>{{ t('portfolioReportColumnStatus') }}</th>
               <th>{{ t('portfolioReportColumnSales') }}</th>
               <th>{{ t('portfolioReportColumnSoldItems') }}</th>
@@ -54,6 +55,12 @@
             <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
               <td>{{ row.lotName }}</td>
               <td>{{ t(row.lotType === 'Singles' ? 'portfolioReportTypeSinglesLabel' : 'portfolioReportTypeBulkLabel') }}</td>
+              <td>
+                <span v-if="row.expectedReceiptDate" class="portfolio-report-receipt-badge">
+                  {{ t('portfolioReceiptExpectedBadge') }} · {{ formatDate(row.expectedReceiptDate) }}
+                </span>
+                <span v-else class="portfolio-report-receipt-badge is-received">{{ t('portfolioReceiptReceivedBadge') }}</span>
+              </td>
               <td>{{ row.salesCount > 0 ? t('portfolioReportStatusRealizedSales') : t('portfolioLotNoSalesLabel') }}</td>
               <td>{{ row.salesCount }}</td>
               <td>{{ row.soldPacks }}</td>
@@ -80,7 +87,7 @@
                 </app-metric-value>
               </td>
               <td>
-                <app-metric-value kind="money" :tone="row.totalProfit >= 0 ? 'positive' : 'negative'" cell>
+                <app-metric-value kind="money" tone="neutral" cell>
                   {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
                 </app-metric-value>
               </td>
@@ -129,6 +136,9 @@
                 </v-icon>
                 <span>{{ row.lotName }}</span>
               </div>
+              <div class="portfolio-report-receipt-badge" :class="{ 'is-received': !row.expectedReceiptDate }">
+                {{ row.expectedReceiptDate ? `${t('portfolioReceiptExpectedBadge')} · ${formatDate(row.expectedReceiptDate)}` : t('portfolioReceiptReceivedBadge') }}
+              </div>
             </div>
             <v-btn
               icon
@@ -167,7 +177,7 @@
               <span class="portfolio-report-card-label">{{ t('portfolioReportColumnCurrentLotProfit') }}</span>
               <app-metric-value
                 kind="money"
-                :tone="row.totalProfit >= 0 ? 'positive' : 'negative'"
+                tone="neutral"
                 value-class="portfolio-report-card-value"
               >
                 {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
@@ -185,6 +195,13 @@
                 <span class="portfolio-report-card-label">{{ t('portfolioReportColumnStatus') }}</span>
                 <span class="portfolio-report-card-value is-neutral">
                   {{ row.salesCount > 0 ? t('portfolioReportStatusRealizedSales') : t('portfolioLotNoSalesLabel') }}
+                </span>
+              </div>
+
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnReceipt') }}</span>
+                <span class="portfolio-report-card-value">
+                  {{ row.expectedReceiptDate ? `${t('portfolioReceiptExpectedBadge')} · ${formatDate(row.expectedReceiptDate)}` : t('portfolioReceiptReceivedBadge') }}
                 </span>
               </div>
 

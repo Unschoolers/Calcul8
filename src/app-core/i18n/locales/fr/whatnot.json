@@ -58,6 +58,8 @@
   "whatnotReviewChooseMatchingSaleLabel": "Choisir la vente correspondante",
   "whatnotReviewCloseAction": "Fermer la révision d'import Whatnot",
   "whatnotReviewConfirmReadyCount": "{{count}} prêt",
+  "whatnotPreorderConfirmTitle": "Importer les ventes avant réception ?",
+  "whatnotPreorderConfirmBody": "Cet import comprend {{count}} ventes pour des lots qui ne sont pas encore arrivés. Importer ces ventes ? Les dates de réception prévues resteront en attente.",
   "whatnotReviewCreateNewSaleLabel": "Creation d'une nouvelle vente",
   "whatnotReviewDiscardConfirmBody": "Ceci retirera le lot de révision Whatnot en attente de la file.",
   "whatnotReviewDiscardConfirmTitle": "Ignorer la révision Whatnot?",

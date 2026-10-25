@@ -7,6 +7,7 @@ import {
 } from "../../domain/calculations.ts";
 import type { Lot, LotPerformanceSummary, PortfolioDashboardPreset, Sale } from "../../types/app.ts";
 import { getTodayDate } from "../../shared/lot-dates.ts";
+import { isLotAwaitingReceipt } from "../../shared/lot-receipt.ts";
 import type { PortfolioComputedObject } from "../context/portfolio.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType } from "../shared/lot-types.ts";
@@ -28,6 +29,7 @@ import {
   summarizeForecastAverage,
   type PortfolioModeProjection
 } from "./portfolio-forecast.ts";
+import { buildPortfolioReceiptSummary } from "./portfolio-receipt.ts";
 
 type PortfolioForecastScenario = ForecastScenario<"item" | "box" | "rtyh">;
 
@@ -44,6 +46,26 @@ function lotMatchesPortfolioTypeFilter(
 ): boolean {
   if (filter === "both") return true;
   return getLotType(lot) === filter;
+}
+
+function getExplicitlyScopedPortfolioLots(
+  lots: Lot[],
+  selectedLotIds: number[],
+  typeFilter: "both" | "bulk" | "singles",
+  receiptFilter: "all" | "received" | "awaiting"
+): Lot[] {
+  const lotsById = new Map(lots.map((lot) => [lot.id, lot] as const));
+  const allLotIds = lots.map((lot) => lot.id);
+  const validSelectedIds = selectedLotIds.filter((id) => allLotIds.includes(id));
+  const baseIds = validSelectedIds.length > 0
+    ? validSelectedIds
+    : (selectedLotIds.length === 0 ? allLotIds : []);
+  return baseIds
+    .map((id) => lotsById.get(id))
+    .filter((lot): lot is Lot => !!lot
+      && lotMatchesPortfolioTypeFilter(lot, typeFilter)
+      && (receiptFilter === "all"
+        || (receiptFilter === "awaiting") === isLotAwaitingReceipt(lot)));
 }
 
 function lotForNativeCalculations(lot: Lot): Lot {
@@ -78,16 +100,17 @@ function lotIsSoldOut(summary: Pick<LotPerformanceSummary, "soldPacks" | "totalP
 
 function lotMatchesPortfolioDashboardPreset(
   summary: LotPerformanceSummary,
-  preset: PortfolioDashboardPreset
+  preset: PortfolioDashboardPreset,
+  awaitingReceipt = false
 ): boolean {
   const hasSales = Number(summary.salesCount) > 0;
   const soldOut = lotIsSoldOut(summary);
 
   if (preset === "active") return hasSales && !soldOut;
-  if (preset === "needs_first_sale") return !hasSales && !soldOut;
+  if (preset === "needs_first_sale") return !awaitingReceipt && !hasSales && !soldOut;
   if (preset === "finished") return soldOut;
-  if (preset === "at_risk") return hasSales && !soldOut && Number(summary.totalProfit) < 0;
-  if (preset === "profit_winners") return hasSales && Number(summary.totalProfit) > 0;
+  if (preset === "at_risk") return !awaitingReceipt && hasSales && !soldOut && Number(summary.totalProfit) < 0;
+  if (preset === "profit_winners") return !awaitingReceipt && hasSales && Number(summary.totalProfit) > 0;
   return true;
 }
 
@@ -120,7 +143,11 @@ export const portfolioComputed: PortfolioComputedObject = {
       typedLots
         .filter((lot) => {
           const summary = summaryByLotId.get(lot.id);
-          return summary ? lotMatchesPortfolioDashboardPreset(summary, preset) : false;
+          return summary
+            ? (this.portfolioReceiptFilter === "all"
+              || (this.portfolioReceiptFilter === "awaiting") === isLotAwaitingReceipt(lot))
+              && lotMatchesPortfolioDashboardPreset(summary, preset, isLotAwaitingReceipt(lot))
+            : false;
         })
         .map((lot) => ({
           ...lot,
@@ -136,25 +163,36 @@ export const portfolioComputed: PortfolioComputedObject = {
       ? this.portfolioLotTypeFilter
       : "both";
     const preset = normalizePortfolioDashboardPreset(this.portfolioDashboardPreset);
-    const lotsById = new Map(this.lots.map((lot) => [lot.id, lot] as const));
-    const allLotIds = this.lots.map((lot) => lot.id);
-    const selectedIds = this.portfolioLotFilterIds.filter((id) => allLotIds.includes(id));
-    const baseIds = selectedIds.length > 0 ? selectedIds : allLotIds;
-    const baseLots = baseIds
-      .map((id) => lotsById.get(id))
-      .filter((lot): lot is Lot => !!lot && lotMatchesPortfolioTypeFilter(lot, filter));
+    const baseLots = getExplicitlyScopedPortfolioLots(
+      this.lots,
+      this.portfolioLotFilterIds,
+      filter,
+      this.portfolioReceiptFilter
+    );
     const summaryByLotId = getPortfolioPerformanceSummaries(this, baseLots);
     return baseLots
       .filter((lot) => {
         const summary = summaryByLotId.get(lot.id);
-        return summary ? lotMatchesPortfolioDashboardPreset(summary, preset) : false;
+        return summary ? lotMatchesPortfolioDashboardPreset(summary, preset, isLotAwaitingReceipt(lot)) : false;
       })
       .map((lot) => lot.id);
   },
 
+  portfolioSalesHydrationLotIds(): number[] {
+    const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
+      ? this.portfolioLotTypeFilter
+      : "both";
+    return getExplicitlyScopedPortfolioLots(
+      this.lots,
+      this.portfolioLotFilterIds,
+      filter,
+      this.portfolioReceiptFilter
+    ).map((lot) => lot.id);
+  },
+
   portfolioForecastScenarios(): PortfolioForecastScenario[] {
     const selectedLotIds = new Set(
-      Array.isArray(this.portfolioSelectedLotIds) && this.portfolioSelectedLotIds.length > 0
+      Array.isArray(this.portfolioSelectedLotIds)
         ? this.portfolioSelectedLotIds
         : (this.lots || []).map((lot) => lot.id)
     );
@@ -274,9 +312,7 @@ export const portfolioComputed: PortfolioComputedObject = {
 
   portfolioSalesByUserChartData() {
     void this.salesCacheEpoch;
-    const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
-      ? this.portfolioSelectedLotIds
-      : this.lots.map((lot) => lot.id);
+    const selectedLotIds = this.portfolioSelectedLotIds;
     const salesByLotId = getAllSalesByLotIdForPortfolio(this, this.lots.map((lot) => lot.id));
 
     return buildPortfolioSalesByUserChartData({
@@ -286,6 +322,7 @@ export const portfolioComputed: PortfolioComputedObject = {
       scopeType: this.activeScopeType,
       workspaceMembers: this.workspaceMembers,
       metric: this.portfolioSalesByUserMetric,
+      grouping: this.portfolioSalesGrouping,
       period: this.portfolioSalesByUserPeriod,
       todayDate: getTodayDate(),
       preferredLanguage: this.preferredLanguage
@@ -294,9 +331,7 @@ export const portfolioComputed: PortfolioComputedObject = {
 
   portfolioSalesByUserDrilldownRows() {
     void this.salesCacheEpoch;
-    const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
-      ? this.portfolioSelectedLotIds
-      : this.lots.map((lot) => lot.id);
+    const selectedLotIds = this.portfolioSelectedLotIds;
     const salesByLotId = getAllSalesByLotIdForPortfolio(this, this.lots.map((lot) => lot.id));
 
     return buildPortfolioSalesByUserDrilldownRows({
@@ -380,6 +415,7 @@ export const portfolioComputed: PortfolioComputedObject = {
           lotId: summary.lotId,
           lotName: summary.lotName,
           lotType,
+          expectedReceiptDate: lot.expectedReceiptDate || undefined,
           realizedMarginPercent,
           forecastProfitAverage: forecastSummary.forecastProfitAverage == null ? null : toPortfolioCad(forecastSummary.forecastProfitAverage, nativeLot),
           forecastRevenueAverage: forecastSummary.forecastRevenueAverage == null ? null : toPortfolioCad(forecastSummary.forecastRevenueAverage, nativeLot),
@@ -392,6 +428,10 @@ export const portfolioComputed: PortfolioComputedObject = {
 
   portfolioTotals() {
     return calculatePortfolioTotals(this.allLotPerformance);
+  },
+
+  portfolioReceiptSummary() {
+    return buildPortfolioReceiptSummary(this.allLotPerformance, getTodayDate());
   },
 
   hasPortfolioData(): boolean {

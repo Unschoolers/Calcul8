@@ -183,6 +183,7 @@
           <app-form-layout id="guided-onboarding-new-lot-card" data-driver-target="guided-onboarding-new-lot-card">
               <v-text-field id="guided-onboarding-lot-name-field" v-model="lotNameDraft" :label="t('lotNameLabel')" variant="outlined"
                 @keyup.enter="createNewLot"></v-text-field>
+              <v-text-field v-model="newLotExpectedReceiptDate" type="date" clearable :label="t('lotReceiptExpectedDateLabel')" :hint="t('lotReceiptDateHint')" persistent-hint variant="outlined" density="compact" class="mt-2" />
               <lot-image-editor v-if="showNewLotModal" v-model="newLotImage" :t="t" @busy="newLotImageBusy = $event" />
               <v-btn-toggle v-model="newLotType" mandatory divided density="compact" variant="outlined"
                 class="mt-2 segment-toggle app-form-row app-responsive-segment-toggle">
@@ -229,6 +230,8 @@
           <app-form-layout compact :responsive="false">
               <v-text-field v-model="renameLotName" :label="t('lotNameLabel')" variant="outlined" density="comfortable" hide-details="auto" :disabled="shopifyEditSaving"
                 @keyup.enter="renameCurrentLot"></v-text-field>
+              <v-text-field v-model="renameLotExpectedReceiptDate" type="date" clearable :label="t('lotReceiptExpectedDateLabel')" :hint="t('lotReceiptDateHint')" persistent-hint variant="outlined" density="comfortable" :disabled="shopifyEditSaving" />
+              <v-btn v-if="renameLotExpectedReceiptDate" class="app-touch-target align-self-start" variant="text" size="small" :disabled="shopifyEditSaving" @click="renameLotExpectedReceiptDate = ''">{{ t('lotReceiptMarkReceivedAction') }}</v-btn>
               <lot-image-editor v-if="showRenameLotModal" :key="googleAuthEpoch + ':' + activeScopeType + ':' + activeWorkspaceId + ':' + currentLotId" v-model="renameLotImage" :t="t" :disabled="shopifyEditSaving" @busy="renameLotImageBusy = $event" />
               <v-text-field v-if="currentLotType === 'singles' || (!shopifyEditListing && shopifyEditListingStatus !== 'loading')" v-model="renameLotExternalSku" :label="t('configInventoryReferenceLabel')" :hint="t('configInventoryReferenceHint')" :placeholder="t('configMarketplaceSkuPlaceholder')" variant="outlined" density="comfortable" hide-details="auto" :disabled="shopifyEditSaving" />
               <v-select v-model="renameLotWhatnotVertical" :disabled="shopifyEditSaving" :items="[
@@ -333,12 +336,12 @@
 
         <portfolio-report-modal></portfolio-report-modal>
 
-        <app-dialog-shell v-model="confirmDialog" :title="confirmTitle" :max-width="420">
+        <app-dialog-shell :model-value="confirmDialog" :title="confirmTitle" :max-width="420" @update:model-value="handleConfirmDialogModelValue">
           <p class="app-text-wrap">{{ confirmText }}</p>
           <template #actions>
             <v-spacer></v-spacer>
             <v-btn class="app-touch-target" variant="text" @click="cancelConfirmAction">{{ t('commonCancel') }}</v-btn>
-            <v-btn class="app-touch-target" :color="confirmColor" @click="runConfirmAction">{{ t('commonConfirm') }}</v-btn>
+            <v-btn class="app-touch-target" :color="confirmColor" @click="runConfirmAction">{{ confirmActionLabel || t('commonConfirm') }}</v-btn>
           </template>
         </app-dialog-shell>
 

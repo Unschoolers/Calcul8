@@ -68,6 +68,9 @@ function createContext(overrides: Record<string, unknown> = {}) {
   const context = {
     currentLotId: 1,
     currentLotType: "bulk",
+    activeScopeType: "personal",
+    activeWorkspaceId: null as string | null,
+    googleAuthEpoch: 0,
     currentTab: "sales",
     isOffline: false,
     canUsePaidActions: true,
@@ -91,6 +94,7 @@ function createContext(overrides: Record<string, unknown> = {}) {
       date: "2026-03-17"
     },
     notify: vi.fn(),
+    askConfirmation: vi.fn((_payload: unknown, action: () => void) => action()),
     cancelSale: vi.fn(),
     initSalesChart: vi.fn(),
     initPortfolioChart: vi.fn(),
@@ -136,6 +140,147 @@ beforeEach(() => {
     setItem: vi.fn(),
     removeItem: vi.fn()
   });
+});
+
+test("manual preorder sale waits for confirmation and saves once without changing the receipt date", async () => {
+  let confirm: (() => void) | undefined;
+  const lot = { id: 1, expectedReceiptDate: "2026-11-12" };
+  const ctx = createContext({
+    lots: [lot],
+    askConfirmation: vi.fn((_payload: unknown, action: () => void) => { confirm = action; })
+  });
+  saveAuthoritativeSaleMock.mockResolvedValue({
+    id: 1,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-17",
+    version: 1
+  });
+
+  const pending = salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
+  assert.deepEqual(ctx.sales, []);
+  assert.equal(lot.expectedReceiptDate, "2026-11-12");
+  assert.equal((ctx.askConfirmation as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].title, "Sell before receipt?");
+  confirm?.();
+
+  const outcome = await pending;
+  assert.equal(outcome.kind, "confirmed");
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 1);
+  assert.equal(lot.expectedReceiptDate, "2026-11-12");
+});
+
+test("canceling a preorder sale leaves sale, inventory, and receipt date untouched", async () => {
+  let cancel: (() => void) | undefined;
+  const lot = { id: 1, expectedReceiptDate: "2026-11-12" };
+  const ctx = createContext({
+    lots: [lot],
+    askConfirmation: vi.fn((_payload: unknown, _action: () => void, onCancel?: () => void) => { cancel = onCancel; })
+  });
+
+  const pending = salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+  cancel?.();
+
+  assert.deepEqual(await pending, { kind: "skipped", reason: "cancelled" });
+  assert.deepEqual(ctx.sales, []);
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
+  assert.equal(lot.expectedReceiptDate, "2026-11-12");
+});
+
+test("an imported preorder sale price-only edit does not prompt", async () => {
+  const existing = {
+    id: 7, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0,
+    date: "2026-03-17", externalProvider: "whatnot", externalSaleId: "ext-7"
+  };
+  const lot = { id: 1, expectedReceiptDate: "2026-11-12" };
+  const ctx = createContext({
+    lots: [lot],
+    sales: [existing],
+    editingSale: existing,
+    newSale: { type: "pack", quantity: 1, packsCount: null, price: 12, buyerShipping: 0, date: "2026-03-17" }
+  });
+  saveAuthoritativeSaleMock.mockResolvedValue({ ...existing, price: 12, version: 2 });
+
+  await salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 1);
+});
+
+test("manually increasing an imported preorder sale still requires confirmation", async () => {
+  let confirm: (() => void) | undefined;
+  const existing = {
+    id: 7, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0,
+    date: "2026-03-17", externalProvider: "whatnot", externalSaleId: "ext-7"
+  };
+  const lot = { id: 1, expectedReceiptDate: "2026-11-12" };
+  const ctx = createContext({
+    lots: [lot],
+    sales: [existing],
+    editingSale: existing,
+    newSale: { type: "pack", quantity: 2, packsCount: 2, price: 12, buyerShipping: 0, date: "2026-03-17" },
+    askConfirmation: vi.fn((_payload: unknown, action: () => void) => { confirm = action; })
+  });
+  saveAuthoritativeSaleMock.mockResolvedValue({ ...existing, quantity: 2, packsCount: 2, version: 2 });
+
+  const pending = salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+  assert.equal((ctx.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
+  confirm?.();
+  await pending;
+
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 1);
+  assert.equal(lot.expectedReceiptDate, "2026-11-12");
+});
+
+test("increasing an edited preorder sale waits for confirmation and rejects a changed receipt source", async () => {
+  let confirm: (() => void) | undefined;
+  const existing = { id: 7, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  const lot = { id: 1, expectedReceiptDate: "2026-11-12" };
+  const ctx = createContext({
+    lots: [lot],
+    sales: [existing],
+    editingSale: existing,
+    newSale: { type: "pack", quantity: 2, packsCount: 2, price: 12, buyerShipping: 0, date: "2026-03-17" },
+    askConfirmation: vi.fn((_payload: unknown, action: () => void) => { confirm = action; })
+  });
+
+  const pending = salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+  assert.equal((ctx.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
+  lot.expectedReceiptDate = "2026-11-13";
+  confirm?.();
+
+  assert.deepEqual(await pending, { kind: "skipped", reason: "cancelled" });
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
+  assert.equal((ctx.sales as unknown[]).length, 1);
+});
+
+test("an accepted preorder edit cannot be written after the active lot changes", async () => {
+  let confirm: (() => void) | undefined;
+  const existing = { id: 7, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-17" };
+  const ctx = createContext({
+    lots: [{ id: 1, expectedReceiptDate: "2026-11-12" }, { id: 2 }],
+    sales: [existing],
+    editingSale: existing,
+    newSale: { type: "pack", quantity: 2, packsCount: 2, price: 12, buyerShipping: 0, date: "2026-03-17" },
+    askConfirmation: vi.fn((_payload: unknown, action: () => void) => { confirm = action; })
+  });
+
+  const pending = salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+  ctx.currentLotId = 2;
+  confirm?.();
+
+  assert.deepEqual(await pending, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 0);
 });
 
 test("saveSale uses authoritative API and appends the saved sale metadata", async () => {

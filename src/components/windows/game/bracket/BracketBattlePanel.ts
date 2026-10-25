@@ -1,12 +1,15 @@
 import { defineComponent, nextTick } from "vue";
 import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
+import type { RuntimeMethodState } from "../../../../app-core/context/runtime.ts";
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import type { BracketBattleConfig, WheelConfig } from "../../../../types/app.ts";
 import AppConfirmDialog from "../../../ui/AppConfirmDialog.vue";
-import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
+import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
 import type { GameStageOverlayAnchor, GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import { createBracketBattleOverlayAnchor } from "./bracketBattleOverlayAnchors.ts";
+import { clearGamePreorderConfirmations, confirmGamePreorderConsumption } from "../services/gamePreorderConfirmation.ts";
+import { captureGameOutcomeGuard } from "../services/gameOutcomeSettlement.ts";
 import {
   resolveBracketBattleMatchRoll,
   type BracketBattleMatch,
@@ -65,14 +68,19 @@ type BracketBattleLifecycleHost = {
 
 type BracketBattleParentContext = BracketBattleHostFlowContext
   & Pick<GameHostState, "wheelPresentationMode" | "wheelViewportWidth">
-  & Pick<GameCoordinatorContext, "preferredLanguage">
+  & Pick<GameCoordinatorContext, "preferredLanguage" | "lots" | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "activeWheelConfigId">
+  & Pick<RuntimeMethodState, "askConfirmation">
   & {
+  wheelMode: "config" | "live";
+  activeWheelConfig: WheelConfig | null;
   wheelDisplayConfig: WheelConfig | null;
   t(key: string, params?: Record<string, string | number | null | undefined>): string;
 };
 
 const BRACKET_ROLL_PREVIEW_INTERVAL_MS = 90;
 const BRACKET_ROLL_RESOLVE_DELAY_MS = 1000;
+const bracketRollOperations = new WeakMap<object, number>();
+let nextBracketRollOperationId = 0;
 
 function findById<T extends { id: string }>(items: T[], id: string | null | undefined): T | null {
   if (!id) return null;
@@ -199,6 +207,7 @@ export const BracketBattlePanel = defineComponent({
       this.syncBracketBattleParentState?.();
     },
     loadBracketSession(): void {
+      clearGamePreorderConfirmations(getGameContextSource(this as unknown as Record<string, unknown>));
       this.clearBracketRollAnimation();
       const loaded = loadBracketBattleSessionState(localStorage, this);
       this.bracketSession = loaded.session;
@@ -373,96 +382,142 @@ export const BracketBattlePanel = defineComponent({
       }
       this.rollActiveBracketMatch();
     },
-    rollActiveBracketMatch(): void {
+    async rollActiveBracketMatch(): Promise<void> {
       const session = this.bracketSession;
       const match = this.queuedBracketMatch;
-      if (!session || !match || this.bracketRolling) return;
-
-      this.clearBracketRollAnimation();
-      this.bracketShowcaseMatchId = match.id;
-      this.bracketRolling = true;
-      this.publishLiveBracketSpectatorSnapshot?.();
-      this.bracketRollPreview = [
-        {
-          participantId: match.participantAId,
-          value: randomRollValue(session.rollMin, session.rollMax)
-        },
-        {
-          participantId: match.participantBId,
-          value: randomRollValue(session.rollMin, session.rollMax)
-        }
-      ];
-      const startPreview = () => {
-        const activeAnchors: { leftAnchor?: GameStageOverlayAnchor; rightAnchor?: GameStageOverlayAnchor } =
-          this.getBracketBattleRollSlotAnchors();
-        this.$emit("overlay-command", {
-          type: "rollMatchStart",
-          effect: "dice",
-          leftLabel: this.bracketParticipantLabel(match.participantAId),
-          rightLabel: this.bracketParticipantLabel(match.participantBId),
-          leftAnchor: activeAnchors.leftAnchor,
-          rightAnchor: activeAnchors.rightAnchor
-        });
-        this.bracketRollIntervalId = globalThis.setInterval(() => {
-          this.bracketRollPreview = this.bracketRollPreview.map((entry) => ({
-            participantId: entry.participantId,
-            value: randomRollValue(session.rollMin, session.rollMax)
-          }));
-        }, BRACKET_ROLL_PREVIEW_INTERVAL_MS);
-
-        this.bracketRollResolveTimeoutId = globalThis.setTimeout(() => {
-          try {
-            if (this.bracketRollIntervalId != null) {
-              clearInterval(this.bracketRollIntervalId);
-              this.bracketRollIntervalId = null;
-            }
-            const result = resolveBracketBattleMatchRoll(session, match.id);
-            const decidingRolls = result.rolls.slice(-2);
-            const leftRoll = decidingRolls.find((entry) => entry.participantId === match.participantAId);
-            const rightRoll = decidingRolls.find((entry) => entry.participantId === match.participantBId);
-            void runBracketBattleMatchSettlement(buildBracketBattleSessionStatePayload({
-              session: this.bracketSession,
-              lastRolls: this.bracketLastRolls,
-              rolling: this.bracketRolling,
-              showcaseMatchId: this.bracketShowcaseMatchId
-            }), this.wheelMode === "live" ? "live" : "preview", session, result.rolls, {
-              persist: (next) => commitBracketBattleLifecycleState(this, next),
-              publish: () => this.publishLiveBracketSpectatorSnapshot?.()
+      if (!session || !match || this.bracketRolling || bracketRollOperations.has(this)) return;
+      const operationId = ++nextBracketRollOperationId;
+      bracketRollOperations.set(this, operationId);
+      const confirmationContext = getGameContextSource(this as unknown as Record<string, unknown>);
+      const outcomeGuard = captureGameOutcomeGuard(confirmationContext as never);
+      const modeAtStart = this.wheelMode;
+      const configAtStart = this.wheelDisplayConfig;
+      const sessionAtStart = session;
+      const matchIdAtStart = match.id;
+      const prizeSnapshotAtStart = JSON.stringify(session.prizes);
+      const sessionGuard = () => outcomeGuard()
+        && this.bracketSession === sessionAtStart
+        && this.queuedBracketMatch?.id === matchIdAtStart
+        && this.wheelMode === modeAtStart
+        && this.wheelDisplayConfig === configAtStart
+        && JSON.stringify(sessionAtStart.prizes) === prizeSnapshotAtStart;
+      try {
+        if (modeAtStart === "live") {
+          const lotIds = [...new Set(session.prizes
+            .filter((prize) => (prize.sourceType === "lot" || prize.sourceType === "singles")
+              && prize.lotId != null)
+            .map((prize) => Number(prize.lotId))
+            .filter((id) => Number.isFinite(id) && id > 0))];
+          const hasAwaitingLot = lotIds.some((lotId) =>
+            this.lots.some((lot) => lot.id === lotId && Boolean(lot.expectedReceiptDate))
+          );
+          if (lotIds.length > 0) {
+            const confirmation = confirmGamePreorderConsumption(confirmationContext as never, {
+              lotIds,
+              sessionKey: `bracket:${session.id}`,
+              configSnapshot: {
+                bracketConfig: this.wheelDisplayConfig?.bracketBattle,
+                prizes: session.prizes,
+                rollMin: session.rollMin,
+                rollMax: session.rollMax
+              },
+              isCurrentOperation: sessionGuard
             });
-            if (leftRoll && rightRoll) {
-              const emitResolve = (resolvedLeftAnchor?: GameStageOverlayAnchor, resolvedRightAnchor?: GameStageOverlayAnchor) => {
-                this.$emit("overlay-command", {
-                  type: "rollMatchResolve",
-                  effect: "dice",
-                  leftValue: leftRoll.value,
-                  rightValue: rightRoll.value,
-                  winnerSide: result.winnerParticipantId === match.participantAId ? "left" : "right",
-                  winnerLabel: this.bracketParticipantLabel(result.winnerParticipantId),
-                  leftAnchor: resolvedLeftAnchor ?? activeAnchors.leftAnchor,
-                  rightAnchor: resolvedRightAnchor ?? activeAnchors.rightAnchor,
-                  finalMatch: session.status === "complete"
-                });
-              };
-
-              void nextTick(() => {
-                const resolvedAnchors = session.status === "complete"
-                  ? this.getBracketBattleActionDiceAnchors()
-                  : this.getBracketBattleRollSlotAnchors();
-                emitResolve(resolvedAnchors.leftAnchor, resolvedAnchors.rightAnchor);
-              });
-            }
-          } finally {
-            this.bracketRollPreview = [];
-            this.bracketRollResolveTimeoutId = null;
+            if (hasAwaitingLot && !await confirmation) return;
+            if (!sessionGuard()) return;
           }
+        }
+
+        this.clearBracketRollAnimation();
+        this.bracketShowcaseMatchId = match.id;
+        this.bracketRolling = true;
+        this.publishLiveBracketSpectatorSnapshot?.();
+        this.bracketRollPreview = [
+          {
+            participantId: match.participantAId,
+            value: randomRollValue(session.rollMin, session.rollMax)
+          },
+          {
+            participantId: match.participantBId,
+            value: randomRollValue(session.rollMin, session.rollMax)
+          }
+        ];
+        const startPreview = () => {
+          const activeAnchors: { leftAnchor?: GameStageOverlayAnchor; rightAnchor?: GameStageOverlayAnchor } =
+            this.getBracketBattleRollSlotAnchors();
+          this.$emit("overlay-command", {
+            type: "rollMatchStart",
+            effect: "dice",
+            leftLabel: this.bracketParticipantLabel(match.participantAId),
+            rightLabel: this.bracketParticipantLabel(match.participantBId),
+            leftAnchor: activeAnchors.leftAnchor,
+            rightAnchor: activeAnchors.rightAnchor
+          });
+          this.bracketRollIntervalId = globalThis.setInterval(() => {
+            this.bracketRollPreview = this.bracketRollPreview.map((entry) => ({
+              participantId: entry.participantId,
+              value: randomRollValue(session.rollMin, session.rollMax)
+            }));
+          }, BRACKET_ROLL_PREVIEW_INTERVAL_MS);
+
+          this.bracketRollResolveTimeoutId = globalThis.setTimeout(() => {
+            try {
+              if (this.bracketRollIntervalId != null) {
+                clearInterval(this.bracketRollIntervalId);
+                this.bracketRollIntervalId = null;
+              }
+              const result = resolveBracketBattleMatchRoll(session, match.id);
+              const decidingRolls = result.rolls.slice(-2);
+              const leftRoll = decidingRolls.find((entry) => entry.participantId === match.participantAId);
+              const rightRoll = decidingRolls.find((entry) => entry.participantId === match.participantBId);
+              void runBracketBattleMatchSettlement(buildBracketBattleSessionStatePayload({
+                session: this.bracketSession,
+                lastRolls: this.bracketLastRolls,
+                rolling: this.bracketRolling,
+                showcaseMatchId: this.bracketShowcaseMatchId
+              }), this.wheelMode === "live" ? "live" : "preview", session, result.rolls, {
+                persist: (next) => commitBracketBattleLifecycleState(this, next),
+                publish: () => this.publishLiveBracketSpectatorSnapshot?.()
+              });
+              if (leftRoll && rightRoll) {
+                const emitResolve = (resolvedLeftAnchor?: GameStageOverlayAnchor, resolvedRightAnchor?: GameStageOverlayAnchor) => {
+                  this.$emit("overlay-command", {
+                    type: "rollMatchResolve",
+                    effect: "dice",
+                    leftValue: leftRoll.value,
+                    rightValue: rightRoll.value,
+                    winnerSide: result.winnerParticipantId === match.participantAId ? "left" : "right",
+                    winnerLabel: this.bracketParticipantLabel(result.winnerParticipantId),
+                    leftAnchor: resolvedLeftAnchor ?? activeAnchors.leftAnchor,
+                    rightAnchor: resolvedRightAnchor ?? activeAnchors.rightAnchor,
+                    finalMatch: session.status === "complete"
+                  });
+                };
+
+                void nextTick(() => {
+                  const resolvedAnchors = session.status === "complete"
+                    ? this.getBracketBattleActionDiceAnchors()
+                    : this.getBracketBattleRollSlotAnchors();
+                  emitResolve(resolvedAnchors.leftAnchor, resolvedAnchors.rightAnchor);
+                });
+              }
+            } finally {
+              this.bracketRollPreview = [];
+              this.bracketRollResolveTimeoutId = null;
+            }
         }, BRACKET_ROLL_RESOLVE_DELAY_MS);
       };
       void nextTick(() => {
-        if (!this.bracketRolling || this.bracketShowcaseMatchId !== match.id) return;
+        if (!this.bracketRolling || this.bracketShowcaseMatchId !== match.id || !sessionGuard()) return;
         startPreview();
       });
+      } finally {
+        if (bracketRollOperations.get(this) === operationId) bracketRollOperations.delete(this);
+      }
     },
     resetBracketBattle(): void {
+      clearGamePreorderConfirmations(getGameContextSource(this as unknown as Record<string, unknown>));
+      bracketRollOperations.delete(this);
       const resetAnchors = this.bracketSession?.status === "complete"
         ? this.getBracketBattleActionDiceAnchors()
         : this.getBracketBattleRollSlotAnchors();

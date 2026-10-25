@@ -81,6 +81,9 @@ export const appWatch: AppWatchObject = {
   lots: {
     handler() {
       hydrateMissingWhatnotScopeSales(this);
+      if (this.currentTab === "portfolio") {
+        this.$nextTick(() => this.initPortfolioChart());
+      }
     },
     deep: true
   },
@@ -323,6 +326,22 @@ export const appWatch: AppWatchObject = {
     if (this.currentTab === "portfolio") {
       this.$nextTick(() => this.initPortfolioChart());
     }
+  },
+
+  portfolioSection() {
+    if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
+  },
+
+  portfolioReceiptFilter() {
+    if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
+  },
+
+  portfolioSalesGrouping() {
+    if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
+  },
+
+  salesCacheEpoch() {
+    if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
   },
 
   portfolioSalesByUserMetric() {

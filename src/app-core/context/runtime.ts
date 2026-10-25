@@ -26,12 +26,13 @@ export interface RuntimeMethodState {
   toggleTheme(): void;
   notify(message: string, color?: UiColor): void;
   askConfirmation(
-    payload: { title: string; text: string; color?: UiColor },
+    payload: { title: string; text: string; color?: UiColor; confirmLabel?: string },
     action: () => void,
     onCancel?: () => void
   ): void;
   runConfirmAction(): void;
   cancelConfirmAction(): void;
+  handleConfirmDialogModelValue(open: boolean): void;
   getExchangeRate(): Promise<void>;
   formatCurrency(value: number | null | undefined, decimals?: number): string;
   safeFixed(value: number, decimals?: number): string;

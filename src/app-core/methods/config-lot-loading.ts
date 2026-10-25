@@ -7,6 +7,7 @@ import { applySystemPricingDefaultsToLot, lotUsesSystemPricingDefaults } from ".
 import { resolveDefaultSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
+import { normalizeExpectedReceiptDate } from "../../shared/lot-receipt.ts";
 import { normalizeSinglesPurchaseEntries, resetSinglesCsvImportState, type SinglesCsvImportStateTarget } from "./config-lots-state.ts";
 
 export type HydratedLotState = {
@@ -22,6 +23,7 @@ export type HydratedLotState = {
   sellingCurrency: "CAD" | "USD";
   exchangeRate: number;
   purchaseDate: string;
+  expectedReceiptDate: string;
   purchaseShippingCost: number;
   purchaseTaxPercent: number;
   sellingTaxPercent: number;
@@ -54,6 +56,7 @@ export type LotHydrationTarget = SinglesCsvImportStateTarget & {
   sellingCurrency?: "CAD" | "USD";
   exchangeRate?: number;
   purchaseDate?: string;
+  expectedReceiptDate?: string;
   purchaseShippingCost?: number;
   purchaseTaxPercent?: number;
   sellingTaxPercent?: number;
@@ -111,6 +114,7 @@ export function buildHydratedLotState(
       lotId: lot.id,
       fallbackDate: options.todayDate
     }) ?? options.todayDate,
+    expectedReceiptDate: normalizeExpectedReceiptDate(lot.expectedReceiptDate),
     purchaseShippingCost: lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
     purchaseTaxPercent: lot.purchaseTaxPercent ?? DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
     sellingTaxPercent: pricingLot.sellingTaxPercent ?? DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
@@ -153,6 +157,7 @@ export function applyHydratedLotState(target: LotHydrationTarget, state: Hydrate
   target.sellingCurrency = state.sellingCurrency;
   target.exchangeRate = state.exchangeRate;
   target.purchaseDate = state.purchaseDate;
+  target.expectedReceiptDate = state.expectedReceiptDate;
   target.purchaseShippingCost = state.purchaseShippingCost;
   target.purchaseTaxPercent = state.purchaseTaxPercent;
   target.sellingTaxPercent = state.sellingTaxPercent;

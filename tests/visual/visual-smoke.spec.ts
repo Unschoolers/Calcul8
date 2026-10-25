@@ -46,6 +46,13 @@ test.describe("@visual-smoke real app screens", () => {
     await page.goto("/nologin");
     await waitForVisualAppReady(page);
     await openSmokeTab(page, "portfolio");
+    await page.locator(".portfolio-section-toggle .v-btn").nth(1).click();
+    await expect(page.locator(".portfolio-analysis-section")).toBeVisible();
+    await page.locator(".portfolio-analysis-select").click();
+    const salesOptionName = testInfo.project.name === "mobile-smoke"
+      ? /^Ventes(?: par personne)?$/
+      : /^Sales(?: by person)?$/;
+    await page.getByRole("option", { name: salesOptionName }).click();
 
     const card = page.locator(".portfolio-sales-by-user-card");
     await expect(card).toBeVisible();
@@ -189,6 +196,7 @@ test.describe("@visual-smoke real app screens", () => {
     await page.goto("/nologin");
     await waitForVisualAppReady(page);
     await openSmokeTab(page, "portfolio");
+    await page.locator(".portfolio-section-toggle .v-btn").nth(2).click();
 
     const performanceSheet = page.locator(".portfolio-performance-card");
     await expect(performanceSheet).toBeVisible();

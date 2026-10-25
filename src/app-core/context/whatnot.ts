@@ -113,6 +113,7 @@ export type WhatnotSalesRefreshContext = SalesEntityContext &
 export type WhatnotMethodContext = WhatnotConnectionContext &
   WhatnotReviewContext &
   WhatnotSalesRefreshContext &
+  Pick<AppState, "lots"> &
   Pick<AppState, "preferredLanguage"> &
   Pick<SyncMethodState, "pullCloudSync"> &
   Pick<WhatnotMethodState, "refreshWhatnotStatus">;

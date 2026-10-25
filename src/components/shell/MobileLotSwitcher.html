@@ -20,6 +20,7 @@
     <span class="mobile-lot-switcher__copy">
       <span class="mobile-lot-switcher__title">
         {{ selectedLotItem?.title || t('shellNoLotTitle') }}
+        <v-chip v-if="selectedLotItem?.isAwaitingReceipt" size="x-small" color="warning" variant="tonal">{{ t('lotReceiptAwaitingBadge') }} · {{ selectedLotItem.expectedReceiptDate }}</v-chip>
       </span>
       <span class="mobile-lot-switcher__subtitle">{{ lotSummarySubtitle }}</span>
     </span>
@@ -94,7 +95,10 @@
                   >{{ item.completionIcon }}</v-icon>
                 </span>
               </template>
-              <v-list-item-title>{{ item.title }}</v-list-item-title>
+              <v-list-item-title>
+                {{ item.title }}
+                <v-chip v-if="item.isAwaitingReceipt" size="x-small" color="warning" variant="tonal" class="ml-2">{{ t('lotReceiptAwaitingBadge') }} · {{ item.expectedReceiptDate }}</v-chip>
+              </v-list-item-title>
               <v-list-item-subtitle>{{ item.subtitle }}</v-list-item-subtitle>
               <template #append>
                 <shopify-link-indicator v-if="item.shopifyLink" :link="item.shopifyLink" :t="t" class="mr-2" />

@@ -13,6 +13,19 @@ test("grouping and search preserve Shopify link metadata alongside completion", 
   expect(options[1]?.shopifyLink).toBeUndefined();
 });
 
+test("lot selector options preserve preorder status and expected date through filtering", () => {
+  const [option] = buildLotOptionItems([
+    { id: 7, name: "Preorder Set", lotType: "bulk", expectedReceiptDate: "2027-01-15" },
+    { id: 8, name: "Received Set", lotType: "bulk" }
+  ]);
+  expect(option).toMatchObject({ value: 7, isAwaitingReceipt: true, expectedReceiptDate: "2027-01-15" });
+  expect(filterLotOptionItems([option!], "Preorder")[0]).toMatchObject({
+    value: 7,
+    isAwaitingReceipt: true,
+    expectedReceiptDate: "2027-01-15"
+  });
+});
+
 test("computed options join same-scope bindings and omit them immediately after an account switch", () => {
   const context = { googleAuthEpoch: 1, activeScopeType: "personal", activeWorkspaceId: null, lots: [{ id: 7, name: "Kaiju", lotType: "bulk" }], preferredLanguage: "en", getAllSalesByLotId: () => ({}), getSalesCacheEntry: () => null, shopifyConnectionStatus: "connected", shopifyConnectionShop: "a.myshopify.com", shopifyBindingsStale: false, shopifyBindingsScope: "", shopifyBindingsSummary: { scopeKey: "u:42", shop: "a.myshopify.com", generation: 2, complete: true, connected: true, generatedAt: "2026-10-03T00:00:00Z", bindings: [{ lotId: 7, mode: "linked", version: "v1" }] } };
   context.shopifyBindingsScope = shopifyBindingsScopeKey(context);

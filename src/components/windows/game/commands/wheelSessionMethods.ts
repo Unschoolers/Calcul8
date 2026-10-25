@@ -9,6 +9,7 @@ import type { GameBroadcastContext, GameCoordinatorContext } from "../../../../a
 import type { Lot, PendingWheelChaseObligation, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { GameHostState } from "../services/gameHostState.ts";
 import { getWheelController } from "../services/gameSessionState.ts";
+import { clearGamePreorderConfirmations } from "../services/gamePreorderConfirmation.ts";
 import {
   readGameSession,
   writeGameSession,
@@ -296,6 +297,7 @@ export const wheelSessionMethods = {
   },
 
   resetPreviewSession(this: WheelSessionCommandContext): void {
+    clearGamePreorderConfirmations(this);
     this.stopWheelAutospin?.();
     const controller = getWheelController(this);
     const previewSlots = ((controller.wheelPreviewSlots || controller.activeWheelSlots) as WheelSlot[]);
@@ -592,6 +594,7 @@ export const wheelSessionMethods = {
   },
 
   resetWheelSession(this: WheelSessionCommandContext): void {
+    clearGamePreorderConfirmations(this);
     invalidateGameOutcomeSettlements(this);
     const resetController = getWheelController(this);
     const slots = resetController.activeWheelSlots as WheelSlot[];

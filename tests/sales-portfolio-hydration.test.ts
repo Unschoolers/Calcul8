@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
+import { portfolioComputed } from "../src/app-core/computed/portfolio.ts";
 import { hydrateMissingPortfolioSales } from "../src/app-core/methods/sales-portfolio-hydration.ts";
 
 function createContext(overrides: Record<string, any> = {}) {
@@ -8,6 +9,7 @@ function createContext(overrides: Record<string, any> = {}) {
     isOffline: false,
     currentLotId: 1,
     portfolioSelectedLotIds: [1, 2, 3],
+    portfolioSalesHydrationLotIds: [1, 2, 3],
     lots: [
       { id: 1, name: "Lot 1" },
       { id: 2, name: "Lot 2" },
@@ -114,6 +116,60 @@ test("hydrateMissingPortfolioSales fetches only missing non-current lots and ref
   assert.equal(cacheSales.mock.calls[0]?.[1], 2);
   assert.equal(context.salesCacheEpoch, 1);
   assert.equal(refreshCharts.mock.calls.length, 1);
+});
+
+test("hydrateMissingPortfolioSales uses preset-independent candidates for unloaded sales", async () => {
+  const localStorageMock = globalThis.localStorage as unknown as { getItem: ReturnType<typeof vi.fn> };
+  localStorageMock.getItem.mockReturnValue(null);
+  const fetchSalesByLot = vi.fn(async (_context, lotIds: number[]) => new Map(
+    lotIds.map((lotId) => [lotId, [{ id: lotId }]])
+  ));
+  const context = createContext({
+    portfolioSelectedLotIds: [],
+    portfolioLotFilterIds: [],
+    portfolioLotTypeFilter: "both",
+    portfolioReceiptFilter: "all",
+    portfolioDashboardPreset: "active"
+  });
+  assert.deepEqual(portfolioComputed.portfolioSelectedLotIds.call(context as never), []);
+  localStorageMock.getItem.mockImplementation((key: string) =>
+    key === "sales_3" ? JSON.stringify([{ id: 3 }]) : null
+  );
+  context.portfolioSalesHydrationLotIds = portfolioComputed.portfolioSalesHydrationLotIds.call(context as never);
+  assert.deepEqual(context.portfolioSalesHydrationLotIds, [1, 2, 3]);
+
+  hydrateMissingPortfolioSales(context as never, { force: false }, {
+    canUseAuthoritativeApi: () => true,
+    fetchSales: vi.fn(),
+    fetchSalesByLot,
+    cacheSales: vi.fn(),
+    refreshCharts: vi.fn()
+  } as any);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(fetchSalesByLot.mock.calls[0]?.[1], [2]);
+});
+
+test("hydrateMissingPortfolioSales keeps truly unmatched scopes empty", async () => {
+  const fetchSalesByLot = vi.fn(async () => new Map());
+  const context = createContext({
+    portfolioSelectedLotIds: [],
+    portfolioLotFilterIds: [999_999],
+    portfolioLotTypeFilter: "both",
+    portfolioReceiptFilter: "all"
+  });
+  context.portfolioSalesHydrationLotIds = portfolioComputed.portfolioSalesHydrationLotIds.call(context as never);
+  assert.deepEqual(context.portfolioSalesHydrationLotIds, []);
+  hydrateMissingPortfolioSales(context as never, { force: false }, {
+    canUseAuthoritativeApi: () => true,
+    fetchSales: vi.fn(),
+    fetchSalesByLot,
+    cacheSales: vi.fn(),
+    refreshCharts: vi.fn()
+  } as any);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(fetchSalesByLot.mock.calls.length, 0);
 });
 
 test("hydrateMissingPortfolioSales respects an explicitly loaded empty sales cache when not forced", async () => {

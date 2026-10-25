@@ -28,6 +28,45 @@ test("parseSyncLotsShape preserves valid vertical and drops invalid vertical", (
   ]);
 });
 
+test("parseSyncLotsShape preserves and validates expected receipt dates", () => {
+  const received = parseSyncLotsShape({
+    lots: [
+      { id: 2, expectedReceiptDate: "" },
+      { id: 3, expectedReceiptDate: "2027-01-15" },
+      { id: 4, expectedReceiptDate: null }
+    ]
+  });
+  assert.deepEqual(received.lots, [
+    { id: 2, expectedReceiptDate: "" },
+    { id: 3, expectedReceiptDate: "2027-01-15" },
+    { id: 4 }
+  ]);
+  assert.throws(
+    () => parseSyncLotsShape({ lots: [{ id: 4, expectedReceiptDate: "2027-02-30" }] }),
+    (error: unknown) => error instanceof HttpError
+      && error.status === 400
+      && error.message === "Field 'lots[0].expectedReceiptDate' must be a real YYYY-MM-DD date."
+  );
+
+  const malformedReceiptDates: unknown[] = [
+    [],
+    [null],
+    ["2027-01-15"],
+    new Date("2027-01-15T00:00:00.000Z"),
+    20270115,
+    {},
+    { toString: null }
+  ];
+  for (const expectedReceiptDate of malformedReceiptDates) {
+    assert.throws(
+      () => parseSyncLotsShape({ lots: [{ id: 5, expectedReceiptDate }] }),
+      (error: unknown) => error instanceof HttpError
+        && error.status === 400
+        && error.message === "Field 'lots[0].expectedReceiptDate' must be a real YYYY-MM-DD date."
+    );
+  }
+});
+
 test("parseSyncLotsShape defaults missing salesByLot to empty object", () => {
   const result = parseSyncLotsShape({
     lots: [{ id: 2 }]

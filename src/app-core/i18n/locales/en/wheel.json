@@ -5,6 +5,8 @@
   "wheelBuilderReadyHelp": "Tier sources and costs are in sync",
   "wheelBuilderReadyLabel": "Ready",
   "wheelAutospinStartAction": "Start autospin",
+  "wheelPreorderConfirmTitle": "Draw from stock awaiting receipt?",
+  "wheelPreorderConfirmBody": "This game can consume a prize from a lot that has not arrived yet. The expected receipt date will remain pending.",
   "wheelAutospinStopAction": "Stop autospin",
   "wheelAutospinCompactAction": "Auto",
   "wheelAutospinCompactStopAction": "Stop",

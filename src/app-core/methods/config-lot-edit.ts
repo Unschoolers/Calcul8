@@ -5,6 +5,7 @@ import { isSinglesLot } from "../shared/lot-types.ts";
 import { validateRenameLotName } from "./config-lot-crud.ts";
 import { queueCloudConfigSyncPush, queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 import { closeShopifyEditState, shopifyEditorMethods } from "./ui/shopify/shopify-editor.ts";
+import { normalizeExpectedReceiptDate } from "../../shared/lot-receipt.ts";
 
 export const configLotEditMethods = {
   ...shopifyEditorMethods,
@@ -18,6 +19,7 @@ export const configLotEditMethods = {
     if (!lot) return;
     shopifyEditorMethods.resetShopifyEditor.call(this);
     this.renameLotName = lot.name;
+    this.renameLotExpectedReceiptDate = typeof lot.expectedReceiptDate === "string" ? lot.expectedReceiptDate : "";
     this.renameLotImage = normalizeSyncLotImage(lot.image) ?? "";
     this.renameLotImageBusy = false;
     this.renameLotWhatnotVertical = normalizeWhatnotVertical(lot.whatnotVertical);
@@ -59,27 +61,41 @@ export const configLotEditMethods = {
     const nextVertical = normalizeWhatnotVertical(this.renameLotWhatnotVertical);
     const nextSku = (this.renameLotExternalSku ?? "").trim();
     const nextImage = normalizeSyncLotImage(this.renameLotImage);
+    let nextExpectedReceiptDate: string;
+    try {
+      nextExpectedReceiptDate = normalizeExpectedReceiptDate(this.renameLotExpectedReceiptDate);
+    } catch (error) {
+      if (error instanceof RangeError) {
+        this.notify(this.t("lotReceiptInvalidDate"), "error");
+        return;
+      }
+      throw error;
+    }
     const imageChanged = normalizeSyncLotImage(lot.image) !== nextImage;
     const categoryChanged = normalizeWhatnotVertical(lot.whatnotVertical) !== nextVertical;
     const skuChanged = (lot.externalSku ?? "") !== nextSku;
     const publishChanged = this.shopifyEditListing?.mode === "managed" &&
       (lot.shopifyEnabled === true) !== (this.renameLotShopifyEnabled === true);
-    if (!renameResult.changed && !categoryChanged && !skuChanged && !publishChanged && !imageChanged) {
+    const receiptDateChanged = String(lot.expectedReceiptDate ?? "") !== nextExpectedReceiptDate;
+    if (!renameResult.changed && !categoryChanged && !skuChanged && !publishChanged && !imageChanged && !receiptDateChanged) {
       closeLotEditDialog(this);
       return;
     }
     if (renameResult.changed) lot.name = renameResult.nextName;
     lot.image = nextImage;
+    lot.expectedReceiptDate = nextExpectedReceiptDate;
     lot.whatnotVertical = nextVertical;
     lot.externalSku = nextSku;
     if (publishChanged) lot.shopifyEnabled = this.renameLotShopifyEnabled === true;
     this.externalSku = nextSku;
+    this.expectedReceiptDate = nextExpectedReceiptDate;
     this.whatnotVertical = nextVertical;
     this.saveLotsToStorage();
     queueWorkspaceConfigSyncPush(this);
-    if (categoryChanged || skuChanged || publishChanged || imageChanged) queueCloudConfigSyncPush(this);
+    if (categoryChanged || skuChanged || publishChanged || imageChanged || receiptDateChanged) queueCloudConfigSyncPush(this);
     closeLotEditDialog(this);
     this.renameLotName = "";
+    this.renameLotExpectedReceiptDate = "";
     this.renameLotWhatnotVertical = nextVertical;
     if (this.currentTab === "portfolio") void this.$nextTick(() => this.initPortfolioChart());
     if (renameResult.changed) this.notify("Lot renamed", "success");

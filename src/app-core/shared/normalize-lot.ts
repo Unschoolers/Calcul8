@@ -8,6 +8,7 @@ import { resolveDefaultSinglesMarketValueCurrency } from "./singles-market-value
 import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries } from "../methods/config-lots-state.ts";
 import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
+import { normalizeExpectedReceiptDate } from "../../shared/lot-receipt.ts";
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const lotType = getLotType(lot);
@@ -60,6 +61,7 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
       lotId: lot.id,
       fallbackDate: todayDate
     }) ?? todayDate,
+    expectedReceiptDate: normalizeExpectedReceiptDate(lot.expectedReceiptDate),
     createdAt: resolveLotCreatedDate({
       createdAt: lot.createdAt,
       purchaseDate: lot.purchaseDate,

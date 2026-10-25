@@ -684,7 +684,7 @@ test("closes system configuration without changing its labeled inputs", async ()
       expectTableMetric(lotA!, headerCells, locale === "fr-CA" ? "Revenu net des ventes" : "Sold revenue", "$30.00");
       expectTableMetric(lotA!, headerCells, locale === "fr-CA" ? "Coût des items vendus" : "Sold cost", "$14.00");
       expectTableMetric(lotA!, headerCells, locale === "fr-CA" ? "Profit des ventes réalisées" : "Realized profit", "+$16.00");
-      expectTableMetric(lotA!, headerCells, locale === "fr-CA" ? "Profit actuel du lot" : "Current lot profit", "+$6.00");
+      expectTableMetric(lotA!, headerCells, locale === "fr-CA" ? "Solde de récupération" : "Investment recovery balance", "+$6.00");
       expect(context.allLotPerformance[0]?.realizedCost).toBe(14);
       expect(context.allLotPerformance[0]?.totalProfit).toBe(6);
       rendered.unmount();
@@ -702,22 +702,33 @@ test("closes system configuration without changing its labeled inputs", async ()
     expectCardMetric(card!, "Revenu net des ventes", "$30.00");
     expectCardMetric(card!, "Coût des items vendus", "$14.00");
     expectCardMetric(card!, "Profit des ventes réalisées", "+$16.00");
-    expectCardMetric(card!, "Profit actuel du lot", "+$6.00");
+    expectCardMetric(card!, "Solde de récupération", "+$6.00");
     rendered.unmount();
   });
 
   test("renders the attribution note only in a shared Portfolio and localizes the drilldown editor column", async () => {
-    const makePortfolioPorts = (activeScopeType: "personal" | "workspace") => createPortfolioWindowPorts({
+    const makePortfolioPorts = (activeScopeType: "personal" | "workspace") => createPortfolioWindowPorts(reactive({
       activeScopeType,
       activeWorkspaceId: activeScopeType === "workspace" ? "workspace-1" : null,
       currentLotId: 1,
       googleAvatarLoadFailed: [],
       lots: [makeLot({ id: 1, name: "Lot A" })],
-      portfolioChartView: "trend",
+      portfolioChartView: "sales",
+      portfolioSection: "analytics",
       portfolioDashboardPreset: "all",
       portfolioLotFilterIds: [],
       portfolioLotTypeFilter: "both",
+      portfolioReceiptFilter: "all",
+      portfolioReceiptSummary: {
+        received: { lotCount: 1, totalCost: 8 },
+        awaiting: { lotCount: 0, totalCost: 0 },
+        nextExpectedReceiptDate: null,
+        realizedProfit: 4,
+        capitalToRecover: 4
+      },
+      portfolioSalesGrouping: "person",
       portfolioSalesByUserMetric: "count",
+      portfolioSalesByUserPeriod: "all",
       preferredLanguage: "fr-CA",
       salesByLotId: new Map([[1, [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 12,
         buyerShipping: 0, date: "2026-10-20", customer: "Buyer Fred" }]]]),
@@ -742,7 +753,7 @@ test("closes system configuration without changing its labeled inputs", async ()
       formatCurrency: (value: number | null | undefined) => String(value ?? 0),
       getBuyerProfile: () => null,
       getWorkspaceMemberPresenceState: () => "offline"
-    } as never);
+    } as never));
 
     const shared = renderWithCapabilities(PortfolioWindow, portfolioWindowPortsKey, makePortfolioPorts("workspace"), {
       global: { provide: { [buyerProfilePortsKey as symbol]: {
@@ -754,7 +765,8 @@ test("closes system configuration without changing its labeled inputs", async ()
     await fireEvent.click(screen.getByRole("button", { name: /Voir les ventes pour/ }));
     expect(screen.getAllByText("Dernière modification par").length).toBeGreaterThan(0);
     await fireEvent.click(screen.getByRole("button", { name: "Fermer le détail des ventes" }));
-    expect(screen.getAllByText("Marge sur les ventes").length).toBeGreaterThan(0);
+    expect(document.querySelector(".portfolio-sales-by-user-card")).toBeVisible();
+    await fireEvent.click(screen.getByRole("button", { name: "Détails" }));
     await fireEvent.click(screen.getByRole("button", { name: "Performance des acheteurs" }));
     expect(screen.getByRole("textbox", { name: "Rechercher des acheteurs" })).toBeVisible();
     expect(screen.getAllByText("Acheteur").length).toBeGreaterThan(0);

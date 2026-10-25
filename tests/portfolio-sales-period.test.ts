@@ -57,6 +57,37 @@ describe("Portfolio sales periods", () => {
     expect(emptyRows).toEqual([]);
   });
 
+  it("keeps all-history weekly totals equal to the sum of person series and counts transactions", () => {
+    const { lot, sales } = createDenseVolumeFixture();
+    const selectedSales = [
+      { ...sales[0]!, id: 31_001, date: "2022-12-30", updatedBy: "user-a" },
+      { ...sales[1]!, id: 31_002, date: "2022-12-31", updatedBy: "user-b" },
+      { ...sales[2]!, id: 31_003, date: "2026-10-20", updatedBy: "user-a" }
+    ];
+    const common = {
+      lots: [lot], salesByLotId: new Map([[lot.id, selectedSales]]), selectedLotIds: [lot.id],
+      scopeType: "workspace" as const,
+      workspaceMembers: [
+        { userId: "user-a", workspaceId: "workspace-a", role: "member" as const, status: "active" as const, updatedAt: "2026-10-20", displayName: "A" },
+        { userId: "user-b", workspaceId: "workspace-a", role: "member" as const, status: "active" as const, updatedAt: "2026-10-20", displayName: "B" }
+      ],
+      todayDate: "2026-10-20",
+      period: "all" as const,
+      metric: "count" as const
+    };
+    const byPerson = buildPortfolioSalesByUserChartData({ ...common, grouping: "person" });
+    const total = buildPortfolioSalesByUserChartData({ ...common, grouping: "total" });
+
+    expect(byPerson.weeks[0]?.key).toBe("2022-12-26");
+    expect(total.weeks).toEqual(byPerson.weeks);
+    expect(total.series).toHaveLength(1);
+    expect(total.series[0]?.values).toEqual(byPerson.weeks.map((_, index) =>
+      byPerson.series.reduce((sum, series) => sum + (series.values[index] ?? 0), 0)
+    ));
+    expect(total.series[0]?.total).toBe(selectedSales.length);
+    expect(byPerson.series.reduce((sum, series) => sum + series.total, 0)).toBe(selectedSales.length);
+  });
+
   it("excludes an older unselected lot from all-time coverage and amounts", () => {
     const { lot, sales } = createDenseVolumeFixture();
     const unselectedLot = { ...lot, id: lot.id + 1, name: "Unselected older lot" };

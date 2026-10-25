@@ -1536,8 +1536,8 @@ test("initPortfolioChart creates cumulative trend chart", () => {
   };
   assert.equal(config.type, "line");
   assert.equal(config.data.datasets.length, 2);
-  assert.equal(config.data.datasets[0]?.label, "Actual cumulative P/L");
-  assert.equal(config.data.datasets[1]?.label, "Target P/L");
+  assert.equal(config.data.datasets[0]?.label, "Investment recovered so far");
+  assert.equal(config.data.datasets[1]?.label, "Investment recovery target");
 });
 
 test("initPortfolioChart creates sell-through bar chart", () => {

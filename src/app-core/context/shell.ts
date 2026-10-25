@@ -21,6 +21,7 @@ export type BaseUiMethodState = Pick<
   | "askConfirmation"
   | "runConfirmAction"
   | "cancelConfirmAction"
+  | "handleConfirmDialogModelValue"
   | "formatCurrency"
   | "safeFixed"
 > &
@@ -43,6 +44,7 @@ export type BaseUiContext = Pick<
   | "confirmAction"
   | "confirmCancelAction"
   | "confirmColor"
+  | "confirmActionLabel"
   | "confirmDialog"
   | "confirmText"
   | "confirmTitle"
@@ -61,7 +63,7 @@ export type BaseUiContext = Pick<
 > &
   Pick<RuntimeComputedState, "isDark"> &
   Pick<CommerceComputedState, "currentLotType" | "totalCaseCost" | "totalPacks"> &
-  Pick<RuntimeMethodState, "formatCurrency"> &
+  Pick<RuntimeMethodState, "formatCurrency" | "cancelConfirmAction"> &
   Pick<AppVueContext, "$vuetify">;
 
 export type BaseUiMethodImplementation = FeatureMethodImplementation<

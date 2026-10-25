@@ -179,76 +179,60 @@ export function initPortfolioCharts(context: PortfolioChartContext): void {
 
   if (context.currentTab !== "portfolio") return;
   queuePortfolioSalesHydration(context);
+  const section = context.portfolioSection ?? "analytics";
+  const wantsSales = section === "analytics" && context.portfolioChartView === "sales";
+  const wantsPrimary = section === "overview" || (section === "analytics" && !wantsSales);
 
-  const chartCanvas = resolveCanvasRef(context, "portfolioWindow", "portfolioChartCanvas");
-  if (!chartCanvas) return;
-  const existingPortfolioChart = Chart.getChart(chartCanvas);
-  if (existingPortfolioChart) {
-    safeDestroyChart(existingPortfolioChart);
+  if (wantsPrimary) {
+    const chartCanvas = resolveCanvasRef(context, "portfolioWindow", "portfolioChartCanvas");
+    if (chartCanvas && isCanvasReady(chartCanvas)) {
+      const existing = Chart.getChart(chartCanvas);
+      if (existing) safeDestroyChart(existing);
+      const ctx = chartCanvas.getContext("2d");
+      if (ctx) {
+        const view = section === "overview" ? "trend" : context.portfolioChartView;
+        let config:
+          | ReturnType<typeof buildPortfolioBreakdownChartConfig>
+          | ReturnType<typeof buildPortfolioMarginChartConfig>
+          | ReturnType<typeof buildPortfolioHistoryChartConfig>
+          | null = null;
+        if (view === "breakdown") {
+          config = buildPortfolioBreakdownChartConfig({ rows: context.allLotPerformance, compactLegend: isSmallDisplay(context), formatCurrency: (value, decimals) => context.formatCurrency(value, decimals) });
+        } else if (view === "margin") {
+          config = buildPortfolioMarginChartConfig({ rows: context.allLotPerformance, compactMode: isSmallDisplay(context), formatCurrency: (value, decimals) => context.formatCurrency(value, decimals), preferredLanguage: context.preferredLanguage });
+        } else if (view === "trend" || view === "sellthrough") {
+          const selectedIds = context.portfolioSelectedLotIds;
+          const selectedLotIdSet = new Set(selectedIds);
+          const filteredLots = context.lots.filter((lot) => selectedLotIdSet.has(lot.id));
+          const salesByLotId = getPortfolioSalesByLotId(context, filteredLots.map((lot) => lot.id));
+          config = buildPortfolioHistoryChartConfig({
+            portfolioChartView: view, filteredLots, allLotPerformance: context.allLotPerformance, salesByLotId,
+            formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
+            formatDate: (value) => context.formatDate(value),
+            formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage),
+            compactMode: isSmallDisplay(context), todayDate: getTodayDate(), preferredLanguage: context.preferredLanguage
+          });
+        }
+        if (config) context.portfolioChart = new Chart(ctx, config);
+      }
+    }
   }
 
-  const ctx = chartCanvas.getContext("2d");
-  if (!ctx) return;
-
-  let primaryChartConfig:
-    | ReturnType<typeof buildPortfolioBreakdownChartConfig>
-    | ReturnType<typeof buildPortfolioMarginChartConfig>
-    | ReturnType<typeof buildPortfolioHistoryChartConfig>
-    | null = null;
-
-  if (context.portfolioChartView === "breakdown") {
-    primaryChartConfig = buildPortfolioBreakdownChartConfig({
-      rows: context.allLotPerformance,
-      compactLegend: isSmallDisplay(context),
-      formatCurrency: (value, decimals) => context.formatCurrency(value, decimals)
-    });
-  } else if (context.portfolioChartView === "margin") {
-    primaryChartConfig = buildPortfolioMarginChartConfig({
-      rows: context.allLotPerformance,
+  if (wantsSales) {
+    const canvas = resolveCanvasRef(context, "portfolioWindow", "portfolioSalesByUserChartCanvas");
+    if (!canvas || !isCanvasReady(canvas)) return;
+    const existing = Chart.getChart(canvas);
+    if (existing) safeDestroyChart(existing);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const config = buildPortfolioSalesByUserChartConfig({
+      chartData: context.portfolioSalesByUserChartData,
+      metric: context.portfolioSalesByUserMetric,
       compactMode: isSmallDisplay(context),
       formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
       preferredLanguage: context.preferredLanguage
     });
-  } else {
-    const selectedLotIdSet = new Set(context.portfolioSelectedLotIds);
-    const filteredLots = context.lots.filter((lot) => selectedLotIdSet.has(lot.id));
-    const salesByLotId = getPortfolioSalesByLotId(context, filteredLots.map((lot) => lot.id));
-    primaryChartConfig = buildPortfolioHistoryChartConfig({
-      portfolioChartView: context.portfolioChartView,
-      filteredLots,
-      allLotPerformance: context.allLotPerformance,
-      salesByLotId,
-      formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
-      formatDate: (value) => context.formatDate(value),
-      formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage),
-      compactMode: isSmallDisplay(context),
-      todayDate: getTodayDate(),
-      preferredLanguage: context.preferredLanguage
-    });
+    if (config) context.portfolioSalesByUserChart = new Chart(ctx, config);
   }
-
-  if (primaryChartConfig) {
-    context.portfolioChart = new Chart(ctx, primaryChartConfig);
-  }
-
-  const salesByUserCanvas = resolveCanvasRef(context, "portfolioWindow", "portfolioSalesByUserChartCanvas");
-  if (!salesByUserCanvas) return;
-  const existingSalesByUserChart = Chart.getChart(salesByUserCanvas);
-  if (existingSalesByUserChart) {
-    safeDestroyChart(existingSalesByUserChart);
-  }
-
-  const salesByUserCtx = salesByUserCanvas.getContext("2d");
-  if (!salesByUserCtx) return;
-
-  const salesByUserConfig = buildPortfolioSalesByUserChartConfig({
-    chartData: context.portfolioSalesByUserChartData,
-    metric: context.portfolioSalesByUserMetric,
-    compactMode: isSmallDisplay(context),
-    formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
-    preferredLanguage: context.preferredLanguage
-  });
-  if (!salesByUserConfig) return;
-  context.portfolioSalesByUserChart = new Chart(salesByUserCtx, salesByUserConfig);
 }
 

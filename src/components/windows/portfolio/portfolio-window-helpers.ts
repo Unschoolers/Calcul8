@@ -85,12 +85,12 @@ export function getPortfolioChartSubtitle(current: unknown, translate?: Portfoli
     return `${resolvePortfolioCopy(translate, "portfolioChartBreakdownSubtitle", "Revenue by lot")} (CAD)`;
   }
   if (normalized === "sellthrough") {
-    return resolvePortfolioCopy(translate, "portfolioChartSellThroughSubtitle", "Sell-through over time");
+    return resolvePortfolioCopy(translate, "portfolioChartSellThroughSubtitle", "Sold share of purchased quantities in selected lots, including preorders");
   }
   if (normalized === "margin") {
     return resolvePortfolioCopy(translate, "portfolioChartMarginSubtitle", "Sold margin by lot");
   }
-  return `${resolvePortfolioCopy(translate, "portfolioChartTrendSubtitle", "Profit trend over time")} (CAD)`;
+  return `${resolvePortfolioCopy(translate, "portfolioChartTrendSubtitle", "Investment recovery over time")} (CAD)`;
 }
 
 export function getPortfolioChartAriaLabel(current: unknown, translate?: PortfolioCopyFn): string {
@@ -104,7 +104,7 @@ export function getPortfolioChartAriaLabel(current: unknown, translate?: Portfol
   if (normalized === "margin") {
     return resolvePortfolioCopy(translate, "portfolioChartMarginAriaLabel", "Portfolio sold margin chart by lot.");
   }
-  return resolvePortfolioCopy(translate, "portfolioChartTrendAriaLabel", "Portfolio profit trend chart.");
+  return resolvePortfolioCopy(translate, "portfolioChartTrendAriaLabel", "Portfolio investment recovery chart over time.");
 }
 
 export function getPortfolioSalesByUserMetricLabel(metric: unknown, translate?: PortfolioCopyFn): string {
@@ -197,23 +197,33 @@ export function getPortfolioSalesByUserPeriodLabel(period: unknown, translate?: 
   return resolvePortfolioCopy(translate, `portfolioSalesByUserPeriod${normalized}Weeks`, `${normalized} weeks`);
 }
 
-export function getPortfolioSalesByUserSubtitle(translate?: PortfolioCopyFn, period?: PortfolioSalesByUserPeriod): string {
-  const template = resolvePortfolioCopy(translate, "portfolioSalesByUserSubtitle", "{{period}} by seller");
+export function getPortfolioSalesByUserSubtitle(
+  translate?: PortfolioCopyFn,
+  period?: PortfolioSalesByUserPeriod,
+  grouping: "total" | "person" = "person"
+): string {
+  const template = grouping === "total"
+    ? resolvePortfolioCopy(translate, "portfolioSalesTotalSubtitle", "{{period}} total sales")
+    : resolvePortfolioCopy(translate, "portfolioSalesByUserSubtitle", "{{period}} by seller");
   return template.replace(/\{\{period\}\}/g, getPortfolioSalesByUserPeriodLabel(period, translate));
 }
 
-export function getPortfolioSalesByUserAriaLabel(metric: unknown, translate?: PortfolioCopyFn, period?: PortfolioSalesByUserPeriod): string {
+export function getPortfolioSalesByUserAriaLabel(
+  metric: unknown,
+  translate?: PortfolioCopyFn,
+  period?: PortfolioSalesByUserPeriod,
+  grouping: "total" | "person" = "person"
+): string {
   const normalized = String(metric || "revenue");
   const metricLabel = normalized === "profit"
     ? resolvePortfolioCopy(translate, "portfolioSalesByUserMetricProfitLabel", "profit")
     : normalized === "count"
       ? resolvePortfolioCopy(translate, "portfolioSalesByUserMetricCountLabel", "count")
       : resolvePortfolioCopy(translate, "portfolioSalesByUserMetricRevenueLabel", "revenue");
-  return resolvePortfolioCopy(
-    translate,
-    "portfolioSalesByUserAriaLabel",
-    "Portfolio sales by person chart for {{period}} by {{metricLabel}}."
-  ).replace(/\{\{metricLabel\}\}/g, metricLabel).replace(/\{\{period\}\}/g, getPortfolioSalesByUserPeriodLabel(period, translate));
+  const template = grouping === "total"
+    ? resolvePortfolioCopy(translate, "portfolioSalesTotalAriaLabel", "Portfolio total sales chart for {{period}} by {{metricLabel}}.")
+    : resolvePortfolioCopy(translate, "portfolioSalesByUserAriaLabel", "Portfolio sales by person chart for {{period}} by {{metricLabel}}.");
+  return template.replace(/\{\{metricLabel\}\}/g, metricLabel).replace(/\{\{period\}\}/g, getPortfolioSalesByUserPeriodLabel(period, translate));
 }
 
 function normalizePulseRows(rows: PortfolioPulseRow[] | undefined): Array<Required<Pick<PortfolioPulseRow, "lotId" | "lotName" | "salesCount" | "totalProfit" | "soldPacks" | "totalPacks">> & { realizedProfit: number }> {

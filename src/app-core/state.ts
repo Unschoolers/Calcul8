@@ -5,7 +5,6 @@ import { getBrowserLocale, normalizeLanguagePreference } from "./i18n/index.ts";
 import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
-import { DEFAULT_PORTFOLIO_SALES_BY_USER_PERIOD } from "./shared/portfolio-sales-period.ts";
 import { STORAGE_KEYS } from "./storageKeys.ts";
 
 function getLocalTodayDate(): string {
@@ -135,6 +134,7 @@ export function createInitialState(): AppState {
     confirmTitle: "",
     confirmText: "",
     confirmColor: "error",
+    confirmActionLabel: null,
     confirmAction: null,
     confirmCancelAction: null,
     showSystemConfigurationDialog: false,
@@ -152,6 +152,7 @@ export function createInitialState(): AppState {
     sellingCurrency: "CAD",
     exchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
     purchaseDate: todayDate,
+    expectedReceiptDate: "",
     purchaseShippingCost: DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
     purchaseTaxPercent: DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
     sellingTaxPercent: DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
@@ -212,11 +213,14 @@ export function createInitialState(): AppState {
     portfolioSalesByUserChart: null,
     lotSearchQuery: "",
     portfolioChartView: "trend",
+    portfolioSection: "overview",
+    portfolioReceiptFilter: "all",
+    portfolioSalesGrouping: "total",
     portfolioLotTypeFilter: "both",
     portfolioDashboardPreset: "all",
     portfolioLotFilterIds: [],
     portfolioSalesByUserMetric: "revenue",
-    portfolioSalesByUserPeriod: DEFAULT_PORTFOLIO_SALES_BY_USER_PERIOD,
+    portfolioSalesByUserPeriod: "all",
 
     // Presets
     lots: [],
@@ -237,11 +241,13 @@ export function createInitialState(): AppState {
     isHydratingLotConfig: false,
     lotHydrationRevision: 0,
     newLotName: "",
+    newLotExpectedReceiptDate: "",
     newLotImage: "",
     newLotImageBusy: false,
     renameLotImage: "",
     renameLotImageBusy: false,
     renameLotName: "",
+    renameLotExpectedReceiptDate: "",
     renameLotWhatnotVertical: null,
     renameLotExternalSku: "",
     renameLotShopifyEnabled: false,

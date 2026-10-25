@@ -6,6 +6,7 @@ import type {
   PortfolioSalesByUserDrilldownRow,
   PortfolioTotals
 } from "../../types/app.ts";
+import type { PortfolioReceiptSummary } from "../computed/portfolio-receipt.ts";
 import type {
   CommerceMethodState,
   CommerceComputedState,
@@ -25,6 +26,7 @@ import type {
 export interface PortfolioComputedState {
   portfolioLotFilterItems: LotOptionItem[];
   portfolioSelectedLotIds: number[];
+  portfolioSalesHydrationLotIds: number[];
   portfolioForecastScenarios: Array<{
     id: "item" | "box" | "rtyh";
     label: string;
@@ -58,6 +60,7 @@ export interface PortfolioComputedState {
     lotId: number;
     lotName: string;
     lotType: "Bulk" | "Singles";
+    expectedReceiptDate?: string;
     forecastProfitAverage: number | null;
     forecastRevenueAverage: number | null;
     forecastScenarioCount: number;
@@ -66,6 +69,7 @@ export interface PortfolioComputedState {
   portfolioSalesByUserDrilldownRows: PortfolioSalesByUserDrilldownRow[];
   hasPortfolioSalesByUserData: boolean;
   portfolioTotals: PortfolioTotals;
+  portfolioReceiptSummary: PortfolioReceiptSummary;
   hasPortfolioData: boolean;
 }
 
@@ -96,6 +100,9 @@ type PortfolioState = Pick<
   | "portfolioLotTypeFilter"
   | "portfolioSalesByUserMetric"
   | "portfolioSalesByUserPeriod"
+  | "portfolioSection"
+  | "portfolioReceiptFilter"
+  | "portfolioSalesGrouping"
   | "preferredLanguage"
   | "sales"
   | "salesByLotId"
@@ -126,7 +133,7 @@ export type PortfolioSalesHydrationContext = Pick<
   AppState,
   "currentLotId" | "currentTab" | "isOffline" | "lots" | "salesCacheEpoch"
 > &
-  Pick<PortfolioComputedState, "portfolioSelectedLotIds"> &
+  Pick<PortfolioComputedState, "portfolioSalesHydrationLotIds"> &
   SalesEntityContext &
   Pick<CommerceMethodState, "getSalesCacheEntry" | "initSalesChart"> &
   Pick<PortfolioMethodState, "initPortfolioChart"> &
@@ -139,12 +146,14 @@ export type PortfolioChartContext = PortfolioSalesHydrationContext &
     | "portfolioChartView"
     | "portfolioSalesByUserChart"
     | "portfolioSalesByUserMetric"
+    | "portfolioSection"
+    | "portfolioSalesGrouping"
     | "preferredLanguage"
     | "sales"
   > &
   Pick<
     PortfolioComputedState,
-    "allLotPerformance" | "portfolioSalesByUserChartData"
+    "allLotPerformance" | "portfolioSelectedLotIds" | "portfolioSalesByUserChartData"
   > &
   Pick<CommerceMethodState, "formatDate" | "loadSalesForLotId"> &
   Partial<Pick<CommerceMethodState, "getAllSalesByLotId">> &

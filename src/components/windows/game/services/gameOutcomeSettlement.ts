@@ -2,6 +2,7 @@ import { captureWorkspaceScopeGuard, type ScopeState } from "../../../../app-cor
 import type { Lot, Sale, WheelConfig, PendingWheelInventoryIssue } from "../../../../types/app.ts";
 import type { WhatnotFeePeriodSummary } from "../../../../app-core/shared/whatnot-fee-summary.ts";
 import { calculateWheelSaleNetRevenue } from "./wheelPricing.ts";
+import { clearGamePreorderConfirmations } from "./gamePreorderConfirmation.ts";
 
 export type GameOutcomeSaleInput = {
   config: WheelConfig;
@@ -137,6 +138,7 @@ function snapshotOutcomeSource(context: SettlementContext): string {
 
 export function invalidateGameOutcomeSettlements(context: object): void {
   settlementRevisions.set(context, (settlementRevisions.get(context) ?? 0) + 1);
+  clearGamePreorderConfirmations(context);
 }
 
 export function captureGameOutcomeGuard(context: SettlementContext): () => boolean {

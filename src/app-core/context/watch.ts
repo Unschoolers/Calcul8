@@ -38,6 +38,11 @@ export type ScopeWatchContext = WorkspaceRealtimeContext &
   Pick<WhatnotMethodState, "refreshWhatnotStatus"> &
   Pick<ShopifyMethodState, "refreshShopifyStatus" | "resetShopifyBindings">;
 
+export type LotsWatchContext = ScopeWatchContext &
+  Pick<AppState, "currentTab"> &
+  Pick<PortfolioMethodState, "initPortfolioChart"> &
+  Pick<AppVueContext, "$nextTick">;
+
 export type LanguageWatchContext = Pick<AppState, "currentTab" | "preferredLanguage"> &
   Pick<AuthComputedState, "isGoogleSignedIn"> &
   Pick<AuthMethodState, "renderGoogleSignInButton"> &
@@ -104,11 +109,15 @@ export type PortfolioWatchContext = Pick<
   AppState,
   | "currentTab"
   | "portfolioChartView"
+  | "portfolioSection"
+  | "portfolioReceiptFilter"
   | "portfolioDashboardPreset"
   | "portfolioLotFilterIds"
   | "portfolioLotTypeFilter"
   | "portfolioSalesByUserMetric"
   | "portfolioSalesByUserPeriod"
+  | "portfolioSalesGrouping"
+  | "salesCacheEpoch"
 > &
   Pick<PortfolioMethodState, "initPortfolioChart"> &
   Pick<AppVueContext, "$nextTick">;
@@ -137,12 +146,16 @@ export interface AppWatchObject {
   currentLotId(this: CurrentLotWatchContext, newVal: number | null): void;
   chartView(this: SalesChartRefreshContext): void;
   portfolioChartView(this: PortfolioWatchContext): void;
+  portfolioSection(this: PortfolioWatchContext): void;
+  portfolioReceiptFilter(this: PortfolioWatchContext): void;
+  portfolioSalesGrouping(this: PortfolioWatchContext): void;
+  salesCacheEpoch(this: PortfolioWatchContext): void;
   portfolioSalesByUserMetric(this: PortfolioWatchContext, newValue: PortfolioSalesByUserMetric): void;
   portfolioSalesByUserPeriod(this: PortfolioWatchContext): void;
   portfolioLotTypeFilter(this: PortfolioWatchContext, newValue: PortfolioLotTypeFilter): void;
   portfolioDashboardPreset(this: PortfolioWatchContext, newValue: PortfolioDashboardPreset): void;
   portfolioLotFilterIds: { handler(this: PortfolioWatchContext): void; deep: true };
   sales: { handler(this: SalesWatchContext): void; deep: true };
-  lots: { handler(this: ScopeWatchContext): void; deep: true };
+  lots: { handler(this: LotsWatchContext): void; deep: true };
   wheelConfigs: { handler(this: GameWatchContext): void; deep: true };
 }

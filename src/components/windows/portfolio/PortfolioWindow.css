@@ -199,15 +199,19 @@
 }
 
 @media (max-width: 600px) {
+  .portfolio-filter-type-toggle .v-btn__prepend {
+    display: none;
+  }
+
   .portfolio-filter-type-toggle .v-btn {
     min-height: 40px;
-    padding-inline: 0.66rem;
-    font-size: 0.76rem;
-    letter-spacing: 0.025em;
+    padding-inline: 0.42rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.01em;
   }
 
   .portfolio-filter-type-toggle .v-btn .v-btn__content {
-    gap: 0.22rem;
+    gap: 0;
   }
 
   .portfolio-filter-type-toggle .v-btn .v-icon {
@@ -674,9 +678,278 @@
   margin: 0 0 12px auto;
 }
 
+.portfolio-section-nav {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0.15rem 0 0.6rem;
+}
+
+.portfolio-section-toggle {
+  opacity: 0.86;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 999px;
+  padding: 0.12rem;
+  background: rgba(var(--v-theme-surface-variant), 0.22);
+}
+
+.portfolio-section-toggle .v-btn {
+  min-height: 44px;
+  text-transform: none;
+  font-weight: 600;
+}
+
+.portfolio-investment-summary {
+  margin-top: 0.2rem;
+}
+
+.portfolio-investment-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.15rem 0;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  font-size: 0.84rem;
+}
+
+.portfolio-investment-total .app-financial-value__secondary {
+  margin-left: 0.2rem;
+}
+
+.portfolio-primary-kpi,
+.portfolio-stock-block {
+  height: 100%;
+  padding: 1rem 1.15rem;
+}
+
+.portfolio-primary-kpi__label,
+.portfolio-stock-block__head h2 {
+  margin: 0;
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.portfolio-primary-kpi__value {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: clamp(1.2rem, 3.5vw, 2rem);
+  overflow-wrap: anywhere;
+}
+
+.portfolio-primary-kpi__value .app-financial-value__amount {
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.portfolio-primary-kpi__value .app-financial-value__secondary {
+  flex: 0 0 auto;
+  font-size: 0.72em;
+  white-space: nowrap;
+}
+
+.portfolio-stock-block__head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.portfolio-stock-block__meta {
+  margin: 0.4rem 0 0.2rem;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 0.84rem;
+}
+
+.portfolio-analysis-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+
+.portfolio-chart-legend {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.88);
+  font-size: 0.82rem;
+}
+
+.portfolio-chart-legend__series,
+.portfolio-chart-legend__categories ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portfolio-chart-legend__series li,
+.portfolio-chart-legend__categories li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.portfolio-chart-legend__marker {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-secondary));
+}
+
+.portfolio-chart-legend__marker.is-recovered {
+  background: rgb(var(--v-theme-success));
+}
+
+.portfolio-chart-legend__marker.is-target {
+  border-radius: 0;
+  background: rgb(var(--v-theme-secondary));
+}
+
+.portfolio-chart-legend__marker.is-margin {
+  border-radius: 0.15rem;
+  background: rgba(var(--v-theme-secondary), 0.55);
+}
+
+.portfolio-chart-legend__categories summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.portfolio-chart-legend__categories ul {
+  max-height: 12rem;
+  overflow: auto;
+  margin-top: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 0.5rem;
+}
+
+.portfolio-chart-legend__categories li {
+  flex: 1 1 100%;
+  justify-content: space-between;
+}
+
+.portfolio-chart-legend__value {
+  margin-left: auto;
+  white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.portfolio-analysis-select {
+  flex: 1 1 250px;
+  max-width: 400px;
+}
+
+.portfolio-sales-grouping-toggle .v-btn,
+.portfolio-receipt-filter-toggle .v-btn {
+  text-transform: none;
+}
+
+.portfolio-receipt-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-surface-variant), 0.7);
+  font-size: 0.75rem;
+}
+
+.portfolio-receipt-badge.is-awaiting {
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-secondary), 0.22);
+}
+
+@media (max-width: 720px) {
+  .portfolio-section-toggle {
+    width: 100%;
+  }
+
+  .portfolio-section-toggle .v-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  .portfolio-receipt-filter-toggle {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .portfolio-receipt-filter-toggle .v-btn {
+    min-width: max-content;
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .portfolio-primary-kpi,
+  .portfolio-stock-block {
+    padding: 0.85rem 0.95rem;
+  }
+
+  .portfolio-sales-grouping-toggle {
+    width: 100%;
+  }
+
+  .portfolio-sales-grouping-toggle .v-btn {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 599px) {
+  .portfolio-primary-kpi__value {
+    gap: 0.1rem;
+    font-size: clamp(1rem, 4.4vw, 1.2rem);
+  }
+}
+
+@media (max-width: 599px) {
+
+  .portfolio-receipt-badge {
+    white-space: normal;
+    text-align: right;
+  }
+}
+
+@media (max-width: 359px) {
+  .portfolio-investment-summary > .v-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 599px) {
   .portfolio-customer-search {
     max-width: none;
     margin-inline: 0;
   }
+}
+
+.portfolio-financial-receipt-group { min-width: 0; }
+.portfolio-financial-receipt-group__title {
+  margin: 0;
+  padding: 0.85rem 0.75rem;
+  font-size: 0.9rem;
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.portfolio-investment-total { flex-wrap: wrap; }
+.portfolio-investment-total .app-financial-value__amount {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
 }

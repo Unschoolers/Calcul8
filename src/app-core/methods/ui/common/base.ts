@@ -35,13 +35,14 @@ export const uiBaseMethods = {
   },
 
   askConfirmation(
-    { title, text, color = "error" }: { title: string; text: string; color?: UiColor },
+    { title, text, color = "error", confirmLabel }: { title: string; text: string; color?: UiColor; confirmLabel?: string },
     action: () => void,
     onCancel?: () => void
   ): void {
     this.confirmTitle = title;
     this.confirmText = text;
     this.confirmColor = color;
+    this.confirmActionLabel = confirmLabel ?? null;
     this.confirmAction = action;
     this.confirmCancelAction = onCancel ?? null;
     this.confirmDialog = true;
@@ -53,6 +54,7 @@ export const uiBaseMethods = {
     }
     this.confirmDialog = false;
     this.confirmAction = null;
+    this.confirmActionLabel = null;
     this.confirmCancelAction = null;
   },
 
@@ -60,8 +62,19 @@ export const uiBaseMethods = {
     const onCancel = this.confirmCancelAction;
     this.confirmDialog = false;
     this.confirmAction = null;
+    this.confirmActionLabel = null;
     this.confirmCancelAction = null;
     onCancel?.();
+  },
+
+  handleConfirmDialogModelValue(open: boolean): void {
+    if (open) {
+      this.confirmDialog = true;
+      return;
+    }
+    if (this.confirmDialog) {
+      this.cancelConfirmAction();
+    }
   },
 
   formatCurrency(value: number | null | undefined, decimals = 2): string {

@@ -3,13 +3,16 @@ import { test, vi } from "vitest";
 import { computed, reactive } from "vue";
 import { setStoredGoogleIdToken } from "../src/app-core/auth/index.ts";
 import { appComputed } from "../src/app-core/computed.ts";
+import { portfolioComputed } from "../src/app-core/computed/portfolio.ts";
 import {
   buildPortfolioSalesByUserChartData,
   buildPortfolioSalesByUserDrilldownRows
 } from "../src/app-core/computed/portfolio-sales-by-user.ts";
+import { buildPortfolioReceiptSummary } from "../src/app-core/computed/portfolio-receipt.ts";
 import { GOOGLE_PROFILE_CACHE_KEY } from "../src/app-core/methods/ui/common/shared.ts";
 import { calculateTotalRevenue } from "../src/domain/calculations.ts";
 import type { Sale } from "../src/types/app.ts";
+import { createDenseVolumeFixture } from "./helpers/volume-fixtures.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -365,7 +368,8 @@ test("list and portfolio filter item computed values mirror lots", () => {
     isComplete: false,
     symbolIcon: "mdi-cube-outline",
     completionIcon: null,
-    groupLabel: "Grouped inventory"
+    groupLabel: "Grouped inventory",
+    isAwaitingReceipt: false
   });
   assert.deepEqual(lotItems[1], {
     title: "B",
@@ -375,7 +379,8 @@ test("list and portfolio filter item computed values mirror lots", () => {
     isComplete: false,
     symbolIcon: "mdi-cards-outline",
     completionIcon: null,
-    groupLabel: "Individual items"
+    groupLabel: "Individual items",
+    isAwaitingReceipt: false
   });
 
   const visibleLotItems = appComputed.visibleLotItems.call({
@@ -405,7 +410,8 @@ test("list and portfolio filter item computed values mirror lots", () => {
       isComplete: false,
       symbolIcon: "mdi-cube-outline",
       completionIcon: null,
-      groupLabel: "Grouped inventory"
+      groupLabel: "Grouped inventory",
+      isAwaitingReceipt: false
     },
     {
       title: "B",
@@ -415,7 +421,8 @@ test("list and portfolio filter item computed values mirror lots", () => {
       isComplete: false,
       symbolIcon: "mdi-cards-outline",
       completionIcon: null,
-      groupLabel: "Individual items"
+      groupLabel: "Individual items",
+      isAwaitingReceipt: false
     }
   ]);
 
@@ -432,7 +439,8 @@ test("list and portfolio filter item computed values mirror lots", () => {
       isComplete: false,
       symbolIcon: "mdi-cards-outline",
       completionIcon: null,
-      groupLabel: "Individual items"
+      groupLabel: "Individual items",
+      isAwaitingReceipt: false
     }
   ]);
 });
@@ -980,7 +988,7 @@ test("portfolio sales by user drilldown rows keep sale details for the clicked w
 });
 
 test("portfolio sales by user chart data collapses personal mode into a single You series", () => {
-  const data = buildPortfolioSalesByUserChartData({
+  const params: Parameters<typeof buildPortfolioSalesByUserChartData>[0] = {
     lots: [
       {
         id: 22,
@@ -1021,11 +1029,16 @@ test("portfolio sales by user chart data collapses personal mode into a single Y
     workspaceMembers: [],
     metric: "count",
     todayDate: "2026-03-21"
-  });
+  };
+  const data = buildPortfolioSalesByUserChartData(params);
+  const total = buildPortfolioSalesByUserChartData({ ...params, grouping: "total" });
 
   assert.deepEqual(data.series.map((series) => [series.key, series.label, series.total]), [
     ["self", "You", 2]
   ]);
+  assert.deepEqual(total.weeks, data.weeks);
+  assert.deepEqual(total.series[0]?.values, data.series[0]?.values);
+  assert.equal(total.series[0]?.total, 2);
 });
 
 test("lot item computeds do not hydrate sales caches during render", () => {
@@ -1220,7 +1233,7 @@ test("portfolio summary converts mixed native revenue, cost, and profit to CAD e
   const rows = appComputed.allLotPerformance.call({
     salesCacheEpoch: 0,
     portfolioSelectedLotIds: [901, 902],
-    lots: [makeLot(901, "CAD", 1), makeLot(902, "USD", 1.35, WHATNOT_FEES)],
+    lots: [makeLot(901, "CAD", 1), { ...makeLot(902, "USD", 1.35, WHATNOT_FEES), expectedReceiptDate: "2026-11-15" }],
     currentLotId: -1,
     getSalesCacheEntry: (id: number) => ({ status: "loaded" as const, sales: salesByLot.get(id) ?? [] }),
     sales: [],
@@ -1234,6 +1247,7 @@ test("portfolio summary converts mixed native revenue, cost, and profit to CAD e
   assert.equal(totals.totalCost, 24.175);
   assert.ok(Math.abs(totals.totalProfit - 195.705) < 0.000001);
   assert.ok(Math.abs(rows.reduce((sum, row) => sum + (row.realizedProfit ?? 0), 0) - 207.7925) < 0.000001);
+  assert.equal(rows.find((row) => row.lotId === 902)?.expectedReceiptDate, "2026-11-15");
   const scenarios = appComputed.portfolioForecastScenarios.call({
     lots: [makeLot(901, "CAD", 1), makeLot(902, "USD", 1.35, WHATNOT_FEES)],
     portfolioSelectedLotIds: [901, 902],
@@ -1251,6 +1265,43 @@ test("portfolio summary converts mixed native revenue, cost, and profit to CAD e
   const itemForecast = scenarios.find((scenario) => scenario.id === "item");
   assert.ok(Math.abs((itemForecast?.forecastRevenue ?? 0) - 329.6175) < 0.000001);
   assert.ok(Math.abs((itemForecast?.forecastProfit ?? 0) - 305.4425) < 0.000001);
+});
+
+test("portfolio receipt summary separates committed and awaiting capital while retaining realized profit", () => {
+  const summary = buildPortfolioReceiptSummary([
+    { expectedReceiptDate: "2026-11-15", totalCost: 500, totalRevenue: 0, realizedProfit: 0 },
+    { expectedReceiptDate: "", totalCost: 1000, totalRevenue: 400, realizedProfit: 80 }
+  ], "2026-10-25");
+  assert.deepEqual(summary, {
+    received: { lotCount: 1, totalCost: 1000 },
+    awaiting: { lotCount: 1, totalCost: 500 },
+    nextExpectedReceiptDate: "2026-11-15",
+    realizedProfit: 80,
+    capitalToRecover: 1100
+  });
+});
+
+test("portfolio receipt filter intersects selected ids, type and preset, preserving an empty result", () => {
+  const { lot } = createDenseVolumeFixture();
+  const context = {
+    lots: [
+      { ...lot, id: 10_001, expectedReceiptDate: "" },
+      { ...lot, id: 10_002, expectedReceiptDate: "2026-11-15" }
+    ],
+    portfolioLotFilterIds: [],
+    portfolioLotTypeFilter: "singles",
+    portfolioDashboardPreset: "all",
+    portfolioReceiptFilter: "awaiting",
+    salesCacheEpoch: 0,
+    currentLotId: -1,
+    sales: [],
+    getSalesCacheEntry: () => ({ status: "loaded" as const, sales: [] })
+  };
+  assert.deepEqual(portfolioComputed.portfolioSelectedLotIds.call(context as never), [10_002]);
+  assert.deepEqual(portfolioComputed.portfolioSelectedLotIds.call({
+    ...context,
+    portfolioLotFilterIds: [999_999]
+  } as never), []);
 });
 
 test.each([Number.POSITIVE_INFINITY, -1, 0, Number.NaN])("portfolio calculation normalizes invalid USD rates before native costs (%s)", (exchangeRate) => {

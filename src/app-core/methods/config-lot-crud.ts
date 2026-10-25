@@ -5,6 +5,7 @@ import { normalizeWhatnotVertical } from "../../domain/whatnot-fees.ts";
 import { isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
 import { pickSystemPricingFieldsForLot } from "../shared/system-pricing-defaults.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
+import { normalizeExpectedReceiptDate } from "../../shared/lot-receipt.ts";
 
 export type CreateNewLotOptions = {
   lots: Lot[];
@@ -14,6 +15,7 @@ export type CreateNewLotOptions = {
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   newLotWhatnotVertical: WhatnotVertical | null;
+  newLotExpectedReceiptDate: string;
   purchaseUiMode: "simple" | "expert";
   setup: LotSetup;
   systemPricingDefaults?: SystemPricingDefaults | null;
@@ -33,6 +35,7 @@ export function createNewLotRecord({
   newLotType,
   newLotCatalogSource,
   newLotWhatnotVertical,
+  newLotExpectedReceiptDate,
   purchaseUiMode,
   setup,
   systemPricingDefaults,
@@ -64,6 +67,7 @@ export function createNewLotRecord({
     : null;
   const nextSetup: LotSetup = {
     ...setup,
+    expectedReceiptDate: normalizeExpectedReceiptDate(newLotExpectedReceiptDate),
     ...(systemPricingFields ?? {}),
     externalSku: "",
     sellingTaxPercent:

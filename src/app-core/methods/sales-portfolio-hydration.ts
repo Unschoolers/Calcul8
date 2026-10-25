@@ -90,8 +90,8 @@ export function hydrateMissingPortfolioSales(
 
   const currentLotId = context.currentLotId;
   const selectedLotIdSet = new Set(
-    Array.isArray(context.portfolioSelectedLotIds) && context.portfolioSelectedLotIds.length > 0
-      ? context.portfolioSelectedLotIds
+    Array.isArray(context.portfolioSalesHydrationLotIds)
+      ? context.portfolioSalesHydrationLotIds
       : context.lots.map((lot) => lot.id)
   );
   const hydrationState = getPortfolioSalesHydrationState(context as object);

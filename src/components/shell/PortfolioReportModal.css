@@ -23,6 +23,19 @@
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
+.portfolio-report-receipt-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-secondary), 0.22);
+  white-space: nowrap;
+}
+
+.portfolio-report-receipt-badge.is-received {
+  background: rgba(var(--v-theme-primary), 0.14);
+}
+
 .portfolio-report-content {
   position: relative;
   padding-inline: 1rem !important;

@@ -58,6 +58,8 @@
   "whatnotReviewChooseMatchingSaleLabel": "Choose matching sale",
   "whatnotReviewCloseAction": "Close Whatnot import review",
   "whatnotReviewConfirmReadyCount": "{{count}} ready",
+  "whatnotPreorderConfirmTitle": "Import sales before receipt?",
+  "whatnotPreorderConfirmBody": "This import includes {{count}} sales for lots that have not arrived yet. Import these sales anyway? The expected receipt dates will remain pending.",
   "whatnotReviewCreateNewSaleLabel": "Creating a new sale",
   "whatnotReviewDiscardConfirmBody": "This will remove the staged Whatnot review batch from the queue.",
   "whatnotReviewDiscardConfirmTitle": "Discard Whatnot review?",
