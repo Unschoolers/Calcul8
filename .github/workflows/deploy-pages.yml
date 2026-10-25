@@ -91,6 +91,7 @@ jobs:
         shell: bash
         run: npm run verify:checks && npm run build:prod
         env:
+          VITEST_MAX_WORKERS: '1'
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
           VITE_PLAY_PRO_PRODUCT_ID: ${{ vars.VITE_PLAY_PRO_PRODUCT_ID }}
