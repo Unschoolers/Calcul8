@@ -28,3 +28,16 @@ Keep unmet obligations open and report the task as incomplete or partial until t
 - Documentation-only changes require checking the final diff and referenced paths; application tests are not required unless executable behavior also changes.
 
 Current explicit user instructions control task scope and requested deliverables. Preserve their distinction between a preference and a mandatory requirement; never silently downgrade a mandatory requirement.
+
+## Optional Synapse X R&D execution (explicit opt-in only)
+
+When the user requests **Synapse X** or a controlled sparse-agent experiment, read [the experimental protocol](docs/synapse-x.md) and apply it alongside all requirements above. This is an execution strategy, not an exemption from checklists, tests, independent senior validation, security review, or merge gates.
+
+- Treat work as a bounded capsule with immutable base SHA, objective, scoped file ownership, independently defined acceptance and budget. Resolve capsule references to real code and contracts; a short ID alone is not sufficient context.
+- Prefer deterministic tooling and one economical agent. Use isolated, competing candidates or staggered hedges only when justified by estimated value. Never confuse complementary parallel work packets with competing solutions to the same task.
+- Share diffs, commit IDs, diagnostics and test results between components; avoid redundant prose. Agent self-reported success is not proof. Return concise human explanations on request or whenever a decision, failure, or security risk requires attention.
+- The first candidate passing *predefined independent checks* may be selected; cancel other candidates only when reliable lifecycle control is available, and verify actual cancellation and worktree cleanup. If cancellation is unsupported, report that limitation and do not claim savings.
+- Record observed total token/cost/time consumption, failed attempts, verification and rework where measurable. Do not invent metrics or claim performance gains without a controlled baseline.
+- Do not add a database, framework, deployment dependency, autonomous merge or production change merely to exercise this experimental workflow.
+
+For a future OAuth trial, keep the [existing OAuth/public API implementation plan](docs/superpowers/plans/2026-10-22-oauth-public-api.md) authoritative, especially its authorization and tenant-isolation invariants. The Synapse protocol must not weaken security requirements to reduce token use.

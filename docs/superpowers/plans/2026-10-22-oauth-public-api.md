@@ -4,6 +4,8 @@
 >
 > **For coding agents:** Follow `AGENTS.md`, `docs/codingstandard.md`, and `docs/repo-organization.md`. Create a fresh task checklist with [ ]/[x] plus evidence. Prefer isolated worktrees, bounded changes, regression tests first for behavior fixes, and an independent reviewer. Do not claim a task complete without its checks.
 
+> **Optional R&D execution:** [Synapse X](../../synapse-x.md) can be evaluated on one bounded, frozen OAuth work packet using an independent acceptance oracle and baseline. It changes only agent orchestration, **not** OAuth scope/security, test gates or deployment authorization. No agent races before P0 contracts are frozen; no autonomous merges.
+>
 **Goal:** Provide a secure, versioned public REST API for third-party clients and an OAuth-compatible identity/authorization layer that can also authenticate WhatFees MCP clients.
 
 **Related plan:** [MCP and ChatGPT plugin](2026-10-22-mcp-chatgpt-plugin.md). Both plans may proceed in parallel after the interface contract in Section 2 is frozen.
