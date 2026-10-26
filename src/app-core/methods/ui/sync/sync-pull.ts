@@ -2,6 +2,7 @@ import type { SyncPullResponseBody } from "./sync-network.ts";
 import type { SyncPullOptions } from "./sync-service.ts";
 import type { SyncSession } from "./sync-session.ts";
 import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import { recoverSyncPushAcknowledgement } from "./sync-push-acknowledgement.ts";
 
 export async function performCloudSyncPull(
   session: SyncSession,
@@ -23,6 +24,15 @@ export async function performCloudSyncPull(
   if (!deps.isOnline()) {
     session.markOffline();
     return { kind: "skipped", reason: "offline" };
+  }
+
+  if (options.forceApply !== true) {
+    const recovery = recoverSyncPushAcknowledgement(session);
+    if (recovery) {
+      const outcome = await recovery;
+      if (outcome) return outcome;
+      if (!isCurrentRequest()) return staleRequestOutcome();
+    }
   }
 
   deps.startSyncStatus(app);

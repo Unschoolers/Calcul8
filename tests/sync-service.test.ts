@@ -3,7 +3,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync/sync-apply.ts";
 import { getSyncScopeKey, resolveSyncScopeContext, toSyncScopeContext } from "../src/app-core/methods/ui/sync/sync-scope.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
-import { getSyncPayloadSignature } from "../src/app-core/methods/ui/sync/sync-payload.ts";
+import { createSyncPayload, getSyncPayloadSignature } from "../src/app-core/methods/ui/sync/sync-payload.ts";
 import { setActiveWorkspaceScope } from "../src/app-core/workspace-scope.ts";
 
 const {
@@ -1186,6 +1186,9 @@ test("failed push resolves its caller and still drains a later queued push", asy
     });
   const deps = {
     requestCloudSyncPush,
+    requestCloudSyncPull: vi.fn(async () => Response.json({ snapshot: {
+      lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null, version: 2
+    } })),
     createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
     getSyncPayloadSignature: () => "queued-signature",
     startSyncStatus: vi.fn(),
@@ -1664,4 +1667,207 @@ test("runCloudSyncPull passes workspaceId for shared scopes", async () => {
 
   assert.equal(requestCloudSyncPull.mock.calls[0]?.[1], "team-42");
   assert.equal(requestCloudSyncPull.mock.calls[0]?.length, 2);
+});
+
+function createLostPushAcknowledgement(commitBeforeTimeout = true) {
+  const app = createApp();
+  app.lots = [{ id: 1, name: "Original lot", expectedReceiptDate: "" }];
+  let cloud = { ...createSyncPayload(app), version: 2 };
+  app.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(app));
+  app.lots[0].name = "Previous mobile edit";
+  let loseResponse = true;
+  const requestCloudSyncPush = vi.fn(async (_url: string, payload: ReturnType<typeof createSyncPayload>) => {
+    if (payload.clientVersion !== cloud.version) return Response.json({}, { status: 409 });
+    if (loseResponse && !commitBeforeTimeout) {
+      loseResponse = false;
+      throw new TypeError("The request failed before the cloud write.");
+    }
+    cloud = { ...structuredClone(payload), version: cloud.version + 1 };
+    if (loseResponse) {
+      loseResponse = false;
+      throw new DOMException("The request timed out after the cloud write.", "TimeoutError");
+    }
+    return Response.json({ version: cloud.version });
+  });
+  const requestCloudSyncPull = vi.fn(async (_url: string, _workspaceId?: string) => Response.json({ snapshot: cloud }));
+  const applySnapshot = vi.fn();
+  return {
+    app,
+    deps: { requestCloudSyncPush, requestCloudSyncPull, applyCloudSnapshotToLocal: applySnapshot },
+    getCloud: () => cloud,
+    changeCloud: () => {
+      cloud.lots[0]!.name = "A genuine competing edit";
+      cloud.version += 1;
+    }
+  };
+}
+
+test.each([false, true])("a lost push acknowledgement preserves a later preorder edit (restart: %s)", async (restart) => {
+  const scenario = createLostPushAcknowledgement();
+  const firstOutcome = await runCloudSyncPush(scenario.app, false, scenario.deps);
+  assert.equal(firstOutcome.kind, "failure");
+  assert.equal(scenario.getCloud().version, 3);
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "2");
+
+  const app = restart ? Object.assign(createApp(), {
+    lots: structuredClone(scenario.app.lots),
+    lastSyncedPayloadHash: scenario.app.lastSyncedPayloadHash
+  }) : scenario.app;
+  app.lots[0].expectedReceiptDate = "2027-01-15";
+  if (restart) {
+    // Startup refreshes cloud data before the scheduler sends the next push.
+    await runCloudSyncPull(app, { ...scenario.deps, applyCloudSnapshotToLocal });
+  }
+
+  const outcome = await runCloudSyncPush(app, false, scenario.deps);
+
+  assert.equal(outcome.kind, "confirmed");
+  assert.equal(app.lots[0].expectedReceiptDate, "2027-01-15");
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "2027-01-15");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "4");
+  assert.equal(scenario.deps.applyCloudSnapshotToLocal.mock.calls.length, 0);
+});
+
+test("an unacknowledged push never rebases over a genuine competing cloud edit", async () => {
+  const scenario = createLostPushAcknowledgement();
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.changeCloud();
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+
+  const outcome = await runCloudSyncPush(scenario.app, false, scenario.deps);
+
+  assert.equal(outcome.kind, "conflict");
+  assert.equal(scenario.getCloud().lots[0]!.name, "A genuine competing edit");
+  assert.equal(scenario.app.lots[0].expectedReceiptDate, "2027-01-15");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "2");
+  assert.equal(scenario.deps.applyCloudSnapshotToLocal.mock.calls.length, 0);
+});
+
+test("a request that failed before committing can save the latest local edit on retry", async () => {
+  const scenario = createLostPushAcknowledgement(false);
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+
+  const outcome = await runCloudSyncPush(scenario.app, false, scenario.deps);
+
+  assert.equal(outcome.kind, "confirmed");
+  assert.equal(scenario.getCloud().version, 3);
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "2027-01-15");
+});
+
+test("a failed acknowledgement lookup preserves the pending write for a later retry", async () => {
+  const scenario = createLostPushAcknowledgement();
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+  scenario.deps.requestCloudSyncPull.mockRejectedValueOnce(new TypeError("Network unavailable"));
+
+  assert.equal((await runCloudSyncPush(scenario.app, false, scenario.deps)).kind, "failure");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "2");
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "");
+
+  assert.equal((await runCloudSyncPush(scenario.app, false, scenario.deps)).kind, "confirmed");
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "2027-01-15");
+  assert.equal(scenario.app.lots[0].expectedReceiptDate, "2027-01-15");
+});
+
+test("acknowledgement recovery uploads edits made while its readback is in flight", async () => {
+  const scenario = createLostPushAcknowledgement();
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  const readback = createDeferred<Response>();
+  scenario.deps.requestCloudSyncPull.mockReturnValueOnce(readback.promise);
+  const retry = runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.lots[0].expectedReceiptDate = "2027-02-20";
+  readback.resolve(Response.json({ snapshot: scenario.getCloud() }));
+
+  assert.equal((await retry).kind, "confirmed");
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "2027-02-20");
+});
+
+test("an acknowledgement readback cannot advance versions after the auth epoch changes", async () => {
+  const scenario = createLostPushAcknowledgement();
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  const readback = createDeferred<Response>();
+  scenario.deps.requestCloudSyncPull.mockReturnValueOnce(readback.promise);
+  const retry = runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.googleAuthEpoch += 1;
+  readback.resolve(Response.json({ snapshot: scenario.getCloud() }));
+
+  assert.deepEqual(await retry, { kind: "skipped", reason: "stale-scope" });
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "2");
+  assert.equal(scenario.deps.requestCloudSyncPush.mock.calls.length, 1);
+});
+
+test("workspace acknowledgement recovery updates only that workspace's client version", async () => {
+  const scenario = createLostPushAcknowledgement();
+  scenario.app.activeScopeType = "workspace";
+  scenario.app.activeWorkspaceId = "team-42";
+  localStorage.setItem("whatfees_sync_client_version__ws__team-42", "2");
+  localStorage.setItem("whatfees_presets__ws__team-42", JSON.stringify(scenario.app.lots));
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+
+  assert.equal((await runCloudSyncPush(scenario.app, false, scenario.deps)).kind, "confirmed");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version__ws__team-42"), "4");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "2");
+  assert.equal(scenario.deps.requestCloudSyncPull.mock.calls[0]?.[1], "team-42");
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "2027-01-15");
+});
+
+test.each([undefined, null, 1, 3.5, "3"])("a malformed version acknowledgement (%s) is verified before considering the write synced", async (version) => {
+  const app = createApp();
+  const requestCloudSyncPush = vi.fn(async () => Response.json({ version }));
+  const deps = {
+    requestCloudSyncPush,
+    requestCloudSyncPull: vi.fn(async () => Response.json({ snapshot: {
+      ...createSyncPayload(app), version: 3
+    } }))
+  };
+
+  const firstOutcome = await runCloudSyncPush(app, false, deps);
+
+  assert.equal(firstOutcome.kind, "failure");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "2");
+  assert.equal((await runCloudSyncPush(app, false, deps)).kind, "confirmed");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "3");
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+});
+
+test("a gateway error after committing is recovered without losing a later preorder edit", async () => {
+  const scenario = createLostPushAcknowledgement();
+  const dispatch = scenario.deps.requestCloudSyncPush.getMockImplementation()!;
+  scenario.deps.requestCloudSyncPush.mockImplementationOnce(async (...args) => {
+    await dispatch(...args).catch(() => undefined);
+    return Response.json({}, { status: 504 });
+  });
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+
+  assert.equal((await runCloudSyncPush(scenario.app, false, scenario.deps)).kind, "confirmed");
+  assert.equal(scenario.getCloud().lots[0]!.expectedReceiptDate, "2027-01-15");
+});
+
+test("acknowledgement recovery tolerates cloud lots returned in a different order", async () => {
+  const scenario = createLostPushAcknowledgement();
+  scenario.app.lots.push({ id: 2, name: "Second lot", expectedReceiptDate: "" });
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.getCloud().lots.reverse();
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+
+  assert.equal((await runCloudSyncPush(scenario.app, false, scenario.deps)).kind, "confirmed");
+  assert.equal(scenario.getCloud().lots.find((lot) => lot.id === 1)!.expectedReceiptDate, "2027-01-15");
+});
+
+test("an explicit force pull still replaces local edits after an unacknowledged write", async () => {
+  const scenario = createLostPushAcknowledgement();
+  await runCloudSyncPush(scenario.app, false, scenario.deps);
+  scenario.app.lots[0].expectedReceiptDate = "2027-01-15";
+
+  const outcome = await runCloudSyncPull(scenario.app, {
+    ...scenario.deps, applyCloudSnapshotToLocal
+  }, { forceApply: true });
+
+  assert.equal(outcome.kind, "confirmed");
+  assert.equal(scenario.app.lots[0].expectedReceiptDate, "");
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "3");
+  assert.equal(scenario.deps.requestCloudSyncPull.mock.calls.length, 1);
 });
