@@ -5,10 +5,10 @@ Authoritative scope: [OAuth/public API plan](2026-10-22-oauth-public-api.md). Us
 ## Requirements and progress
 
 - [x] Read repo instructions, OAuth plan, Synapse protocol and existing auth/scope/API build boundaries.
-- [ ] Restore and independently validate P0 architecture/security contracts; publish a separate PR.
-- [ ] Freeze one bounded parser task, immutable public base, independent oracle and budgets before candidates.
-- [ ] Run usual one-Luna control, then isolated concurrent Luna treatment; select only after independent oracle and senior validation.
-- [ ] Record observed time, failures, corrections, integration, inhibition and lifecycle support. Tokens/cost unavailable => null; no inferred savings.
+- [x] Restore and independently validate P0 architecture/security contracts; published PR44, remote770e999f.
+- [x] Freeze parser task/base/oracle/budget in docs/experiments/synapse-x/oauth-bearer/capsule.json before candidates.
+- [x] Run one-Luna control then two concurrent Luna candidates; all rejected by predefined checks/review. No selection; bounded senior escalation validated separately.
+- [x] Record experiment rows, wall intervals,3rejections/1seniorrescue, inhibition and cleanup; unavailable metrics null. No gain established; resume ordinary complementary packets.
 - [ ] Publish pilot/evaluation PR, run API verification after integration.
 - [ ] Implement complementary OAuth batches with disjoint ownership, senior review and reviewable PRs.
 - [ ] Complete real dev issuer/lifecycle/interoperability gates before wiring protected routes. Blocked: no verified tenant/configuration/account-linking authority supplied or established yet.

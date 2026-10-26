@@ -1,0 +1,86 @@
+diff --git a/apps/api/src/lib/externalAccess/bearer.ts b/apps/api/src/lib/externalAccess/bearer.ts
+new file mode 100644
+index 00000000..bafb5d36
+--- /dev/null
++++ b/apps/api/src/lib/externalAccess/bearer.ts
+@@ -0,0 +1,80 @@
++import { ExternalError } from "./errors";
++
++const MAX_AUTHORIZATION_LENGTH = 8192;
++const TOKEN_CHARACTER = /^[A-Za-z0-9._~+/-]$/;
++const UNSUPPORTED_CREDENTIALS = /^[A-Za-z][A-Za-z0-9+.-]* [A-Za-z0-9._~+/-]+=*$/;
++
++function invalidRequest(): never {
++  throw new ExternalError("invalid_request");
++}
++
++function authenticationRequired(): never {
++  throw new ExternalError("authentication_required");
++}
++
++/** Parse the syntax of an opaque Bearer credential without validating its contents. */
++export function parseExternalBearerToken(
++  authorization: string | null | undefined
++): string {
++  if (authorization === null || authorization === undefined || authorization === "") {
++    return authenticationRequired();
++  }
++  if (typeof authorization !== "string") {
++    return invalidRequest();
++  }
++  if (authorization.length > MAX_AUTHORIZATION_LENGTH) {
++    return invalidRequest();
++  }
++
++  // Reject unsafe code units before attempting scheme classification. This also
++  // catches lone surrogates and Unicode whitespace without coercing the input.
++  for (let index = 0; index < authorization.length; index += 1) {
++    const code = authorization.charCodeAt(index);
++    if (code < 0x20 || code > 0x7e) {
++      return invalidRequest();
++    }
++  }
++  if (authorization.startsWith(" ") || authorization.endsWith(" ") || authorization.includes(",")) {
++    return invalidRequest();
++  }
++
++  const bearerPrefix = authorization.slice(0, 6).toLowerCase();
++  if (bearerPrefix === "bearer") {
++    const separatorStart = 6;
++    if (authorization.length === separatorStart) {
++      return invalidRequest();
++    }
++    const separator = authorization[separatorStart];
++    if (separator !== " ") {
++      // A longer alphabetic scheme such as Bearerx remains unsupported; a
++      // punctuation separator directly attached to Bearer is malformed Bearer.
++      if (/[A-Za-z0-9]/u.test(separator)) {
++        return authenticationRequired();
++      }
++      return invalidRequest();
++    }
++
++    let tokenStart = separatorStart;
++    while (authorization[tokenStart] === " ") tokenStart += 1;
++    if (tokenStart === authorization.length) return invalidRequest();
++
++    const token = authorization.slice(tokenStart);
++    let paddingStart = token.length;
++    while (paddingStart > 0 && token[paddingStart - 1] === "=") paddingStart -= 1;
++    if (paddingStart === 0) return invalidRequest();
++    for (let index = 0; index < paddingStart; index += 1) {
++      if (!TOKEN_CHARACTER.test(token[index])) return invalidRequest();
++    }
++    return token;
++  }
++
++  if (UNSUPPORTED_CREDENTIALS.test(authorization)) {
++    return authenticationRequired();
++  }
++  // A plain, one-word unsupported scheme without credentials is still missing
++  // authentication; extra or malformed whitespace was rejected above.
++  if (/^[A-Za-z][A-Za-z0-9+.-]*$/u.test(authorization)) {
++    return authenticationRequired();
++  }
++  return invalidRequest();
++}
