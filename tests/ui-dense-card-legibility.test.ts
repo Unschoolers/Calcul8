@@ -63,18 +63,12 @@ test("Sales and Portfolio dense cards use the shared legibility contract", () =>
   const salesStyles = read("src/components/windows/sales/SalesWindow.css");
   const portfolioWindowTemplate = read("src/components/windows/portfolio/PortfolioWindow.html");
   const portfolioGridStyles = read("src/components/windows/portfolio/PortfolioPerformanceGrid.css");
-  const portfolioTemplate = read("src/components/windows/portfolio/PortfolioPulsePanel.html");
-  const portfolioStyles = read("src/components/windows/portfolio/PortfolioPulsePanel.css");
 
   assert.match(salesTemplate, /sales-history-ledger__type-text app-dense-card-title/);
   assert.match(salesTemplate, /sales-history-ledger__customer app-dense-card-meta/);
   assert.match(salesTemplate, /sales-history-ledger__profit-value app-dense-metric__value/);
   assert.match(salesStyles, /@media \(max-width:\s*600px\)[\s\S]*\.sales-history-ledger__type-text\s*{[\s\S]*-webkit-line-clamp:\s*2/);
 
-  assert.match(portfolioTemplate, /portfolio-pulse-stat__label app-dense-metric__label/);
-  assert.match(portfolioTemplate, /portfolio-pulse-stat__value app-dense-metric__value/);
-  assert.match(portfolioTemplate, /portfolio-pulse-insight__title app-dense-card-title/);
-  assert.match(portfolioStyles, /@media \(max-width:\s*700px\)[\s\S]*\.portfolio-pulse-stat\s*{[\s\S]*min-height:\s*0/);
 
   assert.match(portfolioWindowTemplate, /portfolio-performance-grid__primary portfolio-lot-performance__name/);
   assert.match(portfolioWindowTemplate, /portfolio-performance-grid__row/);

@@ -256,12 +256,12 @@ test("Portfolio chart builders localize labels and tooltip plurals for French wh
     salesByLotId: new Map([[1700000000000, [makeSale()]]]), formatCurrency, formatDate, todayDate: "2026-02-22"
   };
   const history = buildPortfolioHistoryChartConfig({ ...historyParams, preferredLanguage: "fr-CA" })!;
-  assert.equal(history.data.datasets[0]?.label, "Profit/perte cumulé réel");
-  assert.equal(history.data.datasets[1]?.label, "Profit/perte cible");
+  assert.equal(history.data.datasets[0]?.label, "Investissement récupéré à ce jour");
+  assert.equal(history.data.datasets[1]?.label, "Objectif de récupération de l’investissement");
   const historyEnglish = buildPortfolioHistoryChartConfig(historyParams)!;
   const historyExplicitEnglish = buildPortfolioHistoryChartConfig({ ...historyParams, preferredLanguage: "en" })!;
-  assert.equal(historyExplicitEnglish.data.datasets[0]?.label, "Actual cumulative P/L");
-  assert.equal(historyExplicitEnglish.data.datasets[1]?.label, "Target P/L");
+  assert.equal(historyExplicitEnglish.data.datasets[0]?.label, "Investment recovered so far");
+  assert.equal(historyExplicitEnglish.data.datasets[1]?.label, "Investment recovery target");
   assert.deepEqual(history.data.datasets.map((dataset) => dataset.data), historyEnglish.data.datasets.map((dataset) => dataset.data));
   assert.deepEqual(history.data.labels, historyEnglish.data.labels);
 
@@ -289,8 +289,8 @@ test("buildPortfolioHistoryChartConfig creates a trend config with target datase
 
   assert.equal(config?.type, "line");
   assert.equal(config?.data.datasets.length, 2);
-  assert.equal(config?.data.datasets[0]?.label, "Actual cumulative P/L");
-  assert.equal(config?.data.datasets[1]?.label, "Target P/L");
+  assert.equal(config?.data.datasets[0]?.label, "Investment recovered so far");
+  assert.equal(config?.data.datasets[1]?.label, "Investment recovery target");
   const segment = config?.data.datasets[0]?.segment as { borderColor?: unknown } | undefined;
   assert.equal(typeof segment?.borderColor, "function");
   assert.ok(Array.isArray(config?.data.datasets[0]?.pointBackgroundColor));
@@ -331,7 +331,7 @@ test("portfolio history chart converts native USD sale revenue to CAD", () => {
   assert.deepEqual(config?.data.datasets[0]?.data, [-135, -94.5]);
   const tooltip = config?.options?.plugins?.tooltip?.callbacks?.label as ((context: unknown) => string) | undefined;
   assert.ok(tooltip);
-  assert.match(tooltip?.({ dataset: { label: "Actual cumulative P/L" }, parsed: { y: -94.5 } }) ?? "", /CAD$/);
+  assert.match(tooltip?.({ dataset: { label: "Investment recovered so far" }, parsed: { y: -94.5 } }) ?? "", /CAD$/);
 });
 
 test("buildPortfolioHistoryChartConfig uses compact mobile labels and legend settings", () => {

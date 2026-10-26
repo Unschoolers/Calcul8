@@ -43,6 +43,7 @@ export interface SyncLotDto {
     singlesPurchases?: SyncSinglesPurchaseDto[];
     externalSku?: string;
     purchaseDate?: string;
+    expectedReceiptDate?: string;
     createdAt?: string;
     boxPriceCost?: number;
     boxesPurchased?: number;

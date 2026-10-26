@@ -1,3 +1,4 @@
+import { invalidateGamePreorderConfirmationIfSourceChanged } from "../services/gamePreorderConfirmation.ts";
 import { nextTick } from "vue";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import {
@@ -133,6 +134,13 @@ export const gameWindowDefinition = {
     };
   },
   watch: {
+    lots: {
+      handler(this: GameWindowThis) {
+        invalidateGamePreorderConfirmationIfSourceChanged(this);
+      },
+      deep: true,
+      flush: "sync" as const
+    },
     currentTab(this: GameWindowOverlayThis, nextTab: string) {
       this.syncGameStageOverlayState();
       if (nextTab !== "wheel") return;

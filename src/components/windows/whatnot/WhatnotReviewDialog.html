@@ -343,6 +343,12 @@
                 >
                   {{ findLotItemByValue(row.selectedLotId)?.subtitle }}
                 </div>
+                <div v-if="row.selectedLotId" class="text-caption mt-1 whatnot-review-receipt">
+                  <template v-if="findLotItemByValue(row.selectedLotId)?.isAwaitingReceipt">
+                    {{ t('portfolioReceiptExpectedBadge') }} · {{ formatDate(findLotItemByValue(row.selectedLotId)?.expectedReceiptDate || '') }}
+                  </template>
+                  <template v-else>{{ t('portfolioReceiptReceivedBadge') }}</template>
+                </div>
               </v-col>
               <v-col cols="12" md="3">
                 <v-select

@@ -13,6 +13,7 @@ import { vuetify } from "../../src/vuetify.ts";
 
 const source = readFileSync("src/App.html", "utf8");
 const template = source.slice(source.indexOf('<app-dialog-shell :model-value="showRenameLotModal'), source.indexOf('<!-- Verify Play Purchase Modal -->'));
+const newLotTemplate = source.slice(source.indexOf('<!-- New Lot Modal -->'), source.indexOf('<!-- Edit Lot Modal -->'));
 
 afterEach(() => { vuetify.theme.change("unionArenaDark"); });
 
@@ -53,4 +54,41 @@ test.each(["unionArenaDark", "unionArenaLight"])("%s: linked inventory hides the
     await nextTick();
     expect(screen.getByRole("textbox", { name: "Inventory reference (optional)" })).toHaveValue("KEPT-REFERENCE");
   }
+});
+
+test("new lot receipt date is editable in the create dialog", async () => {
+  const ctx = reactive({
+    ...createInitialState(), showNewLotModal: true, newLotExpectedReceiptDate: "", lotNameDraft: "Preorder",
+    newLotImage: "", newLotImageBusy: false, newLotType: "bulk", newLotWhatnotVertical: "tcg",
+    newLotCatalogSource: "none", t: (key: string) => translateAppMessage("en", key), createNewLot: vi.fn()
+  });
+  renderWithApp(defineComponent({ components: { AppDialogShell, AppFormLayout, LotImageEditor }, setup: () => ctx, template: newLotTemplate }));
+
+  const receiptDate = document.querySelector<HTMLInputElement>('input[type="date"]');
+  expect(receiptDate).toBeTruthy();
+  if (!receiptDate) throw new Error("Receipt date input did not render");
+  await fireEvent.update(receiptDate, "2027-01-15");
+  expect(ctx.newLotExpectedReceiptDate).toBe("2027-01-15");
+  expect(screen.getByText("Blank means received. Set a date for a preorder; past dates remain awaiting receipt.")).toBeTruthy();
+});
+
+test("edit dialog can mark an awaiting lot as received", async () => {
+  const lot = { id: 8, name: "Preorder lot", expectedReceiptDate: "2027-01-15" };
+  const ctx = reactive({
+    ...createInitialState(),
+    currentLotId: 8, currentLotType: "bulk", currentLotCatalogSource: "none", isCurrentWorkspaceOwner: true,
+    lots: [lot], getSavedCurrentLot: () => lot,
+    showRenameLotModal: true, renameLotName: "Preorder lot", renameLotExpectedReceiptDate: "2027-01-15",
+    renameLotExternalSku: "", renameLotWhatnotVertical: "tcg", shopifyEditListingStatus: "idle",
+    t: (key: string) => translateAppMessage("en", key), renameCurrentLot: vi.fn(), closeRenameLotModal: vi.fn(),
+    deleteCurrentLot: vi.fn(), loadShopifyDraftPreview: vi.fn(), createShopifyDraft: vi.fn(), refreshShopifyEditListing: vi.fn(),
+    loadShopifyLinkedStock: vi.fn(), applyShopifyBinding: vi.fn(), saveShopifyProductDetails: vi.fn(),
+    onShopifyEditQueryChange: vi.fn(), searchShopifyEditProducts: vi.fn()
+  });
+  renderWithApp(defineComponent({ components: { AppDialogShell, AppFormLayout, LotImageEditor, ShopifyLotIntegration }, setup: () => ctx, template }));
+
+  expect(document.querySelector('input[type="date"]')).toHaveValue("2027-01-15");
+  await fireEvent.click(screen.getByRole("button", { name: "Mark received" }));
+  expect(ctx.renameLotExpectedReceiptDate).toBe("");
+  expect(document.querySelector('input[type="date"]')).toHaveValue("");
 });

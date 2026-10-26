@@ -100,7 +100,7 @@ export type GameCommandPorts = {
   appendWheelFairnessHistory(entry: import("../../../../types/app.ts").WheelFairnessEntry, options?: { preview?: boolean }): void;
   landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
   animateMysteryGridRandomSelection(cellIndex: number): Promise<void>;
-  revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
+  revealMysteryGridCell(cellIndex: number, recordSession?: boolean, options?: { randomCell?: boolean }): Promise<void>;
   revealMysteryGridRandomCell(recordSession?: boolean): Promise<void>;
   runMysteryGridAutoPreviewAnimation(): Promise<void>;
   saveWheelSession(): void;

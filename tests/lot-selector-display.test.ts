@@ -8,7 +8,8 @@ const lotItem = {
   symbolIcon: "mdi-cube-outline",
   completionIcon: "mdi-check-circle",
   groupLabel: "Bulk",
-  lotType: "bulk"
+  lotType: "bulk",
+  isAwaitingReceipt: false
 };
 
 test("lot selector resolves Vuetify raw slot items", () => {
@@ -26,7 +27,8 @@ test("lot selector returns empty display fields for malformed slot items", () =>
     symbolIcon: "",
     completionIcon: "",
     groupLabel: "",
-    lotType: ""
+    lotType: "",
+    isAwaitingReceipt: false
   });
 });
 

@@ -13,6 +13,86 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+test("canceling a live bracket roll with an awaiting-receipt prize leaves the match unstarted", async () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  draft.prizes[0]!.sourceType = "lot";
+  draft.prizes[0]!.lotId = 41;
+  const session = createBracketBattleSessionFromDraft(draft, { now: () => 123, randomInt: (_min, max) => max });
+  let cancel: (() => void) | undefined;
+  const match = session.matches[0]!;
+  const vm: any = {
+    bracketSession: session,
+    activeBracketMatch: match,
+    queuedBracketMatch: match,
+    bracketRolling: false,
+    bracketLastRolls: [],
+    bracketRollPreview: [],
+    bracketShowcaseMatchId: match.id,
+    wheelMode: "live",
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    lots: [{ id: 41, expectedReceiptDate: "2026-11-12" }],
+    askConfirmation: vi.fn((_payload: unknown, _accept: () => void, onCancel?: () => void) => { cancel = onCancel; })
+  };
+
+  const pending = BracketBattlePanel.methods!.rollActiveBracketMatch.call(vm as never);
+  await Promise.resolve();
+  assert.equal(vm.askConfirmation.mock.calls.length, 1);
+  assert.equal(vm.bracketRolling, false);
+  assert.equal(session.rolls.length, 0);
+  cancel?.();
+  await pending;
+  assert.equal(session.rolls.length, 0);
+});
+
+test("resetting a bracket while preorder approval is pending cancels the old match roll", async () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  draft.prizes[0]!.sourceType = "lot";
+  draft.prizes[0]!.lotId = 41;
+  const session = createBracketBattleSessionFromDraft(draft, { now: () => 123, randomInt: (_min, max) => max });
+  const match = session.matches[0]!;
+  const vm: any = {
+    bracketSession: session,
+    activeBracketMatch: match,
+    queuedBracketMatch: match,
+    bracketRolling: false,
+    bracketLastRolls: [],
+    bracketRollPreview: [],
+    bracketShowcaseMatchId: match.id,
+    bracketResetDialog: true,
+    bracketRollIntervalId: null,
+    bracketRollResolveTimeoutId: null,
+    wheelMode: "live",
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    activeWheelConfigId: 4,
+    activeWheelConfig: null,
+    wheelDisplayConfig: null,
+    lots: [{ id: 41, expectedReceiptDate: "2026-11-12" }],
+    askConfirmation: vi.fn(),
+    clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
+    getBracketBattleRollSlotAnchors() { return {}; },
+    getBracketBattleActionDiceAnchors() { return {}; },
+    getBracketBattleChampionWinnerSide() { return null; },
+    persistBracketSession() {},
+    $emit: vi.fn()
+  };
+
+  const pending = BracketBattlePanel.methods!.rollActiveBracketMatch.call(vm as never);
+  await Promise.resolve();
+  assert.equal(vm.askConfirmation.mock.calls.length, 1);
+  BracketBattlePanel.methods!.resetBracketBattle.call(vm as never);
+  await pending;
+
+  assert.equal(vm.bracketRolling, false);
+  assert.equal(session.rolls.length, 0);
+  assert.deepEqual(vm.bracketRollPreview, []);
+});
+
 test("BracketBattlePanel rollActiveBracketMatch animates before settling the match", async () => {
   vi.useFakeTimers();
 

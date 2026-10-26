@@ -11,6 +11,7 @@ import { getScopedWheelConfigsStorageKey } from "../storageKeys.ts";
 import { captureWorkspaceScopeGuard, getActiveStorageScope } from "../workspace-scope.ts";
 import { getTodayDate } from "./config-shared.ts";
 import { translateAppMessage } from "../i18n/index.ts";
+import { confirmAwaitingReceiptConsumption } from "./sales-preorder-confirmation.ts";
 import { calculateNetFromGross, getGrossRevenueForSale } from "../../domain/calculations.ts";
 import { resolveEffectiveWhatnotFeeInput, summarizeWhatnotFeePeriod } from "../shared/whatnot-fee-summary.ts";
 import { hydrateMissingWhatnotScopeSales } from "./whatnot-fee-hydration.ts";
@@ -236,6 +237,30 @@ export const salesMethods = {
       || previousSale.date !== pendingSale.date
       || (previousSale.type !== "wheel" && Boolean(previousSale.priceIsTotal) !== Boolean(pendingSale.priceIsTotal))
     ));
+    const consumesMoreInventory = Math.max(0, Number(pendingSale.packsCount) || 0)
+      > Math.max(0, Number(previousSale?.packsCount) || 0);
+    if (currentLot?.expectedReceiptDate && consumesMoreInventory && pendingSale.type !== "wheel") {
+      const confirmedLotId = currentLot.id;
+      const isCurrentScope = captureWorkspaceScopeGuard(this);
+      const confirmed = await confirmAwaitingReceiptConsumption({
+        askConfirmation: this.askConfirmation.bind(this),
+        getLots: () => this.lots,
+        isCurrentScope,
+        language: this.preferredLanguage
+      }, {
+        lotIds: [currentLot.id],
+        confirmLabelKey: "salesPreorderConfirmAction"
+      });
+      if (this.currentLotId !== confirmedLotId) {
+        return { kind: "skipped", reason: "stale-scope" };
+      }
+      if (!confirmed) {
+        return {
+          kind: "skipped",
+          reason: isCurrentScope() ? "cancelled" : "stale-scope"
+        };
+      }
+    }
     const shouldSnapshot = !isImportedSale && pendingSale.type !== "wheel" && (
       (!previousSale && currentLot?.feeProfilePreset === "whatnot")
       || (isFinancialOrDateEdit && (previousSale?.wasWhatnotSale === true

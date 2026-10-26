@@ -413,6 +413,72 @@ test("config grid reveal records preview session state and keeps live wheel coun
   assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
 });
 
+test("canceling a live mystery grid reveal from an awaiting lot has no draw effect", async () => {
+  const config = createGridConfig({
+    tiers: [{
+      id: "tier-a", label: "Floor", color: "#2563eb", chancePercent: 90, slots: 90,
+      costPerTier: 4, packsCount: 1, deductionType: "packs", sets: [], boundLotId: 41
+    }]
+  });
+  const vm = createGridVm("live", config);
+  let cancel: (() => void) | undefined;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, _accept: () => void, onCancel?: () => void) => { cancel = onCancel; });
+
+  const pending = mysteryGridMethods.revealMysteryGridCell.call(vm, 4, true);
+  await Promise.resolve();
+  assert.equal((vm.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  cancel?.();
+  await pending;
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+});
+
+test("a grid reset invalidates the pending preorder approval before the reveal is chosen", async () => {
+  const config = createGridConfig({
+    tiers: [{
+      id: "tier-a", label: "Floor", color: "#2563eb", chancePercent: 90, slots: 90,
+      costPerTier: 4, packsCount: 1, deductionType: "packs", sets: [], boundLotId: 41
+    }]
+  });
+  const vm = createGridVm("live", config);
+  let accept: (() => void) | undefined;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, onAccept: () => void) => { accept = onAccept; });
+
+  const pending = mysteryGridMethods.revealMysteryGridCell.call(vm, 4, true);
+  await Promise.resolve();
+  (vm.resetWheelSession as () => void)();
+  accept?.();
+  await pending;
+
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+});
+
+test("a grid configuration change while approval is pending cancels the reveal", async () => {
+  const config = createGridConfig({
+    tiers: [{
+      id: "tier-a", label: "Floor", color: "#2563eb", chancePercent: 90, slots: 90,
+      costPerTier: 4, packsCount: 1, deductionType: "packs", sets: [], boundLotId: 41
+    }]
+  });
+  const vm = createGridVm("live", config);
+  let accept: (() => void) | undefined;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, onAccept: () => void) => { accept = onAccept; });
+
+  const pending = mysteryGridMethods.revealMysteryGridCell.call(vm, 4, true);
+  await Promise.resolve();
+  (vm.activeWheelConfig as WheelConfig).tiers[0]!.packsCount = 2;
+  accept?.();
+  await pending;
+
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+});
+
 test("revealing every mystery grid cell preserves the configured cell counts exactly", async () => {
   const vm = createGridVm("config");
 

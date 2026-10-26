@@ -294,6 +294,172 @@ test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots 
   assert.equal(localStorage.getItem("sales:7"), JSON.stringify(context.sales));
 });
 
+test("canceling a Whatnot batch for an awaiting lot sends no import request", async () => {
+  let accept: (() => void) | undefined;
+  let cancel: (() => void) | undefined;
+  const context = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: true,
+    isCurrentWorkspaceOwner: true,
+    preferredLanguage: "en",
+    notify: vi.fn(),
+    askConfirmation: vi.fn((_payload, onAccept: () => void, onCancel?: () => void) => { accept = onAccept; cancel = onCancel; }),
+    lots: [{ id: 7, expectedReceiptDate: "2026-11-12" }, { id: 8, expectedReceiptDate: "2026-12-01" }],
+    whatnotReviewBatchId: "batch-preorder",
+    whatnotReviewRows: [{
+      rowId: "row-preorder",
+      externalSaleId: "sale-preorder",
+      externalOrderId: "order-preorder",
+      externalOrderItemId: "item-preorder",
+      title: "Awaiting box",
+      quantity: 1,
+      price: 25,
+      buyerShipping: 0,
+      date: "2026-03-08",
+      action: "create",
+      skipImport: false,
+      selectedLotId: 7,
+      selectedSaleType: "box",
+      selectedPacksCount: 0,
+      selectedImportAction: "create"
+    }],
+    whatnotConfirmationRetryPayload: null,
+    isConfirmingWhatnotImport: false
+  };
+
+  const pending = uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  await Promise.resolve();
+  assert.equal(context.askConfirmation.mock.calls.length, 1);
+  const duplicate = uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  await Promise.resolve();
+  assert.equal(context.askConfirmation.mock.calls.length, 1);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 0);
+  cancel?.();
+  await Promise.all([pending, duplicate]);
+
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 0);
+  assert.equal(context.isConfirmingWhatnotImport, false);
+  assert.equal(context.lots[0]?.expectedReceiptDate, "2026-11-12");
+  assert.equal(context.whatnotConfirmationRetryPayload, null);
+
+  context.whatnotReviewRows[0]!.selectedLotId = 8;
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ code: "RECOVERY_CONFLICT" }), {
+    status: 503,
+    headers: { "Content-Type": "application/json" }
+  }));
+  const editedAttempt = uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  await Promise.resolve();
+  assert.equal(context.askConfirmation.mock.calls.length, 2);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 0);
+  assert.equal(context.whatnotConfirmationRetryPayload, null);
+  accept?.();
+  await editedAttempt;
+  const submitted = JSON.parse(String(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[2]?.body)) as {
+    decisions?: Array<{ lotId?: number }>;
+  };
+  assert.equal(submitted.decisions?.[0]?.lotId, 8);
+});
+
+test.each(["en", "fr-CA"])("Whatnot preorder confirmation counts mapped non-skipped decisions in %s", async (language) => {
+  const row = {
+    rowId: "row-1", externalSaleId: "sale-1", externalOrderId: "order-1", externalOrderItemId: "item-1",
+    title: "Box", quantity: 10, price: 25, buyerShipping: 0, date: "2026-03-08", action: "create",
+    skipImport: false, selectedLotId: 7, selectedSaleType: "box", selectedPacksCount: 0, selectedImportAction: "create"
+  };
+  const context = {
+    activeScopeType: "personal", activeWorkspaceId: null, googleAuthEpoch: 0, hasProAccess: true,
+    isCurrentWorkspaceOwner: true, preferredLanguage: language, notify: vi.fn(),
+    askConfirmation: vi.fn((_payload, _accept, cancel) => cancel()),
+    lots: [
+      { id: 7, name: "Awaiting boxes", expectedReceiptDate: "2026-11-12" },
+      { id: 8, name: "Skipped preorder", expectedReceiptDate: "2026-12-01" },
+      { id: 9, name: "Received boxes" }
+    ],
+    whatnotReviewBatchId: "batch-count",
+    whatnotReviewRows: [row, { ...row, rowId: "row-2" },
+      { ...row, rowId: "skip-flag", selectedLotId: 8, skipImport: true },
+      { ...row, rowId: "skip-action", selectedLotId: 8, selectedImportAction: "skip" },
+      { ...row, rowId: "received", selectedLotId: 9 }],
+    whatnotConfirmationRetryPayload: null, isConfirmingWhatnotImport: false
+  };
+  await uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  const text = context.askConfirmation.mock.calls[0]![0].text;
+  assert.match(text, language === "en" ? /2 sales/ : /2 ventes/);
+  assert.match(text, /Awaiting boxes/);
+  assert.match(text, language === "en" ? /November 12, 2026/ : /12 novembre 2026/);
+  assert.doesNotMatch(text, /Skipped preorder|Received boxes/);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 0);
+
+  // A frozen retry describes its submitted decisions even if the visible review changed.
+  Object.assign(context, { whatnotConfirmationRetryPayload: JSON.stringify([
+    { rowId: "frozen", lotId: 7, skip: false, selectedImportAction: "create" },
+    { rowId: "frozen-skip", lotId: 8, skip: true },
+    { rowId: "frozen-skip-action", lotId: 8, selectedImportAction: "skip" },
+    { rowId: "frozen-received", lotId: 9, skip: false }
+  ]) });
+  context.whatnotReviewRows = [{ ...row, selectedLotId: 8 }];
+  await uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  const frozenText = context.askConfirmation.mock.calls[1]![0].text;
+  assert.match(frozenText, language === "en" ? /1 sales/ : /1 ventes/);
+  assert.match(frozenText, /Awaiting boxes/);
+  assert.doesNotMatch(frozenText, /Skipped preorder|Received boxes/);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 0);
+});
+
+test("a frozen Whatnot retry reuses the accepted preorder confirmation", async () => {
+  fetchAuthenticatedApiResponseMock
+    .mockResolvedValueOnce(new Response(JSON.stringify({ code: "RECOVERY_CONFLICT" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" }
+    }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ code: "RECOVERY_CONFLICT" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" }
+    }));
+  const context = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: true,
+    isCurrentWorkspaceOwner: true,
+    preferredLanguage: "en",
+    notify: vi.fn(),
+    askConfirmation: vi.fn((_payload, accept: () => void) => accept()),
+    lots: [{ id: 7, expectedReceiptDate: "2026-11-12" }],
+    whatnotReviewBatchId: "batch-preorder-retry",
+    whatnotReviewRows: [{
+      rowId: "row-preorder-retry",
+      externalSaleId: "sale-preorder-retry",
+      externalOrderId: "order-preorder-retry",
+      externalOrderItemId: "item-preorder-retry",
+      title: "Awaiting box",
+      quantity: 1,
+      price: 25,
+      buyerShipping: 0,
+      date: "2026-03-08",
+      action: "create",
+      skipImport: false,
+      selectedLotId: 7,
+      selectedSaleType: "box",
+      selectedPacksCount: 0,
+      selectedImportAction: "create"
+    }],
+    whatnotConfirmationRetryPayload: null,
+    isConfirmingWhatnotImport: false
+  };
+
+  await uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  assert.equal(context.askConfirmation.mock.calls.length, 1);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 1);
+  assert.match(String(context.whatnotConfirmationRetryPayload), /"rowId":"row-preorder-retry"/);
+
+  await uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  assert.equal(context.askConfirmation.mock.calls.length, 1);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 2);
+});
+
 test("confirmWhatnotImportBatch guards duplicate requests and retains frozen decisions for recovery", async () => {
   let resolveRequest!: (response: Response) => void;
   fetchAuthenticatedApiResponseMock.mockImplementationOnce(() => new Promise<Response>((resolve) => {

@@ -219,6 +219,7 @@ export function buildPortfolioSalesByUserChartData(params: {
   scopeType: WorkspaceScopeType;
   workspaceMembers: WorkspaceMember[];
   metric: PortfolioSalesByUserMetric;
+  grouping?: "total" | "person";
   period?: PortfolioSalesByUserPeriod;
   todayDate: string;
   preferredLanguage?: string;
@@ -241,12 +242,9 @@ export function buildPortfolioSalesByUserChartData(params: {
       const weekIndex = weekIndexByKey.get(weekKey);
       if (weekIndex == null) continue;
 
-      const identity = getSeriesIdentity(
-        params.scopeType,
-        sale.updatedBy,
-        params.workspaceMembers,
-        params.preferredLanguage
-      );
+      const identity = params.grouping === "total"
+        ? { key: "total", label: "Total" }
+        : getSeriesIdentity(params.scopeType, sale.updatedBy, params.workspaceMembers, params.preferredLanguage);
       const current = seriesMap.get(identity.key) ?? {
         label: identity.label,
         values: weeks.map(() => 0)

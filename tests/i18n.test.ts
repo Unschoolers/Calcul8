@@ -165,7 +165,7 @@ test("Portfolio copy uses approved buyer and realized-sales terms with bilingual
     portfolioReportColumnRealizedProfit: "Profit des ventes réalisées",
     portfolioReportTypeBulkLabel: "Groupé",
     portfolioReportTypeSinglesLabel: "Individuel",
-    portfolioReportNoRealizedProfitShort: "Aucun profit réalisé",
+    portfolioReportNoRealizedProfitShort: "Aucune vente",
     portfolioReportNoRealizedProfitYet: "Aucun profit réalisé pour le moment",
     portfolioReportColumnTotalItems: "Items au total",
     portfolioReportColumnSoldVsTotal: "Items vendus / total",
@@ -192,6 +192,7 @@ test("Portfolio copy uses approved buyer and realized-sales terms with bilingual
     assert.equal(translateAppMessage("fr-CA", key), expected, key);
   }
   assert.equal(translateAppMessage("en", "portfolioSalesByUserAttributionNote"), "Sales are attributed to the last user who modified them.");
+  assert.equal(translateAppMessage("en", "portfolioReportNoRealizedProfitShort"), "No sales");
   assert.equal(translateAppMessage("en", "portfolioReportTypeBulkLabel"), "Bulk");
   assert.equal(translateAppMessage("en", "portfolioReportTypeSinglesLabel"), "Singles");
 

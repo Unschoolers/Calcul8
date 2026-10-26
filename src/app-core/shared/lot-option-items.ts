@@ -3,6 +3,7 @@ import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { translateAppMessage } from "../i18n/index.ts";
 import { getLotType } from "./lot-types.ts";
 import { isShopifyLotLink, type ShopifyLotLink } from "../../domain/shopify-binding-summary.ts";
+import { isLotAwaitingReceipt } from "../../shared/lot-receipt.ts";
 
 export type LotOptionItem = {
   title: string;
@@ -15,6 +16,8 @@ export type LotOptionItem = {
   groupLabel?: string | null;
   shopifyLink?: ShopifyLotLink;
   image?: string;
+  expectedReceiptDate?: string;
+  isAwaitingReceipt?: boolean;
 };
 
 type LotLike = {
@@ -27,6 +30,7 @@ type LotLike = {
   singlesCatalogSource?: string;
   shopifyLink?: ShopifyLotLink;
   image?: string;
+  expectedReceiptDate?: string;
 };
 
 function getLotTypeGroupLabel(lotType: LotType, preferredLanguage = ""): string {
@@ -86,7 +90,9 @@ export function attachLotOptionGroupLabels(
       ? item.symbolIcon
       : getLotSymbolIcon(getLotType(item)),
     completionIcon: item.completionIcon === "mdi-check-circle" ? item.completionIcon : null,
-    ...(isShopifyLotLink(item.shopifyLink) ? { shopifyLink: item.shopifyLink } : {})
+    ...(isShopifyLotLink(item.shopifyLink) ? { shopifyLink: item.shopifyLink } : {}),
+    ...(item.expectedReceiptDate ? { expectedReceiptDate: item.expectedReceiptDate } : {}),
+    isAwaitingReceipt: item.isAwaitingReceipt === true
   }));
 
   return baseItems.map((item, index, allItems) => {
@@ -109,6 +115,8 @@ export function buildLotOptionItems(lots: LotLike[], preferredLanguage = ""): Lo
       isComplete: lot.isComplete === true,
       symbolIcon: getLotSymbolIcon(getLotType(lot)),
       completionIcon: lot.isComplete === true ? "mdi-check-circle" : null,
+      ...(isLotAwaitingReceipt(lot) ? { expectedReceiptDate: lot.expectedReceiptDate as string } : {}),
+      isAwaitingReceipt: isLotAwaitingReceipt(lot),
       ...(isShopifyLotLink(lot.shopifyLink) ? { shopifyLink: lot.shopifyLink } : {})
     })),
     preferredLanguage

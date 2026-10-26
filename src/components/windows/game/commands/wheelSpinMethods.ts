@@ -14,6 +14,7 @@ import {
 } from "../../../../app-core/shared/game-spin.ts";
 import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import type { RuntimeMethodState } from "../../../../app-core/context/runtime.ts";
 import type { Lot, PendingWheelChaseObligation, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
@@ -43,6 +44,7 @@ import {
     shouldRecordWheelLiveSession
 } from "../services/wheelSpinState.ts";
 import { recordWheelSessionSpin } from "../services/wheelSessionState.ts";
+import { confirmGamePreorderConsumption, getWheelPreorderSourceLotIds } from "../services/gamePreorderConfirmation.ts";
 
 type WheelSpinCommandContext = GameSessionStateContext
   & Partial<Pick<GameCoordinatorContext, "preferredLanguage">>
@@ -50,6 +52,7 @@ type WheelSpinCommandContext = GameSessionStateContext
     | "lots" | "addWheelSaleToLot" | "wheelConfigs" | "activeWheelConfigId"
     | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess" | "whatnotFeeSummary"
   >
+  & Pick<RuntimeMethodState, "askConfirmation">
   & Pick<GameHostState,
     | "wheelAutospinEnabled" | "wheelSoundEnabled" | "wheelCanvasSize" | "wheelChaseDialog"
     | "wheelChasePendingTierId" | "wheelChasePreviewMode" | "wheelChaseReplacementSinglesId" | "wheelViewportWidth"
@@ -57,6 +60,7 @@ type WheelSpinCommandContext = GameSessionStateContext
   & {
     activeWheelConfig: WheelConfig | null;
     wheelDisplayConfig: WheelConfig | null;
+    wheelDisplaySlots: WheelSlot[];
     wheelIsCompactLayout: boolean;
     wheelSpinBlockedReason: string;
     _gameSpectatorSpinAnimation?: import("../../../../types/app.ts").GameSpectatorSpinAnimation | null;
@@ -210,8 +214,13 @@ function preparePendingChaseObligation(
 function acquireWheelSpin(context: WheelSpinCommandContext): number {
   const operationId = ++nextWheelSpinOperationId;
   activeWheelSpinOperations.set(context, operationId);
-  context.wheelSpinning = true;
   return operationId;
+}
+
+function startWheelSpin(context: WheelSpinCommandContext, operationId: number): boolean {
+  if (activeWheelSpinOperations.get(context) !== operationId) return false;
+  context.wheelSpinning = true;
+  return true;
 }
 
 function releaseWheelSpin(context: WheelSpinCommandContext, operationId: number): void {
@@ -346,7 +355,7 @@ export const wheelSpinMethods = {
   async runWheelAutoPreviewAnimation(this: WheelSpinCommandContext | Record<string, unknown>): Promise<void> {
     const vm = this as WheelSpinCommandContext;
     const slots = getWheelSpinSlots(vm);
-    if (vm.wheelSpinning || !slots.length) return;
+    if (vm.wheelSpinning || activeWheelSpinOperations.has(vm) || !slots.length) return;
 
     const currentAngle = (vm.wheelCurrentAngle || 0) as number;
     const targetIndex = chooseWheelPreviewTargetIndex(slots.length, Math.random());
@@ -407,7 +416,7 @@ export const wheelSpinMethods = {
     const spinController = getWheelController(vm);
     const slots = getWheelSpinSlots(vm).map((slot) => ({ ...slot }));
     const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm, recordSession);
-    if (vm.wheelSpinning || !slots.length) return;
+    if (vm.wheelSpinning || activeWheelSpinOperations.has(vm) || !slots.length) return;
     if (shouldRecordLiveSession && vm.wheelPendingChase) return;
     if (shouldRecordLiveSession && vm.wheelSpinBlockedReason) {
       applyWheelSpinBlockedReason(vm, vm.wheelSpinBlockedReason);
@@ -418,6 +427,26 @@ export const wheelSpinMethods = {
     const isCurrentOutcome = captureGameOutcomeGuard(vm);
     let animationStarted = false;
     try {
+      const preorderLotIds = getWheelPreorderSourceLotIds(vm.activeWheelConfig);
+      if (shouldRecordLiveSession && preorderLotIds.length > 0) {
+        const confirmation = confirmGamePreorderConsumption(vm, {
+          lotIds: preorderLotIds,
+          sessionKey: `wheel:${vm.activeWheelConfig?.id ?? vm.activeWheelConfigId}`,
+          configSnapshot: {
+            activeConfig: vm.activeWheelConfig,
+            displayConfig: vm.wheelDisplayConfig,
+            displaySlots: vm.wheelDisplaySlots
+          },
+          isCurrentOperation: isCurrentOutcome
+        });
+        // The helper clears stale approvals synchronously, including received-only draws.
+        const hasAwaitingSource = preorderLotIds.some((lotId) =>
+          (vm.lots || []).some((lot) => lot.id === lotId && Boolean(lot.expectedReceiptDate))
+        );
+        if (hasAwaitingSource && !await confirmation) return;
+      }
+      if (!ownsWheelSpin(vm, operationId) || !isCurrentOutcome() || !startWheelSpin(vm, operationId)) return;
+
       const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
       if (!isCurrentOutcome()) return;
 

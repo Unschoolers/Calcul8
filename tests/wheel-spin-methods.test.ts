@@ -6,6 +6,7 @@ import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelS
 import { wheelConfigComputeds } from "../src/components/windows/game/inspector/wheelConfigComputeds.ts";
 import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
 import { createWheelFairnessProofLink } from "../src/app-core/methods/wheel-fairness-api.ts";
+import { invalidateGameOutcomeSettlements } from "../src/components/windows/game/services/gameOutcomeSettlement.ts";
 
 const fairnessMock = vi.hoisted(() => ({ resolve: vi.fn() }));
 
@@ -132,6 +133,151 @@ test("live spins keep recording live session data", async () => {
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: true });
 });
 
+test("canceling an awaiting-receipt live wheel draw prevents the draw from starting", async () => {
+  const vm = createSpinVm("live");
+  let cancel: (() => void) | undefined;
+  vm.activeWheelConfig = {
+    id: 8, name: "Preorder wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "Pack", color: "#e74c3c", costPerTier: 6,
+      packsCount: 1, deductionType: "packs", boundLotId: 41
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, _accept: () => void, onCancel?: () => void) => { cancel = onCancel; });
+
+  const pending = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await Promise.resolve();
+  assert.equal((vm.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  const duplicate = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await Promise.resolve();
+  assert.equal((vm.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(fairnessMock.resolve.mock.calls.length, 0);
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  cancel?.();
+  await Promise.all([pending, duplicate]);
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  assert.equal(vm.wheelTotalSpins, 0);
+});
+
+test("a received-only live draw clears approval before the same preorder date is restored", async () => {
+  stubFinishedAnimation();
+  const vm = createSpinVm("live");
+  vm.activeWheelConfig = {
+    id: 8, name: "Preorder wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "Pack", color: "#e74c3c", costPerTier: 6,
+      packsCount: 1, deductionType: "packs", boundLotId: 41
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  const lot = { id: 41, expectedReceiptDate: "2026-11-12" };
+  vm.lots = [lot];
+  const askConfirmation = vi.fn((_payload: unknown, accept: () => void) => accept());
+  vm.askConfirmation = askConfirmation;
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(askConfirmation.mock.calls.length, 1);
+  lot.expectedReceiptDate = "";
+  const receivedDraw = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(vm.wheelSpinning, true);
+  await receivedDraw;
+  lot.expectedReceiptDate = "2026-11-12";
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(askConfirmation.mock.calls.length, 2);
+});
+
+test("the synchronous lots watcher invalidates only changed approved sources without a draw", async () => {
+  stubFinishedAnimation();
+  const vm = createSpinVm("live");
+  vm.activeWheelConfig = {
+    id: 8, tiers: [{ id: "tier-1", packsCount: 1, deductionType: "packs", boundLotId: 41 }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  const lot = { id: 41, expectedReceiptDate: "2026-11-12" };
+  vm.lots = [lot, { id: 42, expectedReceiptDate: "2026-12-01" }];
+  const askConfirmation = vi.fn((_payload: unknown, accept: () => void) => accept());
+  vm.askConfirmation = askConfirmation;
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  const watcher = (GameWindow.watch as any).lots;
+  assert.equal(watcher?.flush, "sync");
+  assert.equal(watcher.deep, true);
+  (vm.lots as typeof lot[])[1]!.expectedReceiptDate = "";
+  watcher.handler.call(vm);
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(askConfirmation.mock.calls.length, 1);
+  lot.expectedReceiptDate = "";
+  watcher.handler.call(vm);
+  lot.expectedReceiptDate = "2026-11-12";
+  watcher.handler.call(vm);
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(askConfirmation.mock.calls.length, 2);
+});
+
+test("a wheel reset invalidates a pending preorder approval before fairness starts", async () => {
+  const vm = createSpinVm("live");
+  let accept: (() => void) | undefined;
+  vm.activeWheelConfig = {
+    id: 8, name: "Preorder wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "Pack", color: "#e74c3c", costPerTier: 6,
+      packsCount: 1, deductionType: "packs", boundLotId: 41
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, onAccept: () => void) => { accept = onAccept; });
+
+  const pending = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await Promise.resolve();
+  invalidateGameOutcomeSettlements(vm);
+  accept?.();
+  await pending;
+
+  assert.equal(fairnessMock.resolve.mock.calls.length, 0);
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  assert.equal(vm.wheelSpinning, false);
+});
+
+test("changing wheel mode while preorder approval is pending cancels the old draw", async () => {
+  const vm = createSpinVm("live");
+  let accept: (() => void) | undefined;
+  vm.activeWheelConfig = {
+    id: 8, name: "Preorder wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "Pack", color: "#e74c3c", costPerTier: 6,
+      packsCount: 1, deductionType: "packs", boundLotId: 41
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, onAccept: () => void) => { accept = onAccept; });
+
+  const pending = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await Promise.resolve();
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "config");
+  accept?.();
+  await pending;
+
+  assert.equal(vm.wheelMode, "config");
+  assert.equal(fairnessMock.resolve.mock.calls.length, 0);
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+});
+
+test("wheel preview does not ask to consume an awaiting lot", async () => {
+  stubFinishedAnimation(20_000);
+  const vm = createSpinVm("config");
+  vm.activeWheelConfig = {
+    id: 8, name: "Preorder wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "Pack", color: "#e74c3c", costPerTier: 6,
+      packsCount: 1, deductionType: "packs", boundLotId: 41
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn();
+
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal((vm.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 1);
+});
+
 test("a live spin owns the guard before fairness resolves and records at most one actual sale", async () => {
   stubFinishedAnimation();
   const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
@@ -155,6 +301,38 @@ test("a live spin owns the guard before fairness resolves and records at most on
   await Promise.all([first, second]);
 
   assert.equal((vm.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(vm.wheelTotalSpins, 1);
+});
+
+test("a confirmed awaiting source cannot launch duplicate wheel commands", async () => {
+  stubFinishedAnimation();
+  const deferred = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
+  fairnessMock.resolve.mockReturnValue(deferred.promise);
+  const vm = createSpinVm("live");
+  let accept: (() => void) | undefined;
+  vm.activeWheelConfig = {
+    id: 8, name: "Preorder wheel", spinPrice: 10, tiers: [{
+      id: "tier-1", label: "Pack", color: "#e74c3c", costPerTier: 6,
+      packsCount: 1, deductionType: "packs", boundLotId: 41
+    }]
+  };
+  vm.wheelDisplayConfig = vm.activeWheelConfig;
+  vm.lots = [{ id: 41, expectedReceiptDate: "2026-11-12" }];
+  vm.askConfirmation = vi.fn((_payload: unknown, onAccept: () => void) => { accept = onAccept; });
+
+  const first = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  const duplicate = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await Promise.resolve();
+  assert.equal((vm.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  accept?.();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(fairnessMock.resolve.mock.calls.length, 1);
+  const secondAfterApproval = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(fairnessMock.resolve.mock.calls.length, 1);
+  deferred.resolve({ resultIndex: 0, hash: "hash", seed: "seed" });
+  await Promise.all([first, duplicate, secondAfterApproval]);
+
   assert.equal(vm.wheelTotalSpins, 1);
 });
 
@@ -190,21 +368,18 @@ test("mode A-B-A transitions invalidate fairness work even when the final mode m
   assert.equal(vm.wheelTotalSpins, 0);
 });
 
-test("a rejected old spin cannot release a newer operation's lock", async () => {
-  stubFinishedAnimation();
+test("a pending wheel operation cannot be replaced by another command", async () => {
   const firstFairness = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
-  const secondFairness = createDeferred<{ resultIndex: number; hash: string; seed: string }>();
-  fairnessMock.resolve.mockReturnValueOnce(firstFairness.promise).mockReturnValueOnce(secondFairness.promise);
+  fairnessMock.resolve.mockReturnValue(firstFairness.promise);
   const vm = createSpinVm("live");
   const first = wheelSpinMethods.spinWheelInternal.call(vm, true);
   vm.wheelSpinning = false;
   const second = wheelSpinMethods.spinWheelInternal.call(vm, true);
+  assert.equal(fairnessMock.resolve.mock.calls.length, 1);
 
   firstFairness.reject(new Error("old request failed"));
   await assert.rejects(first, /old request failed/);
-  assert.equal(vm.wheelSpinning, true);
-
-  secondFairness.resolve({ resultIndex: 0, hash: "hash", seed: "seed" });
+  assert.equal(vm.wheelSpinning, false);
   await second;
 });
 

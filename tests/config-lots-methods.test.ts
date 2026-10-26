@@ -28,6 +28,7 @@ function createContext(overrides: Ctx = {}): Ctx {
     sellingCurrency: lot.sellingCurrency,
     exchangeRate: lot.exchangeRate,
     purchaseDate: lot.purchaseDate,
+    expectedReceiptDate: lot.expectedReceiptDate ?? "",
     purchaseShippingCost: lot.purchaseShippingCost,
     purchaseTaxPercent: lot.purchaseTaxPercent,
     sellingTaxPercent: lot.sellingTaxPercent,
@@ -60,12 +61,14 @@ function createContext(overrides: Ctx = {}): Ctx {
     singlesCsvMapMarketValue: null,
     showSinglesCsvMapperModal: false,
     newLotName: "",
+    newLotExpectedReceiptDate: "",
     newLotType: "bulk",
     newLotCatalogSource: "ua",
     newLotWhatnotVertical: "tcg",
     whatnotVertical: lot.whatnotVertical ?? null,
     t: (key: string) => key,
     renameLotName: "",
+    renameLotExpectedReceiptDate: "",
     renameLotExternalSku: "",
     renameLotShopifyEnabled: false,
     shopifyEditListing: null,
@@ -953,6 +956,29 @@ test("renameCurrentLot closes modal when name is unchanged", () => {
   assert.equal(ctx.showRenameLotModal, false);
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+});
+
+test("date-only edit clears receipt state and persists the lot", () => {
+  const lot = makeLot({ id: 701, expectedReceiptDate: "2026-12-10" });
+  const ctx = createContext({ lots: [lot], currentLotId: lot.id });
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  assert.equal(ctx.renameLotExpectedReceiptDate, "2026-12-10");
+  ctx.renameLotExpectedReceiptDate = "";
+  configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.expectedReceiptDate, "");
+  assert.equal(ctx.expectedReceiptDate, "");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+test("invalid receipt date leaves the lot unchanged and reports an editor error", () => {
+  const lot = makeLot({ id: 702, expectedReceiptDate: "2026-12-10" });
+  const ctx = createContext({ lots: [lot], currentLotId: lot.id });
+  configLotMethods.openRenameLotModal.call(ctx as never);
+  ctx.renameLotExpectedReceiptDate = "2027-02-30";
+  configLotMethods.renameCurrentLot.call(ctx as never);
+  assert.equal(lot.expectedReceiptDate, "2026-12-10");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "lotReceiptInvalidDate");
 });
 
 test("setCurrentLotCatalogSource updates current singles lot and persists changes", async () => {

@@ -45,6 +45,7 @@ export interface SyncLotDto {
   singlesPurchases?: SyncSinglesPurchaseDto[];
   externalSku?: string;
   purchaseDate?: string;
+  expectedReceiptDate?: string;
   createdAt?: string;
   boxPriceCost?: number;
   boxesPurchased?: number;
@@ -472,6 +473,24 @@ function normalizeSyncLotImage(value: unknown): string | undefined {
   return payload.length * 3 / 4 - padding <= 160000 ? image : undefined;
 }
 
+function normalizeExpectedReceiptDate(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value !== "string") throw new RangeError("Expected receipt date must be a YYYY-MM-DD date");
+  const date = value.trim();
+  if (!date) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) throw new RangeError("Expected receipt date must be a YYYY-MM-DD date");
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(0);
+  candidate.setUTCFullYear(year, month - 1, day);
+  if (year < 1 || candidate.getUTCFullYear() !== year || candidate.getUTCMonth() !== month - 1 || candidate.getUTCDate() !== day) {
+    throw new RangeError("Expected receipt date must be a real calendar date");
+  }
+  return date;
+}
+
 function normalizeSyncLotDto(value: unknown): SyncLotDto | null {
   if (!isSyncEntityRecord(value)) return null;
   const id = normalizeEntityId(value.id);
@@ -494,6 +513,10 @@ function normalizeSyncLotDto(value: unknown): SyncLotDto | null {
   for (const field of stringFields) {
     const cleaned = cleanString(value[field]);
     if (cleaned) lot[field] = cleaned;
+  }
+  if (value.expectedReceiptDate !== undefined && value.expectedReceiptDate !== null) {
+    // Preserve an explicit empty string so authoritative updates can clear an old date.
+    lot.expectedReceiptDate = normalizeExpectedReceiptDate(value.expectedReceiptDate);
   }
   const numberFields = [
     "boxPriceCost",

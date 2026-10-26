@@ -42,6 +42,7 @@ import {
 } from "./sales-freshness.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
+import { normalizeExpectedReceiptDate } from "../../shared/lot-receipt.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 import {
   queueCloudConfigSyncPush,
@@ -88,6 +89,7 @@ export const configLotMethods = {
       fixedFeePerOrder: this.fixedFeePerOrder,
       includeTax: this.includeTax,
       externalSku: typeof this.externalSku === "string" ? this.externalSku.trim() : "",
+      expectedReceiptDate: normalizeExpectedReceiptDate(this.expectedReceiptDate),
       shopifyEnabled: this.shopifyEnabled === true,
       spotPrice: this.spotPrice,
       boxPriceSell: this.boxPriceSell,
@@ -245,19 +247,27 @@ export const configLotMethods = {
       return this.notify(this.t("configWhatnotVerticalRequired"), "warning");
     }
 
-    const { lot: newLot, nextLotType, nextLotCatalogSource } = createNewLotRecord({
-      lots: this.lots,
-      currentLotId: this.currentLotId,
-      newLotName: name,
-      newLotImage: this.newLotImage,
-      newLotType: normalizeLotType(this.newLotType),
-      newLotCatalogSource: this.newLotCatalogSource,
-      newLotWhatnotVertical: this.newLotWhatnotVertical,
-      purchaseUiMode: this.purchaseUiMode,
-      setup: this.getCurrentSetup(),
-      systemPricingDefaults: this.systemPricingDefaults,
-      todayDate: getTodayDate()
-    });
+    let created: ReturnType<typeof createNewLotRecord>;
+    try {
+      created = createNewLotRecord({
+        lots: this.lots,
+        currentLotId: this.currentLotId,
+        newLotName: name,
+        newLotImage: this.newLotImage,
+        newLotType: normalizeLotType(this.newLotType),
+        newLotCatalogSource: this.newLotCatalogSource,
+        newLotWhatnotVertical: this.newLotWhatnotVertical,
+        newLotExpectedReceiptDate: this.newLotExpectedReceiptDate,
+        purchaseUiMode: this.purchaseUiMode,
+        setup: this.getCurrentSetup(),
+        systemPricingDefaults: this.systemPricingDefaults,
+        todayDate: getTodayDate()
+      });
+    } catch (error) {
+      if (error instanceof RangeError) return this.notify(this.t("lotReceiptInvalidDate"), "error");
+      throw error;
+    }
+    const { lot: newLot, nextLotType, nextLotCatalogSource } = created;
     this.lots.push(newLot);
     this.saveLotsToStorage();
 
@@ -265,6 +275,7 @@ export const configLotMethods = {
     this.loadLot();
     queueWorkspaceConfigSyncPush(this);
     this.newLotName = "";
+    this.newLotExpectedReceiptDate = "";
     this.newLotImage = "";
     this.newLotType = nextLotType;
     this.newLotCatalogSource = nextLotCatalogSource;

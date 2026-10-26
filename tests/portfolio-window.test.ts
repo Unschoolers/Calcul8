@@ -45,6 +45,31 @@ test("PortfolioWindow chart view helpers rotate through all four views", () => {
   assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleIcon.call(marginVm as never), "mdi-chart-donut");
 });
 
+test("portfolio performance respects an empty selected-lot scope", () => {
+  const lots = [{ id: 11, name: "Lot A" }, { id: 22, name: "Lot B" }];
+  const method = portfolioWindowDefinition.methods.portfolioPerformanceLots;
+  const result = method.call({ lots, allLotPerformance: [], portfolioSelectedLotIds: [] } as never);
+  assert.deepEqual(result, []);
+});
+
+test("portfolio customer sales stay empty when no selected lots match", () => {
+  const vm = {
+    lots: [{ id: 11, name: "Lot A" }],
+    allLotPerformance: [],
+    portfolioSelectedLotIds: [],
+    salesByLotId: new Map([[11, [{ id: 1, username: "buyer" }]]]),
+    portfolioPerformanceLots: portfolioWindowDefinition.methods.portfolioPerformanceLots
+  };
+  const sales = portfolioWindowDefinition.methods.portfolioPerformanceSalesByLotId.call(vm as never);
+  assert.deepEqual([...sales.entries()], []);
+});
+
+test("portfolio receipt groups keep overdue financial rows in the preorder group", () => {
+  const rows = [{ lotId: 11, lotName: "Received", expectedReceiptDate: "" }, { lotId: 22, lotName: "Late preorder", expectedReceiptDate: "2026-01-05" }];
+  const groups = portfolioWindowDefinition.methods.portfolioLotReceiptGroups.call({ sortedPortfolioLotPerformanceRows: () => rows } as never);
+  assert.deepEqual(groups.map(group => [group.key, group.rows.map(row => row.lotId)]), [["received", [11]], ["awaiting", [22]]]);
+});
+
 test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visible summary", () => {
   const vm = {
     portfolioLotTypeFilter: "singles",
@@ -121,14 +146,39 @@ test("PortfolioWindow lot filter item slot does not depend on the old Vuetify ra
   assert.doesNotMatch(template, /item\.raw/);
 });
 
-test("PortfolioWindow uses one profit-led pulse panel instead of duplicate KPI strips", () => {
+test("Portfolio overview keeps receipt KPIs without the old total-profit pulse", () => {
   const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
-  const definition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
 
-  assert.match(template, /<portfolio-pulse-panel/);
-  assert.match(definition, /portfolioPulseCurrentProfitLabel/);
+  assert.match(template, /portfolioRealizedProfitLabel/);
+  assert.match(template, /portfolioCapitalToRecoverLabel/);
+  assert.doesNotMatch(template, /<portfolio-pulse-panel/);
   assert.doesNotMatch(template, /portfolio-kpi-carousel-shell/);
   assert.doesNotMatch(template, /<portfolio-kpi-card/);
+});
+
+test("portfolio pulse insights skip awaiting lots so paid preorders are not called risk", () => {
+  const vm = {
+    allLotPerformance: [{
+      lotId: 1,
+      lotName: "Preorder",
+      expectedReceiptDate: "2026-10-19",
+      salesCount: 0,
+      realizedProfit: 0,
+      totalProfit: -1_000,
+      soldPacks: 0,
+      totalPacks: 10
+    }],
+    portfolioCopy(_key: string, fallback: string) {
+      return fallback;
+    },
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
+    portfolioSignedCurrency: portfolioWindowDefinition.methods.portfolioSignedCurrency
+  };
+  const insights = portfolioWindowDefinition.methods.portfolioPulseInsights.call(vm as never);
+
+  assert.equal(insights.length, 1);
+  assert.equal(insights[0]?.tone, "neutral");
+  assert.doesNotMatch(insights[0]?.title ?? "", /risk|recover|break even/i);
 });
 
 test("Portfolio pulse insights surface the biggest risk, best performer, and next action", () => {
@@ -355,50 +405,6 @@ test("PortfolioWindow performance sortbars expose the table sort controls", () =
   );
 });
 
-test("PortfolioWindow pulse stats explain forecast context in seller language", () => {
-  const vm = {
-    portfolioTotals: {
-      totalRevenue: 3485.5,
-      totalCost: 4952.73,
-      totalSalesCount: 62
-    },
-    averagePortfolioForecastScenario: {
-      forecastProfit: 1137.54,
-      forecastRevenue: 6090.27,
-      label: "Average forecast",
-      modeCount: 3
-    },
-    portfolioCopy(_key: string, fallback: string) {
-      return fallback;
-    },
-    formatCurrency(value: number | null | undefined, decimals = 2) {
-      return new Intl.NumberFormat("en-US", {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
-      }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
-    },
-    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
-    portfolioSignedCurrency: portfolioWindowDefinition.methods.portfolioSignedCurrency
-  };
-
-  const stats = portfolioWindowDefinition.methods.portfolioPulseStats.call(vm as never);
-  const forecast = stats.find((stat: { key: string }) => stat.key === "forecast");
-
-  assert.deepEqual(
-    stats.map((stat: { key: string; label: string }) => [stat.key, stat.label]),
-    [
-      ["sold", "Sold"],
-      ["invested", "Invested"],
-      ["forecast", "Forecast"]
-    ]
-  );
-  assert.equal(forecast?.value, "+$1,137.54 CAD");
-  assert.equal(
-    forecast?.meta,
-    "If remaining inventory sells at forecast - Average revenue $6,090.27 CAD"
-  );
-});
-
 test("PortfolioWindow pulse insight display copy is action-oriented", () => {
   const vm = {
     allLotPerformance: [
@@ -452,39 +458,20 @@ test("PortfolioWindow pulse insight display copy is action-oriented", () => {
   );
 });
 
-test("Portfolio pulse panel uses a neutral surface, compact stat rail, and mobile-first command layout", () => {
-  const template = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.html", "utf8");
-  const css = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.css", "utf8");
-  const panelRuleStart = css.indexOf(".portfolio-pulse-panel {");
-  const panelRuleEnd = css.indexOf(".portfolio-pulse-panel.is-negative");
-  const panelRule = css.slice(panelRuleStart, panelRuleEnd);
-
-  assert.match(template, /portfolio-pulse-stat-rail/);
-  assert.doesNotMatch(template, /portfolio-pulse-recovery/);
-  assert.match(template, /portfolio-pulse-action-card/);
-  assert.match(template, /primaryInsight/);
-  assert.match(template, /portfolio-pulse-insights--actions/);
-  assert.match(template, /`is-\$\{stat\.key\}`/);
-  assert.doesNotMatch(panelRule, /--portfolio-pulse-accent-rgb/);
-  assert.match(panelRule, /align-items:\s*stretch/);
-  assert.match(css, /\.portfolio-pulse-main\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
-  assert.match(css, /\.portfolio-pulse-insights\s*{[\s\S]*height:\s*100%/);
-  assert.doesNotMatch(css, /portfolio-pulse-recovery/);
-  assert.doesNotMatch(css, /max-width:\s*min\(100%,\s*34rem\)/);
-  assert.match(css, /portfolio-pulse-stat-rail/);
-  assert.match(css, /portfolio-pulse-action-card/);
-  assert.match(css, /@media \(max-width: 1144px\)[\s\S]*portfolio-pulse-stat\.is-forecast[\s\S]*order:\s*-1/);
-});
-
-test("PortfolioWindow keeps dashboard cards stacked until desktop", () => {
+test("PortfolioWindow pairs primary KPIs on phones and stacks stock blocks until tablet", () => {
   const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
   const css = readFileSync("src/components/windows/portfolio/PortfolioWindow.css", "utf8");
-  const pulseCss = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.css", "utf8");
-  const phoneBlockStart = pulseCss.indexOf("@media (max-width: 700px)");
-  const phoneBlock = phoneBlockStart >= 0 ? pulseCss.slice(phoneBlockStart) : "";
 
-  assert.equal((template.match(/<v-col cols="12" lg="6">/g) ?? []).length, 2);
-  assert.doesNotMatch(template, /<v-col cols="12" md="6">/);
+  assert.equal((template.match(/<v-col cols="6">/g) ?? []).length, 2);
+  assert.equal((template.match(/<v-col cols="12" md="6">/g) ?? []).length, 2);
+  assert.match(css, /@media \(max-width: 359px\)[\s\S]*portfolio-investment-summary > \.v-col[\s\S]*flex: 0 0 100%/);
+  assert.match(css, /\.portfolio-section-toggle \.v-btn\s*{[^}]*min-height:\s*44px/);
+  assert.match(css, /\.portfolio-primary-kpi__value \.app-financial-value__amount\s*{[^}]*overflow:\s*visible[^}]*text-overflow:\s*clip/);
+  assert.match(template, /portfolioTotals\.totalCost/);
+  assert.ok(template.indexOf("class=\"portfolio-chart-legend\"") > template.indexOf("aria-describedby=\"portfolio-chart-legend\""));
+  assert.match(template, /portfolio-section-nav/);
+  assert.match(template, /portfolio-analysis-toolbar/);
+  assert.match(template, /portfolio-financial-receipt-group/);
   assert.doesNotMatch(template, /<v-col cols="12" md="12">/);
   assert.match(
     css,
@@ -499,31 +486,7 @@ test("PortfolioWindow keeps dashboard cards stacked until desktop", () => {
     /@media \(max-width: 1144px\)[\s\S]*\.portfolio-filter-type-toggle,[\s\S]*\.portfolio-preset-select,[\s\S]*\.portfolio-filter-select\s*{[\s\S]*width:\s*100%/
   );
   assert.doesNotMatch(css, /@media \(min-width: 960px\)[\s\S]*\.portfolio-filter-bar/);
-  assert.match(
-    pulseCss,
-    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-panel\s*{[\s\S]*grid-template-columns:\s*1fr/
-  );
-  assert.match(
-    pulseCss,
-    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-profit__value\s*{[\s\S]*font-size:\s*2\.35rem/
-  );
-  assert.match(
-    pulseCss,
-    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-stat-rail\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/
-  );
-  assert.match(
-    pulseCss,
-    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-stat\.is-forecast\s*{[\s\S]*grid-column:\s*1\s*\/\s*-1/
-  );
-  assert.match(
-    pulseCss,
-    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-insights__grid\s*{[\s\S]*grid-template-columns:\s*1fr/
-  );
-  assert.doesNotMatch(pulseCss, /@media \(max-width: 960px\)[\s\S]*\.portfolio-pulse-panel/);
-  assert.doesNotMatch(phoneBlock, /\.portfolio-pulse-profit__value/);
-  assert.doesNotMatch(phoneBlock, /\.portfolio-pulse-stat-rail/);
-  assert.doesNotMatch(phoneBlock, /\.portfolio-pulse-stat\.is-forecast/);
-  assert.doesNotMatch(phoneBlock, /\.portfolio-pulse-insights__grid\s*{[\s\S]*grid-template-columns/);
+
 });
 
 test("PortfolioWindow clears stale lot-filter search when opening the menu", () => {
@@ -608,6 +571,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
   const vm = {
     fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
     formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
+    formatDate: (value: string) => value,
     portfolioLotIsIncomplete: portfolioWindowDefinition.methods.portfolioLotIsIncomplete
   };
 
@@ -683,15 +647,45 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       "is-projected": true
     }
   );
+
+  const preorder = { expectedReceiptDate: "2026-10-19", totalProfit: -1_000, salesCount: 0, soldPacks: 0, totalPacks: 10 };
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, preorder), "neutral");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotStatusLabel.call(vm as never, preorder), "Expected 2026-10-19");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotRiskLabel.call(vm as never, preorder), "Not assessed before receipt");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, preorder), "Expected 2026-10-19");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(vm as never, preorder), "neutral");
+  assert.deepEqual(portfolioWindowDefinition.methods.portfolioLotPrimaryProfitValueClass.call(vm as never, preorder), {
+    "is-positive": false,
+    "is-negative": false,
+    "is-projected": false
+  });
+
+  const awaitingWithSales = {
+    expectedReceiptDate: "2026-12-01",
+    totalProfit: 50,
+    realizedProfit: 50,
+    forecastProfitAverage: -100,
+    salesCount: 5,
+    soldPacks: 5,
+    totalPacks: 10
+  };
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, awaitingWithSales), "+$50 CAD");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(vm as never, awaitingWithSales), "success");
+  assert.deepEqual(portfolioWindowDefinition.methods.portfolioLotPrimaryProfitValueClass.call(vm as never, awaitingWithSales), {
+    "is-positive": true,
+    "is-negative": false,
+    "is-projected": false
+  });
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, awaitingWithSales), "positive");
 });
 
 test("PortfolioWindow profit values and performance amount helpers summarize mixed lots", () => {
   const vm = {
     allLotPerformance: [
-      { totalProfit: -10 },
-      { totalProfit: 25.4 },
+      { totalProfit: -10, realizedProfit: -10 },
+      { totalProfit: 25.4, realizedProfit: 25.4 },
       { totalProfit: 0 },
-      { totalProfit: -2.6 }
+      { totalProfit: -2.6, realizedProfit: -2.6 }
     ],
     fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
     formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
@@ -762,8 +756,8 @@ test("PortfolioWindow chart copy helpers return expected titles, icons, subtitle
   assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(marginVm as never), "Show breakdown view");
 
   assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(breakdownVm as never), "Revenue by lot (CAD)");
-  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(trendVm as never), "Profit trend over time (CAD)");
-  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sell-through over time");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(trendVm as never), "Investment recovery over time (CAD)");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sold share of purchased quantities in selected lots, including preorders");
   assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(marginVm as never), "Sold margin by lot");
 
   assert.equal(
@@ -772,7 +766,7 @@ test("PortfolioWindow chart copy helpers return expected titles, icons, subtitle
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioChartAriaLabel.call(trendVm as never),
-    "Portfolio profit trend chart."
+    "Portfolio investment recovery chart over time."
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioChartAriaLabel.call(sellthroughVm as never),
@@ -871,6 +865,19 @@ test("PortfolioWindow exposes the approved French buyer labels and eight-week su
   assert.match(report, /row\.realizedCost \?\? 0/);
   assert.match(report, /row\.realizedProfit \?\? 0/);
   assert.match(report, /row\.totalProfit/);
+});
+
+test("PortfolioWindow labels total sales separately from per-person sales", () => {
+  const translate = (key: string) => translateAppMessage("en", key);
+  const totalVm = {
+    t: translate,
+    portfolioSalesGrouping: "total",
+    portfolioSalesByUserPeriod: "all",
+    portfolioSalesByUserMetric: "count"
+  };
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserTitle.call(totalVm as never), "Sales total");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(totalVm as never), "All history total sales");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(totalVm as never), "Portfolio total sales chart for All history by count.");
 });
 
 test("PortfolioWindow keeps sales per user week pills visible on mobile", () => {

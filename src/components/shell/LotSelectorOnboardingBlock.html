@@ -27,6 +27,7 @@
                     </v-icon>
                   </span>
                   <div class="lot-selector-selection__title app-dense-card-title">{{ resolveLotSelectorDisplayItem(item).title }}</div>
+                  <v-chip v-if="resolveLotSelectorDisplayItem(item).isAwaitingReceipt" size="x-small" color="warning" variant="tonal">{{ t('lotReceiptAwaitingBadge') }} · {{ resolveLotSelectorDisplayItem(item).expectedReceiptDate }}</v-chip>
                   <shopify-link-indicator v-if="resolveLotSelectorDisplayItem(item).shopifyLink" :link="resolveLotSelectorDisplayItem(item).shopifyLink" :t="t" />
                 </div>
                 <div class="lot-selector-selection__subtitle app-dense-card-meta">{{ resolveLotSelectorDisplayItem(item).subtitle }}</div>
@@ -52,6 +53,7 @@
                   </template>
                   <v-list-item-title class="text-body-2 font-weight-medium">
                     {{ resolveLotSelectorDisplayItem(item).title }}
+                    <v-chip v-if="resolveLotSelectorDisplayItem(item).isAwaitingReceipt" size="x-small" color="warning" variant="tonal" class="ml-2">{{ t('lotReceiptAwaitingBadge') }} · {{ resolveLotSelectorDisplayItem(item).expectedReceiptDate }}</v-chip>
                   </v-list-item-title>
                   <v-list-item-subtitle class="text-caption">
                     {{ resolveLotSelectorDisplayItem(item).subtitle }}

@@ -26,6 +26,9 @@ export type PortfolioWindowPorts = Pick<
   | "portfolioDashboardPreset"
   | "portfolioLotFilterIds"
   | "portfolioLotTypeFilter"
+  | "portfolioSection"
+  | "portfolioReceiptFilter"
+  | "portfolioSalesGrouping"
   | "portfolioSalesByUserMetric"
   | "portfolioSalesByUserPeriod"
   | "salesByLotId"
@@ -42,8 +45,18 @@ export type PortfolioWindowPorts = Pick<
     | "portfolioSalesByUserChartData"
     | "portfolioSalesByUserDrilldownRows"
     | "portfolioTotals"
+    | "portfolioSelectedLotIds"
   > &
-  Pick<PortfolioMethodState, "togglePortfolioChartView"> &
+  {
+    portfolioReceiptSummary: {
+      received: { lotCount: number; totalCost: number };
+      awaiting: { lotCount: number; totalCost: number };
+      nextExpectedReceiptDate: string | null;
+      realizedProfit: number;
+      capitalToRecover: number;
+    };
+  } &
+  Pick<PortfolioMethodState, "initPortfolioChart" | "togglePortfolioChartView"> &
   Pick<CommerceMethodState, "formatDate"> &
   Pick<RuntimeMethodState, "t" | "formatCurrency"> &
   Pick<BuyerMethodState, "getBuyerProfile"> &
@@ -61,6 +74,9 @@ const portfolioWindowPortKeys = [
   "portfolioDashboardPreset",
   "portfolioLotFilterIds",
   "portfolioLotTypeFilter",
+  "portfolioSection",
+  "portfolioReceiptFilter",
+  "portfolioSalesGrouping",
   "portfolioSalesByUserMetric",
   "portfolioSalesByUserPeriod",
   "salesByLotId",
@@ -74,6 +90,9 @@ const portfolioWindowPortKeys = [
   "portfolioSalesByUserChartData",
   "portfolioSalesByUserDrilldownRows",
   "portfolioTotals",
+  "portfolioSelectedLotIds",
+  "portfolioReceiptSummary",
+  "initPortfolioChart",
   "togglePortfolioChartView",
   "formatDate",
   "t",

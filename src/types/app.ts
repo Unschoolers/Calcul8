@@ -30,8 +30,11 @@ export type AdditionalFeeAppliesTo = "sale_only" | "sale_plus_shipping";
 export type SinglesCsvImportMode = "merge" | "sync" | "append";
 export type SaleType = "pack" | "box" | "rtyh" | "wheel";
 export type ChartViewMode = "pie" | "sparkline" | "profit";
-export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin";
+export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin" | "sales";
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
+export type PortfolioSection = "overview" | "analytics" | "details";
+export type PortfolioReceiptFilter = "all" | "received" | "awaiting";
+export type PortfolioSalesGrouping = "total" | "person";
 export type PortfolioDashboardPreset = "all" | "active" | "needs_first_sale" | "at_risk" | "profit_winners" | "finished";
 export type PortfolioSalesByUserMetric = "revenue" | "profit" | "count";
 export type PortfolioSalesByUserPeriod = 4 | 8 | 13 | 26 | 52 | "all";
@@ -361,6 +364,7 @@ export interface FeeProfileFields {
 }
 
 export interface LotSetup extends FeeProfileFields {
+  expectedReceiptDate?: string;
   whatnotVertical?: WhatnotVertical | null;
   boxPriceCost: number;
   boxesPurchased: number;
@@ -712,6 +716,7 @@ export interface AppState extends LotSetup {
   confirmTitle: string;
   confirmText: string;
   confirmColor: UiColor;
+  confirmActionLabel: string | null;
   confirmAction: (() => void) | null;
   confirmCancelAction: (() => void) | null;
   showSystemConfigurationDialog: boolean;
@@ -735,6 +740,9 @@ export interface AppState extends LotSetup {
   portfolioChart: ChartJS | null;
   portfolioSalesByUserChart: ChartJS | null;
   portfolioChartView: PortfolioChartViewMode;
+  portfolioSection: PortfolioSection;
+  portfolioReceiptFilter: PortfolioReceiptFilter;
+  portfolioSalesGrouping: PortfolioSalesGrouping;
   portfolioLotTypeFilter: PortfolioLotTypeFilter;
   portfolioDashboardPreset: PortfolioDashboardPreset;
   portfolioLotFilterIds: number[];
@@ -759,11 +767,13 @@ export interface AppState extends LotSetup {
   isHydratingLotConfig: boolean;
   lotHydrationRevision: number;
   newLotName: string;
+  newLotExpectedReceiptDate: string;
   newLotImage: string;
   newLotImageBusy: boolean;
   renameLotImage: string;
   renameLotImageBusy: boolean;
   renameLotName: string;
+  renameLotExpectedReceiptDate: string;
   renameLotWhatnotVertical: WhatnotVertical | null;
   renameLotExternalSku: string;
   renameLotShopifyEnabled: boolean;

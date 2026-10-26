@@ -54,7 +54,15 @@ function parseLots(value: unknown): SyncLotDto[] {
     if (lot.image != null && lot.image !== "" && !normalizeSyncLotImage(lot.image)) {
       throw new HttpError(400, `Field 'lots[${index}].image' must be a supported image under 160 KB.`);
     }
-    const normalizedLot = normalizeSyncLotDto(lot);
+    let normalizedLot: SyncLotDto | null;
+    try {
+      normalizedLot = normalizeSyncLotDto(lot);
+    } catch (error) {
+      if (error instanceof RangeError && Object.hasOwn(lot, "expectedReceiptDate")) {
+        throw new HttpError(400, `Field 'lots[${index}].expectedReceiptDate' must be a real YYYY-MM-DD date.`);
+      }
+      throw error;
+    }
     if (!normalizedLot) {
       throw new HttpError(400, `Field 'lots[${index}].id' must be a string or number.`);
     }

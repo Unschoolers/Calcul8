@@ -5,6 +5,8 @@
   "wheelBuilderReadyHelp": "La configuration est prête à être appliquée.",
   "wheelBuilderReadyLabel": "Prêt",
   "wheelAutospinStartAction": "Démarrer l’aperçu automatique",
+  "wheelPreorderConfirmTitle": "Tirer dans le stock en attente de réception ?",
+  "wheelPreorderConfirmBody": "Ce jeu peut consommer un lot qui n’est pas encore arrivé. La date de réception prévue restera en attente.",
   "wheelAutospinStopAction": "Arrêter l’aperçu automatique",
   "wheelAutospinCompactAction": "Auto",
   "wheelAutospinCompactStopAction": "Stop",

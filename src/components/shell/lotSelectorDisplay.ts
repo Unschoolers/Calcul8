@@ -11,6 +11,8 @@ export type LotSelectorDisplayItem = {
   completionIcon: string;
   groupLabel: string;
   lotType: string;
+  expectedReceiptDate?: string;
+  isAwaitingReceipt: boolean;
   shopifyLink?: ShopifyLotLink;
 };
 
@@ -20,7 +22,8 @@ const EMPTY_LOT_SELECTOR_DISPLAY_ITEM: LotSelectorDisplayItem = {
   symbolIcon: "",
   completionIcon: "",
   groupLabel: "",
-  lotType: ""
+  lotType: "",
+  isAwaitingReceipt: false
 };
 
 export function resolveLotSelectorDisplayItem(item: unknown): LotSelectorDisplayItem {
@@ -29,6 +32,8 @@ export function resolveLotSelectorDisplayItem(item: unknown): LotSelectorDisplay
   }
 
   const shopifyLink = resolveVuetifySlotValue(item, ["shopifyLink"]);
+  const isAwaitingReceipt = resolveVuetifySlotValue(item, ["isAwaitingReceipt"]) === true;
+  const expectedReceiptDate = resolveVuetifySlotString(item, ["expectedReceiptDate"]);
   return {
     ...(resolveVuetifySlotString(item, ["image"]) ? { image: resolveVuetifySlotString(item, ["image"]) } : {}),
     title: resolveVuetifySlotString(item, ["title"]),
@@ -37,6 +42,8 @@ export function resolveLotSelectorDisplayItem(item: unknown): LotSelectorDisplay
     completionIcon: resolveVuetifySlotString(item, ["completionIcon"]),
     groupLabel: resolveVuetifySlotString(item, ["groupLabel"]),
     lotType: resolveVuetifySlotString(item, ["lotType"]),
-    ...(isShopifyLotLink(shopifyLink) ? { shopifyLink } : {})
+    ...(isShopifyLotLink(shopifyLink) ? { shopifyLink } : {}),
+    ...(expectedReceiptDate ? { expectedReceiptDate } : {}),
+    isAwaitingReceipt
   };
 }

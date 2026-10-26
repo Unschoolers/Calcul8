@@ -3,12 +3,17 @@ import type { WhatnotMethodImplementation } from "../../../context/whatnot.ts";
 import { translateAppMessage } from "../../../i18n/index.ts";
 import { normalizeWhatnotReviewRows } from "../../../shared/whatnot-csv.ts";
 import { buildWhatnotReviewDecisions, validateWhatnotReviewRowsForImport } from "./whatnot-review-decisions.ts";
-import { getAffectedWhatnotLotIds, refreshAffectedWhatnotSales } from "./whatnot-sales-refresh.ts";
+import { refreshAffectedWhatnotSales } from "./whatnot-sales-refresh.ts";
 import { buildWhatnotScopeBody, canManageWhatnot, fetchWhatnotJson } from "./whatnot-http.ts";
 import { resetWhatnotCsvImportState, resetWhatnotReviewState } from "./whatnot-state.ts";
 import { applyWhatnotStatus } from "./whatnot-status.ts";
+import { captureWorkspaceScopeGuard, resolveWorkspaceScopeContext } from "../../../workspace-scope.ts";
+import { isLotAwaitingReceipt } from "../../../../shared/lot-receipt.ts";
+import { confirmAwaitingReceiptConsumption } from "../../sales-preorder-confirmation.ts";
 
 export { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./whatnot-state.ts";
+
+const confirmedPreorderImports = new WeakMap<object, Set<string>>();
 
 export const uiWhatnotMethods = {
   async refreshWhatnotStatus(): Promise<void> {
@@ -277,24 +282,66 @@ export const uiWhatnotMethods = {
 
     const currentDecisions = buildWhatnotReviewDecisions(this.whatnotReviewRows);
     const retryPayload = this.whatnotConfirmationRetryPayload ?? JSON.stringify(currentDecisions);
-    this.whatnotConfirmationRetryPayload = retryPayload;
-    let retryDecisions: Array<{ lotId?: unknown }> = currentDecisions;
+    let retryDecisions: Array<{ lotId?: unknown; skip?: unknown; selectedImportAction?: unknown }> = currentDecisions;
     try {
       const parsed = JSON.parse(retryPayload) as unknown;
       retryDecisions = Array.isArray(parsed)
-        ? parsed.filter((decision): decision is { lotId?: unknown } => Boolean(decision) && typeof decision === "object" && !Array.isArray(decision))
+        ? parsed.filter((decision): decision is { lotId?: unknown; skip?: unknown; selectedImportAction?: unknown } => Boolean(decision) && typeof decision === "object" && !Array.isArray(decision))
         : currentDecisions;
     } catch {
-      this.whatnotConfirmationRetryPayload = JSON.stringify(currentDecisions);
+      retryDecisions = currentDecisions;
     }
-    const affectedLotIds = hasFrozenRetry
-      ? [...new Set(retryDecisions
-        .map((decision) => Math.floor(Number(decision.lotId) || 0))
-        .filter((lotId) => lotId > 0))]
-      : getAffectedWhatnotLotIds(this.whatnotReviewRows);
+    const consumingDecisions = retryDecisions.filter((decision) => !decision.skip && decision.selectedImportAction !== "skip");
+    const affectedLotIds = [...new Set(consumingDecisions
+      .map((decision) => Math.floor(Number(decision.lotId) || 0))
+      .filter((lotId) => lotId > 0))];
 
     this.isConfirmingWhatnotImport = true;
     try {
+      const awaitingLotIds = affectedLotIds.filter((lotId) => {
+        const lot = (this.lots || []).find((entry) => entry.id === lotId);
+        return lot && isLotAwaitingReceipt(lot);
+      });
+      const scopeGuard = captureWorkspaceScopeGuard(this);
+      let acceptedPreorderKey: string | null = null;
+      if (awaitingLotIds.length > 0) {
+        const sourceKey = JSON.stringify(awaitingLotIds
+          .map((lotId) => {
+            const lot = (this.lots || []).find((entry) => entry.id === lotId);
+            return [lotId, lot?.expectedReceiptDate ?? ""];
+          })
+          .sort((a, b) => Number(a[0]) - Number(b[0])));
+        const scope = resolveWorkspaceScopeContext(this);
+        acceptedPreorderKey = JSON.stringify([
+          scope.scopeKey,
+          this.googleAuthEpoch,
+          this.whatnotReviewBatchId,
+          sourceKey
+        ]);
+        let confirmedKeys = confirmedPreorderImports.get(this);
+        if (!confirmedKeys) {
+          confirmedKeys = new Set();
+          confirmedPreorderImports.set(this, confirmedKeys);
+        }
+        if (!confirmedKeys.has(acceptedPreorderKey)) {
+          const accepted = await confirmAwaitingReceiptConsumption({
+            askConfirmation: this.askConfirmation.bind(this),
+            getLots: () => this.lots,
+            isCurrentScope: scopeGuard,
+            language: this.preferredLanguage
+          }, {
+            lotIds: awaitingLotIds,
+            saleCount: consumingDecisions.filter((decision) => awaitingLotIds.includes(Number(decision.lotId))).length,
+            titleKey: "whatnotPreorderConfirmTitle",
+            textKey: "whatnotPreorderConfirmBody",
+            confirmLabelKey: "whatnotReviewImportReviewedSalesAction"
+          });
+          if (!accepted) return;
+          confirmedKeys.add(acceptedPreorderKey);
+        }
+      }
+
+      this.whatnotConfirmationRetryPayload = retryPayload;
       const result = await fetchWhatnotJson(
         this,
         "/integrations/whatnot/review/confirm",
@@ -333,6 +380,7 @@ export const uiWhatnotMethods = {
       await this.refreshWhatnotStatus();
       const syncOutcome = await this.pullCloudSync();
       await refreshAffectedWhatnotSales(this, affectedLotIds);
+      if (acceptedPreorderKey) confirmedPreorderImports.get(this)?.delete(acceptedPreorderKey);
       if (syncOutcome.kind === "confirmed") {
         this.notify(
           `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
