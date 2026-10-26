@@ -23,6 +23,7 @@ export const STORAGE_KEYS = {
   DEBUG_USER_ID: "whatfees_debug_user_id",
   SYNC_CLIENT_VERSION: "whatfees_sync_client_version",
   LAST_SYNCED_PAYLOAD_HASH: "whatfees_last_synced_payload_hash",
+  UNACKNOWLEDGED_SYNC_PUSH: "whatfees_unacknowledged_sync_push_v1",
   API_BASE_URL: "whatfees_api_base_url",
   WHEEL_CONFIGS: "whatfees_wheel_configs",
   ACTIVE_WHEEL_CONFIG: "whatfees_active_wheel_config",
@@ -122,7 +123,8 @@ export function clearScopedSyncDataStorage(scope: AppStorageScope = { scopeType:
     getScopedActiveWheelConfigStorageKey(scope),
     getScopedLastLotStorageKey(scope),
     getScopedSyncClientVersionKey(scope),
-    getScopedLastSyncedPayloadHashKey(scope)
+    getScopedLastSyncedPayloadHashKey(scope),
+    getScopedUnacknowledgedSyncPushKey(scope)
   ];
 
   try {
@@ -190,6 +192,10 @@ export function getScopedSyncClientVersionKey(scope: AppStorageScope): string {
 
 export function getScopedLastSyncedPayloadHashKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.LAST_SYNCED_PAYLOAD_HASH, scope);
+}
+
+export function getScopedUnacknowledgedSyncPushKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.UNACKNOWLEDGED_SYNC_PUSH, scope);
 }
 
 export function getScopedBuyerProfilesCacheKey(scope: AppStorageScope): string {

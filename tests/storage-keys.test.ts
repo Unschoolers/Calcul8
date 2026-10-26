@@ -13,6 +13,7 @@ import {
   getScopedPresetsStorageKey,
   getScopedSyncClientVersionKey,
   getScopedSystemPricingDefaultsStorageKey,
+  getScopedUnacknowledgedSyncPushKey,
   getScopedWheelConfigsStorageKey,
   readStorage,
   removeStorage
@@ -182,11 +183,13 @@ test("clearScopedSyncDataStorage removes only personal authoritative sync caches
     data.set(getScopedLastLotStorageKey({ scopeType: "personal" }), "1");
     data.set(getScopedSyncClientVersionKey({ scopeType: "personal" }), "1001");
     data.set(getScopedLastSyncedPayloadHashKey({ scopeType: "personal" }), "personal-hash");
+    data.set(getScopedUnacknowledgedSyncPushKey({ scopeType: "personal" }), "pending-personal-write");
     data.set(getSalesStorageKey(1), JSON.stringify([{ id: 1 }]));
     data.set(getSalesCacheStatusKey(1), "loaded");
     data.set(getSalesSyncMetaKey(1), JSON.stringify({ activeCount: 1 }));
     data.set(getScopedPresetsStorageKey(workspaceScope), "[{\"id\":7}]");
     data.set(getScopedSyncClientVersionKey(workspaceScope), "77");
+    data.set(getScopedUnacknowledgedSyncPushKey(workspaceScope), "pending-workspace-write");
     data.set(getSalesStorageKey(7, workspaceScope), JSON.stringify([{ id: 7 }]));
 
     clearScopedSyncDataStorage({ scopeType: "personal" });
@@ -198,11 +201,13 @@ test("clearScopedSyncDataStorage removes only personal authoritative sync caches
     assert.equal(data.has(getScopedLastLotStorageKey({ scopeType: "personal" })), false);
     assert.equal(data.has(getScopedSyncClientVersionKey({ scopeType: "personal" })), false);
     assert.equal(data.has(getScopedLastSyncedPayloadHashKey({ scopeType: "personal" })), false);
+    assert.equal(data.has(getScopedUnacknowledgedSyncPushKey({ scopeType: "personal" })), false);
     assert.equal(data.has(getSalesStorageKey(1)), false);
     assert.equal(data.has(getSalesCacheStatusKey(1)), false);
     assert.equal(data.has(getSalesSyncMetaKey(1)), false);
     assert.equal(data.has(getScopedPresetsStorageKey(workspaceScope)), true);
     assert.equal(data.has(getScopedSyncClientVersionKey(workspaceScope)), true);
+    assert.equal(data.has(getScopedUnacknowledgedSyncPushKey(workspaceScope)), true);
     assert.equal(data.has(getSalesStorageKey(7, workspaceScope)), true);
   });
 });
@@ -220,11 +225,13 @@ test("clearScopedSyncDataStorage removes only matching workspace authoritative s
     data.set(getScopedLastLotStorageKey(team42), "7");
     data.set(getScopedSyncClientVersionKey(team42), "1001");
     data.set(getScopedLastSyncedPayloadHashKey(team42), "team-42-hash");
+    data.set(getScopedUnacknowledgedSyncPushKey(team42), "pending-team-42-write");
     data.set(getSalesStorageKey(7, team42), JSON.stringify([{ id: 7 }]));
     data.set(getSalesCacheStatusKey(7, team42), "loaded");
     data.set(getSalesSyncMetaKey(7, team42), JSON.stringify({ activeCount: 1 }));
     data.set(getScopedPresetsStorageKey(team99), "[{\"id\":8}]");
     data.set(getScopedSyncClientVersionKey(team99), "77");
+    data.set(getScopedUnacknowledgedSyncPushKey(team99), "pending-team-99-write");
     data.set(getSalesStorageKey(8, team99), JSON.stringify([{ id: 8 }]));
 
     clearScopedSyncDataStorage(team42);
@@ -238,11 +245,13 @@ test("clearScopedSyncDataStorage removes only matching workspace authoritative s
     assert.equal(data.has(getScopedLastLotStorageKey(team42)), false);
     assert.equal(data.has(getScopedSyncClientVersionKey(team42)), false);
     assert.equal(data.has(getScopedLastSyncedPayloadHashKey(team42)), false);
+    assert.equal(data.has(getScopedUnacknowledgedSyncPushKey(team42)), false);
     assert.equal(data.has(getSalesStorageKey(7, team42)), false);
     assert.equal(data.has(getSalesCacheStatusKey(7, team42)), false);
     assert.equal(data.has(getSalesSyncMetaKey(7, team42)), false);
     assert.equal(data.has(getScopedPresetsStorageKey(team99)), true);
     assert.equal(data.has(getScopedSyncClientVersionKey(team99)), true);
+    assert.equal(data.has(getScopedUnacknowledgedSyncPushKey(team99)), true);
     assert.equal(data.has(getSalesStorageKey(8, team99)), true);
   });
 });

@@ -2,6 +2,7 @@ import { performCloudSyncPull } from "./sync-pull.ts";
 import { performCloudSyncPush } from "./sync-push.ts";
 import type { SyncSession } from "./sync-session.ts";
 import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import type { UnacknowledgedSyncPush } from "./sync-push-acknowledgement.ts";
 
 type Completion = (outcome: PersistenceOutcome) => void;
 type GuardedPull = {
@@ -12,6 +13,7 @@ type GuardedPull = {
 };
 
 export type SyncCoordinatorState = {
+  unacknowledgedPush: UnacknowledgedSyncPush | null;
   drainPromise: Promise<void> | null;
   activeOperation: "pull" | "push" | null;
   pendingPull: boolean;
@@ -42,6 +44,7 @@ export function getSyncCoordinatorState(app: object, scopeKey: string): SyncCoor
   let state = scopeStates.get(scopeKey);
   if (!state) {
     state = {
+      unacknowledgedPush: null,
       drainPromise: null,
       activeOperation: null,
       pendingPull: false,

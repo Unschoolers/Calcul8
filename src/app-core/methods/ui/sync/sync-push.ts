@@ -4,6 +4,7 @@ import type { SyncSession } from "./sync-session.ts";
 import { recoverFromLocalSyncCacheReset } from "./sync-storage-reset-recovery.ts";
 import { getLocalSalesSignature } from "./sync-local-sales.ts";
 import type { PersistenceOutcome } from "../../../shared/persistence-outcomes.ts";
+import { forgetSyncPush, recoverSyncPushAcknowledgement, rememberSyncPush } from "./sync-push-acknowledgement.ts";
 
 export async function performCloudSyncPush(
   session: SyncSession,
@@ -23,6 +24,13 @@ export async function performCloudSyncPush(
     return { kind: "skipped", reason: "not-ready" };
   }
 
+  const recovery = recoverSyncPushAcknowledgement(session);
+  if (recovery) {
+    const recoveryOutcome = await recovery;
+    if (recoveryOutcome) return recoveryOutcome;
+    if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
+  }
+
   const clientVersion = session.getStoredClientVersion();
   const syncPayload = session.createPayload(clientVersion);
   if (options.allowEmptyOverwrite === true) {
@@ -35,9 +43,13 @@ export async function performCloudSyncPush(
   const localSalesSignature = getLocalSalesSignature(app);
   deps.startSyncStatus(app);
 
+  let releaseAttempt: (() => void) | undefined;
   try {
+    releaseAttempt = rememberSyncPush(session, clientVersion, payloadSignature);
     const response = await session.requestPush(syncPayload);
     if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
+    // A timeout or server/gateway failure can arrive after the write committed.
+    if (!response.ok && response.status < 500 && response.status !== 408) forgetSyncPush(session);
 
     if (response.status === 401) {
       deps.handleExpiredAuth(app);
@@ -77,11 +89,13 @@ export async function performCloudSyncPush(
     cloudWriteConfirmed = true;
     const body = (await response.json()) as SyncPushResponseBody;
     if (!session.isCurrentScope()) return { kind: "skipped", reason: "stale-scope" };
-    const serverVersion = Number(body.version);
-    if (Number.isFinite(serverVersion)) {
-      session.setStoredClientVersion(serverVersion);
+    const serverVersion = body.version;
+    if (typeof serverVersion !== "number" || !Number.isSafeInteger(serverVersion) || serverVersion < clientVersion) {
+      throw new Error("Cloud sync response did not acknowledge a valid version.");
     }
+    session.setStoredClientVersion(serverVersion);
     session.setLastSyncedPayloadHash(payloadSignature);
+    forgetSyncPush(session);
     deps.setSyncStatusSuccess(app);
     console.info("[whatfees] Cloud sync pushed");
     return { kind: "confirmed", persistence: "cloud", cache: "not-applicable", cloud: "confirmed" };
@@ -101,5 +115,7 @@ export async function performCloudSyncPush(
       stage: cloudWriteConfirmed ? "cache" : "sync",
       ...(cloudWriteConfirmed ? { cloudConfirmed: true as const } : {})
     };
+  } finally {
+    releaseAttempt?.();
   }
 }
