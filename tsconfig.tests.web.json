@@ -99,6 +99,7 @@
     "tests/sales-wheel-storage.test.ts",
     "tests/sales-window.test.ts",
     "tests/scope-keys.test.ts",
+    "tests/security-scan.test.ts",
     "tests/shared-game-public-session-contracts.test.ts",
     "tests/shared-sync-contracts.test.ts",
     "tests/shared-workspace-realtime-rooms.test.ts",

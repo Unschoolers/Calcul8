@@ -40,7 +40,7 @@ const DETECTORS = [
   {
     name: "Generic assignment (token/secret/password)",
     regex: /\b(?:api[_-]?key|token|secret|password|client[_-]?secret)\s*[:=]\s*["'][^"']{8,}["']/gi,
-    skipFile: (relPath) => relPath.includes("/tests/") || relPath.endsWith(".test.ts")
+    skipFile: (relPath) => relPath.includes("/tests/") || /\.test\.(?:ts|mjs)$/.test(relPath)
   }
 ];
 
