@@ -1,0 +1,56 @@
+diff --git a/apps/api/src/lib/externalAccess/bearer.ts b/apps/api/src/lib/externalAccess/bearer.ts
+new file mode 100644
+index 00000000..3ac60a22
+--- /dev/null
++++ b/apps/api/src/lib/externalAccess/bearer.ts
+@@ -0,0 +1,50 @@
++import { ExternalError } from "./errors";
++
++const MAX_AUTHORIZATION_LENGTH = 8192;
++const BEARER_PREFIX = /^Bearer/i;
++const TOKEN = /^Bearer +([A-Za-z0-9._~+/-]+)(=*)$/i;
++
++/** Extracts an opaque Bearer token without interpreting or validating it. */
++export function parseExternalBearerToken(
++  authorization: string | null | undefined
++): string {
++  if (authorization === null || authorization === undefined || authorization === "") {
++    throw new ExternalError("authentication_required");
++  }
++  if (typeof authorization !== "string") {
++    throw new ExternalError("invalid_request");
++  }
++
++  if (authorization.length > MAX_AUTHORIZATION_LENGTH) {
++    throw new ExternalError("invalid_request");
++  }
++
++  // Examine code units only. This also rejects surrogate halves individually,
++  // so no string normalization or Unicode-aware token matching can slip through.
++  for (let index = 0; index < authorization.length; index += 1) {
++    const code = authorization.charCodeAt(index);
++    if (code < 0x20 || code > 0x7e) {
++      throw new ExternalError("invalid_request");
++    }
++  }
++  if (authorization.startsWith(" ") || authorization.endsWith(" ")) {
++    throw new ExternalError("invalid_request");
++  }
++
++  const prefix = BEARER_PREFIX.exec(authorization);
++  if (!prefix) {
++    throw new ExternalError("authentication_required");
++  }
++
++  const next = authorization.charAt(prefix[0].length);
++  if (next !== "" && /[A-Za-z0-9]/u.test(next)) {
++    // A different scheme such as Bearerx is unsupported authentication.
++    throw new ExternalError("authentication_required");
++  }
++
++  const match = TOKEN.exec(authorization);
++  if (!match) {
++    throw new ExternalError("invalid_request");
++  }
++  return match[1] + match[2];
++}

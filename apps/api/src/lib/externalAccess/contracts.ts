@@ -96,3 +96,19 @@ export interface ExternalErrorEnvelope {
     readonly correlationId: string;
   };
 }
+
+/** Internal service-boundary port. Only the owning validator can attest provenance. */
+export interface RevalidateExternalPrincipalInput {
+  readonly principal: ExternalPrincipal;
+  readonly expectedResource: string;
+  readonly requiredScopes: readonly ExternalScope[];
+}
+
+export interface ExternalPrincipalAuthority {
+  assertExternalPrincipal(principal: ExternalPrincipal): void;
+  revalidateExternalPrincipal(input: RevalidateExternalPrincipalInput): Promise<void>;
+}
+
+export interface ExternalAccessService extends ExternalPrincipalAuthority {
+  readonly validateExternalAccessToken: ExternalAccessValidator;
+}

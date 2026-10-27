@@ -1,0 +1,102 @@
+diff --git a/apps/api/src/lib/externalAccess/bearer.ts b/apps/api/src/lib/externalAccess/bearer.ts
+new file mode 100644
+index 00000000..13dd7812
+--- /dev/null
++++ b/apps/api/src/lib/externalAccess/bearer.ts
+@@ -0,0 +1,96 @@
++import { ExternalError } from "./errors";
++
++const MAX_AUTHORIZATION_LENGTH = 8192;
++
++function invalidRequest(): never {
++  throw new ExternalError("invalid_request");
++}
++
++function authenticationRequired(): never {
++  throw new ExternalError("authentication_required");
++}
++
++function isBearerPrefix(value: string): boolean {
++  if (value.length < 6) return false;
++  return (value.charCodeAt(0) | 0x20) === 0x62
++    && (value.charCodeAt(1) | 0x20) === 0x65
++    && (value.charCodeAt(2) | 0x20) === 0x61
++    && (value.charCodeAt(3) | 0x20) === 0x72
++    && (value.charCodeAt(4) | 0x20) === 0x65
++    && (value.charCodeAt(5) | 0x20) === 0x72;
++}
++
++function isTokenCharacter(code: number): boolean {
++  return (code >= 0x41 && code <= 0x5a)
++    || (code >= 0x61 && code <= 0x7a)
++    || (code >= 0x30 && code <= 0x39)
++    || code === 0x2e || code === 0x5f || code === 0x7e
++    || code === 0x2b || code === 0x2f || code === 0x2d;
++}
++
++export function parseExternalBearerToken(authorization: string | null | undefined): string {
++  if (authorization === null || authorization === undefined || authorization === "") {
++    return authenticationRequired();
++  }
++  if (typeof authorization !== "string") return invalidRequest();
++
++  const length = authorization.length;
++  if (length > MAX_AUTHORIZATION_LENGTH) return invalidRequest();
++
++  // Scan the entire header before classifying the scheme so control and Unicode
++  // input cannot be hidden in an otherwise unsupported credential.
++  for (let index = 0; index < length; index += 1) {
++    const code = authorization.charCodeAt(index);
++    if (code < 0x20 || code > 0x7e) return invalidRequest();
++  }
++
++  if (!isBearerPrefix(authorization)) {
++    // A syntactically ordinary unsupported scheme means no supported credentials.
++    // Whitespace and list syntax still must not be trimmed or silently accepted.
++    if (authorization.charCodeAt(0) === 0x20
++      || authorization.charCodeAt(length - 1) === 0x20
++      || authorization.includes(",")) return invalidRequest();
++    let spaces = 0;
++    let inSeparator = false;
++    for (let index = 0; index < length; index += 1) {
++      if (authorization.charCodeAt(index) === 0x20) {
++        if (!inSeparator) spaces += 1;
++        inSeparator = true;
++      } else if (inSeparator) {
++        inSeparator = false;
++        if (spaces > 1) return invalidRequest();
++      }
++    }
++    if (spaces !== 1) return invalidRequest();
++    return authenticationRequired();
++  }
++
++  if (length === 6) return invalidRequest();
++  const separator = authorization.charCodeAt(6);
++  if (separator !== 0x20) {
++    const following = authorization.charCodeAt(6);
++    const isSchemeContinuation = (following >= 0x41 && following <= 0x5a)
++      || (following >= 0x61 && following <= 0x7a)
++      || (following >= 0x30 && following <= 0x39)
++      || following === 0x2d || following === 0x5f;
++    if (isSchemeContinuation) return authenticationRequired();
++    return invalidRequest();
++  }
++
++  let tokenStart = 6;
++  while (tokenStart < length && authorization.charCodeAt(tokenStart) === 0x20) tokenStart += 1;
++  if (tokenStart === length) return invalidRequest();
++
++  let paddingStart = length;
++  while (paddingStart > tokenStart && authorization.charCodeAt(paddingStart - 1) === 0x3d) paddingStart -= 1;
++  if (paddingStart === tokenStart) return invalidRequest();
++
++  for (let index = tokenStart; index < paddingStart; index += 1) {
++    if (!isTokenCharacter(authorization.charCodeAt(index))) return invalidRequest();
++  }
++  for (let index = paddingStart; index < length; index += 1) {
++    if (authorization.charCodeAt(index) !== 0x3d) return invalidRequest();
++  }
++
++  return authorization.slice(tokenStart);
++}

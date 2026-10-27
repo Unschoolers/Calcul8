@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "OAUTH-BEARER-TRIAL-1",
+  "baseSha": "770e999fadb463f0fcb73f87732e02bd4a420202",
+  "scope": [
+    "apps/api/src/lib/externalAccess/bearer.ts"
+  ],
+  "contractRefs": [
+    "apps/api/src/lib/externalAccess/errors.ts",
+    "apps/api/test/oracles/external-bearer.test.mjs",
+    "docs/superpowers/specs/2026-10-25-oauth-p0-contracts.md"
+  ],
+  "oracleSha256": "e3fbcf7565f05eec5f57215f3194577f7d1b88e9a69fe02100899ae940acf9d5",
+  "acceptance": [
+    "unchanged protected oracle and base files; exact changed-path allowlist",
+    "npm --prefix apps/api run build",
+    "node --test apps/api/test/oracles/external-bearer.test.mjs",
+    "independent senior security/code review",
+    "integration: npm run verify:api and API test typecheck"
+  ],
+  "control": {
+    "candidates": 1,
+    "method": "usual master/Luna; sufficient full-text brief"
+  },
+  "treatment": {
+    "maxCandidates": 2,
+    "method": "Synapse artifact capsule, independent strategies, first independently acceptable selection"
+  },
+  "maxAttemptsPerCandidate": 1,
+  "maxWallSecondsPerCandidate": 600,
+  "maxTokens": null,
+  "tokenBudgetReason": "runtime has no usage-meter or enforceable token-cap API",
+  "seniorReviewRequired": true,
+  "capabilities": {
+    "spawn": true,
+    "agentStatus": true,
+    "agentInterrupt": true,
+    "generalDescendantTermination": false,
+    "inputOutputCachedTokenMeter": false,
+    "costMeter": false
+  },
+  "evaluation": "N=1; same base/oracle/reviewer role; all coordinator/review/rework costs unavailable=null. No percentage or token savings inferred. Baseline runs first; warm-cache/order effects disclosed."
+}
