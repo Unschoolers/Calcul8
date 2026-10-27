@@ -44,7 +44,7 @@ Review focus: metadata is untrusted and must not cause URL fetches/redirects or 
 - [x] Frozen plan82838229 before dispatch; two complementary Terra6.1 workers in separate worktrees and separate Terra6.1 senior reviewer.
 - [x] Actual compiled CLI tests wired into existing API runtime-protocol script after target build; no new runner/dependency.
 - [x] Targeted compiled6CLI+6assessor tests and both API verification/CI gates pass; final diff/deployment boundaries reviewed.
-- [ ] Publish stacked PR on PR46; no merge.
+- [x] Published PR47 https://github.com/Unschoolers/Calcul8/pull/47, stacked on PR46. Remote implementation cb97a0797463d882d601c91204b093f0bf6802a9; server/local tree3931ba90a2cdf336d03038007e42f72f8236fe3f identical. No merge.
 - [x] Test counts/timings and interrupted-scope limits recorded below; token/cost metrics null, no comparative gain claimed.
 - [ ] Blocked: actual tenant/domain and own registered linking client/callback needed to exercise real discovery/authentication/consent. Establish atomic state consumption, session+CSRF proof, signed subject verification, account-generation/erasure barriers and provider hook before building/wiring linking orchestrator.
 

@@ -38,3 +38,5 @@ P0 recovery evidence: current main base `44a7f19e1458141f9afddeb12cd73d7c050c127
 User steering on2026-10-27: subsequent workers and independent reviewers use Terra6.1; no comparative gain is assumed. The resource-core increment remains under security review in its own execution plan.
 
 Published resource-core PR46: https://github.com/Unschoolers/Calcul8/pull/46. Final local API/CI verification111files/876tests +29runtime, existingcoverage thresholds passed. Independent Terra review resolved the account/partition collision. Real tenant/consent/linking/revoke consistency and usable public routes remain blocked; do not claim complete OAuth activation.
+
+2026-10-27 continuation: PR47 https://github.com/Unschoolers/Calcul8/pull/47 adds the bounded offline provider metadata assessment, compiled CLI and dev setup guide, with two Terra6.1 workers and independent Terra review. Final API/CI gates112files/882tests +35runtime passed. No actual tenant or linking client/callback was supplied; strict session+CSRF, atomic transaction and deletion-safe lifecycle proofs still block flow wiring. This is P1 preparation, not completed login/consent or P2 lifecycle.
