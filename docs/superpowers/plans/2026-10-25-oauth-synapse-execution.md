@@ -46,6 +46,19 @@ Published resource-core PR46: https://github.com/Unschoolers/Calcul8/pull/46. Fi
 - [x] Document that Enterprise-only refresh Action access/newer management endpoints cannot be assumed on Free, without asserting all Free designs impossible or weakening grant-generation invariants.
 - [x] Review documentation diff and relative links; executable files unchanged, application tests N/A for this decision-only update. Prior implementation checks are historical, not new runs.
 - [x] Published decision-only PR48 https://github.com/Unschoolers/Calcul8/pull/48 on the current OAuth integration branch; remote implementation5243d511f41bca58aebd6f1a566ca0b2feaf591a, identical local/server treed4ae7357479f129abce8ca1102ec1dff3ce74f18. No merge or production change.
-- [ ] Blocked: actual dev tenant domain still not supplied. Initial real metadata/PKCE checks require it; safe refresh/grant-generation binding requires separate supported evidence and end-to-end verification.
+- [x] User supplied `whatfees.ca.auth0.com`; public discovery/JWKS and 13/13 metadata checks verified below. Real client PKCE and safe refresh/grant-generation binding still require separate inputs and end-to-end evidence.
 
 Repository state check: PR47 was merged into feat/oauth-resource-core after PR46 had already been merged into PR45. The current PR45 head4ad77c48 contains the resource core, not the later PR47 readiness increment. This documentation follow-up preserves that current integration base; provider readiness requires a separate carry-forward before assuming it is available there. No shared branch is rewritten.
+
+## Supplied development tenant, 2026-10-27
+
+Scope: validate the user-supplied public domain `whatfees.ca.auth0.com`, record reproducible public evidence, and identify the remaining client/lifecycle inputs. Preserve the Free-only budget, P0 invariants and no automatic sensitive merge/deployment. This is a continuation of the open implementation checklist above.
+
+- [x] Read current repository guidance, provider evaluation and existing readiness checker; inspect current branches before using prior work.
+- [x] Retrieved public discovery/JWKS (HTTP 200), exact issuer/JWKS match and 13/13 metadata checks at source8b3aeda1; built clean isolated worktree and ran 6 CLI + 6 assessment tests, all passed. First root-directory Vitest invocation found no tests; corrected cwd, no source/test changes.
+- [x] Recorded observations, snapshot hashes, fixture-only configuration and remaining activation gates in `docs/api/auth0-free-evaluation.md`. Two public RSA keys import successfully; no real token, client or resource compatibility claim.
+- [x] Reviewed the documentation-only diff and relative paths; no API files changed. Publication is tracked in PR48, with no automatic merge or deployment.
+- [ ] N/A: no new candidate or senior security patch review is needed for deterministic public metadata checks and documentation-only changes. No executable behavior changes; application regression tests are not required for the documentation diff. Existing checker tests were run separately as recorded above.
+- [ ] Blocked: actual client ID/redirects, API resource registrations, Free feature eligibility and supported immutable grant-generation/lifecycle proof remain required before real login/refresh or route activation.
+
+Use existing deterministic tools for this bounded follow-up; no new speculative agents, service, storage or dependency. Token/cost measurements remain unavailable; no comparative savings claim.
