@@ -38,3 +38,41 @@ P0 recovery evidence: current main base `44a7f19e1458141f9afddeb12cd73d7c050c127
 User steering on2026-10-27: subsequent workers and independent reviewers use Terra6.1; no comparative gain is assumed. The resource-core increment remains under security review in its own execution plan.
 
 Published resource-core PR46: https://github.com/Unschoolers/Calcul8/pull/46. Final local API/CI verification111files/876tests +29runtime, existingcoverage thresholds passed. Independent Terra review resolved the account/partition collision. Real tenant/consent/linking/revoke consistency and usable public routes remain blocked; do not claim complete OAuth activation.
+
+## Auth0 Free decision, 2026-10-27
+
+- [x] Record explicit user acceptance of Auth0 after cost discussion, constrained to Free with no paid activation.
+- [x] Recheck official pricing, RFC9068/profile/resource/rotation docs and Free lifecycle fit using Terra6.1 read-only research; primary evidence linked in dev setup guide.
+- [x] Document that Enterprise-only refresh Action access/newer management endpoints cannot be assumed on Free, without asserting all Free designs impossible or weakening grant-generation invariants.
+- [x] Review documentation diff and relative links; executable files unchanged, application tests N/A for this decision-only update. Prior implementation checks are historical, not new runs.
+- [x] Published decision-only PR48 https://github.com/Unschoolers/Calcul8/pull/48 on the current OAuth integration branch; remote implementation5243d511f41bca58aebd6f1a566ca0b2feaf591a, identical local/server treed4ae7357479f129abce8ca1102ec1dff3ce74f18. No merge or production change.
+- [x] User supplied `whatfees.ca.auth0.com`; public discovery/JWKS and 13/13 metadata checks verified below. Real client PKCE and safe refresh/grant-generation binding still require separate inputs and end-to-end evidence.
+
+Repository state check: PR47 was merged into feat/oauth-resource-core after PR46 had already been merged into PR45. The current PR45 head4ad77c48 contains the resource core, not the later PR47 readiness increment. This documentation follow-up preserves that current integration base; provider readiness requires a separate carry-forward before assuming it is available there. No shared branch is rewritten.
+
+## Supplied development tenant, 2026-10-27
+
+Scope: validate the user-supplied public domain `whatfees.ca.auth0.com`, record reproducible public evidence, and identify the remaining client/lifecycle inputs. Preserve the Free-only budget, P0 invariants and no automatic sensitive merge/deployment. This is a continuation of the open implementation checklist above.
+
+- [x] Read current repository guidance, provider evaluation and existing readiness checker; inspect current branches before using prior work.
+- [x] Retrieved public discovery/JWKS (HTTP 200), exact issuer/JWKS match and 13/13 metadata checks at source8b3aeda1; built clean isolated worktree and ran 6 CLI + 6 assessment tests, all passed. First root-directory Vitest invocation found no tests; corrected cwd, no source/test changes.
+- [x] Recorded observations, snapshot hashes, fixture-only configuration and remaining activation gates in `docs/api/auth0-free-evaluation.md`. Two public RSA keys import successfully; no real token, client or resource compatibility claim.
+- [x] Reviewed the documentation-only diff and relative paths; no API files changed. Publication is tracked in PR48, with no automatic merge or deployment.
+- [ ] N/A: no new candidate or senior security patch review is needed for deterministic public metadata checks and documentation-only changes. No executable behavior changes; application regression tests are not required for the documentation diff. Existing checker tests were run separately as recorded above.
+- [ ] Blocked: supplied client ID and Native selection are recorded below; exact callback registration/effective client settings, API resource registrations, Free eligibility and immutable grant-generation/lifecycle proof remain required before real login/refresh or route activation.
+
+Use existing deterministic tools for this bounded follow-up; no new speculative agents, service, storage or dependency. Token/cost measurements remain unavailable; no comparative savings claim.
+
+
+## Native client setup continuation, 2026-10-27
+
+The user supplied public client ID `iJ91FR4M6AIgD8P68qPQ8Zpo3BgO8Qhe` for Default App and confirmed saving Application Type Native. This is user-reported configuration, not independently authenticated dashboard evidence. Continue the existing open OAuth checklist; the supplied client ID alone does not prove ownership or effective token authentication settings.
+
+- [x] Inspect current branch, P0, provider evidence and official Auth0 PKCE prerequisites; preserve the Free-only/no-deploy constraints.
+- [x] Prepared exact local development callback `http://127.0.0.1:8787/callback` and a single setup table in `docs/api/auth0-free-evaluation.md`. Callback registration and Authorization Code are the remaining dashboard steps; no production resource or allowlist is invented. A future loopback listener must run on the same computer as the browser.
+- [x] Bounded anonymous authorization preflight returned HTTP403 and a Callback URL mismatch page. No redirects followed, interactive login, code or token exchange; fixed-field diagnostic only, no raw error page or credentials persisted. Result is a setup blocker, not PKCE success.
+- [x] Reviewed the documentation-only diff and local links; preflight claims match the fixed-field report. Publication/evidence is tracked in existing PR48; no sensitive merge or deployment.
+- [ ] N/A: application tests and delegated code/security patch review for this documentation-only setup increment; no new executable implementation or security-contract change. Use deterministic checks, no speculative agents.
+- [ ] Blocked: exact callback registration and human login for a real PKCE exchange; Free lifecycle, trusted grant binding, token/resource and account-linking activation gates remain open.
+
+Token/cost measurements remain unavailable. No gain or activation claim is authorized by this setup continuation.
