@@ -45,7 +45,7 @@ Published resource-core PR46: https://github.com/Unschoolers/Calcul8/pull/46. Fi
 - [x] Recheck official pricing, RFC9068/profile/resource/rotation docs and Free lifecycle fit using Terra6.1 read-only research; primary evidence linked in dev setup guide.
 - [x] Document that Enterprise-only refresh Action access/newer management endpoints cannot be assumed on Free, without asserting all Free designs impossible or weakening grant-generation invariants.
 - [x] Review documentation diff and relative links; executable files unchanged, application tests N/A for this decision-only update. Prior implementation checks are historical, not new runs.
-- [ ] Publish the documentation decision as a reviewable follow-up on the current OAuth integration branch, no merge or production changes.
+- [x] Published decision-only PR48 https://github.com/Unschoolers/Calcul8/pull/48 on the current OAuth integration branch; remote implementation5243d511f41bca58aebd6f1a566ca0b2feaf591a, identical local/server treed4ae7357479f129abce8ca1102ec1dff3ce74f18. No merge or production change.
 - [ ] Blocked: actual dev tenant domain still not supplied. Initial real metadata/PKCE checks require it; safe refresh/grant-generation binding requires separate supported evidence and end-to-end verification.
 
 Repository state check: PR47 was merged into feat/oauth-resource-core after PR46 had already been merged into PR45. The current PR45 head4ad77c48 contains the resource core, not the later PR47 readiness increment. This documentation follow-up preserves that current integration base; provider readiness requires a separate carry-forward before assuming it is available there. No shared branch is rewritten.
