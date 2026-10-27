@@ -30,7 +30,7 @@ Frozen factory interfaces:
 - [x] Packet reports and actual source inspected; Terra6.1 continuation plus separate senior signed-token security review, recorded in ../reviews/2026-10-27-oauth-core-security-review.md.
 - [x] Owned source integrated; independent compiled cross-packet oracle9/9 passes with actual RSA signatures and final scope/revocation/membership checks. Protected oracle unchanged.
 - [x] Final npm run verify:api and npm --prefix apps/api run verify:ci both exit0:111files/876tests +29compiled runtime tests. CI test typecheck and coverage thresholds pass; final diff/deployment-root/no-legacy-wiring checks pass.
-- [ ] Publish separate verifiable PR stacked on pilot; no merge.
+- [x] Published PR46 https://github.com/Unschoolers/Calcul8/pull/46, stacked on pilot PR45. Remote implementation commit0b105f8500f32653e4af968294357579dcf1ce53; server/local tree identical52b3430e38bd4a527f8a06618c6c88d77d94fa84. No merge.
 - [ ] Blocked: real dev tenant/client/issuer/resource configuration and trusted grant hook/account-linking authority have not been established. No auth/account lifecycle persistence schema is guessed.
 - [ ] Blocked: PKCE/consent/code replay/refresh rotation+reuse/concurrency/key rotation and end-to-end revoke/logout, authoritative grant/account consistency+erasure, real REST/MCP discovery/interoperability remain unproved. No routes may be enabled.
 - [ ] P4-P6 domain ports/read routes/OpenAPI remain separate authoritative-plan increments; inactive helpers do not satisfy them.

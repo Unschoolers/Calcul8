@@ -10,10 +10,10 @@ Authoritative scope: [OAuth/public API plan](2026-10-22-oauth-public-api.md). Us
 - [x] Run one-Luna control then two concurrent Luna candidates; all rejected by predefined checks/review. No selection; bounded senior escalation validated separately.
 - [x] Record experiment rows, wall intervals,3rejections/1seniorrescue, inhibition and cleanup; unavailable metrics null. No gain established; resume ordinary complementary packets.
 - [x] Publish pilot/evaluation PR45 (remote1896d603), APIverify106files/760tests +20runtime, testtypecheck0.
-- [ ] Implement complementary OAuth batches with disjoint ownership, senior review and reviewable PRs.
+- [x] Implemented the bounded inactive resource-core wave in PR46: JWT/grant/account validation, scope/final boundary, configuration/metadata and safe errors, with independent Terra6.1 senior review. Operational flow remains blocked below.
 - [ ] Complete real dev issuer/lifecycle/interoperability gates before wiring protected routes. Blocked: no verified tenant/configuration/account-linking authority supplied or established yet.
-- [ ] Reconcile all original P0-P6 requirements; report partial implementation until real activation and domain/API gates pass.
-- [ ] No automatic merge, no new orchestration framework/service/database and no secrets.
+- [x] Reconciled P0-P6 in resource-core plan and PR46: contracts/pilot/inactive P3 helpers complete; provider P1/P2, operational P0 and domain/API/OpenAPI P4-P6 gates remain open. Overall OAuth delivery is partial.
+- [x] PR44/45/46 published without merge; no orchestration framework/service/database or secrets added. Only maintained jose added for resource-server cryptography.
 
 ## Recovery record, 2026-10-26
 
@@ -36,3 +36,5 @@ API changes: `npm run verify:api`; also `npm --prefix apps/api run typecheck:tes
 P0 recovery evidence: current main base `44a7f19e1458141f9afddeb12cd73d7c050c1277`; Luna restored contracts/errors and corrected two issues (reserved write union and Node24 stack descriptor); independent Sol senior review recorded in `../reviews/2026-10-26-oauth-p0-review.md`. Fresh `npm run verify:api` exited 0: 105 files / 755 tests + 8 runtime tests; test typecheck and whitespace check passed. Protected oracle SHA256 `e3fbcf7565f05eec5f57215f3194577f7d1b88e9a69fe02100899ae940acf9d5`, syntax check passed and actual Node execution RED for missing parser. Candidate generation has not begun. Token/cost metrics unavailable. Publication pending next action.
 
 User steering on2026-10-27: subsequent workers and independent reviewers use Terra6.1; no comparative gain is assumed. The resource-core increment remains under security review in its own execution plan.
+
+Published resource-core PR46: https://github.com/Unschoolers/Calcul8/pull/46. Final local API/CI verification111files/876tests +29runtime, existingcoverage thresholds passed. Independent Terra review resolved the account/partition collision. Real tenant/consent/linking/revoke consistency and usable public routes remain blocked; do not claim complete OAuth activation.
