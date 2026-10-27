@@ -75,7 +75,8 @@
     "src/lib/syncShape.test.ts",
     "src/lib/telemetry.test.ts",
     "src/lib/whatnot.test.ts",
-    "src/lib/externalAccess/**/*.test.ts"
+    "src/lib/externalAccess/**/*.test.ts",
+    "src/features/externalOAuth/**/*.test.ts"
   ],
   "exclude": ["dist", "node_modules"]
 }
