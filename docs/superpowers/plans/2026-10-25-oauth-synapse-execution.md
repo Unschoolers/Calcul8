@@ -59,6 +59,20 @@ Scope: validate the user-supplied public domain `whatfees.ca.auth0.com`, record 
 - [x] Recorded observations, snapshot hashes, fixture-only configuration and remaining activation gates in `docs/api/auth0-free-evaluation.md`. Two public RSA keys import successfully; no real token, client or resource compatibility claim.
 - [x] Reviewed the documentation-only diff and relative paths; no API files changed. Publication is tracked in PR48, with no automatic merge or deployment.
 - [ ] N/A: no new candidate or senior security patch review is needed for deterministic public metadata checks and documentation-only changes. No executable behavior changes; application regression tests are not required for the documentation diff. Existing checker tests were run separately as recorded above.
-- [ ] Blocked: actual client ID/redirects, API resource registrations, Free feature eligibility and supported immutable grant-generation/lifecycle proof remain required before real login/refresh or route activation.
+- [ ] Blocked: supplied client ID and Native selection are recorded below; exact callback registration/effective client settings, API resource registrations, Free eligibility and immutable grant-generation/lifecycle proof remain required before real login/refresh or route activation.
 
 Use existing deterministic tools for this bounded follow-up; no new speculative agents, service, storage or dependency. Token/cost measurements remain unavailable; no comparative savings claim.
+
+
+## Native client setup continuation, 2026-10-27
+
+The user supplied public client ID `iJ91FR4M6AIgD8P68qPQ8Zpo3BgO8Qhe` for Default App and confirmed saving Application Type Native. This is user-reported configuration, not independently authenticated dashboard evidence. Continue the existing open OAuth checklist; the supplied client ID alone does not prove ownership or effective token authentication settings.
+
+- [x] Inspect current branch, P0, provider evidence and official Auth0 PKCE prerequisites; preserve the Free-only/no-deploy constraints.
+- [x] Prepared exact local development callback `http://127.0.0.1:8787/callback` and a single setup table in `docs/api/auth0-free-evaluation.md`. Callback registration and Authorization Code are the remaining dashboard steps; no production resource or allowlist is invented. A future loopback listener must run on the same computer as the browser.
+- [x] Bounded anonymous authorization preflight returned HTTP403 and a Callback URL mismatch page. No redirects followed, interactive login, code or token exchange; fixed-field diagnostic only, no raw error page or credentials persisted. Result is a setup blocker, not PKCE success.
+- [x] Reviewed the documentation-only diff and local links; preflight claims match the fixed-field report. Publication/evidence is tracked in existing PR48; no sensitive merge or deployment.
+- [ ] N/A: application tests and delegated code/security patch review for this documentation-only setup increment; no new executable implementation or security-contract change. Use deterministic checks, no speculative agents.
+- [ ] Blocked: exact callback registration and human login for a real PKCE exchange; Free lifecycle, trusted grant binding, token/resource and account-linking activation gates remain open.
+
+Token/cost measurements remain unavailable. No gain or activation claim is authorized by this setup continuation.
