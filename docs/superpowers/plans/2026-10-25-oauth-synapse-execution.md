@@ -38,3 +38,14 @@ P0 recovery evidence: current main base `44a7f19e1458141f9afddeb12cd73d7c050c127
 User steering on2026-10-27: subsequent workers and independent reviewers use Terra6.1; no comparative gain is assumed. The resource-core increment remains under security review in its own execution plan.
 
 Published resource-core PR46: https://github.com/Unschoolers/Calcul8/pull/46. Final local API/CI verification111files/876tests +29runtime, existingcoverage thresholds passed. Independent Terra review resolved the account/partition collision. Real tenant/consent/linking/revoke consistency and usable public routes remain blocked; do not claim complete OAuth activation.
+
+## Auth0 Free decision, 2026-10-27
+
+- [x] Record explicit user acceptance of Auth0 after cost discussion, constrained to Free with no paid activation.
+- [x] Recheck official pricing, RFC9068/profile/resource/rotation docs and Free lifecycle fit using Terra6.1 read-only research; primary evidence linked in dev setup guide.
+- [x] Document that Enterprise-only refresh Action access/newer management endpoints cannot be assumed on Free, without asserting all Free designs impossible or weakening grant-generation invariants.
+- [x] Review documentation diff and relative links; executable files unchanged, application tests N/A for this decision-only update. Prior implementation checks are historical, not new runs.
+- [ ] Publish the documentation decision as a reviewable follow-up on the current OAuth integration branch, no merge or production changes.
+- [ ] Blocked: actual dev tenant domain still not supplied. Initial real metadata/PKCE checks require it; safe refresh/grant-generation binding requires separate supported evidence and end-to-end verification.
+
+Repository state check: PR47 was merged into feat/oauth-resource-core after PR46 had already been merged into PR45. The current PR45 head4ad77c48 contains the resource core, not the later PR47 readiness increment. This documentation follow-up preserves that current integration base; provider readiness requires a separate carry-forward before assuming it is available there. No shared branch is rewritten.

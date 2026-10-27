@@ -1,0 +1,11 @@
+# Auth0 Free evaluation, 2026-10-27
+
+The user selected Auth0 under a Free-plan budget constraint. No paid feature, tenant, client, flow or deployment is activated by this decision.
+
+Start from [Auth0 Free](https://auth0.com/pricing), using the provider-assigned tenant domain. Do not activate a paid subscription, add-on or billing-dependent custom domain. Free pricing currently lists $0/month, up to25,000 monthly active users and no credit card needed for signup; custom domains require credit-card verification. Pricing and actual feature eligibility must be rechecked before production. A trial may expose features absent from Free: passing while on a trial does not establish Free eligibility.
+
+The next public input needed is the actual development tenant domain (for example `dev-example.us.auth0.com`, a placeholder), not a client secret or bearer token. Select region/residency deliberately; no region, callback or resource hostname is chosen by this guide. A tenant can be used to inspect real metadata and initial PKCE behavior while lifecycle activation remains blocked.
+
+A critical compatibility item remains unresolved. [Auth0 Support](https://support.auth0.com/center/s/article/find-requested-scopes-in-actions-for-refresh-token-client-credential-exchange-or-resource-owner-password-grant) explicitly calls access to `event.refresh_token` in Post-Login Actions an Enterprise feature. The [revocation documentation](https://auth0.com/docs/secure/tokens/refresh-tokens/revoke-refresh-tokens) also restricts the newer refresh-token Management API endpoints to Enterprise, while documenting older device-credential endpoints separately. These facts do not prove every safe Free design impossible, but the proposed per-family binding cannot rely on those Enterprise-only mechanisms.
+
+For WhatFees, a supported immutable `whatfees_grant_id` binding across refresh and fresh consent, or a precise supported revocation-ordering alternative, is still required. A mutable current-grant pointer per user/client is not an equivalent proof: an old exchange could acquire the new grant after reconsent. Do not enable refresh, consent/grant activation or API routes on that assumption; do not relax P0 or upgrade the plan to bypass this gate. Discovery consistency and ordinary rotation alone do not establish it.

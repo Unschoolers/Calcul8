@@ -14,6 +14,10 @@ Choose a managed authorization server, with **Auth0 as the concrete development 
 
 Sources (revalidated 2026-10-26): [Auth0 pricing](https://auth0.com/pricing), [token profiles](https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles), [resource compatibility](https://auth0.com/ai/docs/mcp/guides/resource-param-compatibility-profile), [refresh rotation](https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation), [Entra refresh tokens](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens), [oidc-provider](https://github.com/panva/node-oidc-provider), [jose](https://github.com/panva/jose), [MCP authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization), [RFC9068](https://www.rfc-editor.org/rfc/rfc9068.html), [RFC9728](https://www.rfc-editor.org/rfc/rfc9728.html), [RFC9700](https://www.rfc-editor.org/rfc/rfc9700.html).
 
+## User budget decision, 2026-10-27
+
+User accepted Auth0 after clarifying the Free offer. Evaluation is constrained to Free; no paid subscription/add-on or custom-domain billing is authorized. Provider-assigned domains suffice for development. Acceptance selects the candidate, not proof that Free covers all P0 invariants. The Free grant-generation/refresh binding remains unresolved: official Auth0 support marks `event.refresh_token` in Post-Login Actions Enterprise-only; see the updated [Free evaluation note](../../api/auth0-free-evaluation.md) for primary evidence and the activation gate. Preserve all contracts/invariants while investigating a supported Free mechanism. No deployment or route activation follows from this decision.
+
 ## Frozen deployment-safe exports
 
 `apps/api/src/lib/externalAccess/contracts.ts` owns the types; `errors.ts` owns fixed public errors. Runtime modules stay inside `apps/api`.
