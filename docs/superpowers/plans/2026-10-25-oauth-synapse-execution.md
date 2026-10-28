@@ -76,3 +76,10 @@ The user supplied public client ID `iJ91FR4M6AIgD8P68qPQ8Zpo3BgO8Qhe` for Defaul
 - [ ] Blocked: exact callback registration and human login for a real PKCE exchange; Free lifecycle, trusted grant binding, token/resource and account-linking activation gates remain open.
 
 Token/cost measurements remain unavailable. No gain or activation claim is authorized by this setup continuation.
+
+
+## Runnable development PKCE increment, 2026-10-28
+
+User renewed Auth0 implementation after considering Supabase. Continue the open lifecycle/public API requirements. The [bounded PKCE probe plan](2026-10-28-oauth-pkce-probe.md) freezes a runnable local connection check, protected acceptance and one Terra6.1 implementation plus independent senior review. No further issuer framework, new storage, paid service or route activation. Readiness carry-forward remains separate; no speculative race or unmeasured gain.
+
+Protected oracle initial SHA256 `de552ddd7e40ea49d55dade0d51a9fc97f8dacb4c357f3b0175ec3f135e4fd87`; missing-module RED at base5b7c5531. Runnable167-line dev CLI implemented and independently reviewed after two correction waves. Final verify:api and API verify:ci passed111files/876tests +51runtime; security scan passed. No complete live login claimed. Publication is recorded in the increment plan/PR; no merge/deploy.
