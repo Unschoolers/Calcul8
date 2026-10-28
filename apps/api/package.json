@@ -18,7 +18,7 @@
     "verify:ci": "npm run build && npm run typecheck:tests && npm run test:runtime-protocol && npm run test:coverage",
     "test": "vitest run --config vitest.config.mjs",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage --maxWorkers=2",
-    "test:runtime-protocol": "node --test test/runtime-sales-validation.test.mjs test/oracles/external-bearer.test.mjs test/oracles/external-access.test.mjs",
+    "test:runtime-protocol": "node --test test/runtime-sales-validation.test.mjs test/oracles/external-bearer.test.mjs test/oracles/external-access.test.mjs test/oauth-login.test.mjs test/oracles/oauth-login.test.mjs",
     "test:watch": "vitest --config vitest.config.mjs"
   },
   "dependencies": {

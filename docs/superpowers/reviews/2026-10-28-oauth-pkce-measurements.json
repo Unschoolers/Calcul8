@@ -1,0 +1,20 @@
+{
+  "observation": "plan checkpoint to final local gates; excludes earlier repo exploration and later publication",
+  "startedAt": "2026-10-28T18:31:56+00:00",
+  "endedAt": "2026-10-28T18:43:16.082371+00:00",
+  "wallSeconds": 680.1,
+  "model": "gpt-6.1-terra",
+  "implementers": 1,
+  "independentReviewers": 1,
+  "correctionWaves": 2,
+  "seniorFindings": 2,
+  "seniorFindingsResolved": 2,
+  "speculativeCandidates": 0,
+  "agentCancellations": 0,
+  "inputTokens": null,
+  "outputTokens": null,
+  "cachedTokens": null,
+  "cost": null,
+  "controlledBaseline": null,
+  "comparativeGain": null
+}
