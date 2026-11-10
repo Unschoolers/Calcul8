@@ -15,7 +15,7 @@ import type {
     SalesFreshnessContext
 } from "./commerce.ts";
 import type { GameMethodState } from "./game.ts";
-import type { PortfolioMethodState, PortfolioSalesHydrationContext } from "./portfolio.ts";
+import type { PortfolioComputedState, PortfolioMethodState, PortfolioSalesHydrationContext } from "./portfolio.ts";
 import type { AppVueContext, RuntimeMethodState } from "./runtime.ts";
 import type { OnboardingMethodState } from "./shell.ts";
 import type { SyncMethodState } from "./sync.ts";
@@ -105,7 +105,8 @@ export type CurrentLotWatchContext = WorkspaceRealtimeContext &
   Pick<AppState, "currentTab" | "prewarmedTabs" | "salesChart"> &
   Pick<CommerceMethodState, "clearLiveSinglesSelection">;
 
-export type PortfolioWatchContext = Pick<
+export type PortfolioWatchContext = Pick<PortfolioComputedState, "allLotPerformance"> &
+  Pick<
   AppState,
   | "currentTab"
   | "portfolioChartView"
@@ -150,6 +151,7 @@ export interface AppWatchObject {
   portfolioReceiptFilter(this: PortfolioWatchContext): void;
   portfolioSalesGrouping(this: PortfolioWatchContext): void;
   salesCacheEpoch(this: PortfolioWatchContext): void;
+  allLotPerformance(this: PortfolioWatchContext): void;
   portfolioSalesByUserMetric(this: PortfolioWatchContext, newValue: PortfolioSalesByUserMetric): void;
   portfolioSalesByUserPeriod(this: PortfolioWatchContext): void;
   portfolioLotTypeFilter(this: PortfolioWatchContext, newValue: PortfolioLotTypeFilter): void;
