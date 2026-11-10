@@ -228,6 +228,7 @@
   "portfolioChartMarginDatasetLabel": "Marge sur les ventes (%)",
   "portfolioChartMarginTooltipLabel": "Marge sur les ventes",
   "portfolioChartMarginNoSalesLabel": "aucune vente pour le moment",
+  "portfolioChartMarginScaleNote": "Les marges négatives utilisent une échelle comprimée; les marges réelles sont dans Catégories et les infobulles.",
   "portfolioSalesByUserChartMetricProfitLabel": "Profit des ventes réalisées",
   "portfolioSalesByUserChartMetricCountLabel": "Nombre de ventes",
   "portfolioSalesByUserChartMetricRevenueLabel": "Revenu net",

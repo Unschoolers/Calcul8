@@ -194,6 +194,7 @@
   "portfolioChartMarginDatasetLabel": "Sold profit margin %",
   "portfolioChartMarginTooltipLabel": "Sold margin",
   "portfolioChartMarginNoSalesLabel": "no sales yet",
+  "portfolioChartMarginScaleNote": "Negative margins use a compressed scale; actual margins appear in Categories and tooltips.",
   "portfolioSalesByUserChartMetricProfitLabel": "Realized profit",
   "portfolioSalesByUserChartMetricCountLabel": "Sales count",
   "portfolioSalesByUserChartMetricRevenueLabel": "Revenue",

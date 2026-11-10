@@ -8,7 +8,6 @@ import {
   buildAdaptiveCurrencyTickCallback,
   buildBottomLegendOptions,
   buildCategoryTicks,
-  buildCurrencyTickCallback,
   type FormatCurrency,
   type PortfolioPerformanceRow,
   PORTFOLIO_BREAKDOWN_COLORS
@@ -70,6 +69,9 @@ export function buildPortfolioMarginChartConfig(params: {
   formatCurrency: FormatCurrency;
   preferredLanguage?: string;
 }): ChartConfiguration<"bar", number[], string> | null {
+  // The negative side stays nearly linear around zero and compresses large losses logarithmically.
+  const lossScale = 20;
+  const compressLoss = (margin: number) => margin < 0 ? -lossScale * Math.log1p(-margin / lossScale) : margin;
   const t = (key: string) => translateAppMessage(params.preferredLanguage || "", key);
   const rows = params.rows
     .filter((row) => row.salesCount > 0 || row.totalPacks > 0)
@@ -82,6 +84,7 @@ export function buildPortfolioMarginChartConfig(params: {
     .sort((a, b) => b.realizedMarginPercent - a.realizedMarginPercent);
   if (rows.length === 0) return null;
 
+  const plottedMargins = rows.map((row) => compressLoss(row.realizedMarginPercent));
   return {
     type: "bar",
     data: {
@@ -89,7 +92,7 @@ export function buildPortfolioMarginChartConfig(params: {
       datasets: [
         {
           label: t("portfolioChartMarginDatasetLabel"),
-          data: rows.map((row) => row.realizedMarginPercent),
+          data: plottedMargins,
           backgroundColor: "rgba(247, 181, 0, 0.35)",
           borderColor: "#F7B500",
           borderWidth: 1.5,
@@ -121,8 +124,15 @@ export function buildPortfolioMarginChartConfig(params: {
       },
       scales: {
         x: {
+          min: plottedMargins.reduce((minimum, value) => Math.min(minimum, value), 0),
           ticks: {
-            callback: buildCurrencyTickCallback(params.formatCurrency, { suffix: "%", decimals: 0 }),
+            callback: (value) => {
+              const position = Number(value);
+              const margin = position < 0 ? -lossScale * Math.expm1(-position / lossScale) : position;
+              return `${params.formatCurrency(margin, 0)}%`;
+            },
+            maxRotation: 0,
+            maxTicksLimit: params.compactMode ? 5 : 8,
             font: params.compactMode ? { size: 10 } : undefined
           },
           grid: {

@@ -781,6 +781,12 @@
   font-size: 0.82rem;
 }
 
+.portfolio-chart-scale-note {
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  margin: 0.5rem 0;
+}
+
 .portfolio-chart-legend__series,
 .portfolio-chart-legend__categories ul {
   display: flex;

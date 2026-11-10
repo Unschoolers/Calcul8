@@ -330,6 +330,9 @@
                               <span>{{ item.label }}</span>
                             </li>
                           </ul>
+                          <p v-if="portfolioChartView === 'margin' && allLotPerformance.some(row => row.salesCount > 0 && Number(row.realizedMarginPercent) < 0)" class="portfolio-chart-scale-note">
+                            {{ portfolioCopy('portfolioChartMarginScaleNote', 'Negative margins use a compressed scale; actual margins appear in Categories and tooltips.') }}
+                          </p>
                           <details v-if="portfolioChartLegendModel().categories.length > 0" class="portfolio-chart-legend__categories">
                             <summary>{{ portfolioChartLegendModel().categoriesLabel }} ({{ portfolioChartLegendModel().categories.length }})</summary>
                             <ul>
