@@ -148,6 +148,28 @@ describe("Portfolio analytics sections", () => {
     expect(view.container.querySelectorAll(".portfolio-customer-performance .portfolio-performance-grid__row")).toHaveLength(0);
   });
 
+  test("margin chart gives each visible lot enough vertical room on mobile", async () => {
+    const { lot } = createDenseVolumeFixture();
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      ...portfolioComputed.allLotPerformance.call({
+        lots: [lot], portfolioSelectedLotIds: [lot.id], salesCacheEpoch: 0,
+        getAllSalesByLotId: () => new Map([[lot.id, []]])
+      } as never)[0]!,
+      lotId: index + 1,
+      lotName: `Lot ${index + 1}`,
+      salesCount: 1,
+      totalPacks: 36
+    }));
+    const { view, state } = renderPortfolio("en", "unionArenaLight", 390, "analytics", "margin", { performanceRows: rows });
+    expect(view.container.querySelector<HTMLElement>(".portfolio-chart-card .app-responsive-chart__plot")?.style.minHeight)
+      .toBe("744px");
+
+    state.portfolioChartView = "trend";
+    await nextTick();
+    expect(view.container.querySelector<HTMLElement>(".portfolio-chart-card .app-responsive-chart__plot")?.style.minHeight)
+      .toBe("");
+  });
+
   test("a paid no-sale preorder does not render a fake loss or risk recommendation", async () => {
     const preorder = makeLot({
       id: 900,

@@ -6,7 +6,6 @@ import {
   fetchAuthoritativeSales
 } from "./lot-sales-api.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
-import { refreshChartsForCurrentTab } from "./sales-ui-helpers.ts";
 
 type PortfolioSalesHydrationState = {
   hydratingLotIds: Set<number>;
@@ -18,7 +17,6 @@ type HydrationDeps = {
   fetchSales(context: PortfolioSalesHydrationContext, lotId: number): Promise<Sale[] | null>;
   fetchSalesByLot?(context: PortfolioSalesHydrationContext, lotIds: number[]): Promise<Map<number, Sale[]> | null>;
   cacheSales(context: PortfolioSalesHydrationContext, lotId: number, sales: Sale[]): void;
-  refreshCharts(context: PortfolioSalesHydrationContext): void;
 };
 
 const portfolioSalesHydrationStateByContext = new WeakMap<object, PortfolioSalesHydrationState>();
@@ -58,8 +56,7 @@ export function queuePortfolioSalesHydration(
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
     fetchSales: fetchAuthoritativeSales,
     fetchSalesByLot: fetchAuthoritativeAllSales,
-    cacheSales: cacheAuthoritativeSales,
-    refreshCharts: refreshChartsForCurrentTab
+    cacheSales: cacheAuthoritativeSales
   },
   delayMs = 0
 ): void {
@@ -80,8 +77,7 @@ export function hydrateMissingPortfolioSales(
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
     fetchSales: fetchAuthoritativeSales,
     fetchSalesByLot: fetchAuthoritativeAllSales,
-    cacheSales: cacheAuthoritativeSales,
-    refreshCharts: refreshChartsForCurrentTab
+    cacheSales: cacheAuthoritativeSales
   }
 ): void {
   if (context.currentTab !== "portfolio" || context.isOffline || !deps.canUseAuthoritativeApi()) {
@@ -150,7 +146,6 @@ export function hydrateMissingPortfolioSales(
       }
       if (shouldRefresh) {
         context.salesCacheEpoch += 1;
-        deps.refreshCharts(context);
       }
     }
   })();

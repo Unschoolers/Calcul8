@@ -150,7 +150,6 @@ export interface AppWatchObject {
   portfolioSection(this: PortfolioWatchContext): void;
   portfolioReceiptFilter(this: PortfolioWatchContext): void;
   portfolioSalesGrouping(this: PortfolioWatchContext): void;
-  salesCacheEpoch(this: PortfolioWatchContext): void;
   allLotPerformance(this: PortfolioWatchContext): void;
   portfolioSalesByUserMetric(this: PortfolioWatchContext, newValue: PortfolioSalesByUserMetric): void;
   portfolioSalesByUserPeriod(this: PortfolioWatchContext): void;

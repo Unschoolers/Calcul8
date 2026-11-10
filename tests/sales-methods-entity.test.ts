@@ -905,7 +905,8 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
   assert.deepEqual(fetchAuthoritativeAllSalesMock.mock.calls, [[ctx, [2]]]);
   assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls, [[ctx, 2, hydratedSales]]);
   assert.equal(ctx.salesCacheEpoch, 1);
-  assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 0,
+    "chart refresh follows the reactive performance watcher in the mounted app");
   vi.useRealTimers();
 });
 
