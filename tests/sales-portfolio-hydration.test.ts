@@ -57,36 +57,32 @@ test("hydrateMissingPortfolioSales skips when not in portfolio, offline, or api 
   }, {
     canUseAuthoritativeApi: () => true,
     fetchSales,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   });
   hydrateMissingPortfolioSales(createContext({ isOffline: true }) as never, {
     force: false
   }, {
     canUseAuthoritativeApi: () => true,
     fetchSales,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   });
   hydrateMissingPortfolioSales(createContext() as never, {
     force: false
   }, {
     canUseAuthoritativeApi: () => false,
     fetchSales,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   });
 
   await Promise.resolve();
   assert.equal(fetchSales.mock.calls.length, 0);
 });
 
-test("hydrateMissingPortfolioSales fetches only missing non-current lots and refreshes once", async () => {
+test("hydrateMissingPortfolioSales fetches only missing non-current lots and invalidates performance once", async () => {
   const fetchSalesByLot = vi.fn(async (_context, lotIds: number[]) => new Map(
     lotIds.map((lotId) => [lotId, [{ id: lotId }]])
   ));
   const cacheSales = vi.fn();
-  const refreshCharts = vi.fn();
   const context = createContext({
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`
   });
@@ -105,8 +101,7 @@ test("hydrateMissingPortfolioSales fetches only missing non-current lots and ref
     canUseAuthoritativeApi: () => true,
     fetchSales: vi.fn(),
     fetchSalesByLot,
-    cacheSales,
-    refreshCharts
+    cacheSales
   } as any);
 
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -115,7 +110,6 @@ test("hydrateMissingPortfolioSales fetches only missing non-current lots and ref
   assert.equal(cacheSales.mock.calls.length, 1);
   assert.equal(cacheSales.mock.calls[0]?.[1], 2);
   assert.equal(context.salesCacheEpoch, 1);
-  assert.equal(refreshCharts.mock.calls.length, 1);
 });
 
 test("hydrateMissingPortfolioSales uses preset-independent candidates for unloaded sales", async () => {
@@ -142,8 +136,7 @@ test("hydrateMissingPortfolioSales uses preset-independent candidates for unload
     canUseAuthoritativeApi: () => true,
     fetchSales: vi.fn(),
     fetchSalesByLot,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   } as any);
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -164,8 +157,7 @@ test("hydrateMissingPortfolioSales keeps truly unmatched scopes empty", async ()
     canUseAuthoritativeApi: () => true,
     fetchSales: vi.fn(),
     fetchSalesByLot,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   } as any);
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -190,8 +182,7 @@ test("hydrateMissingPortfolioSales respects an explicitly loaded empty sales cac
   hydrateMissingPortfolioSales(context as never, { force: false }, {
     canUseAuthoritativeApi: () => true,
     fetchSales,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   } as any);
 
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -202,7 +193,6 @@ test("hydrateMissingPortfolioSales respects an explicitly loaded empty sales cac
 test("hydrateMissingPortfolioSales force-refreshes selected non-current lots even when cached", async () => {
   const fetchSales = vi.fn(async (_context, lotId: number) => [{ id: lotId }]);
   const cacheSales = vi.fn();
-  const refreshCharts = vi.fn();
   const context = createContext({
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`
   });
@@ -219,8 +209,7 @@ test("hydrateMissingPortfolioSales force-refreshes selected non-current lots eve
   hydrateMissingPortfolioSales(context as never, { force: true }, {
     canUseAuthoritativeApi: () => true,
     fetchSales,
-    cacheSales,
-    refreshCharts
+    cacheSales
   } as any);
 
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -228,7 +217,6 @@ test("hydrateMissingPortfolioSales force-refreshes selected non-current lots eve
   assert.deepEqual(fetchSales.mock.calls.map((call) => call[1]), [2, 3]);
   assert.equal(cacheSales.mock.calls.length, 2);
   assert.equal(context.salesCacheEpoch, 1);
-  assert.equal(refreshCharts.mock.calls.length, 1);
 });
 
 test("hydrateMissingPortfolioSales does not double-fetch a lot already hydrating", async () => {
@@ -241,8 +229,7 @@ test("hydrateMissingPortfolioSales does not double-fetch a lot already hydrating
     canUseAuthoritativeApi: () => true,
     fetchSales: vi.fn(),
     fetchSalesByLot,
-    cacheSales: vi.fn(),
-    refreshCharts: vi.fn()
+    cacheSales: vi.fn()
   };
 
   hydrateMissingPortfolioSales(context as never, { force: false }, deps as any);

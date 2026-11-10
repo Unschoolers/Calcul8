@@ -301,7 +301,7 @@
                             </div>
                           </div>
                         </div>
-                        <div class="app-responsive-chart__plot">
+                        <div class="app-responsive-chart__plot" :style="portfolioChartView === 'margin' ? { minHeight: `${Math.max(260, portfolioChartLegendModel().categories.length * 24 + 24)}px` } : undefined">
                           <app-empty-state
                             v-if="!hasPortfolioData"
                             :title="portfolioCopy('portfolioChartEmptyTitle', 'No portfolio data yet')"

@@ -340,7 +340,7 @@ export const appWatch: AppWatchObject = {
     if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
   },
 
-  salesCacheEpoch() {
+  allLotPerformance() {
     if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
   },
 

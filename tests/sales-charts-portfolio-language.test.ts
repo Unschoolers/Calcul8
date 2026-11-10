@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
+import { computed, nextTick, reactive, watch } from "vue";
 
 const chartConfigs: Array<Record<string, unknown>> = [];
 const queuePortfolioSalesHydrationMock = vi.hoisted(() => vi.fn());
@@ -145,7 +146,7 @@ test("portfolio section, receipt, grouping, and sales-cache watchers refresh aft
   appWatch.portfolioSection.call(context as never);
   appWatch.portfolioReceiptFilter.call(context as never);
   appWatch.portfolioSalesGrouping.call(context as never);
-  appWatch.salesCacheEpoch.call(context as never);
+  appWatch.allLotPerformance.call(context as never);
 
   assert.equal(initPortfolioChart.mock.calls.length, 0, "refreshes wait for the DOM update");
   assert.equal(queued.length, 4);
@@ -156,4 +157,28 @@ test("portfolio section, receipt, grouping, and sales-cache watchers refresh aft
   context.currentTab = "sales";
   appWatch.portfolioReceiptFilter.call(context as never);
   assert.equal(queued.length, 0, "off-tab receipt changes do not render a portfolio chart");
+});
+
+test("sales cache invalidation schedules one portfolio chart rebuild", async () => {
+  const state = reactive({ salesCacheEpoch: 0 });
+  const rows = computed(() => {
+    void state.salesCacheEpoch;
+    return [{ lotId: 1 }];
+  });
+  const initPortfolioChart = vi.fn();
+  const context = { currentTab: "portfolio", initPortfolioChart, $nextTick: nextTick };
+  const stopRows = watch(rows, () => appWatch.allLotPerformance.call(context as never));
+  const epochWatch = (appWatch as unknown as Record<string, ((this: typeof context) => void) | undefined>).salesCacheEpoch;
+  const stopEpoch = epochWatch
+    ? watch(() => state.salesCacheEpoch, () => epochWatch.call(context))
+    : () => undefined;
+  try {
+    state.salesCacheEpoch += 1;
+    await nextTick();
+    await nextTick();
+    assert.equal(initPortfolioChart.mock.calls.length, 1);
+  } finally {
+    stopRows();
+    stopEpoch();
+  }
 });

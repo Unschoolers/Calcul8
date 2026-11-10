@@ -193,6 +193,7 @@ test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart and 
   assert.deepEqual(config?.data.labels, ["Lot 3", "Lot 1", "Lot 4", "Lot 2"]);
   assert.deepEqual(config?.data.datasets[0]?.data, [33.3, 12.5, 0, -4.5]);
   assert.equal(config?.data.datasets[0]?.label, "Sold profit margin %");
+  assert.equal(config?.options?.scales?.y?.ticks?.autoSkip, false);
 });
 
 test("Portfolio chart builders localize labels and tooltip plurals for French while preserving data", () => {
