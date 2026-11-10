@@ -344,6 +344,10 @@ export const appWatch: AppWatchObject = {
     if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
   },
 
+  allLotPerformance() {
+    if (this.currentTab === "portfolio") this.$nextTick(() => this.initPortfolioChart());
+  },
+
   portfolioSalesByUserMetric() {
     if (this.currentTab === "portfolio") {
       this.$nextTick(() => this.initPortfolioChart());
