@@ -146,11 +146,12 @@ test("portfolio section, receipt, grouping, and sales-cache watchers refresh aft
   appWatch.portfolioReceiptFilter.call(context as never);
   appWatch.portfolioSalesGrouping.call(context as never);
   appWatch.salesCacheEpoch.call(context as never);
+  appWatch.allLotPerformance.call(context as never);
 
   assert.equal(initPortfolioChart.mock.calls.length, 0, "refreshes wait for the DOM update");
-  assert.equal(queued.length, 4);
+  assert.equal(queued.length, 5);
   queued.forEach((callback) => callback());
-  assert.equal(initPortfolioChart.mock.calls.length, 4);
+  assert.equal(initPortfolioChart.mock.calls.length, 5);
 
   queued.length = 0;
   context.currentTab = "sales";
