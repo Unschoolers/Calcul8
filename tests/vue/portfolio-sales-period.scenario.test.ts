@@ -170,6 +170,23 @@ describe("Portfolio analytics sections", () => {
       .toBe("");
   });
 
+  test("margin chart explains the compressed loss scale while keeping actual category values", () => {
+    const { lot } = createDenseVolumeFixture();
+    const row = portfolioComputed.allLotPerformance.call({
+      lots: [lot], portfolioSelectedLotIds: [lot.id], salesCacheEpoch: 0,
+      getAllSalesByLotId: () => new Map([[lot.id, []]])
+    } as never)[0]!;
+    const { view } = renderPortfolio("en", "unionArenaDark", 390, "analytics", "margin", {
+      performanceRows: [
+        { ...row, lotId: 1, lotName: "Small gain", salesCount: 1, totalPacks: 36, realizedMarginPercent: 9.9 },
+        { ...row, lotId: 2, lotName: "Severe loss", salesCount: 1, totalPacks: 36, realizedMarginPercent: -25_000 }
+      ]
+    });
+    const legend = view.container.querySelector("#portfolio-chart-legend");
+    expect(legend?.textContent).toContain("Negative margins use a compressed scale");
+    expect(legend?.textContent).toContain("-25,000.0%");
+  });
+
   test("a paid no-sale preorder does not render a fake loss or risk recommendation", async () => {
     const preorder = makeLot({
       id: 900,

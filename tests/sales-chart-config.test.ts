@@ -191,9 +191,37 @@ test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart and 
   assert.equal(config?.type, "bar");
   assert.equal(config?.options?.indexAxis, "y");
   assert.deepEqual(config?.data.labels, ["Lot 3", "Lot 1", "Lot 4", "Lot 2"]);
-  assert.deepEqual(config?.data.datasets[0]?.data, [33.3, 12.5, 0, -4.5]);
+  const values = config?.data.datasets[0]?.data as number[];
+  assert.deepEqual(values.slice(0, 3), [33.3, 12.5, 0]);
+  assert.ok(values[3]! < 0 && values[3]! > -4.5, "losses use the compressed visual scale");
   assert.equal(config?.data.datasets[0]?.label, "Sold profit margin %");
   assert.equal(config?.options?.scales?.y?.ticks?.autoSkip, false);
+});
+
+test("margin chart keeps modest gains visible beside an extreme loss without changing the tooltip value", () => {
+  const config = buildPortfolioMarginChartConfig({
+    rows: [
+      makePerformance({ lotId: 1, lotName: "Small gain", realizedMarginPercent: 9.9 }),
+      makePerformance({ lotId: 2, lotName: "Severe loss", realizedMarginPercent: -25_000 }),
+      makePerformance({ lotId: 3, lotName: "Moderate loss", realizedMarginPercent: -100 })
+    ],
+    compactMode: true,
+    formatCurrency
+  });
+  assert.deepEqual(config?.data.labels, ["Small gain", "Moderate loss", "Severe loss"]);
+  const plotted = config?.data.datasets[0]?.data as number[];
+  assert.equal(plotted[0], 9.9);
+  assert.ok(plotted[2]! < plotted[1]! && plotted[1]! < 0, "larger losses still extend farther left");
+  assert.ok(plotted[2]! > -200, "large losses cannot flatten ordinary gains");
+  assert.ok(plotted[1]! - plotted[2]! > 50, "moderate and extreme losses remain visually distinct");
+  assert.equal(config?.options?.scales?.x?.min, plotted[2], "the axis must not round outward into enormous synthetic loss values");
+  const ticks = config?.options?.scales?.x?.ticks?.callback as ((value: number) => string) | undefined;
+  assert.equal(ticks?.(-50), "-224%");
+  assert.equal(ticks?.(10), "10%");
+  const label = config?.options?.plugins?.tooltip?.callbacks?.label as ((context: { dataIndex?: number }) => string) | undefined;
+  assert.equal(label?.({ dataIndex: 0 }), "Small gain: Sold margin 9.9%");
+  assert.equal(label?.({ dataIndex: 1 }), "Moderate loss: Sold margin -100.0%");
+  assert.equal(label?.({ dataIndex: 2 }), "Severe loss: Sold margin -25000.0%");
 });
 
 test("Portfolio chart builders localize labels and tooltip plurals for French while preserving data", () => {
