@@ -131,6 +131,7 @@ export function buildPortfolioMarginChartConfig(params: {
         },
         y: {
           ticks: {
+            autoSkip: false,
             font: params.compactMode ? { size: 10 } : undefined
           },
           grid: {
