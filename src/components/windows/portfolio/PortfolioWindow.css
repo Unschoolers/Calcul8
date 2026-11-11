@@ -834,8 +834,6 @@
 }
 
 .portfolio-chart-legend__categories ul {
-  max-height: 12rem;
-  overflow: auto;
   margin-top: 0.45rem;
   padding: 0.55rem;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
