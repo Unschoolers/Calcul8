@@ -15,7 +15,7 @@
 - [x] Implement bounded compression and explicit tick positions in `src/app-core/methods/sales-chart-config-portfolio.ts`; remove the Categories CSS cap.
 - [x] Verify targeted unit/component tests and actual browser geometry on mobile/tablet/desktop in light/dark themes, including the last expanded category.
 - [x] Run `npm run verify` and `npm run typecheck:tests:web`, review the final diff with Terra, and resolve findings.
-- [ ] Commit and open a follow-up PR; record evidence and remaining limitations.
+- [x] Commit and open a follow-up PR: https://github.com/Unschoolers/Calcul8/pull/52 (implementation commit `1fe930152bb19e4b98088391ceaed0c4ffeaaa67`). Verification limitations are recorded below.
 
 ## Regression expectations
 
