@@ -63,15 +63,18 @@ export function buildPortfolioBreakdownChartConfig(params: {
   };
 }
 
+function roundUpMarginTickStep(value: number): number {
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(1, value)));
+  const fraction = value / magnitude;
+  return (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10) * magnitude;
+}
+
 export function buildPortfolioMarginChartConfig(params: {
   rows: PortfolioPerformanceRow[];
   compactMode: boolean;
   formatCurrency: FormatCurrency;
   preferredLanguage?: string;
 }): ChartConfiguration<"bar", number[], string> | null {
-  // The negative side stays nearly linear around zero and compresses large losses logarithmically.
-  const lossScale = 20;
-  const compressLoss = (margin: number) => margin < 0 ? -lossScale * Math.log1p(-margin / lossScale) : margin;
   const t = (key: string) => translateAppMessage(params.preferredLanguage || "", key);
   const rows = params.rows
     .filter((row) => row.salesCount > 0 || row.totalPacks > 0)
@@ -84,6 +87,29 @@ export function buildPortfolioMarginChartConfig(params: {
     .sort((a, b) => b.realizedMarginPercent - a.realizedMarginPercent);
   if (rows.length === 0) return null;
 
+  const largestGain = Math.max(0, rows[0]!.realizedMarginPercent);
+  const largestLoss = Math.max(0, -rows[rows.length - 1]!.realizedMarginPercent);
+  const gainStep = roundUpMarginTickStep(largestGain / 3);
+  const gainMaximum = largestGain > 0 ? Math.min(Number.MAX_VALUE, Math.ceil(largestGain / gainStep) * gainStep) : largestLoss > 0 ? 0 : 1;
+  const lossStep = roundUpMarginTickStep(largestLoss / 3);
+  const lossMaximum = Math.min(Number.MAX_VALUE, Math.ceil(largestLoss / lossStep) * lossStep);
+  const lossScale = 20;
+  const naturalLossExtent = lossScale * Math.log1p(lossMaximum / lossScale);
+  // Bound the rounded loss axis, not just its bars, to at most a quarter of a mixed plot.
+  const lossCompression = largestGain > 0 && naturalLossExtent > 0
+    ? Math.min(1, gainMaximum / 3 / naturalLossExtent)
+    : 1;
+  const compressLoss = (margin: number) => margin < 0
+    ? -lossScale * Math.log1p(-margin / lossScale) * lossCompression
+    : margin;
+  // Choose readable actual percentages first; evenly spaced log coordinates produce ticks like -224%.
+  const tickMargins = lossMaximum > 0 ? [-lossMaximum] : [];
+  if (largestGain === 0 && lossMaximum > 1) {
+    const middleLoss = roundUpMarginTickStep(lossScale * Math.expm1(naturalLossExtent / lossScale / 2));
+    if (middleLoss < lossMaximum) tickMargins.push(-middleLoss);
+  }
+  for (let value = 0; value <= gainMaximum; value += gainStep) tickMargins.push(value);
+  const tickLabels = new Map(tickMargins.map((margin) => [compressLoss(margin), `${params.formatCurrency(margin, 0)}%`]));
   const plottedMargins = rows.map((row) => compressLoss(row.realizedMarginPercent));
   return {
     type: "bar",
@@ -124,15 +150,15 @@ export function buildPortfolioMarginChartConfig(params: {
       },
       scales: {
         x: {
-          min: plottedMargins.reduce((minimum, value) => Math.min(minimum, value), 0),
+          min: lossMaximum > 0 ? compressLoss(-lossMaximum) : 0,
+          max: gainMaximum,
+          afterBuildTicks: (axis) => {
+            axis.ticks = tickMargins.map((margin) => ({ value: compressLoss(margin) }));
+          },
           ticks: {
-            callback: (value) => {
-              const position = Number(value);
-              const margin = position < 0 ? -lossScale * Math.expm1(-position / lossScale) : position;
-              return `${params.formatCurrency(margin, 0)}%`;
-            },
+            callback: (value) => tickLabels.get(Number(value)),
+            autoSkip: false,
             maxRotation: 0,
-            maxTicksLimit: params.compactMode ? 5 : 8,
             font: params.compactMode ? { size: 10 } : undefined
           },
           grid: {

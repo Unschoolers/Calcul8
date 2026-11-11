@@ -212,16 +212,64 @@ test("margin chart keeps modest gains visible beside an extreme loss without cha
   const plotted = config?.data.datasets[0]?.data as number[];
   assert.equal(plotted[0], 9.9);
   assert.ok(plotted[2]! < plotted[1]! && plotted[1]! < 0, "larger losses still extend farther left");
-  assert.ok(plotted[2]! > -200, "large losses cannot flatten ordinary gains");
-  assert.ok(plotted[1]! - plotted[2]! > 50, "moderate and extreme losses remain visually distinct");
-  assert.equal(config?.options?.scales?.x?.min, plotted[2], "the axis must not round outward into enormous synthetic loss values");
-  const ticks = config?.options?.scales?.x?.ticks?.callback as ((value: number) => string) | undefined;
-  assert.equal(ticks?.(-50), "-224%");
-  assert.equal(ticks?.(10), "10%");
+  const x = config?.options?.scales?.x;
+  const minimum = Number(x?.min);
+  const maximum = Number(x?.max);
+  assert.ok(-minimum / (maximum - minimum) <= 0.25, "losses occupy at most a quarter of the plot");
+  assert.ok(plotted[0]! / (maximum - minimum) >= 0.6, "a 9.9% gain stays prominent beside extreme losses");
+  assert.ok(plotted[2]! >= minimum, "the most negative bar is not clipped");
   const label = config?.options?.plugins?.tooltip?.callbacks?.label as ((context: { dataIndex?: number }) => string) | undefined;
   assert.equal(label?.({ dataIndex: 0 }), "Small gain: Sold margin 9.9%");
   assert.equal(label?.({ dataIndex: 1 }), "Moderate loss: Sold margin -100.0%");
   assert.equal(label?.({ dataIndex: 2 }), "Severe loss: Sold margin -25000.0%");
+});
+
+function marginAxisFor(values: number[], compactMode = true) {
+  const config = buildPortfolioMarginChartConfig({
+    rows: values.map((realizedMarginPercent, index) => makePerformance({ lotId: index, realizedMarginPercent })),
+    compactMode,
+    formatCurrency
+  })!;
+  const x = config.options!.scales!.x!;
+  const axis = { ticks: [] as Array<{ value: number }> };
+  (x.afterBuildTicks as ((scale: typeof axis) => void) | undefined)?.(axis);
+  const label = x.ticks!.callback as (value: number) => string;
+  return { config, min: Number(x.min), max: Number(x.max), ticks: axis.ticks, labels: axis.ticks.map((tick) => label(tick.value)) };
+}
+
+test("margin chart uses rounded actual percentage ticks and reserves most of the screenshot's plot for gains", () => {
+  for (const compactMode of [true, false]) {
+    const axis = marginAxisFor([14.8, 11.2, 9.9, 3.7, 0.1, 0, -15_000, -20_205], compactMode);
+    assert.deepEqual(axis.labels, ["-30000%", "0%", "5%", "10%", "15%"]);
+    assert.equal(axis.max, 15);
+    assert.ok(-axis.min / (axis.max - axis.min) <= 0.25);
+    assert.deepEqual(axis.config.data.datasets[0]!.data.slice(0, 6), [14.8, 11.2, 9.9, 3.7, 0.1, 0]);
+    assert.ok(axis.ticks.every((tick, i) => i === 0 || tick.value > axis.ticks[i - 1]!.value));
+  }
+});
+
+test("margin chart keeps one-sided and fractional axes finite without duplicate rounded labels", () => {
+  for (const values of [[14.8, 9.9], [-20_205, -100], [0, 0], [0.1, -0.3], [-0.1], [Number.NaN, Number.POSITIVE_INFINITY]]) {
+    const axis = marginAxisFor(values);
+    assert.ok(Number.isFinite(axis.min) && Number.isFinite(axis.max) && axis.min < axis.max);
+    assert.ok(axis.ticks.length >= 2);
+    assert.equal(new Set(axis.labels).size, axis.labels.length);
+    assert.ok(axis.labels.every((label) => /^-?\d+%$/.test(label) && label !== "-0%"));
+    assert.equal(axis.labels.filter((label) => label === "0%").length, 1);
+    if (!values.some((value) => value < 0)) assert.equal(axis.min, 0);
+    if (values.some((value) => value < 0) && !values.some((value) => value > 0)) assert.equal(axis.max, 0);
+    for (const value of axis.config.data.datasets[0]!.data) {
+      assert.ok(Number.isFinite(value) && value >= axis.min && value <= axis.max);
+    }
+  }
+});
+
+test("margin chart does not overflow its axis for a finite extreme loss", () => {
+  for (const values of [[10, -Number.MAX_VALUE], [Number.MAX_VALUE, -10]]) {
+    const axis = marginAxisFor(values);
+    assert.ok(Number.isFinite(axis.min) && Number.isFinite(axis.max));
+    assert.ok(axis.config.data.datasets[0]!.data.every(Number.isFinite));
+  }
 });
 
 test("Portfolio chart builders localize labels and tooltip plurals for French while preserving data", () => {
